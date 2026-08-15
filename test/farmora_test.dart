@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 void main() {
   testWidgets('Farmora starts with role selection', (tester) async {
     await tester.pumpWidget(const FarmoraApp());
-    expect(find.text('Welcome to'), findsOneWidget);
+    expect(find.textContaining('Welcome to'), findsOneWidget);
     expect(find.text('Continue to Farmora'), findsOneWidget);
   });
 

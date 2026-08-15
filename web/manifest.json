@@ -1,0 +1,11 @@
+{
+    "name": "Farmora Marketplace",
+    "short_name": "Farmora",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#f7faf7",
+    "theme_color": "#1f7a4d",
+    "description": "Connecting farmers, buyers, and transport providers.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false
+}
