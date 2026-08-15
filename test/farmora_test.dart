@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmora/main.dart';
-import 'package:provider/provider.dart';
 
 void main() {
   testWidgets('Farmora starts with role selection', (tester) async {
