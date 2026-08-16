@@ -61,7 +61,7 @@ class FarmoraState extends ChangeNotifier {
     ),
   ];
 
-  List<TransportJob> _jobs = [
+  final List<TransportJob> _jobs = [
     const TransportJob(
       id: 'job-1',
       title: 'Coconut harvest',
