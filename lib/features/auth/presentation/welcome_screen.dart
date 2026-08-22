@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as p;
+import '../../../core/models/user_role.dart';
+import '../../../providers/farmora_state.dart' as legacy;
+import '../providers/auth_provider.dart';
 
-class WelcomeScreen extends StatefulWidget {
+/// Welcome screen with role selection.
+/// Uses GoRouter for navigation, Riverpod for new auth, legacy Provider for backward compat.
+class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> {
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
   Role selectedRole = Role.buyer;
 
   @override
@@ -72,7 +76,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => context.read<FarmoraState>().signIn(selectedRole),
+                onPressed: () {
+                  // Legacy state for backward compat (existing screens still use it)
+                  p.Provider.of<legacy.FarmoraState>(context, listen: false)
+                      .signIn(selectedRole);
+                  // New Riverpod auth state
+                  ref.read(authProvider.notifier).signInDemo(selectedRole);
+                },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
                   child: Text('Continue to Farmora'),
