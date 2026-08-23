@@ -24,6 +24,7 @@ class DashboardScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
+        // Greeting header
         Row(
           children: [
             CircleAvatar(
@@ -53,12 +54,8 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 24),
-        if (isBuyer)
-          const SearchBar(
-            hintText: 'Search fresh produce',
-            leading: Icon(Icons.search_rounded),
-          ),
-        if (isBuyer) const SizedBox(height: 20),
+
+        // Hero card
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
@@ -80,13 +77,23 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Support local farmers today.',
-                      style: TextStyle(color: Color(0xffd8f1df)),
+                    Text(
+                      isFarmer
+                          ? 'ඔබේ අස්වැන්න විකුණන්න / Sell your harvest'
+                          : 'Support local farmers today.',
+                      style: const TextStyle(color: Color(0xffd8f1df)),
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        if (isFarmer) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const _AddProductPlaceholder(),
+                            ),
+                          );
+                        }
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xff1f7a4d),
@@ -94,8 +101,8 @@ class DashboardScreen extends ConsumerWidget {
                       child: Text(
                         isBuyer
                             ? 'Shop now'
-                            : role == Role.farmer
-                                ? 'Add product'
+                            : isFarmer
+                                ? 'Add product / නව නිෂ්පාදනය'
                                 : 'Find jobs',
                       ),
                     ),
@@ -111,30 +118,8 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          isBuyer ? 'Explore categories' : 'Your overview',
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-        const SizedBox(height: 12),
-        if (isBuyer)
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Chip(
-                avatar: Icon(Icons.grass, size: 18),
-                label: Text('Vegetables'),
-              ),
-              Chip(
-                avatar: Icon(Icons.apple, size: 18),
-                label: Text('Fruits'),
-              ),
-              Chip(
-                avatar: Icon(Icons.local_florist, size: 18),
-                label: Text('Herbs'),
-              ),
-            ],
-          ),
+
+        // Stats for farmer/buyer
         if (!isBuyer)
           Row(
             children: [
@@ -146,18 +131,79 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: StatCard(
                   label: 'Pending orders',
-                  value: '4',
+                  value: '${state.orders.where((o) => o.status == 'In transit').length}',
                   icon: Icons.trending_up_rounded,
                 ),
               ),
             ],
           ),
-        const SizedBox(height: 24),
+
+        // Search for buyer
+        if (isBuyer)
+          const SearchBar(
+            hintText: 'Search fresh produce',
+            leading: Icon(Icons.search_rounded),
+          ),
+        if (isBuyer) const SizedBox(height: 20),
+
+        // Categories for buyer
+        if (isBuyer)
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(avatar: Icon(Icons.grass, size: 18), label: Text('Vegetables')),
+              Chip(avatar: Icon(Icons.apple, size: 18), label: Text('Fruits')),
+              Chip(avatar: Icon(Icons.local_florist, size: 18), label: Text('Herbs')),
+            ],
+          ),
+        if (isBuyer) const SizedBox(height: 24),
+
+        // Market Prices Section (for farmers)
+        if (isFarmer) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Market Prices Today / වෙළඳපොල මිල',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MarketPricesScreen(),
+                    ),
+                  );
+                },
+                child: const Text('View all'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 80,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: _getSamplePrices().map((p) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _MiniPriceChip(
+                  cropName: p.cropName,
+                  pricePerKg: p.pricePerKg,
+                  emoji: p.emoji,
+                ),
+              )).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // Recent items
         Text(
-          isBuyer ? 'Picked for you' : 'Recent orders',
+          isBuyer ? 'Picked for you' : 'Your products',
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 12),
@@ -180,6 +226,8 @@ class DashboardScreen extends ConsumerWidget {
             status: 'In transit',
             color: Color(0xff3478c5),
           ),
+        ),
+
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: () => showModalBottomSheet(
@@ -190,6 +238,100 @@ class DashboardScreen extends ConsumerWidget {
           label: const Text('Preview another role'),
         ),
       ],
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning 🌅';
+    if (hour < 17) return 'Good afternoon ☀️';
+    return 'Good evening 🌙';
+  }
+
+  List<_DemoMarketPrice> _getSamplePrices() {
+    final now = DateTime.now();
+    return [
+      _DemoMarketPrice(cropName: 'Tomato', pricePerKg: 95, emoji: '🍅', recordedDate: now),
+      _DemoMarketPrice(cropName: 'Carrot', pricePerKg: 145, emoji: '🥕', recordedDate: now),
+      _DemoMarketPrice(cropName: 'Green Chilli', pricePerKg: 220, emoji: '🌶️', recordedDate: now),
+      _DemoMarketPrice(cropName: 'Beans', pricePerKg: 130, emoji: '🫘', recordedDate: now),
+      _DemoMarketPrice(cropName: 'Cabbage', pricePerKg: 60, emoji: '🥬', recordedDate: now),
+    ];
+  }
+}
+
+class _DemoMarketPrice {
+  final String cropName;
+  final double pricePerKg;
+  final String emoji;
+  final DateTime recordedDate;
+
+  const _DemoMarketPrice({
+    required this.cropName,
+    required this.pricePerKg,
+    required this.emoji,
+    required this.recordedDate,
+  });
+}
+
+class _MiniPriceChip extends StatelessWidget {
+  final String cropName;
+  final double pricePerKg;
+  final String emoji;
+
+  const _MiniPriceChip({
+    required this.cropName,
+    required this.pricePerKg,
+    required this.emoji,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xffe8f5e9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                cropName,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'LKR ${pricePerKg.toStringAsFixed(0)}/kg',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xff1f7a4d),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddProductPlaceholder extends StatelessWidget {
+  const _AddProductPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Product')),
+      body: const Center(
+        child: Text('Add Product Form - Coming Soon'),
+      ),
     );
   }
 }
