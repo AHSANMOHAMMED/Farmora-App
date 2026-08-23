@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../errors/app_exception.dart';
 
 /// Standard loading indicator widget
@@ -145,47 +146,24 @@ class ErrorStateWidget extends StatelessWidget {
 /// Widget that handles AsyncValue states (loading/error/data)
 /// Works with Riverpod's AsyncValue
 class AsyncStateHandler<T> extends StatelessWidget {
-  final T? data;
-  final bool isLoading;
-  final Object? error;
-  final VoidCallback? onRetry;
-  final Widget Function(T data) builder;
-  final Widget Function(Object error)? errorBuilder;
-  final Widget? loadingWidget;
+  final AsyncValue<T> value;
+  final Widget Function(BuildContext context, T data) dataBuilder;
 
   const AsyncStateHandler({
     super.key,
-    this.data,
-    this.isLoading = false,
-    this.error,
-    this.onRetry,
-    required this.builder,
-    this.errorBuilder,
-    this.loadingWidget,
+    required this.value,
+    required this.dataBuilder,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading && data == null) {
-      return loadingWidget ?? const LoadingWidget();
-    }
-
-    if (error != null) {
-      if (errorBuilder != null) {
-        return errorBuilder!(error!);
-      }
-      final msg = (error is AppException) ? (error as AppException).message : error.toString();
-      return ErrorStateWidget(
-        title: 'Something went wrong',
-        message: msg,
-        onRetry: onRetry,
-      );
-    }
-
-    if (data == null) {
-      return const LoadingWidget();
-    }
-
-    return builder(data as T);
+    return value.when(
+      data: (data) => dataBuilder(context, data),
+      loading: () => const LoadingWidget(),
+      error: (e, st) => ErrorStateWidget(
+        title: 'Error loading data',
+        message: e.toString(),
+      ),
+    );
   }
 }
