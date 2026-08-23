@@ -111,6 +111,11 @@ class FarmoraState extends ChangeNotifier {
   /// Alias for backward compatibility
   void add(Product p) => addProduct(p);
 
+  void addOrder(FarmoraOrder order) {
+    _orders.insert(0, order);
+    notifyListeners();
+  }
+
   void acceptJob(String jobId) {
     final index = _jobs.indexWhere((j) => j.id == jobId);
     if (index != -1) {
