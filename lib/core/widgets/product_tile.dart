@@ -46,6 +46,7 @@ class ProductTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -98,6 +99,8 @@ class ProductTile extends StatelessWidget {
                 ),
               ),
               if (showActions) const Icon(Icons.more_vert),
+              if (!showActions && onTap != null)
+                const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
