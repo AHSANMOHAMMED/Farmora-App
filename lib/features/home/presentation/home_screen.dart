@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'dashboard_screen.dart';
+import '../../farmer/presentation/earnings_screen.dart';
+import '../../farmer/presentation/farmer_products_screen.dart';
+import '../../farmer/presentation/farmer_orders_screen.dart';
 import '../../buyer/presentation/products_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
@@ -23,54 +27,103 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = context.watch<FarmoraState>();
     final role = state.role;
 
-    final screens = role == Role.transporter
-        ? const [
-            DashboardScreen(),
-            AvailableJobsScreen(),
-            OrdersScreen(),
-            ProfileScreen(),
-          ]
-        : const [
-            DashboardScreen(),
-            ProductsScreen(),
-            OrdersScreen(),
-            ProfileScreen(),
-          ];
+    List<Widget> screens;
+    List<_NavItem> navItems;
 
-    final navLabels = role == Role.transporter
-        ? ['Overview', 'Jobs', 'Orders', 'Profile']
-        : ['Home', 'Products', 'Orders', 'Profile'];
-
-    const navIcons = [
-      Icons.home_rounded,
-      Icons.eco_rounded,
-      Icons.receipt_long_rounded,
-      Icons.person_rounded,
-    ];
+    if (role == Role.farmer) {
+      // Stitch bottom nav: Home, Products, Orders, Earnings
+      screens = const [
+        DashboardScreen(),
+        FarmerProductsScreen(),
+        FarmerOrdersScreen(),
+        EarningsScreen(),
+      ];
+      navItems = const [
+        _NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
+        // Stitch uses potted_plant icon for Products
+        _NavItem(label: 'Products', icon: Icons.local_florist_outlined, activeIcon: Icons.local_florist_rounded),
+        _NavItem(label: 'Orders', icon: Icons.shopping_basket_outlined, activeIcon: Icons.shopping_basket_rounded),
+        // Stitch uses payments icon for Earnings
+        _NavItem(label: 'Earnings', icon: Icons.payments_outlined, activeIcon: Icons.payments_rounded),
+      ];
+    } else if (role == Role.transporter) {
+      screens = const [
+        DashboardScreen(),
+        AvailableJobsScreen(),
+        OrdersScreen(),
+        ProfileScreen(),
+      ];
+      navItems = const [
+        _NavItem(label: 'Overview', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
+        _NavItem(label: 'Jobs', icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping_rounded),
+        _NavItem(label: 'Orders', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
+        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+      ];
+    } else {
+      screens = const [
+        DashboardScreen(),
+        ProductsScreen(),
+        OrdersScreen(),
+        ProfileScreen(),
+      ];
+      navItems = const [
+        _NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
+        _NavItem(label: 'Products', icon: Icons.local_florist_outlined, activeIcon: Icons.local_florist_rounded),
+        _NavItem(label: 'Orders', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
+        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+      ];
+    }
 
     return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: tabIndex,
-          children: screens,
-        ),
+      body: IndexedStack(
+        index: tabIndex,
+        children: screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tabIndex,
-        onDestinationSelected: (i) => setState(() => tabIndex = i),
-        destinations: navLabels
-            .asMap()
-            .entries
-            .map(
-              (e) => NavigationDestination(
-                icon: Icon(navIcons[e.key]),
-                label: e.value,
-              ),
-            )
-            .toList(),
+      // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface.withOpacity(0.92),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, -1),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          height: 72,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
+          indicatorColor: AppColors.primaryContainer.withOpacity(0.15),
+          selectedIndex: tabIndex,
+          onDestinationSelected: (i) => setState(() => tabIndex = i),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: navItems.asMap().entries.map(
+            (e) {
+              final isSelected = tabIndex == e.key;
+              final item = e.value;
+              return NavigationDestination(
+                icon: Icon(
+                  isSelected ? item.activeIcon : item.icon,
+                  color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                ),
+                label: item.label,
+              );
+            },
+          ).toList(),
+        ),
       ),
     );
   }
+}
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  const _NavItem({required this.label, required this.icon, required this.activeIcon});
 }
 
 /// Alias for backward compatibility

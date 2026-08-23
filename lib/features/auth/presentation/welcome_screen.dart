@@ -11,7 +11,7 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  Role selectedRole = Role.buyer;
+  Role selectedRole = Role.farmer;
 
   @override
   Widget build(BuildContext context) {
