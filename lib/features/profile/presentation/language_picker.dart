@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../providers/farmora_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/providers/auth_provider.dart';
 
-class LanguagePicker extends StatelessWidget {
+class LanguagePicker extends ConsumerWidget {
   const LanguagePicker({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const languages = ['English', 'සිංහල', 'தமிழ்'];
+  Widget build(BuildContext context, WidgetRef ref) {
+    const languages = [
+      {'code': 'en', 'name': 'English'},
+      {'code': 'si', 'name': 'සිංහල'},
+      {'code': 'ta', 'name': 'தமிழ்'}
+    ];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: languages
           .map(
             (lang) => ListTile(
-              title: Text(lang),
+              title: Text(lang['name']!),
               onTap: () {
-                context.read<FarmoraState>().setLanguage(lang);
+                ref.read(authProvider.notifier).setLanguage(lang['code']!);
                 Navigator.pop(context);
               },
             ),

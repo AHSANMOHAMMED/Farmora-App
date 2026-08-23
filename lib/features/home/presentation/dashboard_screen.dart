@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/models/user_role.dart';
+
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/order_card.dart';
+import '../../../core/widgets/async_state_handler.dart';
 import '../../profile/presentation/role_sheet.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../buyer/providers/buyer_products_provider.dart';
+import '../../buyer/presentation/product_detail_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final state = context.watch<FarmoraState>();
-    final role = state.role;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final role = user?.role ?? Role.buyer;
     final isBuyer = role == Role.buyer;
+    final productsAsync = ref.watch(buyerProductsProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -26,15 +31,15 @@ class DashboardScreen extends StatelessWidget {
               child: Icon(role.icon, color: const Color(0xff1f7a4d)),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    'Good morning, ${user?.displayName ?? ""}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
-                  Text(
+                  const Text(
                     'Your Farmora network is growing.',
                     style: TextStyle(color: Colors.black54),
                   ),
@@ -136,7 +141,7 @@ class DashboardScreen extends StatelessWidget {
               Expanded(
                 child: StatCard(
                   label: 'Active products',
-                  value: role == Role.farmer ? '${state.products.length}' : '8',
+                  value: role == Role.farmer ? '3' : '8',
                   icon: Icons.insights_rounded,
                 ),
               ),
@@ -156,7 +161,18 @@ class DashboardScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 12),
-        if (isBuyer) ...state.products.take(2).map((p) => ProductTile(p)),
+        if (isBuyer)
+          AsyncStateHandler(
+            value: productsAsync,
+            dataBuilder: (context, products) {
+              if (products.isEmpty) {
+                return const Text('No products available right now.');
+              }
+              return Column(
+                children: products.take(2).map((p) => ProductTile(p, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProductDetailScreen(product: p))))).toList(),
+              );
+            },
+          ),
         if (!isBuyer)
           const OrderCard(
             title: 'Organic Tomatoes',
