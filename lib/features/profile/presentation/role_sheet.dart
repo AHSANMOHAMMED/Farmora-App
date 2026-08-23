@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/models/user_role.dart';
+import '../../auth/providers/auth_provider.dart';
 
-class RoleSheet extends StatelessWidget {
+class RoleSheet extends ConsumerWidget {
   const RoleSheet({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -24,7 +24,7 @@ class RoleSheet extends StatelessWidget {
               leading: Icon(r.icon, color: const Color(0xff1f7a4d)),
               title: Text(r.label),
               onTap: () {
-                context.read<FarmoraState>().setRole(r);
+                ref.read(authProvider.notifier).setRole(r);
                 Navigator.pop(context);
               },
             ),
