@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/models/user_role.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'language_picker.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final state = context.watch<FarmoraState>();
-    final role = state.role;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final role = user?.role ?? Role.buyer;
+
+    // Convert language code to display name
+    String langDisplay = 'English';
+    if (user?.languageCode == 'si') langDisplay = 'සිංහල';
+    if (user?.languageCode == 'ta') langDisplay = 'தமிழ்';
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -33,10 +38,10 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        const Center(
+        Center(
           child: Text(
-            'Alex Perera',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            user?.displayName ?? 'User',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
         ),
         Center(
@@ -49,7 +54,7 @@ class ProfileScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.language),
           title: const Text('Language'),
-          subtitle: Text(state.language),
+          subtitle: Text(langDisplay),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => showModalBottomSheet(
             context: context,
@@ -69,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.logout),
           title: const Text('Sign out'),
-          onTap: () => context.read<FarmoraState>().signOut(),
+          onTap: () => ref.read(authProvider.notifier).signOut(),
         ),
       ],
     );
