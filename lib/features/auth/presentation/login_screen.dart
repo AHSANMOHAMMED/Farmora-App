@@ -167,6 +167,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 label: const Text('Continue in demo mode'),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.go('/phone-auth'),
+                icon: const Icon(Icons.phone_outlined),
+                label: const Text('Sign in with Phone'),
+              ),
+            ),
           ],
         ),
       ),
