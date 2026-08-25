@@ -4,6 +4,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/presentation/welcome_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/phone_auth_screen.dart';
 import '../../features/auth/presentation/onboarding_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 
@@ -19,6 +20,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isOnboardingComplete = authState.user?.isOnboardingComplete ?? false;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
+          state.matchedLocation == '/phone-auth' ||
           state.matchedLocation == '/';
 
       // Not authenticated → show welcome/login
@@ -52,6 +54,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/phone-auth',
+        builder: (context, state) => const PhoneAuthScreen(),
       ),
       GoRoute(
         path: '/onboarding',
