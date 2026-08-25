@@ -10,6 +10,7 @@ import '../../profile/presentation/role_sheet.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../buyer/providers/buyer_products_provider.dart';
 import '../../buyer/presentation/product_detail_screen.dart';
+import 'market_prices_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,6 +20,7 @@ class DashboardScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final role = user?.role ?? Role.buyer;
     final isBuyer = role == Role.buyer;
+    final isFarmer = role == Role.farmer;
     final productsAsync = ref.watch(buyerProductsProvider);
 
     return ListView(
@@ -134,7 +136,7 @@ class DashboardScreen extends ConsumerWidget {
               Expanded(
                 child: StatCard(
                   label: 'Pending orders',
-                  value: '${state.orders.where((o) => o.status == 'In transit').length}',
+                  value: '4',
                   icon: Icons.trending_up_rounded,
                 ),
               ),
@@ -226,7 +228,6 @@ class DashboardScreen extends ConsumerWidget {
             status: 'In transit',
             color: Color(0xff3478c5),
           ),
-        ),
 
         const SizedBox(height: 16),
         OutlinedButton.icon(
@@ -239,13 +240,6 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning 🌅';
-    if (hour < 17) return 'Good afternoon ☀️';
-    return 'Good evening 🌙';
   }
 
   List<_DemoMarketPrice> _getSamplePrices() {
