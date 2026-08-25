@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../admin/presentation/admin_screen.dart';
 
 class RoleSheet extends ConsumerWidget {
   const RoleSheet({super.key});
@@ -28,6 +29,18 @@ class RoleSheet extends ConsumerWidget {
                 Navigator.pop(context);
               },
             ),
+          ),
+          const Divider(height: 24),
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings, color: Color(0xff1f7a4d)),
+            title: const Text('Admin Panel'),
+            subtitle: const Text('View platform analytics'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AdminScreen()),
+              );
+            },
           ),
         ],
       ),
