@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/user.dart';
 import '../../../core/models/user_role.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/error_handler.dart';
+import '../../../core/data/firestore_auth_repository.dart';
+import '../../../core/data/firestore_user_repository.dart';
 
 // ─── Auth State ───────────────────────────────────────────────
 
@@ -36,17 +41,31 @@ class AuthState {
   bool get isLoading => status == AuthStatus.loading;
 }
 
-// ─── Auth Notifier ────────────────────────────────────────────
+// ─── Firestore Auth Notifier ──────────────────────────────────
 
-/// Manages authentication state using a simple in-memory approach.
-/// Firebase AuthRepository will be injected when Firebase is configured.
+/// Manages authentication state using Firebase Auth + Firestore profiles.
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState());
+  final FirestoreAuthRepository _authRepo;
+  final FirestoreUserRepository _userRepo;
+  StreamSubscription? _authSub;
 
-  /// Current user shortcut
+  AuthNotifier(this._authRepo, this._userRepo) : super(const AuthState()) {
+    // Listen to Firebase auth state changes
+    _authSub = _authRepo.authStateChanges.listen((appUser) {
+      if (appUser != null) {
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          user: appUser,
+        );
+      } else {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    });
+  }
+
   AppUser? get currentUser => state.user;
 
-  /// Sign in with demo role (for development before Firebase is connected)
+  /// Sign in with demo role (for development/preview without Firebase)
   void signInDemo(Role role) {
     state = AuthState(
       status: AuthStatus.authenticated,
@@ -59,35 +78,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  /// Sign in with email and password
+  /// Sign in with email and password (real Firebase Auth)
   Future<void> signInWithEmail(String email, String password) async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      // TODO: Replace with Firebase AuthRepository call
-      // final user = await authRepository.signInWithEmail(email: email, password: password);
-      // state = state.copyWith(status: AuthStatus.authenticated, user: user);
-
-      // Placeholder for now
-      state = state.copyWith(
-        status: AuthStatus.authenticated,
-        user: AppUser(
-          id: 'user-${DateTime.now().millisecondsSinceEpoch}',
-          role: Role.buyer,
-          email: email,
-          displayName: email.split('@').first,
-          isOnboardingComplete: false,
-        ),
+      final user = await _authRepo.signInWithEmail(
+        email: email,
+        password: password,
       );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       final exception = ErrorHandler.handleError(e, context: 'signInWithEmail');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        error: exception,
-      );
+      state = state.copyWith(status: AuthStatus.error, error: exception);
     }
   }
 
-  /// Sign up with email and password
+  /// Sign up with email and password (real Firebase Auth)
   Future<void> signUpWithEmail({
     required String email,
     required String password,
@@ -95,23 +101,46 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(status: AuthStatus.loading, clearError: true);
     try {
-      // TODO: Replace with Firebase AuthRepository call
-      state = state.copyWith(
-        status: AuthStatus.authenticated,
-        user: AppUser(
-          id: 'user-${DateTime.now().millisecondsSinceEpoch}',
-          role: Role.buyer,
-          email: email,
-          displayName: displayName,
-          isOnboardingComplete: false,
-        ),
+      final user = await _authRepo.signUpWithEmail(
+        email: email,
+        password: password,
+        displayName: displayName,
       );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (e) {
       final exception = ErrorHandler.handleError(e, context: 'signUpWithEmail');
-      state = state.copyWith(
-        status: AuthStatus.error,
-        error: exception,
+      state = state.copyWith(status: AuthStatus.error, error: exception);
+    }
+  }
+
+  /// Verify phone number for OTP sign-in
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    required void Function(String verificationId) onCodeSent,
+    required void Function(String error) onError,
+  }) async {
+    await _authRepo.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      onCodeSent: onCodeSent,
+      onError: onError,
+    );
+  }
+
+  /// Complete phone sign-in with verification code
+  Future<void> signInWithPhone({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading, clearError: true);
+    try {
+      final user = await _authRepo.signInWithPhone(
+        verificationId: verificationId,
+        smsCode: smsCode,
       );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+    } catch (e) {
+      final exception = ErrorHandler.handleError(e, context: 'signInWithPhone');
+      state = state.copyWith(status: AuthStatus.error, error: exception);
     }
   }
 
@@ -125,47 +154,87 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final user = state.user;
     if (user == null) return;
 
-    state = state.copyWith(
-      user: user.copyWith(
-        role: role,
-        displayName: displayName,
-        phone: phone ?? user.phone,
-        languageCode: languageCode ?? user.languageCode,
-        isOnboardingComplete: true,
-      ),
+    final updatedUser = user.copyWith(
+      role: role,
+      displayName: displayName,
+      phone: phone ?? user.phone,
+      languageCode: languageCode ?? user.languageCode,
+      isOnboardingComplete: true,
     );
+
+    // Save to Firestore
+    await _userRepo.updateUserProfile(updatedUser);
+
+    state = state.copyWith(user: updatedUser);
   }
 
-  /// Update user role (for demo/preview)
+  /// Update user role
   void setRole(Role role) {
     final user = state.user;
     if (user == null) return;
-    state = state.copyWith(user: user.copyWith(role: role));
+    final updatedUser = user.copyWith(role: role);
+    state = state.copyWith(user: updatedUser);
+    _userRepo.updateUserProfile(updatedUser);
   }
 
   /// Update language
   void setLanguage(String languageCode) {
     final user = state.user;
     if (user == null) return;
-    state = state.copyWith(user: user.copyWith(languageCode: languageCode));
+    final updatedUser = user.copyWith(languageCode: languageCode);
+    state = state.copyWith(user: updatedUser);
+    _userRepo.updateUserProfile(updatedUser);
   }
 
   /// Sign out
   Future<void> signOut() async {
     try {
-      // TODO: Replace with Firebase AuthRepository call
+      await _authRepo.signOut();
       state = const AuthState(status: AuthStatus.unauthenticated);
     } catch (e) {
       final exception = ErrorHandler.handleError(e, context: 'signOut');
       state = state.copyWith(error: exception);
     }
   }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 }
 
 // ─── Providers ────────────────────────────────────────────────
 
+/// Firebase Auth instance provider
+final firebaseAuthProvider = Provider<fb.FirebaseAuth>((ref) {
+  return fb.FirebaseAuth.instance;
+});
+
+/// Firestore instance provider
+final firestoreProvider = Provider<FirebaseFirestore>((ref) {
+  return FirebaseFirestore.instance;
+});
+
+/// Auth repository provider (Firebase-backed)
+final authRepositoryProvider = Provider<FirestoreAuthRepository>((ref) {
+  return FirestoreAuthRepository(
+    ref.watch(firebaseAuthProvider),
+    ref.watch(firestoreProvider),
+  );
+});
+
+/// User repository provider (Firestore-backed)
+final userRepositoryProvider = Provider<FirestoreUserRepository>((ref) {
+  return FirestoreUserRepository(ref.watch(firestoreProvider));
+});
+
+/// Main auth state provider
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(
+    ref.watch(authRepositoryProvider),
+    ref.watch(userRepositoryProvider),
+  );
 });
 
 /// Convenience provider for just the current user

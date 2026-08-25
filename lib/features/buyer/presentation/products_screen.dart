@@ -20,16 +20,6 @@ class ProductsScreen extends ConsumerWidget {
     final filteredProducts = ref.watch(filteredProductsProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
 
-    // Filter products based on category and search
-    final filteredProducts = state.products.where((product) {
-      final matchesCategory = selectedCategory == 'All' || 
-          product.category == selectedCategory;
-      final matchesSearch = searchQuery.isEmpty || 
-          product.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          product.location.toLowerCase().contains(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(isFarmer ? 'My products' : 'Browse produce'),
