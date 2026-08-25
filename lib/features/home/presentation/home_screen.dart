@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
@@ -7,7 +8,8 @@ import 'dashboard_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_orders_screen.dart';
-import '../../buyer/presentation/products_screen.dart';
+import '../../buyer/presentation/buyer_products_screen.dart';
+import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -27,16 +29,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = context.watch<FarmoraState>();
     final role = state.role;
 
+    // Initialize Firestore sync when user is authenticated
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null && state.currentUserId.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        state.initFromFirestore(firebaseUser.uid);
+      });
+    }
+
     List<Widget> screens;
     List<_NavItem> navItems;
 
     if (role == Role.farmer) {
-      // Stitch bottom nav: Home, Products, Orders, Earnings
+      // Stitch bottom nav: Home, Products, Orders, Earnings, Profile
       screens = const [
         DashboardScreen(),
         FarmerProductsScreen(),
         FarmerOrdersScreen(),
         EarningsScreen(),
+        ProfileScreen(),
       ];
       navItems = const [
         _NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
@@ -45,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _NavItem(label: 'Orders', icon: Icons.shopping_basket_outlined, activeIcon: Icons.shopping_basket_rounded),
         // Stitch uses payments icon for Earnings
         _NavItem(label: 'Earnings', icon: Icons.payments_outlined, activeIcon: Icons.payments_rounded),
+        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.transporter) {
       screens = const [
@@ -62,8 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       screens = const [
         DashboardScreen(),
-        ProductsScreen(),
-        OrdersScreen(),
+        BuyerProductsScreen(),
+        BuyerOrdersScreen(),
         ProfileScreen(),
       ];
       navItems = const [

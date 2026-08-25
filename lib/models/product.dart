@@ -106,4 +106,49 @@ class Product {
       color: color,
     );
   }
+
+  /// Serialize to Firestore-compatible Map
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'category': category,
+      'location': location,
+      'quantity': quantity,
+      'unit': unit,
+      'price': price,
+      'pricePerUnit': pricePerUnit,
+      'emoji': emoji,
+      'color': color.value,
+      'imagePath': imagePath,
+      'status': status,
+      'isOrganic': isOrganic,
+      'description': description,
+      'availabilityDate': availabilityDate?.toIso8601String(),
+      'images': images,
+    };
+  }
+
+  /// Deserialize from Firestore Map
+  factory Product.fromMap(String id, Map<String, dynamic> data) {
+    return Product(
+      id: id,
+      name: data['name'] ?? '',
+      category: data['category'] ?? '',
+      location: data['location'] ?? '',
+      quantity: data['quantity'] ?? '',
+      unit: data['unit'] ?? 'kg',
+      price: data['price'] ?? '',
+      pricePerUnit: (data['pricePerUnit'] as num?)?.toDouble() ?? 0.0,
+      emoji: data['emoji'] ?? '🌱',
+      color: Color(data['color'] as int? ?? 0xFFE8F5E9),
+      imagePath: data['imagePath'] as String?,
+      status: data['status'] ?? 'Active',
+      isOrganic: data['isOrganic'] ?? true,
+      description: data['description'] ?? '',
+      availabilityDate: data['availabilityDate'] != null
+          ? DateTime.tryParse(data['availabilityDate'] as String)
+          : null,
+      images: List<String>.from(data['images'] ?? []),
+    );
+  }
 }

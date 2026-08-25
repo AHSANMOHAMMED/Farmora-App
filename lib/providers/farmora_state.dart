@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_role.dart';
 import '../models/product.dart';
@@ -5,8 +6,21 @@ import '../models/order.dart';
 import '../models/transport_job.dart';
 import '../models/earnings_model.dart';
 import '../models/verification_model.dart';
+import '../models/cart_item.dart';
+import '../services/firebase_service.dart';
 
 class FarmoraState extends ChangeNotifier {
+  // Firebase services
+  final _authService = FirebaseAuthService();
+  final _firestoreService = FirestoreService();
+  String _currentUserId = '';
+  String get currentUserId => _currentUserId;
+
+  // Stream subscriptions for real-time Firestore sync
+  StreamSubscription<List<Product>>? _productsSub;
+  StreamSubscription<List<FarmoraOrder>>? _ordersSub;
+  StreamSubscription<List<TransportJob>>? _jobsSub;
+  StreamSubscription<List<VerificationDoc>>? _verificationSub;
   bool signedIn = false;
   String language = 'English';
   Role role = Role.farmer;
@@ -301,19 +315,103 @@ class FarmoraState extends ChangeNotifier {
     }).toList();
   }
 
+  List<Product> get activeProducts => _products.where((p) => p.isActive).toList();
+
   List<FarmoraOrder> get pendingOrders => _orders.where((o) => o.isPending).toList();
   List<FarmoraOrder> get acceptedOrders => _orders.where((o) => o.isAccepted || o.status == 'In transit').toList();
   List<FarmoraOrder> get completedOrders => _orders.where((o) => o.isCompleted).toList();
+
+  // ── Cart (Buyer) ─────────────────────────────────────────
+  final List<CartItem> _cartItems = [];
+  List<CartItem> get cartItems => List.unmodifiable(_cartItems);
+  int get cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity);
+  double get cartTotal => _cartItems.fold(0.0, (sum, item) => sum + (item.product.pricePerUnit * item.quantity));
+
+  void addToCart(Product product, {int quantity = 1}) {
+    final existingIndex = _cartItems.indexWhere((c) => c.product.id == product.id);
+    if (existingIndex != -1) {
+      final existing = _cartItems[existingIndex];
+      _cartItems[existingIndex] = existing.copyWith(quantity: existing.quantity + quantity);
+    } else {
+      _cartItems.add(CartItem(product: product, quantity: quantity));
+    }
+    notifyListeners();
+  }
+
+  void removeFromCart(String productId) {
+    _cartItems.removeWhere((c) => c.product.id == productId);
+    notifyListeners();
+  }
+
+  void updateCartQuantity(String productId, int quantity) {
+    final index = _cartItems.indexWhere((c) => c.product.id == productId);
+    if (index != -1) {
+      if (quantity <= 0) {
+        _cartItems.removeAt(index);
+      } else {
+        _cartItems[index] = _cartItems[index].copyWith(quantity: quantity);
+      }
+      notifyListeners();
+    }
+  }
+
+  void clearCart() {
+    _cartItems.clear();
+    notifyListeners();
+  }
+
+  void placeOrder() {
+    if (_cartItems.isEmpty) return;
+    for (final item in _cartItems) {
+      final order = FarmoraOrder(
+        id: 'ord-${DateTime.now().millisecondsSinceEpoch}-${item.product.id}',
+        orderNumber: '#${_orders.length + 1001}',
+        title: item.product.name,
+        productName: item.product.name,
+        quantity: '${item.quantity} ${item.product.unit}',
+        grade: item.product.isOrganic ? 'Organic' : 'Grade A',
+        unitPrice: item.product.price,
+        totalAmount: '\$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
+        totalAmountNumber: item.product.pricePerUnit * item.quantity,
+        buyerName: 'You',
+        buyerCompany: 'Your Order',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        buyerPhone: '',
+        deliveryAddress: 'Delivery address TBD',
+        detail: '${item.quantity} ${item.product.unit} · \$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
+        status: 'Pending',
+        progress: 0.1,
+        color: const Color(0xFF3478C5),
+        timestamp: 'Just now',
+        requestedDate: 'Today',
+        buyerIcon: Icons.shopping_cart_rounded,
+      );
+      _orders.insert(0, order);
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.addOrder(order);
+      }
+    }
+    _cartItems.clear();
+    notifyListeners();
+  }
 
   // Actions
   void signIn(Role r) {
     role = r;
     signedIn = true;
     notifyListeners();
+    // If user is already authenticated via Firebase, init Firestore
+    final user = _authService.currentUser;
+    if (user != null) {
+      initFromFirestore(user.uid);
+    }
   }
 
   void signOut() {
     signedIn = false;
+    _currentUserId = '';
+    disposeFirestoreSubscriptions();
+    _authService.signOut();
     notifyListeners();
   }
 
@@ -340,6 +438,10 @@ class FarmoraState extends ChangeNotifier {
   void addProduct(Product p) {
     _products.insert(0, p);
     notifyListeners();
+    // Sync to Firestore if user is authenticated
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.addProduct(p, _currentUserId);
+    }
   }
 
   void add(Product p) => addProduct(p);
@@ -368,6 +470,10 @@ class FarmoraState extends ChangeNotifier {
         progress: 0.6,
         color: const Color(0xFF1F7A4D),
       );
+      // Sync to Firestore
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.updateOrderStatus(orderId, 'Accepted', 0.6);
+      }
       _thisMonth += order.totalAmountNumber;
       _thisWeek += order.totalAmountNumber;
       _totalEarnings += order.totalAmountNumber;
@@ -393,6 +499,10 @@ class FarmoraState extends ChangeNotifier {
         progress: 0.0,
         color: const Color(0xFFBA1A1A),
       );
+      // Sync to Firestore
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.updateOrderStatus(orderId, 'Declined', 0.0);
+      }
       notifyListeners();
     }
   }
@@ -403,6 +513,71 @@ class FarmoraState extends ChangeNotifier {
       _jobs[index] = _jobs[index].copyWith(accepted: true);
       notifyListeners();
     }
+  }
+
+  /// Initialize Firestore streams after user signs in.
+  /// Loads data from Firestore in real-time while keeping mock data as fallback.
+  void initFromFirestore(String uid) {
+    _currentUserId = uid;
+
+    // Load user profile and set role
+    _authService.loadUserProfile(uid).then((profile) {
+      if (profile != null) {
+        final roleStr = profile['role'] as String?;
+        if (roleStr != null) {
+          try {
+            role = Role.values.firstWhere((r) => r.name == roleStr);
+          } catch (_) {}
+        }
+        final lang = profile['language'] as String?;
+        if (lang != null) language = lang;
+        notifyListeners();
+      }
+    });
+
+    // Subscribe to products stream
+    _productsSub?.cancel();
+    _productsSub = _firestoreService.productsStream().listen((firestoreProducts) {
+      if (firestoreProducts.isNotEmpty) {
+        _products.clear(); _products.addAll(firestoreProducts);
+        notifyListeners();
+      }
+    });
+
+    // Subscribe to orders stream
+    _ordersSub?.cancel();
+    _ordersSub = _firestoreService.ordersStream().listen((firestoreOrders) {
+      if (firestoreOrders.isNotEmpty) {
+        _orders.clear(); _orders.addAll(firestoreOrders);
+        notifyListeners();
+      }
+    });
+
+    // Subscribe to transport jobs stream
+    _jobsSub?.cancel();
+    _jobsSub = _firestoreService.jobsStream().listen((firestoreJobs) {
+      if (firestoreJobs.isNotEmpty) {
+        _jobs.clear(); _jobs.addAll(firestoreJobs);
+        notifyListeners();
+      }
+    });
+
+    // Subscribe to verification docs stream (farmer only)
+    _verificationSub?.cancel();
+    _verificationSub = _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
+      if (firestoreDocs.isNotEmpty) {
+        _verificationDocs.clear(); _verificationDocs.addAll(firestoreDocs);
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Cancel all Firestore subscriptions
+  void disposeFirestoreSubscriptions() {
+    _productsSub?.cancel();
+    _ordersSub?.cancel();
+    _jobsSub?.cancel();
+    _verificationSub?.cancel();
   }
 
   void updateVerificationDoc(String docId, {String? fileName, String? fileSizeInfo, String? imagePreview, VerificationStatus? status}) {

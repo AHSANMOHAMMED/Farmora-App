@@ -32,4 +32,27 @@ class TransportJob {
       accepted: accepted ?? this.accepted,
     );
   }
+
+  /// Serialize to Firestore-compatible Map
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'route': route,
+      'detail': detail,
+      'fee': fee,
+      'accepted': accepted,
+    };
+  }
+
+  /// Deserialize from Firestore Map
+  factory TransportJob.fromMap(String id, Map<String, dynamic> data) {
+    return TransportJob(
+      id: id,
+      title: data['title'] ?? '',
+      route: data['route'] ?? '',
+      detail: data['detail'] ?? '',
+      fee: data['fee'] ?? '',
+      accepted: data['accepted'] ?? false,
+    );
+  }
 }
