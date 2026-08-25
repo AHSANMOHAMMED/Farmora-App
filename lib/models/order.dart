@@ -99,4 +99,68 @@ class FarmoraOrder {
       buyerIcon: buyerIcon ?? this.buyerIcon,
     );
   }
+
+  /// Serialize to Firestore-compatible Map
+  Map<String, dynamic> toMap() {
+    // Map common IconData to a string key for Firestore
+    String iconKey = 'storefront';
+    if (buyerIcon == Icons.restaurant_rounded) {
+      iconKey = 'restaurant';
+    }
+    return {
+      'orderNumber': orderNumber,
+      'title': title,
+      'productName': productName,
+      'quantity': quantity,
+      'grade': grade,
+      'unitPrice': unitPrice,
+      'totalAmount': totalAmount,
+      'totalAmountNumber': totalAmountNumber,
+      'buyerName': buyerName,
+      'buyerCompany': buyerCompany,
+      'buyerAvatar': buyerAvatar,
+      'buyerPhone': buyerPhone,
+      'deliveryAddress': deliveryAddress,
+      'detail': detail,
+      'status': status,
+      'progress': progress,
+      'color': color.value,
+      'timestamp': timestamp,
+      'requestedDate': requestedDate,
+      'buyerIcon': iconKey,
+    };
+  }
+
+  /// Deserialize from Firestore Map
+  factory FarmoraOrder.fromMap(String id, Map<String, dynamic> data) {
+    // Map string key back to IconData
+    IconData iconData = Icons.storefront_rounded;
+    if (data['buyerIcon'] == 'restaurant') {
+      iconData = Icons.restaurant_rounded;
+    }
+
+    return FarmoraOrder(
+      id: id,
+      orderNumber: data['orderNumber'] ?? '',
+      title: data['title'] ?? '',
+      productName: data['productName'] ?? '',
+      quantity: data['quantity'] ?? '',
+      grade: data['grade'] ?? '',
+      unitPrice: data['unitPrice'] ?? '',
+      totalAmount: data['totalAmount'] ?? '',
+      totalAmountNumber: (data['totalAmountNumber'] as num?)?.toDouble() ?? 0.0,
+      buyerName: data['buyerName'] ?? '',
+      buyerCompany: data['buyerCompany'] ?? '',
+      buyerAvatar: data['buyerAvatar'] ?? 'assets/images/buyer_sarah.png',
+      buyerPhone: data['buyerPhone'] ?? '',
+      deliveryAddress: data['deliveryAddress'] ?? '',
+      detail: data['detail'] ?? '',
+      status: data['status'] ?? 'Pending',
+      progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
+      color: Color(data['color'] as int? ?? 0xFF3478C5),
+      timestamp: data['timestamp'] ?? '',
+      requestedDate: data['requestedDate'] ?? '',
+      buyerIcon: iconData,
+    );
+  }
 }
