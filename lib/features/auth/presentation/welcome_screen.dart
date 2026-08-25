@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/user_role.dart';
 import '../providers/auth_provider.dart';
+import 'login_screen.dart';
+import 'signup_screen.dart';
 
-/// Welcome screen with role selection.
-/// Uses GoRouter for navigation, Riverpod for new auth.
+/// Welcome screen with role selection and sign-in options.
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -71,6 +72,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               ),
             ),
             const SizedBox(height: 18),
+
+            // Primary CTA: Demo mode (works without Firebase)
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -79,15 +82,45 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
-                  child: Text('Continue to Farmora'),
+                  child: Text('Continue as Demo'),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+
+            // Secondary CTA: Real sign-in with Firebase Auth
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Sign In with Email'),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SignupScreen()),
+                  );
+                },
+                icon: const Icon(Icons.person_add_rounded),
+                label: const Text('Create Account'),
+              ),
+            ),
+
+            const SizedBox(height: 24),
             const Center(
               child: Text(
-                'Demo mode · No account required',
-                style: TextStyle(color: Colors.black45, fontSize: 12),
+                'Demo mode uses local data · Sign in for real Firestore data',
+                style: TextStyle(color: Colors.black45, fontSize: 11),
               ),
             ),
           ],
