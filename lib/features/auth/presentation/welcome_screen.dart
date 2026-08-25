@@ -4,6 +4,7 @@ import '../../../core/models/user_role.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import 'phone_auth_screen.dart';
 
 /// Welcome screen with role selection and sign-in options.
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -113,6 +114,21 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 },
                 icon: const Icon(Icons.person_add_rounded),
                 label: const Text('Create Account'),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PhoneAuthScreen()),
+                  );
+                },
+                icon: const Icon(Icons.phone_outlined),
+                label: const Text('Sign In with Phone'),
               ),
             ),
 
