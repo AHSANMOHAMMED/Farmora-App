@@ -1,21 +1,32 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/market_price.dart';
 
-/// Demo market prices for Dambulla and Manning Market
-final marketPricesProvider = Provider<List<MarketPrice>>((ref) {
-  final now = DateTime.now();
-  return [
-    MarketPrice(id: 'mp-1', cropName: 'Tomato', pricePerKg: 95, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-2', cropName: 'Green Chilli', pricePerKg: 220, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-3', cropName: 'Carrot', pricePerKg: 145, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-4', cropName: 'Leeks', pricePerKg: 180, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-5', cropName: 'Capsicum', pricePerKg: 260, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-6', cropName: 'Brinjal', pricePerKg: 75, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-7', cropName: 'Beans', pricePerKg: 130, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-8', cropName: 'Potato', pricePerKg: 105, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-9', cropName: 'Cabbage', pricePerKg: 60, marketName: 'Dambulla', recordedDate: now),
-    MarketPrice(id: 'mp-10', cropName: 'Banana', pricePerKg: 85, marketName: 'Manning Market', recordedDate: now),
-    MarketPrice(id: 'mp-11', cropName: 'Mango', pricePerKg: 195, marketName: 'Manning Market', recordedDate: now),
-    MarketPrice(id: 'mp-12', cropName: 'Papaya', pricePerKg: 65, marketName: 'Manning Market', recordedDate: now),
-  ];
+/// Firestore-backed market prices provider.
+/// Reads from the 'market_prices' collection in Firestore.
+final marketPricesProvider = StreamProvider<List<MarketPrice>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('market_prices')
+      .orderBy('recorded_date', descending: true)
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return MarketPrice.fromJson(data);
+    }).toList();
+  });
+});
+
+/// Provider that returns market prices as a Future (for one-time reads).
+final marketPricesFutureProvider = FutureProvider<List<MarketPrice>>((ref) async {
+  final snapshot = await FirebaseFirestore.instance
+      .collection('market_prices')
+      .orderBy('recorded_date', descending: true)
+      .get();
+  return snapshot.docs.map((doc) {
+    final data = doc.data();
+    data['id'] = doc.id;
+    return MarketPrice.fromJson(data);
+  }).toList();
 });

@@ -2,110 +2,137 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function hasRole(role) {
-      return isAuthenticated() &&
-        request.auth.token.role == role;
-    }
-
-    function isFarmer() {
-      return hasRole('farmer');
-    }
-
-    function isBuyer() {
-      return hasRole('buyer');
-    }
-
-    function isTransporter() {
-      return hasRole('transporter');
-    }
-
-    function isAdmin() {
-      return hasRole('admin');
-    }
-
-    // ─── Users ─────────────────────────────────────────────
+    // ─── Users Collection ──────────────────────────────────
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // ─── Products ──────────────────────────────────────────
-    match /products/{productId} {
-      allow read: if true; // Public marketplace
-      allow create: if isFarmer() && request.auth.uid == resource.data.farmerId;
-      allow update: if isFarmer() && request.auth.uid == resource.data.farmerId;
-      allow delete: if isFarmer() && request.auth.uid == resource.data.farmerId;
-    }
-
-    // ─── Orders ────────────────────────────────────────────
-    match /orders/{orderId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.buyerId ||
-         request.auth.uid == resource.data.farmerId ||
-         request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-      allow create: if isBuyer() && request.auth.uid == request.resource.data.buyerId;
-      allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.buyerId ||
-         request.auth.uid == resource.data.farmerId ||
-         request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-    }
-
-    // ─── Transport Jobs ────────────────────────────────────
-    match /transportJobs/{jobId} {
-      allow read: if isAuthenticated();
-      allow create: if isFarmer() || isAdmin();
-      allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-    }
-
-    // ─── Conversations ─────────────────────────────────────
-    match /conversations/{conversationId} {
-      allow read: if isAuthenticated() &&
-        request.auth.uid in resource.data.participantIds;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-    }
-
-    // ─── Messages ──────────────────────────────────────────
-    match /messages/{messageId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.auth.uid == request.resource.data.senderId;
-    }
-
-    // ─── Reviews ───────────────────────────────────────────
-    match /reviews/{reviewId} {
+      // Anyone can read user profiles (for display names, etc.)
       allow read: if true;
-      allow create: if isBuyer() || isBuyer();
+
+      // Only the authenticated user can create their own profile
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.keys().hasAll(['id', 'role', 'displayName'])
+                    && request.resource.data.id == userId;
+
+      // Only the user can update their own profile
+      // Admins can update any user (suspend/unsuspend)
+      allow update: if request.auth != null
+                    && (request.auth.uid == userId
+                        || request.auth.token.admin == true);
+
+      // Only the user can delete their own account
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
     }
 
-    // ─── Notifications ─────────────────────────────────────
-    match /notifications/{notificationId} {
-      allow read: if isAuthenticated() &&
-        request.auth.uid == resource.data.userId;
-      allow create: if isAdmin();
-      allow update: if isAuthenticated() &&
-        request.auth.uid == resource.data.userId;
+    // ─── Products Collection ───────────────────────────────
+    match /products/{productId} {
+      // Anyone can read products (public marketplace)
+      allow read: if true;
+
+      // Only authenticated farmers can create products
+      allow create: if request.auth != null
+                    && request.resource.data.farmerId == request.auth.uid
+                    && request.resource.data.keys().hasAll([
+                         'farmerId', 'name', 'category', 'priceMinor',
+                         'quantityAvailable', 'unit', 'location'
+                       ]);
+
+      // Only the farmer who owns the product can update it
+      allow update: if request.auth != null
+                    && resource.data.farmerId == request.auth.uid;
+
+      // Only the farmer who owns the product can delete it
+      allow delete: if request.auth != null
+                    && resource.data.farmerId == request.auth.uid;
     }
 
-    // ─── Transport Transitions (audit log) ─────────────────
-    match /transportTransitions/{transitionId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
+    // ─── Orders Collection ─────────────────────────────────
+    match /orders/{orderId} {
+      // Buyers can read their own orders
+      // Farmers can read orders for their products
+      allow read: if request.auth != null
+                  && (resource.data.buyerId == request.auth.uid
+                      || resource.data.farmerId == request.auth.uid);
+
+      // Only authenticated buyers can create orders
+      allow create: if request.auth != null
+                    && request.resource.data.buyerId == request.auth.uid
+                    && request.resource.data.keys().hasAll([
+                         'buyerId', 'farmerId', 'items', 'totalMinor', 'status'
+                       ]);
+
+      // Buyers can update delivery address and cancel
+      // Farmers can update order status (confirm/reject/ship)
+      allow update: if request.auth != null
+                    && (resource.data.buyerId == request.auth.uid
+                        || resource.data.farmerId == request.auth.uid);
+
+      // Buyers can cancel/delete their own orders
+      allow delete: if request.auth != null
+                    && resource.data.buyerId == request.auth.uid
+                    && resource.data.status in ['pending', 'confirmed'];
+    }
+
+    // ─── Market Prices Collection ──────────────────────────
+    match /market_prices/{priceId} {
+      // Anyone can read market prices (public data)
+      allow read: if true;
+
+      // Only admin can write market prices
+      // (In production, use Firebase Admin SDK or Cloud Functions)
+      allow write: if request.auth != null
+                   && request.auth.token.admin == true;
+    }
+
+    // ─── Transport Jobs Collection ─────────────────────────
+    match /transport_jobs/{jobId} {
+      // Anyone can read transport jobs (public marketplace)
+      allow read: if true;
+
+      // Farmers and buyers can create transport jobs
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll([
+                         'pickupAddress', 'dropoffAddress', 'offeredFeeMinor', 'status'
+                       ]);
+
+      // Transporters can accept/update jobs
+      // Farmers/buyers who created the job can update it
+      allow update: if request.auth != null;
+
+      // Only the job creator or transporter can delete
+      allow delete: if request.auth != null;
+    }
+
+    // ─── Reviews Collection ────────────────────────────────
+    match /reviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if true;
+
+      // Only authenticated users can create reviews
+      allow create: if request.auth != null
+                    && request.resource.data.reviewerId == request.auth.uid;
+
+      // Only the reviewer can update/delete their own review
+      allow update: if request.auth != null
+                    && resource.data.reviewerId == request.auth.uid;
+
+      allow delete: if request.auth != null
+                    && resource.data.reviewerId == request.auth.uid;
+    }
+
+    // ─── Messages Collection ───────────────────────────────
+    match /messages/{messageId} {
+      // Only sender and receiver can read messages
+      allow read: if request.auth != null
+                  && (resource.data.senderId == request.auth.uid
+                      || resource.data.receiverId == request.auth.uid);
+
+      // Only authenticated users can send messages
+      allow create: if request.auth != null
+                    && request.resource.data.senderId == request.auth.uid;
+
+      // No updates or deletes for messages (immutable)
+      allow update, delete: if false;
     }
   }
 }
