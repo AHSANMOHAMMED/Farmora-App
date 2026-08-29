@@ -92,17 +92,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
       category: _category,
       location: 'Local Farm',
       quantity: '$quantityVal $_unit available',
-
+      unit: _unit,
       price: '\$${priceVal.toStringAsFixed(2)} / $_unit',
-
+      pricePerUnit: priceVal,
       emoji: _category == 'Fruits' ? '🍎' : '🍅',
       color: const Color(0xFFFFE1DA),
       imagePath: _selectedImages.isNotEmpty ? _selectedImages.first : 'assets/images/heirloom_tomatoes.png',
       status: 'Active',
       isOrganic: true,
       description: description,
-
-
+      availabilityDate: _availabilityDate,
+      images: _selectedImages,
     );
 
     context.read<FarmoraState>().addProduct(newProduct);

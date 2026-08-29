@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/user_role.dart';
-
+import 'package:provider/provider.dart';
+import '../../../models/user_role.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/order_card.dart';
-import '../../../core/widgets/async_state_handler.dart';
 import '../../profile/presentation/role_sheet.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../buyer/providers/buyer_products_provider.dart';
-import '../../buyer/presentation/product_detail_screen.dart';
-import 'market_prices_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final role = user?.role ?? Role.buyer;
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final role = state.role;
     final isBuyer = role == Role.buyer;
-    final isFarmer = role == Role.farmer;
-    final productsAsync = ref.watch(buyerProductsProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        // Greeting header
         Row(
           children: [
             CircleAvatar(
@@ -34,15 +26,15 @@ class DashboardScreen extends ConsumerWidget {
               child: Icon(role.icon, color: const Color(0xff1f7a4d)),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning, ${user?.displayName ?? ""}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    'Good morning',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
-                  const Text(
+                  Text(
                     'Your Farmora network is growing.',
                     style: TextStyle(color: Colors.black54),
                   ),
@@ -56,8 +48,12 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 24),
-
-        // Hero card
+        if (isBuyer)
+          const SearchBar(
+            hintText: 'Search fresh produce',
+            leading: Icon(Icons.search_rounded),
+          ),
+        if (isBuyer) const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
@@ -79,23 +75,13 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      isFarmer
-                          ? 'ඔබේ අස්වැන්න විකුණන්න / Sell your harvest'
-                          : 'Support local farmers today.',
-                      style: const TextStyle(color: Color(0xffd8f1df)),
+                    const Text(
+                      'Support local farmers today.',
+                      style: TextStyle(color: Color(0xffd8f1df)),
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () {
-                        if (isFarmer) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const _AddProductPlaceholder(),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: () {},
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xff1f7a4d),
@@ -103,8 +89,8 @@ class DashboardScreen extends ConsumerWidget {
                       child: Text(
                         isBuyer
                             ? 'Shop now'
-                            : isFarmer
-                                ? 'Add product / නව නිෂ්පාදනය'
+                            : role == Role.farmer
+                                ? 'Add product'
                                 : 'Find jobs',
                       ),
                     ),
@@ -120,20 +106,42 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
-
-        // Stats for farmer/buyer
+        Text(
+          isBuyer ? 'Explore categories' : 'Your overview',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        const SizedBox(height: 12),
+        if (isBuyer)
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: Icon(Icons.grass, size: 18),
+                label: Text('Vegetables'),
+              ),
+              Chip(
+                avatar: Icon(Icons.apple, size: 18),
+                label: Text('Fruits'),
+              ),
+              Chip(
+                avatar: Icon(Icons.local_florist, size: 18),
+                label: Text('Herbs'),
+              ),
+            ],
+          ),
         if (!isBuyer)
           Row(
             children: [
               Expanded(
                 child: StatCard(
                   label: 'Active products',
-                  value: role == Role.farmer ? '3' : '8',
+                  value: role == Role.farmer ? '${state.products.length}' : '8',
                   icon: Icons.insights_rounded,
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              const Expanded(
                 child: StatCard(
                   label: 'Pending orders',
                   value: '4',
@@ -142,85 +150,13 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
-
-        // Search for buyer
-        if (isBuyer)
-          const SearchBar(
-            hintText: 'Search fresh produce',
-            leading: Icon(Icons.search_rounded),
-          ),
-        if (isBuyer) const SizedBox(height: 20),
-
-        // Categories for buyer
-        if (isBuyer)
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Chip(avatar: Icon(Icons.grass, size: 18), label: Text('Vegetables')),
-              Chip(avatar: Icon(Icons.apple, size: 18), label: Text('Fruits')),
-              Chip(avatar: Icon(Icons.local_florist, size: 18), label: Text('Herbs')),
-            ],
-          ),
-        if (isBuyer) const SizedBox(height: 24),
-
-        // Market Prices Section (for farmers)
-        if (isFarmer) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Market Prices Today / වෙළඳපොල මිල',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MarketPricesScreen(),
-                    ),
-                  );
-                },
-                child: const Text('View all'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 80,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _getSamplePrices().map((p) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _MiniPriceChip(
-                  cropName: p.cropName,
-                  pricePerKg: p.pricePerKg,
-                  emoji: p.emoji,
-                ),
-              )).toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // Recent items
+        const SizedBox(height: 24),
         Text(
-          isBuyer ? 'Picked for you' : 'Your products',
+          isBuyer ? 'Picked for you' : 'Recent orders',
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 12),
-        if (isBuyer)
-          AsyncStateHandler(
-            value: productsAsync,
-            dataBuilder: (context, products) {
-              if (products.isEmpty) {
-                return const Text('No products available right now.');
-              }
-              return Column(
-                children: products.take(2).map((p) => ProductTile(p, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProductDetailScreen(product: p))))).toList(),
-              );
-            },
-          ),
+        if (isBuyer) ...state.products.take(2).map((p) => ProductTile(p)),
         if (!isBuyer)
           const OrderCard(
             title: 'Organic Tomatoes',
@@ -228,7 +164,6 @@ class DashboardScreen extends ConsumerWidget {
             status: 'In transit',
             color: Color(0xff3478c5),
           ),
-
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: () => showModalBottomSheet(
@@ -239,93 +174,6 @@ class DashboardScreen extends ConsumerWidget {
           label: const Text('Preview another role'),
         ),
       ],
-    );
-  }
-
-  List<_DemoMarketPrice> _getSamplePrices() {
-    final now = DateTime.now();
-    return [
-      _DemoMarketPrice(cropName: 'Tomato', pricePerKg: 95, emoji: '🍅', recordedDate: now),
-      _DemoMarketPrice(cropName: 'Carrot', pricePerKg: 145, emoji: '🥕', recordedDate: now),
-      _DemoMarketPrice(cropName: 'Green Chilli', pricePerKg: 220, emoji: '🌶️', recordedDate: now),
-      _DemoMarketPrice(cropName: 'Beans', pricePerKg: 130, emoji: '🫘', recordedDate: now),
-      _DemoMarketPrice(cropName: 'Cabbage', pricePerKg: 60, emoji: '🥬', recordedDate: now),
-    ];
-  }
-}
-
-class _DemoMarketPrice {
-  final String cropName;
-  final double pricePerKg;
-  final String emoji;
-  final DateTime recordedDate;
-
-  const _DemoMarketPrice({
-    required this.cropName,
-    required this.pricePerKg,
-    required this.emoji,
-    required this.recordedDate,
-  });
-}
-
-class _MiniPriceChip extends StatelessWidget {
-  final String cropName;
-  final double pricePerKg;
-  final String emoji;
-
-  const _MiniPriceChip({
-    required this.cropName,
-    required this.pricePerKg,
-    required this.emoji,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xffe8f5e9),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                cropName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              Text(
-                'LKR ${pricePerKg.toStringAsFixed(0)}/kg',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xff1f7a4d),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AddProductPlaceholder extends StatelessWidget {
-  const _AddProductPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add Product')),
-      body: const Center(
-        child: Text('Add Product Form - Coming Soon'),
-      ),
     );
   }
 }

@@ -305,7 +305,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           Row(
                             children: [
                               Icon(
-                                Icons.person_outline,
+                                order.buyerIcon,
                                 size: 15,
                                 color: AppColors.primary,
                               ),
