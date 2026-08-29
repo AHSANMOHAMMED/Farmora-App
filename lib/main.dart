@@ -44,6 +44,12 @@ export 'features/transporter/presentation/available_jobs_screen.dart';
 export 'features/profile/presentation/profile_screen.dart';
 export 'features/profile/presentation/role_sheet.dart';
 export 'features/profile/presentation/language_picker.dart';
+export 'core/widgets/farmora_logo.dart';
+export 'features/splash/presentation/splash_screen.dart';
+export 'features/onboarding/presentation/onboarding_screen.dart';
+export 'features/auth/presentation/login_screen.dart';
+export 'features/auth/presentation/role_selection_screen.dart';
+export 'features/auth/presentation/register_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
