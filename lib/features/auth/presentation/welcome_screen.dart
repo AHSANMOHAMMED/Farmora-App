@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
-import '../../home/presentation/home_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -27,11 +24,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           children: [
             const FarmoraLogo(size: 80),
             const SizedBox(height: 20),
-            Text('Welcome to\nFarmora', style: TextStyle(fontSize: 40, height: 1.05, fontWeight: FontWeight.w900, color: AppColors.forestGreen)),
+            const Text('Welcome to\nFarmora', style: TextStyle(fontSize: 40, height: 1.05, fontWeight: FontWeight.w900, color: AppColors.forestGreen)),
             const SizedBox(height: 14),
-            Text('A fairer, fresher way to connect farms, families, and reliable transport.', style: TextStyle(fontSize: 17, color: AppColors.textSecondary, height: 1.4)),
+            const Text('A fairer, fresher way to connect farms, families, and reliable transport.', style: TextStyle(fontSize: 17, color: AppColors.textSecondary, height: 1.4)),
             const SizedBox(height: 36),
-            Text('I am joining as a…', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.textPrimary)),
+            const Text('I am joining as a…', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
             ...Role.values.map((r) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -71,7 +68,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => LoginScreen()),
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
                 ),
                 icon: const Icon(Icons.login_rounded),
                 label: const Text('Sign In'),

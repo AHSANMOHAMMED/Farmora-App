@@ -27,10 +27,10 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
         right: 16,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.85),
+        color: AppColors.surface.withValues(alpha: 0.85),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 1),
           ),

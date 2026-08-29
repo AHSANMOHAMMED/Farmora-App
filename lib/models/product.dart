@@ -118,7 +118,7 @@ class Product {
       'price': price,
       'pricePerUnit': pricePerUnit,
       'emoji': emoji,
-      'color': color.value,
+      'color': color.toARGB32(),
       'imagePath': imagePath,
       'status': status,
       'isOrganic': isOrganic,

@@ -124,7 +124,7 @@ class FarmoraOrder {
       'detail': detail,
       'status': status,
       'progress': progress,
-      'color': color.value,
+      'color': color.toARGB32(),
       'timestamp': timestamp,
       'requestedDate': requestedDate,
       'buyerIcon': iconKey,

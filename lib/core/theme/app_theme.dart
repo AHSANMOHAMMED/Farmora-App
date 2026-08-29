@@ -107,7 +107,7 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         hintStyle: TextStyle(
-          color: AppColors.onSurfaceVariant.withOpacity(0.6),
+          color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
           fontSize: 14,
         ),
       ),

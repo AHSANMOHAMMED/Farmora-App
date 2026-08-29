@@ -31,7 +31,7 @@ class EarningsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -56,7 +56,7 @@ class EarningsScreen extends StatelessWidget {
                     child: Icon(
                       Icons.account_balance_wallet_rounded,
                       size: 64,
-                      color: Colors.white.withOpacity(0.20),
+                      color: Colors.white.withValues(alpha: 0.20),
                     ),
                   ),
                   Column(
@@ -70,7 +70,7 @@ class EarningsScreen extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.4,
-                          color: AppColors.onPrimaryContainer.withOpacity(0.80),
+                          color: AppColors.onPrimaryContainer.withValues(alpha: 0.80),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -122,7 +122,7 @@ class EarningsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -141,7 +141,7 @@ class EarningsScreen extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
-                          color: AppColors.onSecondaryContainer.withOpacity(0.80),
+                          color: AppColors.onSecondaryContainer.withValues(alpha: 0.80),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -159,7 +159,7 @@ class EarningsScreen extends StatelessWidget {
                   Icon(
                     Icons.pending_actions_rounded,
                     size: 32,
-                    color: AppColors.secondary.withOpacity(0.50),
+                    color: AppColors.secondary.withValues(alpha: 0.50),
                   ),
                 ],
               ),
@@ -176,7 +176,7 @@ class EarningsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -249,7 +249,7 @@ class EarningsScreen extends StatelessWidget {
                                           ? [
                                               BoxShadow(
                                                 // Stitch: shadow-[0_4px_12px_rgba(76,175,80,0.3)]
-                                                color: const Color(0xFF4CAF50).withOpacity(0.30),
+                                                color: const Color(0xFF4CAF50).withValues(alpha: 0.30),
                                                 blurRadius: 12,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -295,7 +295,7 @@ class EarningsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -389,7 +389,7 @@ class EarningsScreen extends StatelessWidget {
                               right: 0,
                               child: Container(
                                 height: 1,
-                                color: AppColors.outlineVariant.withOpacity(0.30),
+                                color: AppColors.outlineVariant.withValues(alpha: 0.30),
                               ),
                             ),
                         ],
@@ -440,7 +440,7 @@ class EarningsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

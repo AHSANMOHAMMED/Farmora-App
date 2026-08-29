@@ -41,12 +41,12 @@ class UserManagementScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.outlineVariant),
+        side: const BorderSide(color: AppColors.outlineVariant),
       ),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: AppColors.primaryContainer,
-          child: Text(name[0], style: TextStyle(color: AppColors.onPrimaryContainer)),
+          child: Text(name[0], style: const TextStyle(color: AppColors.onPrimaryContainer)),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(role),

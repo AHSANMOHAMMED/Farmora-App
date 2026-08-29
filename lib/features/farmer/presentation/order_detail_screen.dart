@@ -20,7 +20,7 @@ class OrderDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.9),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.9),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -135,7 +135,7 @@ class OrderDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -213,7 +213,7 @@ class OrderDetailScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Divider(color: AppColors.outlineVariant.withOpacity(0.4), height: 1),
+                      Divider(color: AppColors.outlineVariant.withValues(alpha: 0.4), height: 1),
                       const SizedBox(height: 14),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +265,7 @@ class OrderDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -332,10 +332,10 @@ class OrderDetailScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.95),
+                  color: AppColors.surface.withValues(alpha: 0.95),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
                     ),
@@ -462,7 +462,7 @@ class OrderDetailScreen extends StatelessWidget {
 
   Widget _buildDivider() {
     return Divider(
-      color: AppColors.outlineVariant.withOpacity(0.3),
+      color: AppColors.outlineVariant.withValues(alpha: 0.3),
       height: 1,
     );
   }
