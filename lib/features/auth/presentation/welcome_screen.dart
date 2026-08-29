@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import '../../home/presentation/home_screen.dart';
+import 'login_screen.dart';
+import 'register_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -72,14 +75,63 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => context.read<FarmoraState>().signIn(selectedRole),
+                onPressed: () {
+                  context.read<FarmoraState>().signIn(selectedRole);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    (route) => false,
+                  );
+                },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
                   child: Text('Continue to Farmora'),
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => RegisterScreen(selectedRole: selectedRole),
+                  ),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5),
+                  child: Text('Create an account'),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Already have an account? ',
+                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Log In',
+                    style: TextStyle(
+                      color: Color(0xff1f7a4d),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             const Center(
               child: Text(
                 'Demo mode · No account required',

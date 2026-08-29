@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../models/user_role.dart';
 import '../models/product.dart';
 import '../models/order.dart';
 import '../models/transport_job.dart';
+import '../core/services/firebase_auth_service.dart';
 
 class FarmoraState extends ChangeNotifier {
   bool signedIn = false;
   String language = 'English';
   Role role = Role.buyer;
+  String? authError;
+  late final FirebaseAuthService? _authService =
+      Firebase.apps.isEmpty ? null : FirebaseAuthService();
 
   final List<Product> _products = [
     const Product(
@@ -88,9 +93,110 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void signOut() {
-    signedIn = false;
-    notifyListeners();
+  Future<bool> signInWithBackend({
+    required String phone,
+    required String password,
+  }) async {
+    authError = null;
+    try {
+      final result = _authService == null
+          ? const FarmoraAuthResult(Role.buyer)
+          : await _authService.login(
+              phone: phone,
+              password: password,
+            );
+      role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } on FarmoraAuthException catch (error) {
+      authError = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registerWithBackend({
+    required String name,
+    required String phone,
+    required String password,
+    required Role role,
+    String? district,
+  }) async {
+    authError = null;
+    try {
+      final result = _authService == null
+          ? FarmoraAuthResult(role)
+          : await _authService.register(
+              name: name,
+              phone: phone,
+              password: password,
+              role: role,
+              district: district,
+            );
+      this.role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } on FarmoraAuthException catch (error) {
+      authError = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    authError = null;
+    try {
+      if (_authService == null) return false;
+      final result = await _authService.loginWithGoogle();
+      role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } on FarmoraAuthException catch (error) {
+      authError = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registerWithGoogle({
+    required String name,
+    required String phone,
+    required Role role,
+    String? district,
+  }) async {
+    authError = null;
+    try {
+      if (_authService == null) return false;
+      final result = await _authService.registerWithGoogle(
+        name: name,
+        phone: phone,
+        role: role,
+        district: district,
+      );
+      this.role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } on FarmoraAuthException catch (error) {
+      authError = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _authService?.signOut();
+    } catch (_) {
+      // A deleted/expired Firebase user must not block local sign-out.
+    } finally {
+      authError = null;
+      signedIn = false;
+      notifyListeners();
+    }
   }
 
   void setRole(Role r) {
