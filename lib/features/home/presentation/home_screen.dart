@@ -15,6 +15,10 @@ import '../../transporter/presentation/transporter_dashboard_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../admin/presentation/admin_dashboard_screen.dart';
+import '../../admin/presentation/user_management_screen.dart';
+import '../../admin/presentation/logistics_management_screen.dart';
+import '../../admin/presentation/system_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,6 +76,19 @@ class _HomeScreenState extends State<HomeScreen> {
         _NavItem(label: 'Jobs', icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping_rounded),
         _NavItem(label: 'Orders', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
         _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.admin) {
+      screens = const [
+        AdminDashboardScreen(),
+        UserManagementScreen(),
+        LogisticsManagementScreen(),
+        SystemSettingsScreen(),
+      ];
+      navItems = const [
+        _NavItem(label: 'Dashboard', icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard_rounded),
+        _NavItem(label: 'Users', icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded),
+        _NavItem(label: 'Logistics', icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping_rounded),
+        _NavItem(label: 'Settings', icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded),
       ];
     } else {
       screens = const [
