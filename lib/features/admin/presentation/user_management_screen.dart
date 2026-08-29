@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
