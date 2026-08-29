@@ -1,3 +1,7 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_role.dart';
@@ -7,12 +11,12 @@ import '../models/transport_job.dart';
 import '../models/earnings_model.dart';
 import '../models/verification_model.dart';
 import '../models/cart_item.dart';
-import '../services/firebase_service.dart';
+import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
   // Firebase services
   final _authService = FirebaseAuthService();
-  final _firestoreService = FirestoreService();
+  final _firestoreService = kajana_service.FirestoreService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
 
@@ -401,7 +405,7 @@ class FarmoraState extends ChangeNotifier {
     signedIn = true;
     notifyListeners();
     // If user is already authenticated via Firebase, init Firestore
-    final user = _authService.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       initFromFirestore(user.uid);
     }
@@ -521,7 +525,7 @@ class FarmoraState extends ChangeNotifier {
     _currentUserId = uid;
 
     // Load user profile and set role
-    _authService.loadUserProfile(uid).then((profile) {
+    _loadUserProfile(uid).then((profile) {
       if (profile != null) {
         final roleStr = profile['role'] as String?;
         if (roleStr != null) {
@@ -590,7 +594,74 @@ class FarmoraState extends ChangeNotifier {
         status: status ?? VerificationStatus.approved,
         errorMessage: null,
       );
+    }
+  }
+
+  Future<Map<String, dynamic>?> _loadUserProfile(String uid) async {
+    final doc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
+    return doc.exists ? doc.data() : null;
+  }
+
+  // ── Suka auth methods ────────────────────────────────
+  String? authError;
+
+  Future<bool> signInWithBackend({required String phone, required String password}) async {
+    authError = null;
+    try {
+      final result = await _authService.login(phone: phone, password: password);
+      role = result.role;
+      signedIn = true;
       notifyListeners();
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registerWithBackend({required String name, required String phone, required String password, required Role role, String? district}) async {
+    authError = null;
+    try {
+      final result = await _authService.register(name: name, phone: phone, password: password, role: role, district: district);
+      this.role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    authError = null;
+    try {
+      final result = await _authService.loginWithGoogle();
+      role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registerWithGoogle({required String name, required String phone, required Role role, String? district}) async {
+    authError = null;
+    try {
+      final result = await _authService.registerWithGoogle(name: name, phone: phone, role: role);
+      this.role = result.role;
+      signedIn = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 }
