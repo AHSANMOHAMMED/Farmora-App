@@ -45,13 +45,17 @@ class SystemSettingsScreen extends StatelessWidget {
               try {
                 final farmoraState = context.read<FarmoraState>();
                 await farmoraState.seedDatabase();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Database seeded successfully!'))
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Database seeded successfully!'))
+                  );
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error seeding: $e'))
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error seeding: $e'))
+                  );
+                }
               }
             },
           ),

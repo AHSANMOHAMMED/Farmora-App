@@ -46,7 +46,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                 borderRadius: BorderRadius.circular(9999),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 4,
                   ),
                 ],
@@ -68,7 +68,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 60),
                   child: Column(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.shopping_basket_outlined,
                         size: 64,
                         color: AppColors.outlineVariant,
@@ -153,7 +153,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -170,7 +170,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
               child: Container(
                 width: 4,
                 // surface-tint = #006e1c (same as primary)
-                color: AppColors.primary.withOpacity(0.70),
+                color: AppColors.primary.withValues(alpha: 0.70),
               ),
             ),
             Padding(
@@ -237,7 +237,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 4,
                             ),
                           ],
@@ -281,7 +281,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
 
                   // Divider — Stitch: border-t border-surface-variant/50
                   Divider(
-                    color: AppColors.outlineVariant.withOpacity(0.4),
+                    color: AppColors.outlineVariant.withValues(alpha: 0.4),
                     height: 1,
                   ),
                   const SizedBox(height: 12),

@@ -1,6 +1,4 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -15,8 +13,8 @@ import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
   // Firebase services
-  final _authService = FirebaseAuthService();
-  final _firestoreService = kajana_service.FirestoreService();
+  late final _authService = FirebaseAuthService();
+  late final _firestoreService = kajana_service.FirestoreService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
 

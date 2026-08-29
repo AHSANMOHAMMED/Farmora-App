@@ -71,7 +71,7 @@ class _OverviewTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final tx = recentActivities[index];
                 return ListTile(
-                  leading: CircleAvatar(
+                  leading: const CircleAvatar(
                     backgroundColor: AppColors.primaryContainer,
                     child: Icon(Icons.notifications_outlined, color: AppColors.primary),
                   ),
@@ -111,9 +111,9 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +122,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(color: color.withOpacity(0.8), fontSize: 14)),
+          Text(title, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 14)),
         ],
       ),
     );

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/order.dart';
-import '../../../providers/farmora_state.dart';
 
 class TrackOrderScreen extends StatelessWidget {
   final FarmoraOrder order;

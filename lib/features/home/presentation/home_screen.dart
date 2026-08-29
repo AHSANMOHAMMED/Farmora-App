@@ -13,7 +13,6 @@ import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/transporter_dashboard_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
-import '../../orders/presentation/orders_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../admin/presentation/user_management_screen.dart';
@@ -113,10 +112,10 @@ class _HomeScreenState extends State<HomeScreen> {
       // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.92),
+          color: AppColors.surface.withValues(alpha: 0.92),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, -1),
             ),
@@ -127,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
-          indicatorColor: AppColors.primaryContainer.withOpacity(0.15),
+          indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
           selectedIndex: tabIndex,
           onDestinationSelected: (i) => setState(() => tabIndex = i),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

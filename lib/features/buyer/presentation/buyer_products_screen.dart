@@ -213,9 +213,9 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
 
                 // Product list
                 if (products.isEmpty)
-                  Center(
+                  const Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 60),
+                      padding: EdgeInsets.symmetric(vertical: 60),
                       child: Column(
                         children: [
                           Icon(
@@ -223,8 +223,8 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                             size: 64,
                             color: AppColors.outlineVariant,
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'No products found',
                             style: TextStyle(
                               fontSize: 16,

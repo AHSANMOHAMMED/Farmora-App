@@ -124,9 +124,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       backgroundColor: AppColors.surface,
       // Stitch: fixed top-0 h-16 px-margin-mobile flex items-center gap-md
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.90),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.90),
         elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.04),
+        shadowColor: Colors.black.withValues(alpha: 0.04),
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -229,7 +229,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           hintText: '0.00',
                           hintStyle: TextStyle(
                             fontFamily: 'Inter',
-                            color: AppColors.onSurfaceVariant.withOpacity(0.50),
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
                           ),
                           // Stitch: $ prefix
                           prefixText: '\$  ',
@@ -340,21 +340,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   color: AppColors.surfaceContainerLowest,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.primary.withOpacity(0.50),
+                                    color: AppColors.primary.withValues(alpha: 0.50),
                                     width: 2,
                                     // Dashed border via decoration
                                   ),
                                 ),
-                                child: Column(
+                                child: const Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.add_photo_alternate_outlined,
                                       color: AppColors.primary,
                                       size: 28,
                                     ),
-                                    const SizedBox(height: 4),
-                                    const Text(
+                                    SizedBox(height: 4),
+                                    Text(
                                       'Add',
                                       style: TextStyle(
                                         fontFamily: 'Inter',
@@ -395,11 +395,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.85),
+                                        color: Colors.white.withValues(alpha: 0.85),
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.12),
+                                            color: Colors.black.withValues(alpha: 0.12),
                                             blurRadius: 4,
                                           ),
                                         ],
@@ -433,10 +433,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
               decoration: BoxDecoration(
-                color: AppColors.surface.withOpacity(0.92),
+                color: AppColors.surface.withValues(alpha: 0.92),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 16,
                     offset: const Offset(0, -4),
                   ),
@@ -487,7 +487,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -544,7 +544,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       hintText: hint,
       hintStyle: TextStyle(
         fontFamily: 'Inter',
-        color: AppColors.onSurfaceVariant.withOpacity(0.50),
+        color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
       ),
       filled: true,
       fillColor: AppColors.surfaceContainerLowest,

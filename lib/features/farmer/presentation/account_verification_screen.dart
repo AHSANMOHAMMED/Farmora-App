@@ -21,7 +21,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.9),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.9),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -79,10 +79,10 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
               decoration: BoxDecoration(
-                color: AppColors.surface.withOpacity(0.95),
+                color: AppColors.surface.withValues(alpha: 0.95),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 16,
                     offset: const Offset(0, -4),
                   ),
@@ -148,7 +148,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -308,7 +308,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   image: AssetImage(doc.imagePreview!),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.4),
+                    Colors.black.withValues(alpha: 0.4),
                     BlendMode.darken,
                   ),
                 ),

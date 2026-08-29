@@ -16,7 +16,7 @@ class AvailableJobsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withOpacity(0.9),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.9),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text(
@@ -30,7 +30,7 @@ class AvailableJobsScreen extends StatelessWidget {
         ),
       ),
       body: jobs.isEmpty
-          ? Center(
+          ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -39,8 +39,8 @@ class AvailableJobsScreen extends StatelessWidget {
                     size: 64,
                     color: AppColors.outlineVariant,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 12),
+                  Text(
                     'No jobs available',
                     style: TextStyle(
                       fontFamily: 'Inter',

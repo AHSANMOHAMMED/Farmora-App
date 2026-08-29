@@ -65,7 +65,7 @@ class TransporterDashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
+            const Row(
               children: [
                 Expanded(
                   child: StatCard(
@@ -74,7 +74,7 @@ class TransporterDashboardScreen extends StatelessWidget {
                     icon: Icons.check_circle_outline,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: StatCard(
                     label: 'Pending',
