@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import '../../auth/presentation/login_screen.dart';
 import 'language_picker.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -69,7 +70,14 @@ class ProfileScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.logout),
           title: const Text('Sign out'),
-          onTap: () => context.read<FarmoraState>().signOut(),
+          onTap: () async {
+            await context.read<FarmoraState>().signOut();
+            if (!context.mounted) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
         ),
       ],
     );
