@@ -4,7 +4,7 @@ import '../../../../providers/farmora_state.dart';
 import 'user_management_screen.dart';
 import 'logistics_management_screen.dart';
 import 'system_settings_screen.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
