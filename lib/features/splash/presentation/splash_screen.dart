@@ -301,8 +301,8 @@ class _SplashScreenState extends State<SplashScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.surfaceContainerLowest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.15),
           width: 1,

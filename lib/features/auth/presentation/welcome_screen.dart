@@ -40,31 +40,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 leading: Icon(r.icon, color: AppColors.primary),
                 title: Text(r.label, style: const TextStyle(fontWeight: FontWeight.w700)),
                 trailing: Icon(selectedRole == r ? Icons.radio_button_checked : Icons.radio_button_off, color: AppColors.primary),
-                tileColor: selectedRole == r ? AppColors.primaryLight : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                tileColor: selectedRole == r ? AppColors.primaryLight : AppColors.surfaceContainerLowest,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             )),
             const SizedBox(height: 18),
 
-            // Primary CTA: Continue as Demo
+            // Primary CTA: Register
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () {
-                  context.read<FarmoraState>().signIn(selectedRole);
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    (route) => false,
-                  );
-                },
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => RegisterScreen(selectedRole: selectedRole)),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
-                  child: Text('Continue as Demo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  child: Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
@@ -81,27 +77,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 label: const Text('Sign In'),
               ),
             ),
-            const SizedBox(height: 8),
 
-            // Register
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => RegisterScreen(selectedRole: selectedRole)),
-                ),
-                icon: const Icon(Icons.person_add_rounded),
-                label: const Text('Create Account'),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Center(
-              child: Text(
-                'Demo mode uses local data · Sign in for real Firestore data',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-            ),
           ],
         ),
       ),

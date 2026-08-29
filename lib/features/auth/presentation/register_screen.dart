@@ -212,8 +212,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withValues(alpha: 0.06),
@@ -413,7 +413,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       minimumSize: const Size(double.infinity, 56),
                       elevation: 1,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isLoading
@@ -465,7 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: 1.5,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
@@ -529,7 +529,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.25),
           width: 1.2,
@@ -709,19 +709,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         vertical: 16,
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: AppColors.primary.withValues(alpha: 0.2),
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: AppColors.primary.withValues(alpha: 0.15),
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(
           color: AppColors.primary,
           width: 2,

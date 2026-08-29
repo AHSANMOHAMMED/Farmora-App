@@ -118,7 +118,7 @@ class AppTheme {
           elevation: 2,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -132,7 +132,7 @@ class AppTheme {
           minimumSize: const Size.fromHeight(48),
           side: const BorderSide(color: AppColors.outlineVariant),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
             fontSize: 16,

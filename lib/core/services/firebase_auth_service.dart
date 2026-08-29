@@ -239,6 +239,15 @@ class FirebaseAuthService {
 extension FirebaseAuthServiceExtras on FirebaseAuthService {
   User? get currentUser => FirebaseAuth.instance.currentUser;
   Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
+    final authIndex = await FirebaseFirestore.instance.collection('authUsers').doc(uid).get();
+    if (authIndex.exists) {
+      final phone = authIndex.data()?['phone'] as String?;
+      if (phone != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(phone).get();
+        if (doc.exists) return doc.data();
+      }
+    }
+    // Fallback if saved directly under uid
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     return doc.exists ? doc.data() : null;
   }

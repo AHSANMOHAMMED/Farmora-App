@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import 'track_order_screen.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -259,6 +260,41 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: (currentOrder.status.toLowerCase() == 'in transit' || currentOrder.status.toLowerCase() == 'accepted')
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TrackOrderScreen(order: currentOrder),
+                    ),
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  backgroundColor: AppColors.primary,
+                ),
+                child: const Text(
+                  'Track Order',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            )
+          : null,
     );
   }
 

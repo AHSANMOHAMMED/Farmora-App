@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum Role { farmer, buyer, transporter }
+enum Role { farmer, buyer, transporter, admin }
 
 extension RoleInfo on Role {
   String get label {
@@ -11,6 +11,8 @@ extension RoleInfo on Role {
         return 'Buyer';
       case Role.transporter:
         return 'Transport provider';
+      case Role.admin:
+        return 'System Admin';
     }
   }
 
@@ -22,6 +24,8 @@ extension RoleInfo on Role {
         return Icons.shopping_basket_rounded;
       case Role.transporter:
         return Icons.local_shipping_rounded;
+      case Role.admin:
+        return Icons.admin_panel_settings_rounded;
     }
   }
 
@@ -33,6 +37,8 @@ extension RoleInfo on Role {
         return 'Fresh produce, straight to you.';
       case Role.transporter:
         return 'Earn while you serve your community.';
+      case Role.admin:
+        return 'Manage the Farmora ecosystem.';
     }
   }
 }

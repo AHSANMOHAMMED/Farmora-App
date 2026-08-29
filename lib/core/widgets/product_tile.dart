@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../../models/product.dart';
 
 class ProductTile extends StatelessWidget {
@@ -14,6 +15,8 @@ class ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: AppColors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),

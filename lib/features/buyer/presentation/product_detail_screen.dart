@@ -246,7 +246,7 @@ class ProductDetailScreen extends StatelessWidget {
                             foregroundColor: AppColors.error,
                             side: const BorderSide(color: AppColors.errorContainer, width: 2),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           icon: const Icon(Icons.remove_shopping_cart, size: 20),
@@ -275,7 +275,7 @@ class ProductDetailScreen extends StatelessWidget {
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             elevation: 2,
                           ),

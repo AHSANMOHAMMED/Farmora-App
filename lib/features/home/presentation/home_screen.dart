@@ -11,6 +11,8 @@ import '../../farmer/presentation/farmer_orders_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
+import '../../transporter/presentation/transporter_dashboard_screen.dart';
+import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../orders/presentation/orders_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 
@@ -60,9 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     } else if (role == Role.transporter) {
       screens = const [
-        DashboardScreen(),
+        TransporterDashboardScreen(),
         AvailableJobsScreen(),
-        OrdersScreen(),
+        DeliveryHistoryScreen(),
         ProfileScreen(),
       ];
       navItems = const [
