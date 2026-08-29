@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {

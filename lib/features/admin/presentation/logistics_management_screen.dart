@@ -39,7 +39,7 @@ class LogisticsManagementScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.outlineVariant),
+        side: const BorderSide(color: AppColors.outlineVariant),
       ),
       child: ListTile(
         leading: Container(
@@ -48,11 +48,11 @@ class LogisticsManagementScreen extends StatelessWidget {
             color: AppColors.primaryContainer,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(Icons.local_shipping, color: AppColors.onPrimaryContainer),
+          child: const Icon(Icons.local_shipping, color: AppColors.onPrimaryContainer),
         ),
         title: Text(orderId, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
-        trailing: Text(status, style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+        trailing: Text(status, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
       ),
     );
   }

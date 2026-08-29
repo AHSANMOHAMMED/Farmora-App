@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../providers/farmora_state.dart';
 
 class DeliveryHistoryScreen extends StatelessWidget {
   const DeliveryHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<FarmoraState>();
-
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(

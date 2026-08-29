@@ -64,7 +64,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 60),
                   child: Column(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.receipt_long_outlined,
                         size: 64,
                         color: AppColors.outlineVariant,

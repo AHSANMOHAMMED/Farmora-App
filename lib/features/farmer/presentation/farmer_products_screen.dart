@@ -51,7 +51,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                           borderRadius: BorderRadius.circular(9999),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -65,7 +65,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                             hintStyle: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 15,
-                              color: AppColors.onSurfaceVariant.withOpacity(0.70),
+                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.70),
                             ),
                             prefixIcon: const Icon(
                               Icons.search,
@@ -105,7 +105,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -136,9 +136,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
 
                 // 2. Product List
                 if (products.isEmpty)
-                  Center(
+                  const Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 60),
+                      padding: EdgeInsets.symmetric(vertical: 60),
                       child: Column(
                         children: [
                           Icon(
@@ -146,8 +146,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                             size: 64,
                             color: AppColors.outlineVariant,
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'No products found',
                             style: TextStyle(
                               fontSize: 16,
@@ -222,7 +222,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -299,7 +299,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         fontWeight: FontWeight.w700,
                         color: isEmpty ? AppColors.onSurfaceVariant : AppColors.primary,
                         decoration: isEmpty ? TextDecoration.lineThrough : null,
-                        decorationColor: AppColors.onSurfaceVariant.withOpacity(0.7),
+                        decorationColor: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
