@@ -8,63 +8,6 @@ import '../models/verification_model.dart';
 // ============================================================
 // Firebase Authentication Service
 // ============================================================
-class FirebaseAuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  /// Get the currently signed-in user
-  User? get currentUser => _auth.currentUser;
-
-  /// Stream of auth state changes (fires on sign-in/sign-out)
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  /// Sign up with email and password
-  Future<UserCredential> signUp(String email, String password) async {
-    return await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-  }
-
-  /// Sign in with email and password
-  Future<UserCredential> signIn(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-  }
-
-  /// Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  /// Save user profile to Firestore after registration
-  Future<void> saveUserProfile({
-    required String uid,
-    required String role,
-    required String displayName,
-    String? email,
-  }) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'role': role,
-      'displayName': displayName,
-      'email': email ?? '',
-      'photoUrl': '',
-      'language': 'English',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// Load user profile from Firestore
-  Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    return doc.exists ? doc.data() : null;
-  }
-}
-
-// ============================================================
-// Firestore Data Service
-// ============================================================
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
