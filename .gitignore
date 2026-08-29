@@ -35,3 +35,6 @@ symbols/
 
 # Node / web
 node_modules/
+
+# Agent and MCP configs
+.agents/
