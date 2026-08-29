@@ -278,7 +278,7 @@ class CartScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Total: \$${state.cartTotal}',
+                            'Total: \$${state.cartTotal.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 20,

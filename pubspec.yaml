@@ -12,41 +12,14 @@ dependencies:
   cupertino_icons: ^1.0.6
   provider: ^6.1.2
   intl: ^0.19.0
-
-  # Firebase
-  firebase_core: ^3.13.1
-  firebase_auth: ^5.5.1
-  cloud_firestore: ^5.6.5
-  firebase_storage: ^12.4.5
-  firebase_messaging: ^15.2.5
-
-  # Navigation
-  go_router: ^14.8.1
-
-  # State management (Riverpod — incremental migration)
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-  state_notifier: ^1.0.0
-
-  # Models & serialization
-  equatable: ^2.0.7
-
-  # Utilities
-  uuid: ^4.5.1
-  image_picker: ^1.1.2
-  cached_network_image: ^3.4.1
-  connectivity_plus: ^6.1.3
-
-  # Logging
-  logger: ^2.5.0
+  firebase_core: ^4.13.0
+  firebase_auth: ^6.5.7
+  cloud_firestore: ^6.8.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
-
-  # Code generation
-  build_runner: ^2.4.14
 
 flutter:
   uses-material-design: true

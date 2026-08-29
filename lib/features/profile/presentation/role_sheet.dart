@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/user_role.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../admin/presentation/admin_screen.dart';
+import 'package:provider/provider.dart';
+import '../../../models/user_role.dart';
+import '../../../providers/farmora_state.dart';
 
-class RoleSheet extends ConsumerWidget {
+class RoleSheet extends StatelessWidget {
   const RoleSheet({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -25,22 +24,10 @@ class RoleSheet extends ConsumerWidget {
               leading: Icon(r.icon, color: const Color(0xff1f7a4d)),
               title: Text(r.label),
               onTap: () {
-                ref.read(authProvider.notifier).setRole(r);
+                context.read<FarmoraState>().setRole(r);
                 Navigator.pop(context);
               },
             ),
-          ),
-          const Divider(height: 24),
-          ListTile(
-            leading: const Icon(Icons.admin_panel_settings, color: Color(0xff1f7a4d)),
-            title: const Text('Admin Panel'),
-            subtitle: const Text('View platform analytics'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AdminScreen()),
-              );
-            },
           ),
         ],
       ),
