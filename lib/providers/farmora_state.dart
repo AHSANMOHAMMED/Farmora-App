@@ -378,6 +378,10 @@ class FarmoraState extends ChangeNotifier {
       role = result.role;
       signedIn = true;
       notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        initFromFirestore(user.uid);
+      }
       return true;
     } catch (e) {
       authError = e.toString();
@@ -393,6 +397,10 @@ class FarmoraState extends ChangeNotifier {
       this.role = result.role;
       signedIn = true;
       notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        initFromFirestore(user.uid);
+      }
       return true;
     } catch (e) {
       authError = e.toString();
@@ -408,6 +416,10 @@ class FarmoraState extends ChangeNotifier {
       role = result.role;
       signedIn = true;
       notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        initFromFirestore(user.uid);
+      }
       return true;
     } catch (e) {
       authError = e.toString();
@@ -423,6 +435,10 @@ class FarmoraState extends ChangeNotifier {
       this.role = result.role;
       signedIn = true;
       notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        initFromFirestore(user.uid);
+      }
       return true;
     } catch (e) {
       authError = e.toString();

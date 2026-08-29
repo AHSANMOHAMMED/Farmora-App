@@ -63,6 +63,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       description: 'I want to deliver products',
       icon: Icons.local_shipping_rounded,
     ),
+    // 4. Admin
+    _RoleOption(
+      role: Role.admin,
+      title: 'System Admin',
+      description: 'I want to manage the platform',
+      icon: Icons.admin_panel_settings_rounded,
+    ),
   ];
 
   @override
