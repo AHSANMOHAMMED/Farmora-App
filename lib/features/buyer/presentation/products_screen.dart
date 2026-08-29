@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/user_role.dart';
 import '../../../core/models/product.dart';
+import '../../../models/product.dart' as simple_models;
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/async_state_handler.dart';
 import '../../farmer/presentation/add_product_dialog.dart';

@@ -9,16 +9,28 @@ class Product {
   final String price;
   final String emoji;
   final Color color;
+  final String description;
+  final String? imagePath;
+  final bool isActive;
+  final bool isOrganic;
+  final String status;
+  final String farmerId;
 
   const Product({
     this.id = '',
     required this.name,
-    required this.category,
-    required this.location,
-    required this.quantity,
-    required this.price,
-    required this.emoji,
-    required this.color,
+    this.category = '',
+    this.location = '',
+    this.quantity = '',
+    this.price = '',
+    this.emoji = '🌱',
+    this.color = const Color(0xffdcefe2),
+    this.description = '',
+    this.imagePath,
+    this.isActive = true,
+    this.isOrganic = false,
+    this.status = 'active',
+    this.farmerId = '',
   });
 
   /// Positional factory constructor for backward compatibility
@@ -43,4 +55,39 @@ class Product {
       color: color,
     );
   }
+
+  bool get isEmpty => quantity.isEmpty;
+
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'category': category,
+    'location': location,
+    'quantity': quantity,
+    'price': price,
+    'emoji': emoji,
+    'color': color.value,
+    'description': description,
+    'imagePath': imagePath ?? '',
+    'isActive': isActive,
+    'isOrganic': isOrganic,
+    'status': status,
+    'farmerId': farmerId,
+  };
+
+  factory Product.fromMap(String id, Map<String, dynamic> m) => Product(
+    id: id,
+    name: m['name'] ?? '',
+    category: m['category'] ?? '',
+    location: m['location'] ?? '',
+    quantity: m['quantity'] ?? '',
+    price: m['price'] ?? '',
+    emoji: m['emoji'] ?? '🌱',
+    color: Color(m['color'] ?? 0xffdcefe2),
+    description: m['description'] ?? '',
+    imagePath: m['imagePath'] ?? '',
+    isActive: m['isActive'] ?? true,
+    isOrganic: m['isOrganic'] ?? false,
+    status: m['status'] ?? 'active',
+    farmerId: m['farmerId'] ?? '',
+  );
 }

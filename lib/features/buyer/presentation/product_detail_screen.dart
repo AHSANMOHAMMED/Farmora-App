@@ -17,10 +17,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final p = widget.product;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.product.name),
-      ),
+      appBar: AppBar(title: Text(p.name)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -33,102 +32,38 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 color: const Color(0xffdcedc8),
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Center(
-                child: Text('🥬', style: TextStyle(fontSize: 80)),
-              ),
+              child: const Center(child: Text('🥬', style: TextStyle(fontSize: 80))),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.product.name,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.product.category.label} · ${widget.product.location}',
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  widget.product.displayPrice,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xff1f7a4d),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Description',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            Text(p.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('${p.category.label} · ${p.location}', style: const TextStyle(color: Colors.black54, fontSize: 16)),
             const SizedBox(height: 8),
-            Text(
-              widget.product.description.isEmpty
-                  ? 'No description provided.'
-                  : widget.product.description,
-              style: const TextStyle(
-                color: Colors.black87,
-                height: 1.5,
-              ),
-            ),
+            Text(p.displayPrice, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff1f7a4d))),
+            const SizedBox(height: 16),
+            if (p.description.isNotEmpty) ...[
+              const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(p.description, style: const TextStyle(color: Colors.black87, height: 1.5)),
+            ],
             const SizedBox(height: 24),
-            const Text(
-              'Quantity',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const Text('Quantity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             Row(
               children: [
                 IconButton.filledTonal(
-                  onPressed: _quantity > 1.0
-                      ? () => setState(() => _quantity -= 1.0)
-                      : null,
+                  onPressed: _quantity > 1.0 ? () => setState(() => _quantity -= 1.0) : null,
                   icon: const Icon(Icons.remove),
                 ),
                 const SizedBox(width: 16),
-                Text(
-                  '${_quantity.toStringAsFixed(1)} ${widget.product.unit}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text('${_quantity.toStringAsFixed(1)} ${p.unit}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 16),
                 IconButton.filledTonal(
-                  onPressed: _quantity < widget.product.quantityAvailable
-                      ? () => setState(() => _quantity += 1.0)
-                      : null,
+                  onPressed: _quantity < p.quantityAvailable ? () => setState(() => _quantity += 1.0) : null,
                   icon: const Icon(Icons.add),
                 ),
                 const Spacer(),
-                Text(
-                  'Available: ${widget.product.displayQuantity}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
+                Text('Available: ${p.displayQuantity}', style: const TextStyle(color: Colors.black54)),
               ],
             ),
           ],
@@ -140,21 +75,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           child: FilledButton(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => CheckoutScreen(
-                    product: widget.product,
-                    quantity: _quantity,
-                  ),
-                ),
+                MaterialPageRoute(builder: (context) => CheckoutScreen(product: p, quantity: _quantity)),
               );
             },
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.all(16),
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            style: FilledButton.styleFrom(padding: const EdgeInsets.all(16), textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             child: const Text('Buy now'),
           ),
         ),

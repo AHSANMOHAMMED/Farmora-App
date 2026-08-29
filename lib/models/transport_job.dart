@@ -32,4 +32,21 @@ class TransportJob {
       accepted: accepted ?? this.accepted,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+    'title': title,
+    'route': route,
+    'detail': detail,
+    'fee': fee,
+    'accepted': accepted,
+  };
+
+  factory TransportJob.fromMap(String id, Map<String, dynamic> m) => TransportJob(
+    id: id,
+    title: m['title'] ?? '',
+    route: m['route'] ?? '',
+    detail: m['detail'] ?? '',
+    fee: m['fee'] ?? '',
+    accepted: m['accepted'] ?? false,
+  );
 }
