@@ -43,8 +43,8 @@ class SystemSettingsScreen extends StatelessWidget {
                 const SnackBar(content: Text('Seeding database...'))
               );
               try {
-                final firestoreService = context.read<FarmoraState>().firestoreService;
-                await firestoreService.seedDatabase();
+                final farmoraState = context.read<FarmoraState>();
+                await farmoraState.seedDatabase();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Database seeded successfully!'))
                 );

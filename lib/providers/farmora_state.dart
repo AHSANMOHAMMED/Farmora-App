@@ -242,6 +242,10 @@ class FarmoraState extends ChangeNotifier {
     // _firestoreService.updateJobStatus(jobId, 'Accepted');
   }
 
+  Future<void> seedDatabase() async {
+    await _firestoreService.seedDatabase();
+  }
+
   /// Initialize Firestore streams after user signs in.
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
   void initFromFirestore(String uid) {
