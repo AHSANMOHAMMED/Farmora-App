@@ -149,7 +149,7 @@ class ProfileScreen extends StatelessWidget {
                     builder: (_) => const RoleSheet(),
                   ),
                 ),
-                Divider(color: AppColors.outlineVariant.withOpacity(0.2), height: 1, indent: 56),
+                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
                 ListTile(
                   leading: const Icon(Icons.language_rounded, color: AppColors.primary),
                   title: const Text('Language', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -160,13 +160,13 @@ class ProfileScreen extends StatelessWidget {
                     builder: (_) => const LanguagePicker(),
                   ),
                 ),
-                Divider(color: AppColors.outlineVariant.withOpacity(0.2), height: 1, indent: 56),
+                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
                 const ListTile(
                   leading: Icon(Icons.help_outline_rounded, color: AppColors.primary),
                   title: Text('Help & Support', style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: Icon(Icons.chevron_right),
                 ),
-                Divider(color: AppColors.outlineVariant.withOpacity(0.2), height: 1, indent: 56),
+                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: AppColors.error),
                   title: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.error)),

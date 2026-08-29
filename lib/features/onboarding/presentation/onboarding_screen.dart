@@ -265,7 +265,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               width: 1.5,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           child: const Icon(
@@ -286,7 +286,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             minimumSize: const Size(double.infinity, 54),
                             elevation: 1,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           child: Row(
@@ -335,7 +335,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: AppColors.primary.withValues(alpha: 0.2),
                 width: 1,
@@ -369,8 +369,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             height: 240,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.08),
@@ -430,8 +430,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     width: 1,

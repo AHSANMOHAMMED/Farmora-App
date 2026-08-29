@@ -175,7 +175,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     minimumSize: const Size(double.infinity, 56),
                     elevation: isSelected ? 1 : 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: Row(
@@ -257,7 +257,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
         color: isSelected ? AppColors.primaryContainer : Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isSelected
               ? AppColors.primary
@@ -280,7 +280,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           onTap: () {
             setState(() => _selectedRole = option.role);
           },
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Row(

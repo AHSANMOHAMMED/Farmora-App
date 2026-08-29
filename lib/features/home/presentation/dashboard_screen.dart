@@ -58,7 +58,7 @@ class DashboardScreen extends StatelessWidget {
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: const Color(0xff1f7a4d),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
@@ -85,6 +85,7 @@ class DashboardScreen extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xff1f7a4d),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(
                         isBuyer
@@ -172,6 +173,9 @@ class DashboardScreen extends StatelessWidget {
           ),
           icon: const Icon(Icons.swap_horiz_rounded),
           label: const Text('Preview another role'),
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
         ),
       ],
     );
