@@ -318,7 +318,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   onPressed: () {
                     state.updateVerificationDoc(
                       doc.id,
-                      status: "pending",
+                      status: VerificationStatus.pending,
                       imagePreview: 'assets/images/roma_tomatoes_1.png',
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -348,7 +348,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     doc.id,
                     fileName: 'vehicle_registration_2024.pdf',
                     fileSizeInfo: '1.8 MB • Uploaded',
-                    status: "approved",
+                    status: VerificationStatus.approved,
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Selected vehicle registration file!')),

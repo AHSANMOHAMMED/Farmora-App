@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/product.dart';
-import '../../../core/models/product.dart' as core;
 import '../../../providers/farmora_state.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
@@ -260,7 +259,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(product: core.ProductModel(id: product.id, farmerId: '', name: product.name, category: core.ProductCategory.vegetables, description: product.description, imageUrls: [], quantityAvailable: 50, unit: product.category, priceMinor: int.tryParse(product.price.replaceAll(RegExp('[^0-9]'), '')) ?? 0, currency: 'LKR', location: product.location, availability: core.ProductAvailability.available)),
+            builder: (_) => ProductDetailScreen(product: product),
           ),
         );
       },
