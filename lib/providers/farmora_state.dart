@@ -238,12 +238,18 @@ class FarmoraState extends ChangeNotifier {
       final current = _products[index];
       final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
       _products[index] = current.copyWith(status: newStatus);
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.updateProduct(id, {'status': newStatus});
+      }
       notifyListeners();
     }
   }
 
   void deleteProduct(String id) {
     _products.removeWhere((p) => p.id == id);
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.deleteProduct(id);
+    }
     notifyListeners();
   }
 
