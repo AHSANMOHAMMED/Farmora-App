@@ -1,111 +1,120 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function admin() { return signedIn() && request.auth.token.admin == true; }
+    function user(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function verified(uid) {
+      return signedIn() && user(uid).isVerified == true && user(uid).isSuspended != true;
+    }
+    function participant(order) {
+      return signedIn() && (order.buyerId == request.auth.uid
+        || order.farmerId == request.auth.uid
+        || order.transporterId == request.auth.uid);
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function hasRole(role) {
-      return isAuthenticated() &&
-        request.auth.token.role == role;
-    }
-
-    function isFarmer() {
-      return hasRole('farmer');
-    }
-
-    function isBuyer() {
-      return hasRole('buyer');
-    }
-
-    function isTransporter() {
-      return hasRole('transporter');
-    }
-
-    function isAdmin() {
-      return hasRole('admin');
-    }
-
-    // ─── Users ─────────────────────────────────────────────
+    // Contact details and identity data are private by default.
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow get: if signedIn() && (request.auth.uid == userId || admin());
+      allow list: if admin();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.id == userId
+        && request.resource.data.role in ['farmer', 'buyer', 'transporter']
+        && request.resource.data.isVerified == false;
+      allow update: if signedIn() && request.auth.uid == userId
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+           'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt',
+           'notificationPreferences'
+         ]) || admin();
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
-    // ─── Products ──────────────────────────────────────────
     match /products/{productId} {
-      allow read: if true; // Public marketplace
-      allow create: if isFarmer() && request.auth.uid == resource.data.farmerId;
-      allow update: if isFarmer() && request.auth.uid == resource.data.farmerId;
-      allow delete: if isFarmer() && request.auth.uid == resource.data.farmerId;
-    }
-
-    // ─── Orders ────────────────────────────────────────────
-    match /orders/{orderId} {
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.buyerId ||
-         request.auth.uid == resource.data.farmerId ||
-         request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-      allow create: if isBuyer() && request.auth.uid == request.resource.data.buyerId;
-      allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.buyerId ||
-         request.auth.uid == resource.data.farmerId ||
-         request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-    }
-
-    // ─── Transport Jobs ────────────────────────────────────
-    match /transportJobs/{jobId} {
-      allow read: if isAuthenticated();
-      allow create: if isFarmer() || isAdmin();
-      allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.transporterId ||
-         isAdmin());
-    }
-
-    // ─── Conversations ─────────────────────────────────────
-    match /conversations/{conversationId} {
-      allow read: if isAuthenticated() &&
-        request.auth.uid in resource.data.participantIds;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-    }
-
-    // ─── Messages ──────────────────────────────────────────
-    match /messages/{messageId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.auth.uid == request.resource.data.senderId;
-    }
-
-    // ─── Reviews ───────────────────────────────────────────
-    match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isBuyer() || isBuyer();
+      allow create: if verified(request.auth.uid)
+        && request.resource.data.farmerId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'farmerId', 'name', 'category', 'priceMinor', 'quantityAvailable', 'unit', 'location'
+        ]);
+      allow update: if verified(resource.data.farmerId)
+        && resource.data.farmerId == request.auth.uid
+        && request.resource.data.farmerId == resource.data.farmerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'category', 'description', 'media', 'quantityAvailable', 'unit',
+          'priceMinor', 'availability', 'status', 'updatedAt'
+        ]);
+      allow delete: if verified(resource.data.farmerId)
+        && resource.data.farmerId == request.auth.uid;
     }
 
-    // ─── Notifications ─────────────────────────────────────
+    // Orders are created and transitioned only by trusted callable functions.
+    match /orders/{orderId} {
+      allow read: if participant(resource.data) || admin();
+      allow create, update, delete: if false;
+    }
+
+    match /transport_jobs/{jobId} {
+      allow read: if admin()
+        || (verified(request.auth.uid) && resource.data.status == 'requested')
+        || (signedIn() && resource.data.transporterId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /transportJobs/{jobId} {
+      allow read: if signedIn() && (resource.data.farmerId == request.auth.uid
+        || resource.data.buyerId == request.auth.uid
+        || resource.data.transporterId == request.auth.uid || admin());
+      allow create, update, delete: if false;
+    }
+
+    match /verification_docs/{documentId} {
+      allow read: if signedIn() && (resource.data.farmerId == request.auth.uid || admin());
+      allow create: if verified(request.auth.uid)
+        && request.resource.data.farmerId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if resource.data.moderationStatus == 'approved' || admin();
+      allow create, update, delete: if false;
+    }
+
+    match /disputes/{disputeId} {
+      allow read: if signedIn() && (resource.data.openedBy == request.auth.uid || admin());
+      allow create, update, delete: if false;
+    }
+
+    match /barcodes/{barcodeId} {
+      allow read, write: if false;
+    }
+
+    // Messages are immutable and must be sent through a trusted function.
+    match /messages/{messageId} {
+      allow read: if signedIn() && (resource.data.senderId == request.auth.uid
+        || resource.data.receiverId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow write: if false;
+    }
+
+    match /market_prices/{priceId} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() &&
-        request.auth.uid == resource.data.userId;
-      allow create: if isAdmin();
-      allow update: if isAuthenticated() &&
-        request.auth.uid == resource.data.userId;
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
     }
 
-    // ─── Transport Transitions (audit log) ─────────────────
-    match /transportTransitions/{transitionId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
+    match /audit_logs/{logId} {
+      allow read, write: if false;
     }
   }
 }

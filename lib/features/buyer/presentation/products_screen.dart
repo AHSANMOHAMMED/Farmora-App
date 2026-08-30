@@ -1,24 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/user_role.dart';
-import '../../../core/models/product.dart';
+import 'package:provider/provider.dart';
+import '../../../models/user_role.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/product_tile.dart';
-import '../../../core/widgets/async_state_handler.dart';
 import '../../farmer/presentation/add_product_dialog.dart';
-import 'product_detail_screen.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../providers/buyer_products_provider.dart';
 
-class ProductsScreen extends ConsumerWidget {
+class ProductsScreen extends StatelessWidget {
   const ProductsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final isFarmer = user?.role == Role.farmer;
-    final productsAsync = ref.watch(buyerProductsProvider);
-    final filteredProducts = ref.watch(filteredProductsProvider);
-    final selectedCategory = ref.watch(selectedCategoryProvider);
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final isFarmer = state.role == Role.farmer;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,62 +27,17 @@ class ProductsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: Column(
+      body: ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          if (!isFarmer) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: SearchBar(
-                hintText: 'Search by product or location',
-                leading: const Icon(Icons.search_rounded),
-                onChanged: (value) => ref.read(productSearchQueryProvider.notifier).state = value,
-              ),
+          if (!isFarmer)
+            const SearchBar(
+              hintText: 'Search by product or location',
+              leading: Icon(Icons.search_rounded),
             ),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: ProductCategory.values.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final category = ProductCategory.values[index];
-                  final isSelected = selectedCategory == category;
-                  return FilterChip(
-                    label: Text(category.label),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      ref.read(selectedCategoryProvider.notifier).state = selected ? category : null;
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Expanded(
-            child: AsyncStateHandler(
-              value: productsAsync,
-              dataBuilder: (context, _) {
-                if (filteredProducts.isEmpty) {
-                  return const Center(child: Text('No products found.'));
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = filteredProducts[index];
-                    return ProductTile(
-                      product,
-                      showActions: isFarmer,
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProductDetailScreen(product: product)));
-                      },
-                    );
-                  },
-                );
-              },
-            ),
+          const SizedBox(height: 16),
+          ...state.products.map(
+            (product) => ProductTile(product, showActions: isFarmer),
           ),
         ],
       ),

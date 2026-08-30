@@ -1,0 +1,66 @@
+name: Flutter CI
+
+on:
+  push:
+    branches:
+      - main
+      - suka
+      - dev/swami
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Cloud Functions
+        working-directory: functions
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create CI-only Android signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore android/ci-upload-keystore.jks \
+            -storepass ci-only-password \
+            -keypass ci-only-password \
+            -alias farmora \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 1 \
+            -dname "CN=Farmora CI, OU=CI, O=Farmora, L=Puttalam, ST=North Western, C=LK"
+          printf '%s\n' \
+            'storePassword=ci-only-password' \
+            'keyPassword=ci-only-password' \
+            'keyAlias=farmora' \
+            'storeFile=../ci-upload-keystore.jks' > android/key.properties
+
+      - name: Build APK
+        run: flutter build apk --release

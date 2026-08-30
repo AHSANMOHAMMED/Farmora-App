@@ -1,31 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart' as p;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
-import 'core/localization/app_localizations.dart';
 import 'providers/farmora_state.dart';
-import 'core/routing/app_router.dart';
+import 'features/auth/presentation/auth_gate.dart';
+import 'features/splash/presentation/splash_screen.dart';
 
-class FarmoraApp extends ConsumerWidget {
-  const FarmoraApp({super.key});
+class FarmoraApp extends StatelessWidget {
+  final bool showSplash;
+
+  const FarmoraApp({
+    super.key,
+    this.showSplash = true,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(appRouterProvider);
-
-    return p.ChangeNotifierProvider(
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
       create: (_) => FarmoraState(),
-      child: MaterialApp.router(
+      child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Farmora',
         theme: AppTheme.lightTheme,
-        routerConfig: router,
-        localizationsDelegates: const [
-          FarmoraLocalizations.delegate,
-          DefaultMaterialLocalizations.delegate,
-          DefaultWidgetsLocalizations.delegate,
-        ],
-        supportedLocales: FarmoraLocalizations.supportedLocales,
+        home: showSplash ? const SplashScreen() : const AuthGate(),
       ),
     );
   }

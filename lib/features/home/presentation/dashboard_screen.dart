@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/user_role.dart';
-
+import 'package:provider/provider.dart';
+import '../../../models/user_role.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/order_card.dart';
-import '../../../core/widgets/async_state_handler.dart';
-import '../../profile/presentation/role_sheet.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../buyer/providers/buyer_products_provider.dart';
-import '../../buyer/presentation/product_detail_screen.dart';
+import '../../buyer/presentation/buyer_products_screen.dart';
+import '../../farmer/presentation/add_product_screen.dart';
+import '../../transporter/presentation/available_jobs_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final role = user?.role ?? Role.buyer;
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final role = state.role;
     final isBuyer = role == Role.buyer;
-    final productsAsync = ref.watch(buyerProductsProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -31,15 +29,15 @@ class DashboardScreen extends ConsumerWidget {
               child: Icon(role.icon, color: const Color(0xff1f7a4d)),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning, ${user?.displayName ?? ""}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    'Good morning',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
-                  const Text(
+                  Text(
                     'Your Farmora network is growing.',
                     style: TextStyle(color: Colors.black54),
                   ),
@@ -47,7 +45,9 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             IconButton(
-              onPressed: () {},
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
               icon: const Icon(Icons.notifications_none_rounded),
             ),
           ],
@@ -63,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: const Color(0xff1f7a4d),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
@@ -86,10 +86,21 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        final destination = isBuyer
+                            ? const BuyerProductsScreen()
+                            : role == Role.farmer
+                                ? const AddProductScreen()
+                                : const AvailableJobsScreen();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => destination),
+                        );
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xff1f7a4d),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(
                         isBuyer
@@ -141,7 +152,7 @@ class DashboardScreen extends ConsumerWidget {
               Expanded(
                 child: StatCard(
                   label: 'Active products',
-                  value: role == Role.farmer ? '3' : '8',
+                  value: role == Role.farmer ? '${state.products.length}' : '8',
                   icon: Icons.insights_rounded,
                 ),
               ),
@@ -161,18 +172,7 @@ class DashboardScreen extends ConsumerWidget {
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 12),
-        if (isBuyer)
-          AsyncStateHandler(
-            value: productsAsync,
-            dataBuilder: (context, products) {
-              if (products.isEmpty) {
-                return const Text('No products available right now.');
-              }
-              return Column(
-                children: products.take(2).map((p) => ProductTile(p, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => ProductDetailScreen(product: p))))).toList(),
-              );
-            },
-          ),
+        if (isBuyer) ...state.products.take(2).map((p) => ProductTile(p)),
         if (!isBuyer)
           const OrderCard(
             title: 'Organic Tomatoes',
@@ -181,14 +181,6 @@ class DashboardScreen extends ConsumerWidget {
             color: Color(0xff3478c5),
           ),
         const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => showModalBottomSheet(
-            context: context,
-            builder: (_) => const RoleSheet(),
-          ),
-          icon: const Icon(Icons.swap_horiz_rounded),
-          label: const Text('Preview another role'),
-        ),
       ],
     );
   }
