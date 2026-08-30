@@ -216,6 +216,14 @@ class FarmoraState extends ChangeNotifier {
 
   void setLanguage(String value) {
     language = value;
+    if (_currentUserId.isNotEmpty) {
+      final languageCode = switch (value) {
+        'සිංහල' => 'si',
+        'தமிழ்' => 'ta',
+        _ => 'en',
+      };
+      _firestoreService.updateUserLanguage(languageCode);
+    }
     notifyListeners();
   }
 
