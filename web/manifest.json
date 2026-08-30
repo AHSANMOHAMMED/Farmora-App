@@ -5,7 +5,9 @@
     "display": "standalone",
     "background_color": "#f7faf7",
     "theme_color": "#1f7a4d",
-    "description": "Connecting farmers, buyers, and transport providers.",
+    "description": "A trusted agricultural marketplace connecting farmers, buyers, and transport providers.",
+    "lang": "en",
+    "categories": ["business", "shopping", "social"],
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
