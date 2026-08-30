@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "33678627494",
+    "project_id": "farmingapp-24b34",
+    "storage_bucket": "farmingapp-24b34.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:33678627494:android:6d2db665cdbd33ff549a67",
+        "android_client_info": {
+          "package_name": "com.example.farmora"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "33678627494-42rntmvpna4in0dm08opm1odlnmggsjj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.farmora",
+            "certificate_hash": "f4009b3441688dc3f8233f3a54bfbd1f5e8cc608"
+          }
+        },
+        {
+          "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsvO-upUbT-4-kaDHqP2j2CUpYT4j2_qs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,105 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-fixed": "#2e150b", "inverse-on-surface": "#e6f3fb", "surface-variant": "#d7e4ec", "surface-container-high": "#ddeaf2", "primary-fixed-dim": "#78dc77", "secondary-container": "#fdcdbc", "on-secondary-fixed-variant": "#603f33", "surface-dim": "#cfdce4", "surface-container": "#e3f0f8", "surface-tint": "#006e1c", "surface-bright": "#f4faff", "tertiary-fixed-dim": "#c2c9bb", "tertiary-container": "#969d90", "primary-fixed": "#94f990", "surface": "#f4faff", "on-primary-fixed-variant": "#005313", "on-tertiary-container": "#2e352b", "on-primary-container": "#003c0b", "on-secondary": "#ffffff", "surface-container-low": "#e9f6fd", "inverse-primary": "#78dc77", "primary-container": "#4caf50", "secondary-fixed-dim": "#ebbcac", "error-container": "#ffdad6", "secondary-fixed": "#ffdbcf", "on-primary": "#ffffff", "outline-variant": "#becab9", "error": "#ba1a1a", "on-error-container": "#93000a", "on-surface-variant": "#3f4a3c", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#42493e", "secondary": "#7a5649", "tertiary": "#596055", "on-tertiary": "#ffffff", "on-background": "#111d23", "on-secondary-container": "#795548", "tertiary-fixed": "#dee5d6", "on-tertiary-fixed": "#171d14", "on-primary-fixed": "#002204", "background": "#f4faff", "surface-container-highest": "#d7e4ec", "surface-container-lowest": "#ffffff", "primary": "#006e1c", "outline": "#6f7a6b", "on-surface": "#111d23", "inverse-surface": "#263238" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "md": "16px", "touch-target": "48px", "gutter": "16px", "margin-desktop": "40px", "base": "4px", "lg": "24px", "xl": "32px", "xs": "4px", "sm": "8px", "margin-mobile": "16px" }, "fontFamily": { "body-lg": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"], "button-text": ["Inter"], "headline-lg-mobile": ["Inter"], "headline-lg": ["Inter"], "body-md": ["Inter"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "button-text": ["16px", { "lineHeight": "20px", "fontWeight": "600" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface"><main class="min-h-screen w-full flex flex-col"><div class="flex flex-col w-full bg-surface">
+<div class="px-margin-mobile pb-xl flex flex-col gap-lg">
+<!-- Header -->
+<div class="pt-lg flex flex-col gap-sm">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Verify Your Account</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Please provide the following documents to activate your Farmora profile.</p>
+</div>
+<!-- Upload Grid -->
+<div class="flex flex-col gap-lg">
+<!-- National ID -->
+<div class="bg-surface-container rounded-xl p-md flex flex-col gap-md shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm text-on-surface">
+<span class="material-symbols-outlined text-primary">badge</span>
+<h2 class="font-headline-md text-headline-md">National ID</h2>
+</div>
+<span class="px-sm py-xs bg-error-container text-on-error-container font-label-md text-label-md rounded-full uppercase">Pending</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Clear photo of your government-issued ID. Front and back required.</p>
+<div class="grid grid-cols-2 gap-md mt-sm">
+<button class="relative h-24 rounded-lg bg-surface-container-high hover:bg-surface-dim transition-colors flex flex-col items-center justify-center gap-xs text-on-surface-variant overflow-hidden group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">add_a_photo</span>
+<span class="font-label-md text-label-md">Front</span>
+</button>
+<button class="relative h-24 rounded-lg bg-surface-container-high hover:bg-surface-dim transition-colors flex flex-col items-center justify-center gap-xs text-on-surface-variant overflow-hidden group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">add_a_photo</span>
+<span class="font-label-md text-label-md">Back</span>
+</button>
+</div>
+</div>
+<!-- Farm Document -->
+<div class="bg-surface-container rounded-xl p-md flex flex-col gap-md shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm text-on-surface">
+<span class="material-symbols-outlined text-primary">description</span>
+<h2 class="font-headline-md text-headline-md">Farm Document</h2>
+</div>
+<span class="px-sm py-xs bg-primary-container text-on-primary-container font-label-md text-label-md rounded-full uppercase">Approved</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Proof of land ownership or lease agreement.</p>
+<div class="flex items-center gap-md p-sm bg-surface-container-high rounded-lg mt-sm">
+<div class="w-12 h-12 rounded bg-surface flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-label-md text-label-md text-on-surface truncate">deed_of_lease_2024.pdf</span>
+<span class="font-body-md text-body-md text-on-surface-variant text-[12px]">2.4 MB • Uploaded Oct 12</span>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-dim transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Vehicle License -->
+<div class="bg-surface-container rounded-xl p-md flex flex-col gap-md shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm text-on-surface">
+<span class="material-symbols-outlined text-primary">directions_car</span>
+<h2 class="font-headline-md text-headline-md">Vehicle License</h2>
+</div>
+<span class="px-sm py-xs bg-surface-variant text-on-surface-variant font-label-md text-label-md rounded-full uppercase">Pending</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Current registration for transport vehicle.</p>
+<button class="h-16 rounded-lg bg-surface-container-high hover:bg-surface-dim transition-colors flex items-center justify-center gap-sm text-on-surface-variant overflow-hidden group mt-sm w-full">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">upload_file</span>
+<span class="font-button-text text-button-text">Select File</span>
+</button>
+</div>
+<!-- Vehicle Photo -->
+<div class="bg-surface-container rounded-xl p-md flex flex-col gap-md shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm text-on-surface">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<h2 class="font-headline-md text-headline-md">Vehicle Photo</h2>
+</div>
+<span class="px-sm py-xs bg-error-container text-on-error-container font-label-md text-label-md rounded-full uppercase">Rejected</span>
+</div>
+<p class="font-body-md text-body-md text-error">Image was too blurry. Please upload a clear photo showing the license plate.</p>
+<div class="relative h-32 rounded-lg bg-surface-container-high overflow-hidden mt-sm group w-full">
+<img class="w-full h-full object-cover opacity-50 grayscale" data-alt="A blurry, poorly lit photograph of a white pickup truck on a dirt road, shot from a bad angle where the license plate is illegible. The aesthetic is raw and slightly washed out." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQ0wxh0ooBh6v4Gg4oBcj26VgLfIFcz9cQfdiP13TErA9l8AiclXaBJKqu0ADyUPaA77GHMnFUOOblsMowHJ6RtGhtgneOmwsetumVawKGKLyawbr9VfAniXqL67JIq7qOGrCzcnV8WOFZTp5G5VzLQVqO0Ah6MgOSo1rjSyX1xJ228cYJuhps3RPWyoeVcZM-D-ENRUSTBVVcVF3kpAb4ySAT_Xbm6ArioPgYWRoGEStDJKo_7gPL"/>
+<div class="absolute inset-0 flex items-center justify-center bg-surface/50 backdrop-blur-sm">
+<button class="h-12 px-lg rounded-full bg-primary text-on-primary font-button-text text-button-text shadow-md flex items-center gap-sm active:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined">replay</span>
+                    Re-upload
+                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action -->
+<div class="pt-md pb-xl">
+<button class="w-full h-touch-target rounded-full bg-primary text-on-primary font-button-text text-button-text shadow-md flex items-center justify-center gap-sm active:bg-primary/90 transition-colors opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined">verified</span>
+        Submit for Verification
+      </button>
+<p class="font-body-md text-body-md text-on-surface-variant text-center mt-sm text-[12px]">All required documents must be uploaded to submit.</p>
+</div>
+</div>
+</div></main></body></html>

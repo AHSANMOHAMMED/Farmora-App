@@ -1,66 +1,94 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/transport_job.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/job_card.dart';
-import '../../../core/widgets/async_state_handler.dart';
-import '../../../core/repositories/transport_repository.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../providers/jobs_provider.dart';
+import 'transport_request_detail_screen.dart';
 
-class AvailableJobsScreen extends ConsumerWidget {
+class AvailableJobsScreen extends StatelessWidget {
   const AvailableJobsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final jobsAsync = ref.watch(availableJobsProvider);
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final jobs = state.jobs;
 
     return Scaffold(
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Available jobs'),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.9),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Available Jobs',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
       ),
-      body: AsyncStateHandler(
-        value: jobsAsync,
-        dataBuilder: (context, jobs) {
-          if (jobs.isEmpty) {
-            return const EmptyStateWidget(
-               icon: Icons.local_shipping_outlined,
-               title: 'No jobs available',
-               subtitle: 'Check back later for new delivery opportunities.',
-             );
-          }
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const Text(
-                'Choose a delivery that fits your route.',
-                style: TextStyle(color: Colors.black54),
+      body: jobs.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: 64,
+                    color: AppColors.outlineVariant,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'No jobs available',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              ...jobs.map(
-                (j) => JobCard(
-                  title: j.cargoSummary,
-                  route: j.displayRoute,
-                  detail: '${j.weightKg} kg',
-                  fee: j.displayFee,
-                  accepted: j.status != TransportJobStatus.requested,
-                  onAccept: () async {
-                    final user = ref.read(currentUserProvider);
-                    if (user != null) {
-                      await ref.read(transportRepositoryProvider).acceptJob(j.id, user.id);
-                      ref.invalidate(availableJobsProvider);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Job accepted!')),
-                        );
-                      }
-                    }
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: jobs.length + 1,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Choose a delivery that fits your route.',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  );
+                }
+                
+                final j = jobs[index - 1];
+                return JobCard(
+                  title: j.title,
+                  route: j.route,
+                  detail: j.detail,
+                  fee: j.fee,
+                  accepted: j.accepted,
+                  onAccept: () => context.read<FarmoraState>().acceptJob(j.id),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => TransportRequestDetailScreen(job: j),
+                      ),
+                    );
                   },
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+                );
+              },
+            ),
     );
   }
 }
