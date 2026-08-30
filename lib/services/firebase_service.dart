@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data';
 import '../models/product.dart';
 import '../models/order.dart';
 import '../models/transport_job.dart';
@@ -9,12 +13,13 @@ import '../models/verification_model.dart';
 // ============================================================
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // ── Users ─────────────────────────────────────────────────
   Stream<List<Map<String, dynamic>>> usersStream() {
-    return _db.collection('users').snapshots().map((snap) => snap.docs
-        .map((doc) => {'uid': doc.id, ...doc.data()})
-        .toList());
+    return _db.collection('users').snapshots().map((snap) =>
+        snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
   }
 
   // ── Products ──────────────────────────────────────────────
@@ -71,12 +76,132 @@ class FirestoreService {
     });
   }
 
-  /// Update order status
-  Future<void> updateOrderStatus(String id, String status, double progress) async {
-    await _db.collection('orders').doc(id).update({
-      'status': status,
-      'progress': progress,
+  Future<String> createSecureOrder({
+    required String productId,
+    required int quantity,
+    int deliveryFeeMinor = 0,
+  }) async {
+    final result = await _functions.httpsCallable('createOrder').call({
+      'productId': productId,
+      'quantity': quantity,
+      'deliveryFeeMinor': deliveryFeeMinor,
     });
+    return result.data['orderId'] as String;
+  }
+
+  Future<String> createSecureProduct(Product product) async {
+    final result = await _functions.httpsCallable('createProduct').call({
+      'name': product.name,
+      'category': product.category,
+      'description': product.description,
+      'unit': product.unit,
+      'location': product.location,
+      'priceMinor': product.pricePerUnit.round() * 100,
+      'quantityAvailable': int.tryParse(product.quantity) ?? 0,
+      'media': product.images,
+    });
+    return result.data['productId'] as String;
+  }
+
+  Future<void> transitionOrder(String orderId, String status) async {
+    await _functions.httpsCallable('transitionOrder').call({
+      'orderId': orderId,
+      'status': status,
+    });
+  }
+
+  Future<void> transitionTransport(String jobId, String status) async {
+    await _functions.httpsCallable('transitionTransport').call({
+      'jobId': jobId,
+      'status': status,
+    });
+  }
+
+  Future<String> submitVerification({
+    required String documentType,
+    required String storagePath,
+  }) async {
+    final result = await _functions.httpsCallable('submitVerification').call({
+      'documentType': documentType,
+      'storagePath': storagePath,
+    });
+    return result.data['documentId'] as String;
+  }
+
+  Future<String> uploadVerificationDocument({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (bytes.length > 5 * 1024 * 1024) {
+      throw StateError('File must be smaller than 5 MB.');
+    }
+    final path =
+        'verification/$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return path;
+  }
+
+  Future<String> sendEncryptedMessage({
+    required String orderId,
+    required String recipientId,
+    required String ciphertext,
+  }) async {
+    final result = await _functions.httpsCallable('sendMessage').call({
+      'orderId': orderId,
+      'recipientId': recipientId,
+      'ciphertext': ciphertext,
+    });
+    return result.data['messageId'] as String;
+  }
+
+  Future<Map<String, dynamic>> verifyProductBarcode({
+    required String barcodeId,
+    required String signature,
+  }) async {
+    final result = await _functions.httpsCallable('verifyBarcode').call({
+      'barcodeId': barcodeId,
+      'signature': signature,
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<void> submitReview({
+    required String orderId,
+    required int rating,
+    required String comment,
+  }) async {
+    await _functions.httpsCallable('submitReview').call({
+      'orderId': orderId,
+      'rating': rating,
+      'comment': comment,
+    });
+  }
+
+  Future<String> openDispute({
+    required String orderId,
+    required String reason,
+  }) async {
+    final result = await _functions.httpsCallable('openDispute').call({
+      'orderId': orderId,
+      'reason': reason,
+    });
+    return result.data['disputeId'] as String;
+  }
+
+  /// Update order status
+  Future<void> updateOrderStatus(
+      String id, String status, double progress) async {
+    final normalized = switch (status.toLowerCase()) {
+      'accepted' => 'confirmed',
+      'declined' => 'rejected',
+      'cancelled' => 'cancelled',
+      _ => status.toLowerCase(),
+    };
+    await transitionOrder(id, normalized);
   }
 
   /// Real-time stream of all orders
@@ -147,7 +272,8 @@ class FirestoreService {
   }
 
   /// Update verification document
-  Future<void> updateVerificationDoc(String id, Map<String, dynamic> data) async {
+  Future<void> updateVerificationDoc(
+      String id, Map<String, dynamic> data) async {
     await _db.collection('verification_docs').doc(id).update(data);
   }
 
@@ -181,7 +307,8 @@ class FirestoreService {
         'imagePath': 'assets/images/placeholder.png',
         'status': 'Active',
         'isOrganic': true,
-        'description': 'Premium grade Ceylon Cinnamon sticks, freshly harvested.',
+        'description':
+            'Premium grade Ceylon Cinnamon sticks, freshly harvested.',
         'farmerId': 'mock-farmer-id',
         'createdAt': FieldValue.serverTimestamp(),
       },
@@ -215,7 +342,8 @@ class FirestoreService {
         'imagePath': 'assets/images/placeholder.png',
         'status': 'Active',
         'isOrganic': true,
-        'description': 'Sweet and refreshing King Coconuts, rich in electrolytes.',
+        'description':
+            'Sweet and refreshing King Coconuts, rich in electrolytes.',
         'farmerId': 'mock-farmer-id',
         'createdAt': FieldValue.serverTimestamp(),
       }
@@ -239,7 +367,6 @@ class FirestoreService {
         'buyerName': 'Sunil Perera',
         'buyerCompany': 'Sunil Fresh Veg',
         'buyerAvatar': 'assets/images/placeholder.png',
-        'buyerPhone': '+94 77 123 4567',
         'deliveryAddress': '12 Galle Road,\nColombo 03',
         'detail': '20 kg · LKR 7,000.00 · Requested for Today',
         'status': 'Pending',
@@ -261,7 +388,6 @@ class FirestoreService {
         'buyerName': 'Nimal Traders',
         'buyerCompany': 'Nimal Exports',
         'buyerAvatar': 'assets/images/placeholder.png',
-        'buyerPhone': '+94 71 987 6543',
         'deliveryAddress': '45 Kandy Road,\nPeradeniya',
         'detail': '5 kg · LKR 22,500.00 · Requested for Tomorrow',
         'status': 'Accepted',

@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/transport_job.dart';
+import '../../../services/firebase_service.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {
   final TransportJob job;
 
   const ActiveDeliveryScreen({super.key, required this.job});
+
+  Future<void> _markDelivered(BuildContext context) async {
+    try {
+      await FirestoreService().transitionTransport(job.id, 'delivered');
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not update delivery: $error')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +68,8 @@ class ActiveDeliveryScreen extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.statusApprovedBg,
                           borderRadius: BorderRadius.circular(9999),
@@ -109,7 +123,9 @@ class ActiveDeliveryScreen extends StatelessWidget {
                     SizedBox(height: 8),
                     Text(
                       'Live Tracking Map',
-                      style: TextStyle(fontFamily: 'Inter', color: AppColors.onSurfaceVariant),
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: AppColors.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -134,8 +150,10 @@ class ActiveDeliveryScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _buildTimelineStep('Picked up', '10:30 AM', true, true),
-                  _buildTimelineStep('In Transit', 'Current Status', true, false),
-                  _buildTimelineStep('Delivered', 'Pending', false, false, isLast: true),
+                  _buildTimelineStep(
+                      'In Transit', 'Current Status', true, false),
+                  _buildTimelineStep('Delivered', 'Pending', false, false,
+                      isLast: true),
                 ],
               ),
             ),
@@ -155,10 +173,7 @@ class ActiveDeliveryScreen extends StatelessWidget {
           ],
         ),
         child: FilledButton(
-          onPressed: () {
-            // Mock mark as delivered
-            Navigator.of(context).pop();
-          },
+          onPressed: () => _markDelivered(context),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
@@ -168,14 +183,17 @@ class ActiveDeliveryScreen extends StatelessWidget {
           ),
           child: const Text(
             'Mark as Delivered',
-            style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTimelineStep(String title, String subtitle, bool isActive, bool isCompleted, {bool isLast = false}) {
+  Widget _buildTimelineStep(
+      String title, String subtitle, bool isActive, bool isCompleted,
+      {bool isLast = false}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -185,20 +203,29 @@ class ActiveDeliveryScreen extends StatelessWidget {
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: isActive ? AppColors.primary : AppColors.surfaceContainerHigh,
+                color: isActive
+                    ? AppColors.primary
+                    : AppColors.surfaceContainerHigh,
                 shape: BoxShape.circle,
               ),
               child: isCompleted
                   ? const Icon(Icons.check, size: 14, color: Colors.white)
                   : isActive
-                      ? Center(child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)))
+                      ? Center(
+                          child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                  color: Colors.white, shape: BoxShape.circle)))
                       : null,
             ),
             if (!isLast)
               Container(
                 width: 2,
                 height: 30,
-                color: isCompleted ? AppColors.primary : AppColors.surfaceContainerHigh,
+                color: isCompleted
+                    ? AppColors.primary
+                    : AppColors.surfaceContainerHigh,
               ),
           ],
         ),
@@ -213,7 +240,9 @@ class ActiveDeliveryScreen extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 16,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                  color: isActive
+                      ? AppColors.onSurface
+                      : AppColors.onSurfaceVariant,
                 ),
               ),
               Text(

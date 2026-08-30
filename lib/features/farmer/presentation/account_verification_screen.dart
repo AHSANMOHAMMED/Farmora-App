@@ -1,18 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../../models/verification_model.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 
 class AccountVerificationScreen extends StatefulWidget {
   const AccountVerificationScreen({super.key});
 
   @override
-  State<AccountVerificationScreen> createState() => _AccountVerificationScreenState();
+  State<AccountVerificationScreen> createState() =>
+      _AccountVerificationScreenState();
 }
 
 class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
+  final _service = FirestoreService();
+  bool _uploading = false;
+
+  Future<void> _pickDocument(VerificationDoc doc) async {
+    if (_uploading) return;
+    final result = await FilePicker.platform.pickFiles(
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf']);
+    final file = result?.files.single;
+    if (file?.bytes == null) return;
+    setState(() => _uploading = true);
+    try {
+      final contentType = file!.extension == 'pdf'
+          ? 'application/pdf'
+          : 'image/${file.extension == 'jpg' ? 'jpeg' : file.extension}';
+      final path = await _service.uploadVerificationDocument(
+          bytes: file.bytes!, fileName: file.name, contentType: contentType);
+      await _service.submitVerification(
+          documentType: doc.title, storagePath: path);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Document uploaded and queued for manual review.')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Upload failed: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
@@ -96,7 +133,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: AppColors.primary,
-                          content: Text('Documents submitted for verification review!'),
+                          content: Text(
+                              'Documents submitted for verification review!'),
                         ),
                       );
                       Navigator.of(context).pop();
@@ -138,7 +176,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     );
   }
 
-  Widget _buildDocCard(BuildContext context, FarmoraState state, VerificationDoc doc) {
+  Widget _buildDocCard(
+      BuildContext context, FarmoraState state, VerificationDoc doc) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
@@ -217,12 +256,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   child: _buildUploadTile(
                     label: 'Front',
                     icon: Icons.add_a_photo_outlined,
-                    onTap: () {
-                      state.updateVerificationDoc(doc.id, fileName: 'national_id_front.jpg');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Uploaded ID Front!')),
-                      );
-                    },
+                    onTap: () => _pickDocument(doc),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -230,17 +264,13 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   child: _buildUploadTile(
                     label: 'Back',
                     icon: Icons.add_a_photo_outlined,
-                    onTap: () {
-                      state.updateVerificationDoc(doc.id, fileName: 'national_id_back.jpg');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Uploaded ID Back!')),
-                      );
-                    },
+                    onTap: () => _pickDocument(doc),
                   ),
                 ),
               ],
             ),
-          ] else if (doc.status == VerificationStatus.approved && doc.fileName != null) ...[
+          ] else if (doc.status == VerificationStatus.approved &&
+              doc.fileName != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -291,7 +321,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.more_vert, color: AppColors.onSurfaceVariant),
+                    icon: const Icon(Icons.more_vert,
+                        color: AppColors.onSurfaceVariant),
                     onPressed: () {},
                   ),
                 ],
@@ -322,7 +353,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                       imagePreview: 'assets/images/roma_tomatoes_1.png',
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Uploaded new clear vehicle photo!')),
+                      const SnackBar(
+                          content: Text('Uploaded new clear vehicle photo!')),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -343,17 +375,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
               width: double.infinity,
               height: 52,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  state.updateVerificationDoc(
-                    doc.id,
-                    fileName: 'vehicle_registration_2024.pdf',
-                    fileSizeInfo: '1.8 MB • Uploaded',
-                    status: VerificationStatus.approved,
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Selected vehicle registration file!')),
-                  );
-                },
+                onPressed: () => _pickDocument(doc),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: AppColors.surfaceContainerHigh,
                   foregroundColor: AppColors.onSurfaceVariant,
@@ -362,7 +384,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                icon: const Icon(Icons.upload_file_outlined, color: AppColors.primary),
+                icon: const Icon(Icons.upload_file_outlined,
+                    color: AppColors.primary),
                 label: const Text(
                   'Select File',
                   style: TextStyle(
