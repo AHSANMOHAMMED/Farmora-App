@@ -150,6 +150,43 @@ export const unregisterDeviceToken = functions.https.onCall(async (data, context
   return { success: true };
 });
 
+export const getPlatformSettings = functions.https.onCall(async (_data, context) => {
+  requireAdmin(context);
+  const snapshot = await db.collection("platform_settings").doc("global").get();
+  return snapshot.exists
+    ? snapshot.data()
+    : { maintenanceMode: false, platformFeeBps: 0, sessionTimeoutMinutes: 60 };
+});
+
+export const updatePlatformSettings = functions.https.onCall(async (data, context) => {
+  const uid = requireAdmin(context);
+  const updates: Record<string, unknown> = {};
+  if (typeof data.maintenanceMode === "boolean") updates.maintenanceMode = data.maintenanceMode;
+  if (data.platformFeeBps !== undefined) {
+    const fee = Number(data.platformFeeBps);
+    if (!Number.isSafeInteger(fee) || fee < 0 || fee > 10000) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid platform fee.");
+    }
+    updates.platformFeeBps = fee;
+  }
+  if (data.sessionTimeoutMinutes !== undefined) {
+    const timeout = Number(data.sessionTimeoutMinutes);
+    if (!Number.isSafeInteger(timeout) || timeout < 5 || timeout > 1440) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid session timeout.");
+    }
+    updates.sessionTimeoutMinutes = timeout;
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new functions.https.HttpsError("invalid-argument", "No settings supplied.");
+  }
+  await db.collection("platform_settings").doc("global").set({
+    ...updates,
+    updatedBy: uid,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { success: true };
+});
+
 // ─── onOrderCreated ───────────────────────────────────────────
 // Triggered when a new order is created. Validates and calculates
 // server-side totals to prevent client-side manipulation.
