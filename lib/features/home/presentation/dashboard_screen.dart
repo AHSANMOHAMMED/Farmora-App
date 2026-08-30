@@ -5,7 +5,9 @@ import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/order_card.dart';
-import '../../profile/presentation/role_sheet.dart';
+import '../../buyer/presentation/buyer_products_screen.dart';
+import '../../farmer/presentation/add_product_screen.dart';
+import '../../transporter/presentation/available_jobs_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -81,11 +83,21 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        final destination = isBuyer
+                            ? const BuyerProductsScreen()
+                            : role == Role.farmer
+                                ? const AddProductScreen()
+                                : const AvailableJobsScreen();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => destination),
+                        );
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xff1f7a4d),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(
                         isBuyer
@@ -166,17 +178,6 @@ class DashboardScreen extends StatelessWidget {
             color: Color(0xff3478c5),
           ),
         const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => showModalBottomSheet(
-            context: context,
-            builder: (_) => const RoleSheet(),
-          ),
-          icon: const Icon(Icons.swap_horiz_rounded),
-          label: const Text('Preview another role'),
-          style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
       ],
     );
   }

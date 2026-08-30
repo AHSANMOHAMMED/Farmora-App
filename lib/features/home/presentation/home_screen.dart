@@ -42,6 +42,12 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
+    if (firebaseUser != null && !state.profileLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     List<Widget> screens;
     List<_NavItem> navItems;
 
@@ -55,13 +61,28 @@ class _HomeScreenState extends State<HomeScreen> {
         ProfileScreen(),
       ];
       navItems = const [
-        _NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
+        _NavItem(
+            label: 'Home',
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded),
         // Stitch uses potted_plant icon for Products
-        _NavItem(label: 'Products', icon: Icons.local_florist_outlined, activeIcon: Icons.local_florist_rounded),
-        _NavItem(label: 'Orders', icon: Icons.shopping_basket_outlined, activeIcon: Icons.shopping_basket_rounded),
+        _NavItem(
+            label: 'Products',
+            icon: Icons.local_florist_outlined,
+            activeIcon: Icons.local_florist_rounded),
+        _NavItem(
+            label: 'Orders',
+            icon: Icons.shopping_basket_outlined,
+            activeIcon: Icons.shopping_basket_rounded),
         // Stitch uses payments icon for Earnings
-        _NavItem(label: 'Earnings', icon: Icons.payments_outlined, activeIcon: Icons.payments_rounded),
-        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+        _NavItem(
+            label: 'Earnings',
+            icon: Icons.payments_outlined,
+            activeIcon: Icons.payments_rounded),
+        _NavItem(
+            label: 'Profile',
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.transporter) {
       screens = const [
@@ -71,10 +92,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ProfileScreen(),
       ];
       navItems = const [
-        _NavItem(label: 'Overview', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
-        _NavItem(label: 'Jobs', icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping_rounded),
-        _NavItem(label: 'Orders', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
-        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+        _NavItem(
+            label: 'Overview',
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded),
+        _NavItem(
+            label: 'Jobs',
+            icon: Icons.local_shipping_outlined,
+            activeIcon: Icons.local_shipping_rounded),
+        _NavItem(
+            label: 'Orders',
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long_rounded),
+        _NavItem(
+            label: 'Profile',
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.admin) {
       screens = const [
@@ -84,10 +117,22 @@ class _HomeScreenState extends State<HomeScreen> {
         SystemSettingsScreen(),
       ];
       navItems = const [
-        _NavItem(label: 'Dashboard', icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard_rounded),
-        _NavItem(label: 'Users', icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded),
-        _NavItem(label: 'Logistics', icon: Icons.local_shipping_outlined, activeIcon: Icons.local_shipping_rounded),
-        _NavItem(label: 'Settings', icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded),
+        _NavItem(
+            label: 'Dashboard',
+            icon: Icons.dashboard_outlined,
+            activeIcon: Icons.dashboard_rounded),
+        _NavItem(
+            label: 'Users',
+            icon: Icons.people_outline_rounded,
+            activeIcon: Icons.people_rounded),
+        _NavItem(
+            label: 'Logistics',
+            icon: Icons.local_shipping_outlined,
+            activeIcon: Icons.local_shipping_rounded),
+        _NavItem(
+            label: 'Settings',
+            icon: Icons.settings_outlined,
+            activeIcon: Icons.settings_rounded),
       ];
     } else {
       screens = const [
@@ -97,10 +142,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ProfileScreen(),
       ];
       navItems = const [
-        _NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home_rounded),
-        _NavItem(label: 'Products', icon: Icons.local_florist_outlined, activeIcon: Icons.local_florist_rounded),
-        _NavItem(label: 'Orders', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
-        _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+        _NavItem(
+            label: 'Home',
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded),
+        _NavItem(
+            label: 'Products',
+            icon: Icons.local_florist_outlined,
+            activeIcon: Icons.local_florist_rounded),
+        _NavItem(
+            label: 'Orders',
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long_rounded),
+        _NavItem(
+            label: 'Profile',
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
       ];
     }
 
@@ -137,7 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
               return NavigationDestination(
                 icon: Icon(
                   isSelected ? item.activeIcon : item.icon,
-                  color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.onSurfaceVariant,
                 ),
                 label: item.label,
               );
@@ -153,7 +212,8 @@ class _NavItem {
   final String label;
   final IconData icon;
   final IconData activeIcon;
-  const _NavItem({required this.label, required this.icon, required this.activeIcon});
+  const _NavItem(
+      {required this.label, required this.icon, required this.activeIcon});
 }
 
 /// Alias for backward compatibility

@@ -17,6 +17,8 @@ class FarmoraState extends ChangeNotifier {
   late final _firestoreService = kajana_service.FirestoreService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
+  bool _profileLoaded = false;
+  bool get profileLoaded => _profileLoaded;
 
   // Stream subscriptions for real-time Firestore sync
   StreamSubscription<List<Product>>? _productsSub;
@@ -199,12 +201,15 @@ class FarmoraState extends ChangeNotifier {
   void signOut() {
     signedIn = false;
     _currentUserId = '';
+    _profileLoaded = false;
     disposeFirestoreSubscriptions();
     _authService.signOut();
     notifyListeners();
   }
 
   void setRole(Role r) {
+    // A signed-in account's role is owned by its Firestore profile.
+    if (_currentUserId.isNotEmpty) return;
     role = r;
     notifyListeners();
   }
@@ -279,20 +284,38 @@ class FarmoraState extends ChangeNotifier {
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
   Future<void> initFromFirestore(String uid) async {
     _currentUserId = uid;
+    _profileLoaded = false;
     disposeFirestoreSubscriptions();
 
     // Load user profile and set role
-    final profile = await _loadUserProfile(uid);
-    if (profile != null) {
-      final roleStr = profile['role'] as String?;
-      if (roleStr != null) {
-        try {
-          role = Role.values.firstWhere((r) => r.name == roleStr);
-        } catch (_) {}
+    try {
+      final profile = await _loadUserProfile(uid);
+      if (profile == null) {
+        await FirebaseAuth.instance.signOut();
+        _currentUserId = '';
+        notifyListeners();
+        return;
       }
-      final lang = profile['language'] as String?;
-      if (lang != null) language = lang;
+
+      final roleStr = profile['role'] as String?;
+      final accountRole =
+          Role.values.where((r) => r.name == roleStr).firstOrNull;
+      if (accountRole == null) {
+        await FirebaseAuth.instance.signOut();
+        _currentUserId = '';
+        notifyListeners();
+        return;
+      }
+      role = accountRole;
+      language =
+          (profile['languageCode'] ?? profile['language'] ?? 'en') as String;
+      _profileLoaded = true;
       notifyListeners();
+    } catch (_) {
+      await FirebaseAuth.instance.signOut();
+      _currentUserId = '';
+      notifyListeners();
+      return;
     }
     final isAdmin = role == Role.admin;
 
