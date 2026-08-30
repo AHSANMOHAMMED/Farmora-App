@@ -32,6 +32,15 @@ class FirestoreService {
         .call({'token': token});
   }
 
+  Future<Map<String, dynamic>> getPlatformSettings() async {
+    final result = await _functions.httpsCallable('getPlatformSettings').call();
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
+    await _functions.httpsCallable('updatePlatformSettings').call(settings);
+  }
+
   // ── Users ─────────────────────────────────────────────────
   Stream<List<Map<String, dynamic>>> usersStream({int limit = 100}) {
     return _db.collection('users').limit(limit).snapshots().map((snap) =>
