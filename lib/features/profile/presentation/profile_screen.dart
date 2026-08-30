@@ -104,7 +104,8 @@ class ProfileScreen extends StatelessWidget {
             Card(
               color: AppColors.surfaceContainerLowest,
               elevation: 1,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
@@ -112,7 +113,8 @@ class ProfileScreen extends StatelessWidget {
                     color: AppColors.statusPendingBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.verified_user_outlined, color: AppColors.statusPendingText, size: 22),
+                  child: const Icon(Icons.verified_user_outlined,
+                      color: AppColors.statusPendingText, size: 22),
                 ),
                 title: const Text(
                   'Account Verification',
@@ -136,12 +138,15 @@ class ProfileScreen extends StatelessWidget {
           Card(
             color: AppColors.surfaceContainerLowest,
             elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
-                  title: const Text('Switch Role', style: TextStyle(fontWeight: FontWeight.w600)),
+                  leading: const Icon(Icons.swap_horiz_rounded,
+                      color: AppColors.primary),
+                  title: const Text('Account Role',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text('Current: ${role.label}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalBottomSheet(
@@ -149,10 +154,15 @@ class ProfileScreen extends StatelessWidget {
                     builder: (_) => const RoleSheet(),
                   ),
                 ),
-                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
                 ListTile(
-                  leading: const Icon(Icons.language_rounded, color: AppColors.primary),
-                  title: const Text('Language', style: TextStyle(fontWeight: FontWeight.w600)),
+                  leading: const Icon(Icons.language_rounded,
+                      color: AppColors.primary),
+                  title: const Text('Language',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(state.language),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalBottomSheet(
@@ -160,16 +170,27 @@ class ProfileScreen extends StatelessWidget {
                     builder: (_) => const LanguagePicker(),
                   ),
                 ),
-                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
                 const ListTile(
-                  leading: Icon(Icons.help_outline_rounded, color: AppColors.primary),
-                  title: Text('Help & Support', style: TextStyle(fontWeight: FontWeight.w600)),
+                  leading: Icon(Icons.help_outline_rounded,
+                      color: AppColors.primary),
+                  title: Text('Help & Support',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: Icon(Icons.chevron_right),
                 ),
-                Divider(color: AppColors.outlineVariant.withValues(alpha: 0.2), height: 1, indent: 56),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
                 ListTile(
-                  leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-                  title: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.error)),
+                  leading:
+                      const Icon(Icons.logout_rounded, color: AppColors.error),
+                  title: const Text('Sign Out',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, color: AppColors.error)),
                   onTap: () => context.read<FarmoraState>().signOut(),
                 ),
               ],
