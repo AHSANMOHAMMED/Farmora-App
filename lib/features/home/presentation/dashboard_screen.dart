@@ -8,6 +8,7 @@ import '../../../core/widgets/order_card.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../farmer/presentation/add_product_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -44,7 +45,9 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: () {},
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
               icon: const Icon(Icons.notifications_none_rounded),
             ),
           ],

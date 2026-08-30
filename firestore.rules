@@ -22,9 +22,10 @@ service cloud.firestore {
         && request.resource.data.role in ['farmer', 'buyer', 'transporter']
         && request.resource.data.isVerified == false;
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt'
-        ]) || admin();
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+           'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt',
+           'notificationPreferences'
+         ]) || admin();
       allow delete: if signedIn() && request.auth.uid == userId;
     }
 
