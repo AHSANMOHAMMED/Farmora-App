@@ -273,6 +273,7 @@ class FarmoraState extends ChangeNotifier {
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
   void initFromFirestore(String uid) {
     _currentUserId = uid;
+    final isAdmin = role == Role.admin;
 
     // Load user profile and set role
     _loadUserProfile(uid).then((profile) {
@@ -291,8 +292,10 @@ class FarmoraState extends ChangeNotifier {
 
     // Subscribe to products stream
     _productsSub?.cancel();
-    _productsSub =
-        _firestoreService.productsStream().listen((firestoreProducts) {
+    final productsStream = role == Role.farmer
+        ? _firestoreService.productsByFarmerStream(uid)
+        : _firestoreService.productsStream();
+    _productsSub = productsStream.listen((firestoreProducts) {
       _products.clear();
       _products.addAll(firestoreProducts);
       notifyListeners();
@@ -300,15 +303,23 @@ class FarmoraState extends ChangeNotifier {
 
     // Subscribe to users stream
     _usersSub?.cancel();
-    _usersSub = _firestoreService.usersStream().listen((firestoreUsers) {
-      _users.clear();
-      _users.addAll(firestoreUsers);
-      notifyListeners();
-    });
+    if (isAdmin) {
+      _usersSub = _firestoreService.usersStream().listen((firestoreUsers) {
+        _users.clear();
+        _users.addAll(firestoreUsers);
+        notifyListeners();
+      });
+    }
 
     // Subscribe to orders stream
     _ordersSub?.cancel();
-    _ordersSub = _firestoreService.ordersStream().listen((firestoreOrders) {
+    final ordersStream = switch (role) {
+      Role.admin => _firestoreService.ordersStream(),
+      Role.farmer => _firestoreService.ordersByFarmerStream(uid),
+      Role.buyer => _firestoreService.ordersByBuyerStream(uid),
+      Role.transporter => _firestoreService.ordersByTransporterStream(uid),
+    };
+    _ordersSub = ordersStream.listen((firestoreOrders) {
       _orders.clear();
       _orders.addAll(firestoreOrders);
       _recalculateStats();
@@ -317,7 +328,12 @@ class FarmoraState extends ChangeNotifier {
 
     // Subscribe to transport jobs stream
     _jobsSub?.cancel();
-    _jobsSub = _firestoreService.jobsStream().listen((firestoreJobs) {
+    final jobsStream = switch (role) {
+      Role.admin => _firestoreService.jobsStream(),
+      Role.transporter => _firestoreService.jobsForTransporterStream(uid),
+      _ => null,
+    };
+    _jobsSub = jobsStream?.listen((firestoreJobs) {
       _jobs.clear();
       _jobs.addAll(firestoreJobs);
       notifyListeners();
