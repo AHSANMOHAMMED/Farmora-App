@@ -340,7 +340,7 @@ The workflow performs:
 8. Temporary CI signing key creation.
 9. `flutter build apk --release`.
 
-Latest verified result at the time of this handoff: CI run [33307080663](https://github.com/AHSANMOHAMMED/Farmora-App/actions/runs/33307080663) passed all steps.
+Latest verified result at the time of this handoff: CI run [33310263984](https://github.com/AHSANMOHAMMED/Farmora-App/actions/runs/33310263984) passed all steps after the `origin/suka` merge.
 
 ## What Remains Before Production
 
