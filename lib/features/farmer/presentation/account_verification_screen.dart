@@ -21,7 +21,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   Future<void> _pickDocument(VerificationDoc doc) async {
     if (_uploading) return;
-    final result = await FilePicker.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
         withData: true,
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
