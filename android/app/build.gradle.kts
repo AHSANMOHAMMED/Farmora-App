@@ -15,7 +15,8 @@ if (signingPropertiesFile.exists()) {
 
 android {
     namespace = "com.example.farmora"
-    compileSdk = flutter.compileSdkVersion
+    // Firebase Storage and current Flutter plugins require API 36 to compile.
+    compileSdk = 36
 
 
     compileOptions {
