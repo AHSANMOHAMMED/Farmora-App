@@ -40,7 +40,7 @@ service cloud.firestore {
         && request.resource.data.farmerId == resource.data.farmerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'category', 'description', 'media', 'quantityAvailable', 'unit',
-          'priceMinor', 'availability', 'updatedAt'
+          'priceMinor', 'availability', 'status', 'updatedAt'
         ]);
       allow delete: if verified(resource.data.farmerId)
         && resource.data.farmerId == request.auth.uid;

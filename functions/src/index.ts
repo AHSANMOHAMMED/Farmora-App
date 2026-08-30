@@ -279,7 +279,13 @@ export const createOrder = functions.https.onCall(async (data, context) => {
 
 export const createProduct = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
+  const user = await requireRole(uid, ["farmer"]);
+  if (user.isVerified !== true) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Account verification is required before publishing products."
+    );
+  }
   const name = typeof data.name === "string" ? data.name.trim() : "";
   const category = typeof data.category === "string" ? data.category.trim() : "";
   const unit = typeof data.unit === "string" ? data.unit.trim() : "";
@@ -300,8 +306,11 @@ export const createProduct = functions.https.onCall(async (data, context) => {
     unit,
     location,
     priceMinor,
+    price: `LKR ${(priceMinor / 100).toFixed(2)}`,
+    pricePerUnit: priceMinor / 100,
     currency: "LKR",
     quantityAvailable,
+    quantity: String(quantityAvailable),
     status: quantityAvailable > 0 ? "Active" : "Empty",
     media: Array.isArray(data.media) ? data.media.slice(0, 5) : [],
     listingVersion: 1,
