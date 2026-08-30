@@ -1,13 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val signingPropertiesFile = rootProject.file("key.properties")
+val signingProperties = Properties()
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.inputStream().use(signingProperties::load)
+}
+
 android {
     namespace = "com.example.farmora"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Firebase Storage and current Flutter plugins require API 36 to compile.
+    compileSdk = 36
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -31,9 +41,17 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (signingPropertiesFile.exists()) {
+                signingConfig = signingConfigs.create("release") {
+                    keyAlias = signingProperties["keyAlias"] as String?
+                    keyPassword = signingProperties["keyPassword"] as String?
+                    storeFile = (signingProperties["storeFile"] as String?)?.let(::file)
+                    storePassword = signingProperties["storePassword"] as String?
+                }
+            } else {
+                // Never silently sign production artifacts with the debug key.
+                signingConfig = null
+            }
         }
     }
 }

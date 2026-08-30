@@ -19,6 +19,8 @@ class OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: const Color(0xFFF0F5F1), // surfaceContainerLowest
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -51,11 +53,14 @@ class OrderCard extends StatelessWidget {
               style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 14),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 7,
-              color: const Color(0xff1f7a4d),
-              backgroundColor: const Color(0xffe0e0e0),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                color: const Color(0xff1f7a4d),
+                backgroundColor: const Color(0xffe0e0e0),
+              ),
             ),
           ],
         ),
