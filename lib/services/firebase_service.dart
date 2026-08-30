@@ -16,6 +16,22 @@ class FirestoreService {
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  Future<void> registerDeviceToken({
+    required String token,
+    required String platform,
+  }) async {
+    await _functions.httpsCallable('registerDeviceToken').call({
+      'token': token,
+      'platform': platform,
+    });
+  }
+
+  Future<void> unregisterDeviceToken(String token) async {
+    await _functions
+        .httpsCallable('unregisterDeviceToken')
+        .call({'token': token});
+  }
+
   // ── Users ─────────────────────────────────────────────────
   Stream<List<Map<String, dynamic>>> usersStream({int limit = 100}) {
     return _db.collection('users').limit(limit).snapshots().map((snap) =>
