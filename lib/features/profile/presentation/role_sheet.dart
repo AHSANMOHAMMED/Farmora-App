@@ -15,19 +15,19 @@ class RoleSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Switch preview role',
+            'Account role',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          ...Role.values.map(
-            (r) => ListTile(
-              leading: Icon(r.icon, color: const Color(0xff1f7a4d)),
-              title: Text(r.label),
-              onTap: () {
-                context.read<FarmoraState>().setRole(r);
-                Navigator.pop(context);
-              },
-            ),
+          Builder(
+            builder: (context) {
+              final role = context.watch<FarmoraState>().role;
+              return ListTile(
+                leading: Icon(role.icon, color: const Color(0xff1f7a4d)),
+                title: Text(role.label),
+                subtitle: const Text('This role is fixed to your account.'),
+              );
+            },
           ),
         ],
       ),

@@ -63,13 +63,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       description: 'I want to deliver products',
       icon: Icons.local_shipping_rounded,
     ),
-    // 4. Admin
-    _RoleOption(
-      role: Role.admin,
-      title: 'System Admin',
-      description: 'I want to manage the platform',
-      icon: Icons.admin_panel_settings_rounded,
-    ),
   ];
 
   @override
@@ -298,7 +291,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary : AppColors.primaryLight,
+                    color:
+                        isSelected ? AppColors.primary : AppColors.primaryLight,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
