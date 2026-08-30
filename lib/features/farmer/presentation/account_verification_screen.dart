@@ -21,19 +21,18 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   Future<void> _pickDocument(VerificationDoc doc) async {
     if (_uploading) return;
-    final result = await FilePicker.platform.pickFiles(
-        withData: true,
+    final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf']);
-    final file = result?.files.single;
-    if (file?.bytes == null) return;
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
     setState(() => _uploading = true);
     try {
-      final contentType = file!.extension == 'pdf'
+      final contentType = file.extension == 'pdf'
           ? 'application/pdf'
           : 'image/${file.extension == 'jpg' ? 'jpeg' : file.extension}';
       final path = await _service.uploadVerificationDocument(
-          bytes: file.bytes!, fileName: file.name, contentType: contentType);
+          bytes: bytes, fileName: file.name, contentType: contentType);
       await _service.submitVerification(
           documentType: doc.title, storagePath: path);
       if (mounted) {
