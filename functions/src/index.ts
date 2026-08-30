@@ -54,6 +54,28 @@ const config = (name: string): string => {
   return value;
 };
 
+const notifyUser = async (
+  userId: string,
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+): Promise<void> => {
+  const snapshot = await db.collection("users").doc(userId).collection("device_tokens")
+    .where("enabled", "==", true).get();
+  const tokens = snapshot.docs.map((doc) => String(doc.data().token)).filter(Boolean);
+  if (tokens.length === 0) return;
+  const result = await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data,
+  });
+  const removals = result.responses.map((response, index) =>
+    !response.success && response.error?.code === "messaging/registration-token-not-registered"
+      ? snapshot.docs[index].ref.delete()
+      : Promise.resolve());
+  await Promise.all(removals);
+};
+
 // ─── setUserRole ──────────────────────────────────────────────
 // Sets a custom claim on the user's auth token and creates/updates
 // the user document in Firestore.
@@ -98,6 +120,36 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
   return { success: true, role };
 });
 
+export const registerDeviceToken = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const token = typeof data.token === "string" ? data.token.trim() : "";
+  const platform = data.platform === "android" || data.platform === "ios" || data.platform === "web"
+    ? data.platform
+    : "";
+  if (token.length < 20 || token.length > 4096 || !platform) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid notification device token.");
+  }
+  const tokenId = createHash("sha256").update(token).digest("hex");
+  await db.collection("users").doc(uid).collection("device_tokens").doc(tokenId).set({
+    token,
+    platform,
+    enabled: true,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { success: true };
+});
+
+export const unregisterDeviceToken = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const token = typeof data.token === "string" ? data.token.trim() : "";
+  if (token.length < 20 || token.length > 4096) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid notification device token.");
+  }
+  const tokenId = createHash("sha256").update(token).digest("hex");
+  await db.collection("users").doc(uid).collection("device_tokens").doc(tokenId).delete();
+  return { success: true };
+});
+
 // ─── onOrderCreated ───────────────────────────────────────────
 // Triggered when a new order is created. Validates and calculates
 // server-side totals to prevent client-side manipulation.
@@ -140,6 +192,12 @@ export const onOrderCreated = functions.firestore
         read: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      await notifyUser(
+        farmerId,
+        "New order received",
+        `You have a new order worth LKR ${calculatedTotal}`,
+        { type: "new_order", orderId: context.params.orderId }
+      );
     }
   });
 
