@@ -1,212 +1,225 @@
 # Farmora
 
-Farmora is a Flutter agricultural marketplace connecting farmers, buyers, and transport providers. The app combines marketplace discovery, trusted order workflows, transport coordination, verification, and administrative oversight.
+> **Farmora** is a role-based agricultural marketplace for farmers, buyers, transport providers, and administrators.
 
-This repository is an MVP and production handoff. The main Flutter experience, Firebase data access, trusted Cloud Functions, security rules, tests, Android release configuration, and CI pipeline are present. Several integrations still require credentials, Firebase deployment permissions, or production hardening; those items are listed explicitly below.
+Farmora connects the complete produce journey:
 
-## Branch and Handoff Status
+`Farmer lists produce -> Buyer orders -> Transport provider delivers -> Buyer verifies and reviews`
 
-The active branch is `dev/swami`. At the current handoff, `origin/main` is an ancestor of this branch and `dev/swami` is 30 commits ahead; there is no pending main-to-`dev/swami` merge required. The graph view can still show the historical `origin/main` label beside older commits because Git labels commits by ancestry, not by the current tip alone.
+The application is built with Flutter and Firebase. The visual experience follows the Stitch **Agri-Modernism** design system, while authentication, authorization, inventory, orders, verification, notifications, and delivery transitions are enforced by Firebase services.
 
-## Product Promise
+## Demo At A Glance
 
-- Farmers can list harvest, process orders, coordinate delivery, and view earnings.
-- Buyers can discover produce, place orders, track delivery, review purchases, and raise disputes.
-- Transport providers can view eligible delivery work, accept jobs, and update delivery state.
-- Administrators can review users, verification, logistics, system settings, and marketplace activity.
-
-## Current Status
-
-| Area | Status | Current implementation |
+| Icon | Role | What the user can do |
 | --- | --- | --- |
-| Onboarding and authentication | Implemented baseline | Splash, onboarding, role selection, phone/password login and registration, real Firebase Phone OTP login, Google sign-in, sign-out, profile and language entry points. Firebase profiles are keyed by Auth UID. |
-| Role-based experience | Implemented | Farmer, buyer, transporter, and administrator dashboards and screens. |
-| Farmer marketplace | Implemented | Product creation, editing, deletion, availability, quantity, pricing, categories, orders, verification upload, and earnings UI. |
-| Buyer marketplace | Implemented | Product browsing, product details, cart, order placement, order history, tracking timeline, barcode scanning, reviews, and complaints. |
-| Transport workflow | Implemented | Available jobs, job details, acceptance, active delivery, delivery history, and valid delivery transitions. |
-| Firebase client data | Implemented baseline | Firebase Auth, Firestore, Storage, and callable Functions adapters in `lib/services/firebase_service.dart`; primary list reads are now role-scoped and bounded. |
-| Trusted backend | Implemented | Callable Functions validate product/order data, calculate totals, reserve inventory, transition orders and transport, issue/verify barcodes, accept reviews/disputes, and process verification decisions. |
-| Security rules | Implemented baseline | `firestore.rules` and `storage.rules` restrict private records, ownership, uploads, messages, orders, disputes, reviews, and admin operations. Rules still need emulator test coverage and a production rules review. |
-| Payments | Scaffolded | PayHere checkout and webhook endpoints exist. Merchant credentials, signature verification, payment state integration, and production testing remain. |
-| Messaging | Partial | Order-scoped ciphertext submission exists. Client key management, real Signal protocol integration, conversation UI, pagination, read state, attachments, and abuse controls remain. |
-| Notifications | Partial | Notification records can be created by backend workflows. FCM delivery, device tokens, preferences, and notification UI remain. |
-| Maps and live tracking | Placeholder | Tracking and active-delivery screens contain map placeholders. Google Maps, location consent, live location, and provider matching remain. |
-| Localization | Partial | Language selection UI exists, but all copy is not yet externalized into English, Sinhala, and Tamil resource files. |
-| Release automation | Implemented baseline | GitHub Actions runs dependency installation, analysis, tests, Functions build, CI signing, and release APK build. |
+| 🌾 | Farmer | Create produce listings, manage stock, accept orders, upload verification documents, and view earnings. |
+| 🛒 | Buyer | Browse produce, search by category, add items to a cart, place orders, track delivery, scan barcodes, review purchases, and open disputes. |
+| 🚚 | Transport provider | View available jobs, accept eligible deliveries, update pickup and transit status, and review delivery history. |
+| 🛡️ | Administrator | Review users and verification documents, inspect logistics, manage platform settings, and seed development data. |
 
-## Traffic and Smooth-Operation Baseline
+### Demo Flow
 
-The app is designed to avoid the most dangerous early traffic pattern: every user receiving every collection in real time. Current protections include:
+1. Launch the app and complete the splash/onboarding screens.
+2. Select **Farmer**, **Buyer**, or **Transport provider**.
+3. Register with a phone number and password, or use the configured Google/Phone OTP provider.
+4. Sign in again with the same credentials.
+5. The app loads the user profile from Firestore and opens only that user’s role dashboard.
+6. Complete the role workflow shown above.
 
-- Product, order, and transport streams use bounded queries with a default limit of 50 records.
-- Farmer products are filtered by `farmerId`; farmer orders by `farmerId`; buyer orders by `buyerId`; transporter orders by `transporterId`.
-- Transport providers receive only requested jobs and jobs already assigned to them; administrators can inspect the broader job list.
-- User records are subscribed only by administrators and are bounded to 100 records.
-- Order creation and inventory reservation use a Firestore transaction and server-side totals.
-- Firestore composite indexes are defined for scoped product, order, and transport queries.
-- Storage uploads enforce ownership, content type, and size limits.
-- CI validates dependency resolution, static analysis, widget tests, Functions compilation, and release APK compilation.
+**Important:** A signed-in user cannot switch to another role. The role belongs to the Firebase user profile and is used for both navigation and backend authorization. Administrator accounts must be provisioned by an authorized operator; they are not available through public registration.
 
-This is a safe MVP baseline, not a traffic capacity guarantee. Firestore listeners, Cloud Functions concurrency, payment webhooks, image delivery, and Firebase quotas still need load testing with realistic traffic.
+## Feature Map
 
-### Required scale work
+### Authentication and accounts
 
-- Replace fixed limits with cursor pagination and explicit `startAfterDocument` queries.
-- Use a public catalogue query model with category/location/status filters and search indexing instead of downloading a broad catalogue.
-- Remove unnecessary real-time listeners from screens that only need one-time reads; subscribe only while a screen is visible.
-- Split admin dashboards into aggregate counters and paginated tables rather than loading whole collections.
-- Add listener lifecycle tests, retry/backoff, offline cache policy, and cancellation on logout/navigation.
-- Add idempotency keys to order creation and payment attempts; the current cart loop can issue multiple callable orders and does not yet provide an atomic multi-item checkout.
-- Add Cloud Functions load tests, Firestore query-cost monitoring, quota alerts, cold-start measurement, and performance budgets.
-- Compress/resize product media, use CDN-friendly URLs, lazy-load images, and configure image cache limits.
-- Add FCM fan-out controls and notification deduplication before large-scale status events.
-- Configure App Check, rate limits, managed secrets, backups, structured logging, and crash/performance monitoring.
+- Firebase email/password authentication using a normalized phone-based account identifier.
+- Firebase Phone OTP login and registration.
+- Google sign-in where the platform provider is enabled.
+- UID-based Firestore profiles.
+- Role-specific routing after the profile is loaded.
+- Profile photo upload and language preference persistence.
+- Sign-out clears active listeners and push-token subscriptions.
 
-## End-to-End Workflow
+### Farmer experience 🌾
 
-### 1. Registration and onboarding
+- Stitch-designed farmer dashboard.
+- Product creation with name, category, description, quantity, unit, price, availability, location, and media.
+- Server-side validation for verified farmers.
+- Firestore-backed stock pause/resume and product deletion.
+- Incoming order management and valid order transitions.
+- Verification document upload to Firebase Storage.
+- Earnings and completed-order views.
 
-1. The user opens Farmora and completes the splash and onboarding screens.
-2. The user selects `Farmer`, `Buyer`, or `Transport Provider`.
-3. The user registers or signs in with email and password.
-4. The app routes the user to the role-specific dashboard.
-5. A provider or farmer can submit identity documents from Account Verification.
-6. An administrator reviews verification before restricted marketplace actions are treated as production-ready.
+### Buyer experience 🛒
 
-### 2. Farmer sells produce
+- Public produce catalogue with category filtering and search.
+- Product details and cart.
+- Server-side order creation and inventory reservation.
+- Order detail and delivery timeline.
+- Barcode verification after delivery.
+- Review submission for delivered orders.
+- Order-scoped dispute creation.
 
-1. A verified farmer creates a product with name, category, description, quantity, unit, price, availability, and location.
-2. The product is visible in the buyer catalogue.
-3. The farmer edits, pauses, resumes, or deletes only their own listing.
-4. The farmer receives incoming orders and views item, buyer, amount, and status information.
-5. The farmer confirms or rejects the order and coordinates transport.
-6. Completed orders contribute to the farmer earnings view.
+### Transport experience 🚚
 
-### 3. Buyer purchases produce
+- Available delivery jobs.
+- Job detail view.
+- Trusted acceptance and delivery state transitions.
+- Active delivery and history screens.
+- Buyer/farmer order status synchronization.
 
-1. The buyer browses products and opens product details.
-2. The buyer selects quantity and adds items to the cart.
-3. Checkout calculates subtotal, delivery fee, and total through a trusted backend function.
-4. The buyer creates an order through `createOrder`; inventory reservation and total validation are server-side.
-5. The buyer follows order and delivery status from the order detail and tracking screens.
-6. After delivery, the buyer can scan the delivery barcode, submit a review, or open a complaint/dispute.
+### Administrator experience 🛡️
 
-### 4. Transport provider delivers
+- User management view.
+- Verification review workflow.
+- Logistics overview.
+- Backend-controlled maintenance mode.
+- Backend-controlled platform fee and session timeout settings.
+- Development database seeding.
 
-1. A provider views available delivery jobs.
-2. The provider opens a job to inspect pickup, drop-off, cargo, route, and offered fee details.
-3. The provider accepts an eligible job.
-4. Delivery moves through the trusted state machine:
+### Notifications 🔔
 
-```text
-Requested -> Accepted -> PickedUp -> InTransit -> Delivered
-                         |
-                         +----------------------> Cancelled
+- Firestore notification records.
+- Notification list with read/unread state.
+- FCM device-token registration and refresh handling.
+- Server-side push notification for new orders.
+- Invalid device tokens are removed automatically.
+
+### PayHere 💳
+
+PayHere is intentionally **skipped for now** because merchant credentials are not available. Existing checkout/webhook code is scaffolded but must not be treated as production payment functionality until credentials, webhook validation, idempotency, refunds, reconciliation, and legal escrow decisions are supplied.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Flutter App] --> B[Firebase Auth]
+    A --> C[FarmoraState]
+    C --> D[FirestoreService]
+    D --> E[Cloud Functions]
+    D --> F[(Firestore)]
+    D --> G[(Firebase Storage)]
+    E --> F
+    E --> H[Firebase Cloud Messaging]
+    H --> A
+    E --> I[Trusted state validation]
+
+    J[Farmer] --> A
+    K[Buyer] --> A
+    L[Transport provider] --> A
+    M[Administrator] --> A
 ```
 
-5. Each transition is validated by Cloud Functions and records actor/timestamp data.
-6. The buyer and farmer can observe the order timeline.
-7. Delivery completion enables review and future escrow release workflows.
+### Client layers
 
-### 5. Administrator operations
+| Layer | Location | Responsibility |
+| --- | --- | --- |
+| App shell | `lib/app.dart`, `lib/main.dart` | Firebase initialization, theme, splash, and auth gate. |
+| Role state | `lib/providers/farmora_state.dart` | Profile loading, role routing, scoped listeners, cart, and UI state. |
+| Auth | `lib/core/services/firebase_auth_service.dart` | Password, Google, Phone OTP, profile creation, and profile loading. |
+| Firebase adapter | `lib/services/firebase_service.dart` | Firestore streams, Storage uploads, callable Functions, notifications, and settings. |
+| Feature screens | `lib/features/` | Stitch-aligned farmer, buyer, transporter, admin, profile, onboarding, and notification flows. |
+| Shared UI | `lib/core/` | Colors, theme, logo, cards, status chips, and reusable widgets. |
 
-1. An administrator opens the admin dashboard.
-2. User management supports oversight of accounts and roles.
-3. Verification review supports approve/reject decisions.
-4. Logistics management shows active delivery and order activity.
-5. System settings provide the administrative configuration surface.
-6. Production administration must additionally cover moderation, reports, disputes, audit logs, payments, support, and notification operations.
+### Backend layers
 
-## Trusted Backend Workflows
+| Layer | Location | Responsibility |
+| --- | --- | --- |
+| Callable Functions | `functions/src/index.ts` | Validate identity, roles, money, stock, state transitions, reviews, disputes, settings, and device tokens. |
+| Firestore rules | `firestore.rules` | Enforce private reads, ownership, participant access, immutable trusted writes, and admin access. |
+| Storage rules | `storage.rules` | Restrict uploads by owner, path, size, and content type. |
+| Indexes | `firestore.indexes.json` | Support scoped product, order, transport, and notification queries. |
+| Hosting | `firebase.json`, `web/` | Flutter Web hosting, caching, robots, sitemap, and SEO metadata. |
 
-Cloud Functions are in `functions/src/index.ts`. The client is not a security boundary; order money, inventory, permissions, and state transitions must be enforced here.
+## Role and Security Model
 
-| Function | Responsibility |
+1. Firebase Authentication identifies the user.
+2. The app loads `users/{authUid}` before displaying a dashboard.
+3. The profile’s `role` selects exactly one role navigation tree.
+4. Local role changes are ignored after authentication.
+5. Cloud Functions re-check authentication, role, suspension, ownership, and workflow state.
+6. Firestore rules deny direct writes for orders, messages, reviews, disputes, barcodes, audit logs, and trusted admin workflows.
+7. Money uses integer minor units such as `priceMinor` and `totalMinor`.
+8. Order creation reserves inventory inside a Firestore transaction.
+
+### Supported role states
+
+```text
+Public registration: farmer | buyer | transporter
+Admin: operator-provisioned only
+```
+
+### Order and delivery states
+
+```text
+Order: pending -> confirmed -> assigned -> pickedUp -> inTransit -> delivered
+                         \-> rejected
+                         \-> cancelled
+
+Transport: requested -> accepted -> pickedUp -> inTransit -> delivered
+                         \-> cancelled
+```
+
+## Backend Functions
+
+| Function | Purpose |
 | --- | --- |
-| `setUserRole` | Set a user role through a trusted callable workflow. |
-| `calculateOrderTotal` | Validate items and calculate server-side totals. |
-| `createOrder` | Validate the buyer/order, reserve inventory, and create an order. |
-| `createProduct` | Validate and create a farmer product. |
-| `transitionOrder` | Apply valid order state changes. |
-| `transitionTransport` | Apply valid transport state changes. |
-| `submitVerification` | Submit identity verification metadata. |
-| `reviewVerification` | Allow an administrator to approve or reject verification. |
-| `sendMessage` | Store order-scoped ciphertext without persisting plaintext. |
-| `createPayHereCheckout` | Create signed PayHere checkout data. |
-| `payHereWebhook` | Receive payment provider notifications. |
-| `releaseEscrow` | Release eligible funds after delivery/payment conditions. |
-| `issueBarcode` / `verifyBarcode` | Issue and validate delivery completion codes. |
-| `submitReview` | Accept a review only for an eligible completed order. |
-| `openDispute` | Open a buyer/order dispute. |
-
-## Firebase Data and Security
-
-Configured Firebase project alias: `farmora-1da5a` in `.firebaserc`.
-
-Main Firestore collections include:
-
-- `users`
-- `products`
-- `orders`
-- `transport_jobs`
-- `transportJobs` for legacy/alternate job records
-- `verification_docs`
-- `reviews`
-- `disputes`
-- `barcodes`
-- `messages`
-- `conversations`
-- `market_prices`
-- `notifications`
-- `audit_logs`
-
-Security files:
-
-- `firestore.rules`: private user/order data, participant access, farmer ownership, admin-only records, immutable trusted workflows, and message restrictions.
-- `storage.rules`: user, product, and verification uploads with ownership, content-type, and size limits.
-- `firebase.json`: Functions source, Firestore rules/indexes, and Firebase Hosting configuration.
-
-Before production data is introduced, test both allowed and denied access for every role using the Firebase Emulator Suite. Firebase deployment currently requires the operator account to have the required project permissions, including `serviceusage.services.use`.
+| `setUserRole` | Provision a supported role and profile fields. |
+| `createProduct` | Validate a verified farmer listing. |
+| `createOrder` | Validate a buyer order, calculate totals, and reserve stock atomically. |
+| `transitionOrder` | Apply authorized order transitions. |
+| `transitionTransport` | Apply authorized delivery transitions. |
+| `submitVerification` | Create a verification document submission. |
+| `reviewVerification` | Approve or reject verification as an administrator. |
+| `sendMessage` | Store order-scoped ciphertext only. |
+| `registerDeviceToken` / `unregisterDeviceToken` | Manage FCM device tokens securely. |
+| `getPlatformSettings` / `updatePlatformSettings` | Read and update admin settings. |
+| `issueBarcode` / `verifyBarcode` | Issue and verify delivery authenticity codes. |
+| `submitReview` | Accept a review only for an eligible delivered order. |
+| `openDispute` | Open an authorized order dispute. |
+| `releaseEscrow` | Release an eligible payment record after delivery review. |
+| `createPayHereCheckout` / `payHereWebhook` | PayHere scaffold, disabled until credentials are available. |
 
 ## Project Structure
 
 ```text
 lib/
-  app.dart                         Application shell and routing
-  main.dart                        Firebase initialization and demo fallback
-  models/                          Product, order, role, verification, and UI models
-  providers/                       Farmora state and local fallback state
-  services/firebase_service.dart   Firestore, Storage, and Functions adapter
-  core/                            Theme, colors, widgets, auth services
-  features/auth/                   Welcome, role selection, login, registration
+  app.dart                         App shell and theme
+  main.dart                        Firebase initialization
+  core/                            Auth, theme, colors, shared widgets
+  features/auth/                   Welcome, role selection, login, registration, OTP
   features/farmer/                 Products, orders, verification, earnings
-  features/buyer/                  Catalogue, cart, orders, barcode, reviews
+  features/buyer/                  Catalogue, cart, orders, tracking, barcode
   features/transporter/            Jobs, active delivery, history
   features/admin/                  Users, logistics, settings, dashboard
-  features/profile/                Profile, language, role controls
+  features/notifications/          Firestore-backed notification UI
+  features/profile/                Profile, language, fixed account role
+  models/                          Product, order, role, transport, verification
+  providers/                       FarmoraState and scoped listeners
+  services/firebase_service.dart   Firestore, Storage, Functions, FCM adapter
 
-functions/src/index.ts             Trusted Firebase Cloud Functions
-firestore.rules                    Firestore authorization rules
-storage.rules                      Firebase Storage authorization rules
-firestore.indexes.json             Firestore indexes
-firebase.json                      Firebase project deployment configuration
-android/                            Android Gradle and release signing setup
+functions/src/index.ts             Trusted Cloud Functions
+firestore.rules                    Firestore authorization
+storage.rules                      Storage authorization
+firestore.indexes.json             Query indexes
+firebase.json                      Firebase deployment configuration
+stitch_export/                     Stitch HTML references, assets, and design system
+android/                            Android build and signing configuration
+web/                                Web metadata, sitemap, and robots policy
 test/                               Flutter widget and UI tests
-.github/workflows/flutter-ci.yml   CI and release APK validation
-FARMORA_FULL_BUILD_SPEC.md         Original production specification/backlog
 ```
 
 ## Requirements
 
 - Flutter stable `3.35.0` or compatible.
-- Dart `3.9.x` or newer within the project SDK constraint.
+- Dart `3.9.x` or compatible with the project SDK constraint.
 - Android SDK API 36.
-- Java 17 for CI and Android builds. Java 21 also works locally with the current Gradle setup.
-- Node.js 18 for Cloud Functions. Newer Node versions may show an engine warning.
+- Java 17 for CI and Android builds.
+- Node.js 18 for Cloud Functions.
 - Firebase CLI for deployment and emulator work.
-- A configured Firebase project for non-demo operation.
+- A configured Firebase project for live mode.
 
-## Local Development
+## Run Locally
 
 From the repository root:
 
@@ -215,7 +228,7 @@ flutter pub get
 flutter run
 ```
 
-Recommended validation commands:
+Run the standard checks:
 
 ```bash
 dart format lib test
@@ -230,180 +243,120 @@ Build Cloud Functions:
 cd functions
 npm ci
 npm run build
+cd ..
 ```
 
-Run the Functions emulator:
-
-```bash
-cd functions
-npm run serve
-```
-
-Build a local Android release APK:
+Build an Android release locally:
 
 ```bash
 cd android
 ./gradlew assembleRelease
 ```
 
-The app can fall back to local/demo state when Firebase is not available. Demo fallback is useful for UI demonstrations only; it is not a production data or security mode.
+If Firebase is unavailable, the app can show local/demo state. Demo state is for UI demonstration only and is not a production data or security mode.
 
-## Firebase Deployment
+## Firebase Setup
 
-Authenticate and select the configured project:
+The configured project alias is `farmora-1da5` in `.firebaserc`.
 
 ```bash
 firebase login
-firebase use farmora-1da5a
+firebase use farmora-1da5
 ```
 
-Deploy Functions:
+Enable these Firebase services before live testing:
+
+1. Authentication: Email/Password, Phone, and Google as required.
+2. Firestore Database.
+3. Cloud Storage.
+4. Cloud Functions.
+5. Cloud Messaging.
+
+Deploy Functions, rules, and indexes:
 
 ```bash
 cd functions
 npm ci
 npm run build
 cd ..
-firebase deploy --only functions
+firebase deploy --only functions,firestore
 ```
 
-Deploy Firestore rules and indexes:
-
-```bash
-firebase deploy --only firestore
-```
-
-Deploy Hosting after generating the web build:
+Deploy Flutter Web hosting:
 
 ```bash
 flutter build web
 firebase deploy --only hosting
 ```
 
-Do not deploy to production until provider credentials, rules tests, payment webhooks, App Check, backups, monitoring, and privacy/legal documents are ready.
+### FCM platform setup
 
-## Web SEO
+- Android: register the app, add SHA-1/SHA-256 fingerprints, and enable notification permission on Android 13+.
+- iOS: upload an APNs key/certificate and enable Push Notifications capability.
+- Web: configure a Firebase Web Push VAPID key and pass it to the messaging web setup.
 
-SEO metadata is defined in `web/index.html` and is included in Firebase Hosting builds:
+### Firebase IAM blocker
 
-- English document language, title, description, keywords, author, viewport, theme color, and crawler directives.
-- Sinhala (`si`) and Tamil (`ta`) descriptions, keyword sets, Open Graph locale alternates, and crawler-readable fallback copy.
-- `hreflang` alternates for English, Sinhala, Tamil, and the default locale.
-- Canonical URL for the current Firebase Hosting address.
-- Open Graph and Twitter/X sharing metadata.
-- `WebApplication` JSON-LD structured data for Farmora, supported platforms, languages, and marketplace description.
-- `web/robots.txt` allowing public crawling and linking the sitemap.
-- `web/sitemap.xml` containing the public application entry point.
-- Firebase Hosting content types and short cache policies for crawler files.
+Deployment requires the operator account to have `serviceusage.services.use` and the required Firebase project roles. If deployment fails with a permission error, ask the project owner to grant the required IAM role rather than weakening rules or committing credentials.
 
-Before launch, replace `farmora-1da5a.web.app` in `web/index.html`, `web/robots.txt`, and `web/sitemap.xml` with the final verified custom domain. Then:
+## Tests And CI
 
-1. Deploy with `flutter build web` and `firebase deploy --only hosting`.
-2. Verify `/`, `/robots.txt`, and `/sitemap.xml` return HTTP 200 responses.
-3. Register the final domain in Google Search Console and Bing Webmaster Tools.
-4. Submit the sitemap and inspect the canonical URL and structured data.
-5. Add a real social preview image sized for sharing instead of the current favicon fallback.
+GitHub Actions runs on `main`, `suka`, and `dev/swami`, and on pull requests targeting `main`.
 
-The mobile Android/iOS application itself is not indexed like a normal website. App Store and Play Store listing metadata, screenshots, localized keywords, privacy links, and deep links are separate release tasks. The current Flutter Web shell advertises English, Sinhala, and Tamil through metadata and `?lang=` alternate hints, but these URLs are not yet separate server-rendered documents. For strong multilingual indexing, create distinct localized public pages such as `/en/`, `/si/`, and `/ta/` with translated visible content, self-canonical URLs, and matching sitemap entries. Flutter Web is a client-rendered SPA, so indexable product/category pages require prerendering or a server-rendered public marketing/catalogue surface.
+The workflow validates:
 
-## Android Signing
+1. Flutter dependency installation.
+2. Static analysis.
+3. Flutter tests.
+4. Cloud Functions TypeScript compilation.
+5. Temporary CI Android signing.
+6. Release APK compilation.
 
-Production signing uses a local, ignored `android/key.properties` file. Start from the template:
+Latest verified main-branch CI: [33318125543](https://github.com/AHSANMOHAMMED/Farmora-App/actions/runs/33318125543).
 
-```bash
-cp android/key.properties.example android/key.properties
-```
+## Production Checklist
 
-Replace the placeholders with the release keystore values. Never commit:
+### Can be completed without PayHere
 
-- `android/key.properties`
-- `android/*.jks`
-- Firebase service-account JSON files
-- PayHere credentials or webhook secrets
-- API keys or private encryption keys
+- Configure App Check, managed secrets, structured logs, alerts, backups, crash reporting, and performance monitoring.
+- Add Firebase Emulator tests for every allow/deny rule path.
+- Add cursor pagination and listener lifecycle tests.
+- Replace map placeholders with Google Maps, permissions, consent, route display, and live location.
+- Complete English, Sinhala, and Tamil string externalization and QA.
+- Complete client-side Signal-compatible key generation, storage, rotation, verification, and message exchange.
+- Add offline retry, loading, empty, and error states to every network screen.
+- Add KYC, consent, privacy, terms, account deletion, and data export flows.
+- Add transport matching, capacity rules, provider earnings, moderation, reporting, and audit UI.
+- Validate all role paths on physical Android and iOS devices.
 
-The CI workflow creates a short-lived CI-only key so that release APK compilation can be validated without exposing the production keystore.
+### PayHere intentionally deferred
 
-## CI
+- Merchant credentials.
+- Production webhook secret and provider verification.
+- Idempotent payment attempts.
+- Refund and reconciliation workflows.
+- Escrow/legal approval.
 
-`.github/workflows/flutter-ci.yml` runs on pushes to `main`, `suka`, and `dev/swami`, and pull requests targeting `main`.
+### Never commit
 
-The workflow performs:
+- `android/key.properties`.
+- Release keystores.
+- Firebase service-account JSON files.
+- PayHere credentials or webhook secrets.
+- Private encryption keys.
 
-1. Checkout.
-2. Java 17 setup.
-3. Flutter 3.35.0 setup.
-4. `flutter pub get`.
-5. `flutter analyze`.
-6. `flutter test`.
-7. `npm ci` and `npm run build` in `functions/`.
-8. Temporary CI signing key creation.
-9. `flutter build apk --release`.
+## Design References
 
-Latest verified result at the time of this handoff: CI run [33310263984](https://github.com/AHSANMOHAMMED/Farmora-App/actions/runs/33310263984) passed all steps after the `origin/suka` merge.
+The Stitch source material is preserved in `stitch_export/`:
 
-## What Remains Before Production
+- `stitch_export/design_system/Agri-Modernism.md` contains the visual language.
+- `stitch_export/html/` contains the original screen references.
+- `stitch_export/images/` contains the design assets used by the Flutter UI.
 
-### Required integrations
-
-- Configure separate development, staging, and production Firebase projects.
-- Enable and test Firebase Phone Authentication, including Android SHA fingerprints, reCAPTCHA/web configuration, SMS quotas, test phone numbers, resend limits, and localized OTP errors.
-- Resolve Firebase deployment IAM permissions and deploy rules/functions through a controlled account.
-- Add PayHere merchant credentials, webhook signature verification, idempotency, refund handling, and payment reconciliation.
-- Configure Google Maps keys, maps SDKs, location permissions, route display, and opt-in live tracking.
-- Configure FCM device tokens, notification topics, notification preferences, quiet hours, and delivery events.
-- Replace placeholder map panels with real map/tracking components.
-- Load test catalogue reads, listeners, callable Functions, uploads, notifications, and payment webhooks against expected peak traffic.
-
-### Security and trust
-
-- Implement real client-side Signal-compatible key generation, key storage, rotation, verification, and encrypted message exchange. The current backend accepts ciphertext but does not itself provide complete E2EE.
-- Enable Firebase App Check, rate limits, managed secrets, structured logs, alerts, backups, and crash reporting.
-- Add rules tests for every allow/deny path in `firestore.rules` and `storage.rules`.
-- Add audit log writes and administrator moderation/reporting workflows.
-- Complete KYC policy, consent, privacy, terms, account deletion, and data export flows.
-- Confirm escrow, refunds, disputes, and legal responsibilities with the payment/operations owner.
-
-### Product completeness
-
-- Add production search, location filtering, pagination, and catalogue indexing.
-- Add cursor pagination and screen-scoped listener lifecycle management; current streams are bounded but not paginated.
-- Complete provider eligibility and regional/capacity job matching.
-- Add transport earnings and full farmer net-earnings calculations.
-- Complete order-scoped messaging UI, attachments, read state, offline retry, reporting, and abuse controls.
-- Externalize all user-facing strings and complete English, Sinhala, and Tamil localization QA.
-- Add loading, empty, retry, offline, and error states for every network screen.
-- Replace sample/placeholder data and validate all role paths on physical Android and iOS devices.
-
-### Testing and release
-
-- Add unit tests for validators, money calculations, permissions, and order/transport state machines.
-- Add Firebase Emulator integration tests for authentication, product creation, checkout, inventory, delivery, reviews, disputes, and rules.
-- Add Android and iOS integration tests, accessibility checks, and performance tests.
-- Add Firebase Emulator and rules tests for role-scoped queries, including requested/assigned transport jobs.
-- Add performance tests for startup, scrolling, image loading, listener counts, checkout latency, and offline recovery.
-- Run dependency/security audits and resolve or review reported vulnerabilities.
-- Configure production application IDs, bundle identifiers, release keystore handling, store metadata, staged rollout, and monitoring.
-
-## Definition of Done
-
-Farmora is ready for an MVP production release when a real user can:
-
-1. Select a role and complete onboarding.
-2. Register securely and pass required verification.
-3. Create or discover a product.
-4. Place and pay for an order without duplicate or client-controlled totals.
-5. Arrange or accept transport.
-6. Observe valid order and delivery transitions.
-7. Receive notifications and message authorized participants securely.
-8. Complete delivery and barcode verification.
-9. Submit a review or open a dispute.
-10. Change language, manage profile, and sign out.
-
-Each step must be protected by backend authorization and covered by automated tests.
+The Flutter implementation is the source of truth for behavior. Stitch references guide layout, typography, color, imagery, and interaction intent; Firebase Functions and security rules are the source of truth for authorization and business logic.
 
 ## Academic Context
 
 Farmora is an educational project for **SE3050 - User Experience Engineering at SLIIT**, Group ID **Y3S2-NU-WE-02**.
 
-Use `FARMORA_FULL_BUILD_SPEC.md` for the original product specification and longer-term architecture requirements. This README is the current implementation and handoff status.
+Use `FARMORA_FULL_BUILD_SPEC.md` for the original long-term product specification. This README describes the current merged `main` branch and its remaining production work.
