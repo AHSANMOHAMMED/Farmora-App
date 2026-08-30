@@ -22,6 +22,34 @@ class FirestoreService {
         snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
   }
 
+  Stream<List<Map<String, dynamic>>> notificationsStream(String userId,
+      {int limit = 50}) {
+    return _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await _db
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'read': true});
+  }
+
+  Future<void> updateUserLanguage(String languageCode) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    await _db.collection('users').doc(uid).update({
+      'languageCode': languageCode,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // ── Products ──────────────────────────────────────────────
 
   /// Add a new product to Firestore
