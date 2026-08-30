@@ -148,6 +148,27 @@ class FirestoreService {
     return path;
   }
 
+  Future<String> uploadProfilePhoto({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (bytes.length > 5 * 1024 * 1024) {
+      throw StateError('Profile photo must be smaller than 5 MB.');
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final ref = _storage.ref('users/$uid/profile_$safeName');
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    final url = await ref.getDownloadURL();
+    await _db.collection('users').doc(uid).update({
+      'photoUrl': url,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return url;
+  }
+
   Future<String> sendEncryptedMessage({
     required String orderId,
     required String recipientId,
@@ -300,6 +321,28 @@ class FirestoreService {
   }
 
   // ── Verification Documents ────────────────────────────────
+
+  Stream<List<TransportJob>> jobsByCreatorStream(String uid) {
+    return _db
+        .collection('transport_jobs')
+        .where('createdBy', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Stream<List<TransportJob>> jobsByTransporterStream(String uid) {
+    return _db
+        .collection('transport_jobs')
+        .where('transporterId', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
 
   /// Add a verification document
   Future<void> addVerificationDoc(VerificationDoc d, String farmerId) async {
