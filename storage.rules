@@ -2,9 +2,10 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Users can upload profile photos to their own folder
+    function admin() { return request.auth != null && request.auth.token.admin == true; }
+
     match /users/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow read: if request.auth != null && (request.auth.uid == userId || admin());
       allow write: if request.auth != null && request.auth.uid == userId
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
@@ -12,17 +13,19 @@ service firebase.storage {
 
     // Farmers can upload product images
     match /products/{productId}/{allPaths=**} {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/products/$(productId)).data.farmerId == request.auth.uid
         && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('(image|video)/.*');
     }
 
     // Transport providers can upload verification documents
     match /verification/{userId}/{allPaths=**} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || admin());
       allow write: if request.auth != null && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024;
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
     }
   }
 }
