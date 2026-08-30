@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
@@ -17,6 +18,9 @@ class FarmoraState extends ChangeNotifier {
   late final _firestoreService = kajana_service.FirestoreService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
+  String displayName = '';
+  String? profilePhotoUrl;
+  String? userEmail;
 
   // Stream subscriptions for real-time Firestore sync
   StreamSubscription<List<Product>>? _productsSub;
@@ -196,11 +200,14 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  void signOut() {
+  Future<void> signOut() async {
+    disposeFirestoreSubscriptions();
+    await _authService.signOut();
     signedIn = false;
     _currentUserId = '';
-    disposeFirestoreSubscriptions();
-    _authService.signOut();
+    displayName = '';
+    profilePhotoUrl = null;
+    userEmail = null;
     notifyListeners();
   }
 
@@ -271,66 +278,98 @@ class FarmoraState extends ChangeNotifier {
 
   /// Initialize Firestore streams after user signs in.
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
-  void initFromFirestore(String uid) {
+  Future<void> initFromFirestore(String uid) async {
     _currentUserId = uid;
+    disposeFirestoreSubscriptions();
 
-    // Load user profile and set role
-    _loadUserProfile(uid).then((profile) {
-      if (profile != null) {
-        final roleStr = profile['role'] as String?;
-        if (roleStr != null) {
-          try {
-            role = Role.values.firstWhere((r) => r.name == roleStr);
-          } catch (_) {}
-        }
-        final lang = profile['language'] as String?;
-        if (lang != null) language = lang;
-        notifyListeners();
+    try {
+      final profile = await _loadUserProfile(uid);
+      if (profile == null) return;
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      displayName = (profile['displayName'] ??
+              profile['name'] ??
+              firebaseUser?.displayName ??
+              'Farmora User')
+          .toString();
+      profilePhotoUrl =
+          (profile['photoUrl'] as String?) ?? firebaseUser?.photoURL;
+      userEmail = (profile['email'] as String?) ?? firebaseUser?.email;
+      final roleStr = profile['role'] as String?;
+      if (roleStr != null) {
+        role = Role.values.firstWhere((value) => value.name == roleStr);
       }
-    });
-
-    // Subscribe to products stream
-    _productsSub?.cancel();
-    _productsSub =
-        _firestoreService.productsStream().listen((firestoreProducts) {
-      _products.clear();
-      _products.addAll(firestoreProducts);
+      final lang = profile['language'] as String?;
+      if (lang != null) language = lang;
       notifyListeners();
-    });
+    } catch (error) {
+      debugPrint('Could not load user profile: $error');
+      return;
+    }
 
-    // Subscribe to users stream
-    _usersSub?.cancel();
-    _usersSub = _firestoreService.usersStream().listen((firestoreUsers) {
-      _users.clear();
-      _users.addAll(firestoreUsers);
-      notifyListeners();
-    });
+    _productsSub = _firestoreService.productsStream().listen(
+      (items) {
+        _products
+          ..clear()
+          ..addAll(items);
+        notifyListeners();
+      },
+      onError: (Object error) => debugPrint('Products stream: $error'),
+    );
 
-    // Subscribe to orders stream
-    _ordersSub?.cancel();
-    _ordersSub = _firestoreService.ordersStream().listen((firestoreOrders) {
-      _orders.clear();
-      _orders.addAll(firestoreOrders);
-      _recalculateStats();
-      notifyListeners();
-    });
+    Stream<List<FarmoraOrder>>? orders;
+    Stream<List<TransportJob>>? jobs;
+    switch (role) {
+      case Role.farmer:
+        orders = _firestoreService.ordersByFarmerStream(uid);
+        jobs = _firestoreService.jobsByCreatorStream(uid);
+        _verificationSub = _firestoreService.verificationDocsStream(uid).listen(
+          (items) {
+            _verificationDocs
+              ..clear()
+              ..addAll(items);
+            notifyListeners();
+          },
+          onError: (Object error) => debugPrint('Verification stream: $error'),
+        );
+      case Role.buyer:
+        orders = _firestoreService.ordersByBuyerStream(uid);
+        jobs = _firestoreService.jobsByCreatorStream(uid);
+      case Role.transporter:
+        orders = _firestoreService.ordersByTransporterStream(uid);
+        jobs = _firestoreService.jobsByTransporterStream(uid);
+      case Role.admin:
+        orders = _firestoreService.ordersStream();
+        jobs = _firestoreService.jobsStream();
+        _usersSub = _firestoreService.usersStream().listen(
+          (items) {
+            _users
+              ..clear()
+              ..addAll(items);
+            notifyListeners();
+          },
+          onError: (Object error) => debugPrint('Users stream: $error'),
+        );
+    }
 
-    // Subscribe to transport jobs stream
-    _jobsSub?.cancel();
-    _jobsSub = _firestoreService.jobsStream().listen((firestoreJobs) {
-      _jobs.clear();
-      _jobs.addAll(firestoreJobs);
-      notifyListeners();
-    });
-
-    // Subscribe to verification docs stream (farmer only)
-    _verificationSub?.cancel();
-    _verificationSub =
-        _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
-      _verificationDocs.clear();
-      _verificationDocs.addAll(firestoreDocs);
-      notifyListeners();
-    });
+    _ordersSub = orders.listen(
+      (items) {
+        _orders
+          ..clear()
+          ..addAll(items);
+        _recalculateStats();
+        notifyListeners();
+      },
+      onError: (Object error) => debugPrint('Orders stream: $error'),
+    );
+    _jobsSub = jobs.listen(
+      (items) {
+        _jobs
+          ..clear()
+          ..addAll(items);
+        notifyListeners();
+      },
+      onError: (Object error) => debugPrint('Jobs stream: $error'),
+    );
   }
 
   /// Cancel all Firestore subscriptions
@@ -420,6 +459,85 @@ class FarmoraState extends ChangeNotifier {
 
   // ── Suka auth methods ────────────────────────────────
   String? authError;
+
+  Future<bool> sendPhoneOtp(String phone) async {
+    authError = null;
+    try {
+      await _authService.sendPhoneOtp(phone);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyPhoneOtpLogin(String code) async {
+    authError = null;
+    try {
+      final result = await _authService.loginWithPhoneOtp(code);
+      role = result.role;
+      signedIn = true;
+      notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) initFromFirestore(user.uid);
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyPhoneOtpRegistration({
+    required String code,
+    required String name,
+    required String phone,
+    required Role role,
+    String? district,
+  }) async {
+    authError = null;
+    try {
+      final result = await _authService.registerWithPhoneOtp(
+        code: code,
+        name: name,
+        phone: phone,
+        role: role,
+        district: district,
+      );
+      this.role = result.role;
+      signedIn = true;
+      notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) initFromFirestore(user.uid);
+      return true;
+    } catch (e) {
+      authError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> uploadProfilePhoto({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    try {
+      profilePhotoUrl = await _firestoreService.uploadProfilePhoto(
+        bytes: bytes,
+        fileName: fileName,
+        contentType: contentType,
+      );
+      notifyListeners();
+      return true;
+    } catch (error) {
+      authError = error.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 
   Future<bool> signInWithBackend(
       {required String phone, required String password}) async {

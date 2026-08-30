@@ -30,7 +30,8 @@ void main() {
       });
     }
 
-    testWidgets('renders selected role banner, photo upload, and all form fields',
+    testWidgets(
+        'renders selected role banner, photo upload, and all form fields',
         (tester) async {
       setupViewport(tester);
       await tester.pumpWidget(
@@ -48,11 +49,12 @@ void main() {
       expect(find.text('Full Name'), findsOneWidget);
       expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('District / Location'), findsOneWidget);
-      expect(find.text('Password'), findsOneWidget);
-      expect(find.text('Confirm Password'), findsOneWidget);
+      expect(find.text('Password'), findsNothing);
+      expect(find.text('Confirm Password'), findsNothing);
 
       // 4. Primary Button "Create Account"
-      expect(find.widgetWithText(FilledButton, 'Create Account'), findsOneWidget);
+      expect(
+          find.widgetWithText(FilledButton, 'Create Account'), findsOneWidget);
 
       // 5. Footer Log In link
       expect(find.text('Already have an account? '), findsOneWidget);
@@ -76,17 +78,13 @@ void main() {
       expect(find.text('Joining as ${Role.transporter.label}'), findsOneWidget);
     });
 
-    testWidgets('toggles optional profile photo on tap', (tester) async {
+    testWidgets('renders optional profile photo picker', (tester) async {
       setupViewport(tester);
       await tester.pumpWidget(createRegisterTestWidget());
 
       expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
 
-      // Tap to toggle photo
-      await tester.tap(find.text('Upload Photo (Optional)'));
-      await tester.pump();
-
-      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(find.text('Upload Photo (Optional)'), findsOneWidget);
     });
 
     testWidgets('validates required fields on submit', (tester) async {
@@ -97,50 +95,13 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Create Account'));
       await tester.pump();
 
-      expect(find.text('Please enter your full name'), findsOneWidget);
-      expect(find.text('Please enter your phone number'), findsOneWidget);
-      expect(find.text('Please select your district'), findsOneWidget);
-      expect(find.text('Please enter a password'), findsOneWidget);
+      expect(find.text('Enter your name, phone number, and district.'),
+          findsOneWidget);
+      expect(find.text('Please enter a password'), findsNothing);
     });
 
-    testWidgets('validates matching confirm password', (tester) async {
-      setupViewport(tester);
-      await tester.pumpWidget(createRegisterTestWidget());
-
-      // Fill in Name, Phone
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'e.g. Kamal Perera'),
-        'Kamal Perera',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'e.g. 077 123 4567'),
-        '0771234567',
-      );
-
-      // Select District
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Kandy').last);
-      await tester.pumpAndSettle();
-
-      // Enter mismatched passwords
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Create a strong password'),
-        'secret123',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Re-enter your password'),
-        'mismatch123',
-      );
-
-      await tester.tap(find.widgetWithText(FilledButton, 'Create Account'));
-      await tester.pump();
-
-      expect(find.text('Passwords do not match'), findsOneWidget);
-    });
-
-    testWidgets('successful registration signs in and calls onRegistered', skip: true,
-        (tester) async {
+    testWidgets('successful registration signs in and calls onRegistered',
+        skip: true, (tester) async {
       setupViewport(tester);
       final state = FarmoraState();
       bool registered = false;
