@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../providers/farmora_state.dart';
 import '../../home/presentation/home_screen.dart';
+import 'phone_otp_dialog.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible login screen for Farmora.
@@ -85,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Kept as a fallback for the previous demo-only OTP sheet during migration.
+  // ignore: unused_element
   void _showOtpLoginSheet() {
     final otpController = TextEditingController();
     final phoneForOtp = _phoneController.text.isNotEmpty
@@ -214,6 +217,39 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _startPhoneOtpLogin() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your phone number first.')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    final state = context.read<FarmoraState>();
+    final sent = await state.sendPhoneOtp(phone);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (!sent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(state.authError ?? 'Could not send OTP.')),
+      );
+      return;
+    }
+    final verified = await showPhoneOtpDialog(
+      context: context,
+      phone: phone,
+      verify: state.verifyPhoneOtpLogin,
+      resend: () => state.sendPhoneOtp(phone),
+      error: () => state.authError,
+    );
+    if (!mounted || !verified) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
     );
   }
 
@@ -449,7 +485,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: _showOtpLoginSheet,
+                            onPressed: _startPhoneOtpLogin,
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -517,7 +553,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: _showOtpLoginSheet,
+                            onPressed: _isLoading ? null : _startPhoneOtpLogin,
                             icon: const Icon(
                               Icons.sms_outlined,
                               size: 18,
