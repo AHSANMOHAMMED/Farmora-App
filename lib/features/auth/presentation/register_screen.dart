@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -5,6 +8,7 @@ import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import '../../home/presentation/home_screen.dart';
 import 'login_screen.dart';
+import 'phone_otp_dialog.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible registration form screen for Farmora.
@@ -30,13 +34,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   String? _selectedDistrict;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _hasPhoto = false;
+  Uint8List? _photoBytes;
+  String? _photoFileName;
+  String? _photoContentType;
   bool _isLoading = false;
 
   static const List<String> _districts = [
@@ -68,55 +71,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-
-    final state = context.read<FarmoraState>();
-    final success = await state.registerWithBackend(
-      name: _nameController.text,
-      phone: _phoneController.text,
-      password: _passwordController.text,
-      role: widget.selectedRole,
-      district: _selectedDistrict,
-    );
-
-    if (success) {
-      if (widget.onRegistered != null) {
-        widget.onRegistered!();
-      }
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully!'),
-            backgroundColor: AppColors.primary,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } else if (mounted) {
+  Future<void> _handleOtpRegister() async {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    if (name.isEmpty || phone.isEmpty || _selectedDistrict == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(state.authError ?? 'Registration failed. Please try again.'),
+        const SnackBar(
+          content: Text('Enter your name, phone number, and district.'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
         ),
       );
+      return;
     }
+    setState(() => _isLoading = true);
+    final state = context.read<FarmoraState>();
+    final sent = await state.sendPhoneOtp(phone);
+    if (!mounted) return;
     setState(() => _isLoading = false);
+    if (!sent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(state.authError ?? 'Could not send OTP.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    final verified = await showPhoneOtpDialog(
+      context: context,
+      phone: phone,
+      verify: (code) => state.verifyPhoneOtpRegistration(
+        code: code,
+        name: name,
+        phone: phone,
+        role: widget.selectedRole,
+        district: _selectedDistrict,
+      ),
+      resend: () => state.sendPhoneOtp(phone),
+      error: () => state.authError,
+    );
+    if (!mounted || !verified) return;
+    if (_photoBytes != null && _photoFileName != null) {
+      await state.uploadProfilePhoto(
+        bytes: _photoBytes!,
+        fileName: _photoFileName!,
+        contentType: _photoContentType ?? 'image/jpeg',
+      );
+    }
+    if (!mounted) return;
+    widget.onRegistered?.call();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Phone verified and account created.'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
   }
 
   Future<void> _handleGoogleRegister() async {
@@ -142,6 +158,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {
+      if (_photoBytes != null && _photoFileName != null) {
+        await state.uploadProfilePhoto(
+          bytes: _photoBytes!,
+          fileName: _photoFileName!,
+          contentType: _photoContentType ?? 'image/jpeg',
+        );
+      }
+      if (!mounted) return;
       if (widget.onRegistered != null) widget.onRegistered!();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -157,16 +181,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _togglePhoto() {
-    setState(() => _hasPhoto = !_hasPhoto);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _hasPhoto ? 'Profile photo selected' : 'Profile photo removed',
-        ),
-        duration: const Duration(milliseconds: 1200),
-      ),
+  Future<void> _togglePhoto() async {
+    if (_hasPhoto) {
+      setState(() {
+        _hasPhoto = false;
+        _photoBytes = null;
+        _photoFileName = null;
+        _photoContentType = null;
+      });
+      return;
+    }
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      withData: true,
     );
+    if (!mounted || result == null || result.files.single.bytes == null) return;
+    final selected = result.files.single;
+    final extension = selected.extension?.toLowerCase();
+    setState(() {
+      _hasPhoto = true;
+      _photoBytes = selected.bytes;
+      _photoFileName = selected.name;
+      _photoContentType = extension == 'png'
+          ? 'image/png'
+          : extension == 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+    });
   }
 
   @override
@@ -317,86 +359,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-
-                      // Field 4: Password
-                      _buildFieldLabel('Password'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        decoration: _buildInputDecoration(
-                          hintText: 'Create a strong password',
-                          icon: Icons.lock_outline_rounded,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: AppColors.primary,
-                              size: 22,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a password';
-                          }
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Field 5: Confirm Password
-                      _buildFieldLabel('Confirm Password'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscureConfirmPassword,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        decoration: _buildInputDecoration(
-                          hintText: 'Re-enter your password',
-                          icon: Icons.lock_outline_rounded,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirmPassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: AppColors.primary,
-                              size: 22,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureConfirmPassword =
-                                    !_obscureConfirmPassword;
-                              });
-                            },
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please confirm your password';
-                          }
-                          if (value != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
                     ],
                   ),
                 ),
@@ -406,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _handleRegister,
+                    onPressed: _isLoading ? null : _handleOtpRegister,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -629,14 +591,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: Icon(
-                      _hasPhoto
-                          ? Icons.person_rounded
-                          : Icons.person_outline_rounded,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                  child: ClipOval(
+                    child: _photoBytes != null
+                        ? Image.memory(_photoBytes!, fit: BoxFit.cover)
+                        : const Icon(
+                            Icons.person_outline_rounded,
+                            size: 48,
+                            color: AppColors.primary,
+                          ),
                   ),
                 ),
                 Positioned(
