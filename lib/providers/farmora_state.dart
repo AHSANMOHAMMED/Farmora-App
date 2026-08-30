@@ -1,4 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -26,6 +28,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<TransportJob>>? _jobsSub;
   StreamSubscription<List<VerificationDoc>>? _verificationSub;
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
+  StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
   Role role = Role.farmer;
@@ -203,6 +206,8 @@ class FarmoraState extends ChangeNotifier {
     _currentUserId = '';
     _profileLoaded = false;
     disposeFirestoreSubscriptions();
+    _deviceTokenSub?.cancel();
+    _deviceTokenSub = null;
     _authService.signOut();
     notifyListeners();
   }
@@ -319,6 +324,7 @@ class FarmoraState extends ChangeNotifier {
           (profile['languageCode'] ?? profile['language'] ?? 'en') as String;
       _profileLoaded = true;
       notifyListeners();
+      _registerDeviceToken();
     } catch (_) {
       await FirebaseAuth.instance.signOut();
       _currentUserId = '';
@@ -393,6 +399,33 @@ class FarmoraState extends ChangeNotifier {
     _jobsSub?.cancel();
     _verificationSub?.cancel();
     _usersSub?.cancel();
+  }
+
+  Future<void> _registerDeviceToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final token = await messaging.getToken();
+      if (token == null || token.isEmpty) return;
+      final platform = kIsWeb
+          ? 'web'
+          : defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android';
+      await _firestoreService.registerDeviceToken(
+        token: token,
+        platform: platform,
+      );
+      _deviceTokenSub?.cancel();
+      _deviceTokenSub = messaging.onTokenRefresh.listen((nextToken) {
+        _firestoreService.registerDeviceToken(
+          token: nextToken,
+          platform: platform,
+        );
+      });
+    } catch (_) {
+      // Push setup is optional until each platform's messaging credentials exist.
+    }
   }
 
   void _recalculateStats() {
