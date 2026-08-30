@@ -4,6 +4,10 @@ Farmora is a Flutter agricultural marketplace connecting farmers, buyers, and tr
 
 This repository is an MVP and production handoff. The main Flutter experience, Firebase data access, trusted Cloud Functions, security rules, tests, Android release configuration, and CI pipeline are present. Several integrations still require credentials, Firebase deployment permissions, or production hardening; those items are listed explicitly below.
 
+## Branch and Handoff Status
+
+The active branch is `dev/swami`. At the current handoff, `origin/main` is an ancestor of this branch and `dev/swami` is 30 commits ahead; there is no pending main-to-`dev/swami` merge required. The graph view can still show the historical `origin/main` label beside older commits because Git labels commits by ancestry, not by the current tip alone.
+
 ## Product Promise
 
 - Farmers can list harvest, process orders, coordinate delivery, and view earnings.
@@ -20,15 +24,43 @@ This repository is an MVP and production handoff. The main Flutter experience, F
 | Farmer marketplace | Implemented | Product creation, editing, deletion, availability, quantity, pricing, categories, orders, verification upload, and earnings UI. |
 | Buyer marketplace | Implemented | Product browsing, product details, cart, order placement, order history, tracking timeline, barcode scanning, reviews, and complaints. |
 | Transport workflow | Implemented | Available jobs, job details, acceptance, active delivery, delivery history, and valid delivery transitions. |
-| Firebase client data | Implemented | Firebase Auth, Firestore, Storage, and callable Functions adapters in `lib/services/firebase_service.dart`. |
+| Firebase client data | Implemented baseline | Firebase Auth, Firestore, Storage, and callable Functions adapters in `lib/services/firebase_service.dart`; primary list reads are now role-scoped and bounded. |
 | Trusted backend | Implemented | Callable Functions validate product/order data, calculate totals, reserve inventory, transition orders and transport, issue/verify barcodes, accept reviews/disputes, and process verification decisions. |
-| Security rules | Implemented baseline | `firestore.rules` and `storage.rules` restrict private records, ownership, uploads, messages, orders, disputes, reviews, and admin operations. Rules still need emulator test coverage. |
+| Security rules | Implemented baseline | `firestore.rules` and `storage.rules` restrict private records, ownership, uploads, messages, orders, disputes, reviews, and admin operations. Rules still need emulator test coverage and a production rules review. |
 | Payments | Scaffolded | PayHere checkout and webhook endpoints exist. Merchant credentials, signature verification, payment state integration, and production testing remain. |
 | Messaging | Partial | Order-scoped ciphertext submission exists. Client key management, real Signal protocol integration, conversation UI, pagination, read state, attachments, and abuse controls remain. |
 | Notifications | Partial | Notification records can be created by backend workflows. FCM delivery, device tokens, preferences, and notification UI remain. |
 | Maps and live tracking | Placeholder | Tracking and active-delivery screens contain map placeholders. Google Maps, location consent, live location, and provider matching remain. |
 | Localization | Partial | Language selection UI exists, but all copy is not yet externalized into English, Sinhala, and Tamil resource files. |
 | Release automation | Implemented baseline | GitHub Actions runs dependency installation, analysis, tests, Functions build, CI signing, and release APK build. |
+
+## Traffic and Smooth-Operation Baseline
+
+The app is designed to avoid the most dangerous early traffic pattern: every user receiving every collection in real time. Current protections include:
+
+- Product, order, and transport streams use bounded queries with a default limit of 50 records.
+- Farmer products are filtered by `farmerId`; farmer orders by `farmerId`; buyer orders by `buyerId`; transporter orders by `transporterId`.
+- Transport providers receive only requested jobs and jobs already assigned to them; administrators can inspect the broader job list.
+- User records are subscribed only by administrators and are bounded to 100 records.
+- Order creation and inventory reservation use a Firestore transaction and server-side totals.
+- Firestore composite indexes are defined for scoped product, order, and transport queries.
+- Storage uploads enforce ownership, content type, and size limits.
+- CI validates dependency resolution, static analysis, widget tests, Functions compilation, and release APK compilation.
+
+This is a safe MVP baseline, not a traffic capacity guarantee. Firestore listeners, Cloud Functions concurrency, payment webhooks, image delivery, and Firebase quotas still need load testing with realistic traffic.
+
+### Required scale work
+
+- Replace fixed limits with cursor pagination and explicit `startAfterDocument` queries.
+- Use a public catalogue query model with category/location/status filters and search indexing instead of downloading a broad catalogue.
+- Remove unnecessary real-time listeners from screens that only need one-time reads; subscribe only while a screen is visible.
+- Split admin dashboards into aggregate counters and paginated tables rather than loading whole collections.
+- Add listener lifecycle tests, retry/backoff, offline cache policy, and cancellation on logout/navigation.
+- Add idempotency keys to order creation and payment attempts; the current cart loop can issue multiple callable orders and does not yet provide an atomic multi-item checkout.
+- Add Cloud Functions load tests, Firestore query-cost monitoring, quota alerts, cold-start measurement, and performance budgets.
+- Compress/resize product media, use CDN-friendly URLs, lazy-load images, and configure image cache limits.
+- Add FCM fan-out controls and notification deduplication before large-scale status events.
+- Configure App Check, rate limits, managed secrets, backups, structured logging, and crash/performance monitoring.
 
 ## End-to-End Workflow
 
@@ -320,6 +352,7 @@ Latest verified result at the time of this handoff: CI run [33307080663](https:/
 - Configure Google Maps keys, maps SDKs, location permissions, route display, and opt-in live tracking.
 - Configure FCM device tokens, notification topics, notification preferences, quiet hours, and delivery events.
 - Replace placeholder map panels with real map/tracking components.
+- Load test catalogue reads, listeners, callable Functions, uploads, notifications, and payment webhooks against expected peak traffic.
 
 ### Security and trust
 
@@ -333,6 +366,7 @@ Latest verified result at the time of this handoff: CI run [33307080663](https:/
 ### Product completeness
 
 - Add production search, location filtering, pagination, and catalogue indexing.
+- Add cursor pagination and screen-scoped listener lifecycle management; current streams are bounded but not paginated.
 - Complete provider eligibility and regional/capacity job matching.
 - Add transport earnings and full farmer net-earnings calculations.
 - Complete order-scoped messaging UI, attachments, read state, offline retry, reporting, and abuse controls.
@@ -345,6 +379,8 @@ Latest verified result at the time of this handoff: CI run [33307080663](https:/
 - Add unit tests for validators, money calculations, permissions, and order/transport state machines.
 - Add Firebase Emulator integration tests for authentication, product creation, checkout, inventory, delivery, reviews, disputes, and rules.
 - Add Android and iOS integration tests, accessibility checks, and performance tests.
+- Add Firebase Emulator and rules tests for role-scoped queries, including requested/assigned transport jobs.
+- Add performance tests for startup, scrolling, image loading, listener counts, checkout latency, and offline recovery.
 - Run dependency/security audits and resolve or review reported vulnerabilities.
 - Configure production application IDs, bundle identifiers, release keystore handling, store metadata, staged rollout, and monitoring.
 

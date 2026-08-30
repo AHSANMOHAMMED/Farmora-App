@@ -31,6 +31,22 @@
         { "fieldPath": "market_name", "order": "ASCENDING" },
         { "fieldPath": "recorded_date", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "transport_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transport_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "transporterId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

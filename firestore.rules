@@ -53,8 +53,9 @@ service cloud.firestore {
     }
 
     match /transport_jobs/{jobId} {
-      allow read: if signedIn() && (resource.data.createdBy == request.auth.uid
-        || resource.data.transporterId == request.auth.uid || admin());
+      allow read: if admin()
+        || (verified(request.auth.uid) && resource.data.status == 'requested')
+        || (signedIn() && resource.data.transporterId == request.auth.uid);
       allow create, update, delete: if false;
     }
 

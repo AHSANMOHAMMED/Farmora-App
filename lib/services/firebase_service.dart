@@ -17,8 +17,8 @@ class FirestoreService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // ── Users ─────────────────────────────────────────────────
-  Stream<List<Map<String, dynamic>>> usersStream() {
-    return _db.collection('users').snapshots().map((snap) =>
+  Stream<List<Map<String, dynamic>>> usersStream({int limit = 100}) {
+    return _db.collection('users').limit(limit).snapshots().map((snap) =>
         snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
   }
 
@@ -44,10 +44,11 @@ class FirestoreService {
   }
 
   /// Real-time stream of all products
-  Stream<List<Product>> productsStream() {
+  Stream<List<Product>> productsStream({int limit = 50}) {
     return _db
         .collection('products')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => Product.fromMap(doc.id, doc.data()))
@@ -55,11 +56,13 @@ class FirestoreService {
   }
 
   /// Products stream filtered by farmer
-  Stream<List<Product>> productsByFarmerStream(String farmerId) {
+  Stream<List<Product>> productsByFarmerStream(String farmerId,
+      {int limit = 50}) {
     return _db
         .collection('products')
         .where('farmerId', isEqualTo: farmerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => Product.fromMap(doc.id, doc.data()))
@@ -205,10 +208,11 @@ class FirestoreService {
   }
 
   /// Real-time stream of all orders
-  Stream<List<FarmoraOrder>> ordersStream() {
+  Stream<List<FarmoraOrder>> ordersStream({int limit = 50}) {
     return _db
         .collection('orders')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -216,11 +220,13 @@ class FirestoreService {
   }
 
   /// Orders stream filtered by farmer
-  Stream<List<FarmoraOrder>> ordersByFarmerStream(String farmerId) {
+  Stream<List<FarmoraOrder>> ordersByFarmerStream(String farmerId,
+      {int limit = 50}) {
     return _db
         .collection('orders')
         .where('farmerId', isEqualTo: farmerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -228,11 +234,26 @@ class FirestoreService {
   }
 
   /// Orders stream filtered by buyer
-  Stream<List<FarmoraOrder>> ordersByBuyerStream(String buyerId) {
+  Stream<List<FarmoraOrder>> ordersByBuyerStream(String buyerId,
+      {int limit = 50}) {
     return _db
         .collection('orders')
         .where('buyerId', isEqualTo: buyerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Stream<List<FarmoraOrder>> ordersByTransporterStream(String transporterId,
+      {int limit = 50}) {
+    return _db
+        .collection('orders')
+        .where('transporterId', isEqualTo: transporterId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -250,10 +271,28 @@ class FirestoreService {
   }
 
   /// Real-time stream of transport jobs
-  Stream<List<TransportJob>> jobsStream() {
+  Stream<List<TransportJob>> jobsStream({int limit = 50}) {
     return _db
         .collection('transport_jobs')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Streams only requested jobs or jobs already assigned to this provider.
+  Stream<List<TransportJob>> jobsForTransporterStream(String transporterId,
+      {int limit = 50}) {
+    return _db
+        .collection('transport_jobs')
+        .where(Filter.or(
+          Filter('status', isEqualTo: 'requested'),
+          Filter('transporterId', isEqualTo: transporterId),
+        ))
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
