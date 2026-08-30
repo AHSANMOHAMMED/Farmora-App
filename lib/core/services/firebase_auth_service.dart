@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +21,9 @@ class FarmoraAuthResult {
 class FirebaseAuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  ConfirmationResult? _webConfirmation;
+  String? _verificationId;
+  PhoneAuthCredential? _automaticCredential;
 
   FirebaseAuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
       : _auth = auth ?? FirebaseAuth.instance,
@@ -46,11 +51,11 @@ class FirebaseAuthService {
     required String provider,
     String? district,
   }) async {
-    final profile = _firestore.collection('users').doc(phone);
-    final authIndex = _firestore.collection('authUsers').doc(user.uid);
-    final batch = _firestore.batch();
-    batch.set(profile, {
+    final profile = _firestore.collection('users').doc(user.uid);
+    await profile.set({
+      'id': user.uid,
       'name': name,
+      'displayName': name,
       'phone': phone,
       'authUid': user.uid,
       'email': user.email,
@@ -58,14 +63,11 @@ class FirebaseAuthService {
       'role': role.name,
       'district': district,
       'authProvider': provider,
+      'isVerified': false,
+      'isSuspended': false,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
-    batch.set(authIndex, {
-      'phone': phone,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await batch.commit();
   }
 
   Future<FarmoraAuthResult> register({
@@ -111,14 +113,8 @@ class FirebaseAuthService {
         email: _emailForPhone(normalizedPhone),
         password: password,
       );
-      var snapshot =
-          await _firestore.collection('users').doc(normalizedPhone).get();
-      if (!snapshot.exists) {
-        snapshot = await _firestore
-            .collection('users')
-            .doc(credential.user!.uid)
-            .get();
-      }
+      final snapshot =
+          await _firestore.collection('users').doc(credential.user!.uid).get();
       final data = snapshot.data();
       if (data == null) {
         await _auth.signOut();
@@ -143,17 +139,7 @@ class FirebaseAuthService {
     try {
       final credential = await _signInWithGoogleProvider();
       final user = credential.user!;
-      final index =
-          await _firestore.collection('authUsers').doc(user.uid).get();
-      DocumentSnapshot<Map<String, dynamic>> profile;
-      if (index.exists) {
-        profile = await _firestore
-            .collection('users')
-            .doc(index.data()!['phone'] as String)
-            .get();
-      } else {
-        profile = await _firestore.collection('users').doc(user.uid).get();
-      }
+      final profile = await _firestore.collection('users').doc(user.uid).get();
       final data = profile.data();
       if (data == null) {
         await _auth.signOut();
@@ -180,13 +166,9 @@ class FirebaseAuthService {
       }
       final credential = await _signInWithGoogleProvider();
       final user = credential.user!;
-      final authIndex = _firestore.collection('authUsers').doc(user.uid);
-      final existingIndex = await authIndex.get();
-      if (existingIndex.exists) {
-        final existingProfile = await _firestore
-            .collection('users')
-            .doc(existingIndex.data()!['phone'] as String)
-            .get();
+      final existingProfile =
+          await _firestore.collection('users').doc(user.uid).get();
+      if (existingProfile.exists) {
         return FarmoraAuthResult(_parseRole(existingProfile.data()?['role']));
       }
       await _createMobileProfile(
@@ -211,6 +193,115 @@ class FirebaseAuthService {
     }
   }
 
+  String _phoneInE164(String value) {
+    final phone = _normalizePhone(value);
+    if (RegExp(r'^\+[1-9]\d{8,14}$').hasMatch(phone)) return phone;
+    if (RegExp(r'^0\d{9}$').hasMatch(phone)) {
+      return '+94${phone.substring(1)}';
+    }
+    throw const FarmoraAuthException(
+      'Enter a valid phone number, for example +94771234567.',
+    );
+  }
+
+  Future<void> sendPhoneOtp(String phone) async {
+    final normalizedPhone = _phoneInE164(phone);
+    _webConfirmation = null;
+    _verificationId = null;
+    _automaticCredential = null;
+    try {
+      if (kIsWeb) {
+        _webConfirmation = await _auth.signInWithPhoneNumber(normalizedPhone);
+        return;
+      }
+      final completer = Completer<void>();
+      await _auth.verifyPhoneNumber(
+        phoneNumber: normalizedPhone,
+        verificationCompleted: (credential) {
+          _automaticCredential = credential;
+          if (!completer.isCompleted) completer.complete();
+        },
+        verificationFailed: (error) {
+          if (!completer.isCompleted) {
+            completer.completeError(FarmoraAuthException(_authMessage(error)));
+          }
+        },
+        codeSent: (verificationId, resendToken) {
+          _verificationId = verificationId;
+          if (!completer.isCompleted) completer.complete();
+        },
+        codeAutoRetrievalTimeout: (verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+      await completer.future;
+    } on FirebaseAuthException catch (error) {
+      throw FarmoraAuthException(_authMessage(error));
+    }
+  }
+
+  Future<UserCredential> _confirmPhoneOtp(String code) async {
+    final trimmedCode = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(trimmedCode)) {
+      throw const FarmoraAuthException('Enter the 6-digit verification code.');
+    }
+    try {
+      if (kIsWeb) {
+        final confirmation = _webConfirmation;
+        if (confirmation == null) {
+          throw const FarmoraAuthException('Request a new OTP first.');
+        }
+        return await confirmation.confirm(trimmedCode);
+      }
+      final credential = _automaticCredential ??
+          PhoneAuthProvider.credential(
+            verificationId: _verificationId ?? '',
+            smsCode: trimmedCode,
+          );
+      return await _auth.signInWithCredential(credential);
+    } on FirebaseAuthException catch (error) {
+      throw FarmoraAuthException(_authMessage(error));
+    }
+  }
+
+  Future<FarmoraAuthResult> loginWithPhoneOtp(String code) async {
+    final credential = await _confirmPhoneOtp(code);
+    final profile =
+        await _firestore.collection('users').doc(credential.user!.uid).get();
+    final data = profile.data();
+    if (data == null) {
+      await _auth.signOut();
+      throw const FarmoraAuthException(
+        'No Farmora profile found. Register this phone number first.',
+      );
+    }
+    return FarmoraAuthResult(_parseRole(data['role']));
+  }
+
+  Future<FarmoraAuthResult> registerWithPhoneOtp({
+    required String code,
+    required String name,
+    required String phone,
+    required Role role,
+    String? district,
+  }) async {
+    final credential = await _confirmPhoneOtp(code);
+    final uid = credential.user!.uid;
+    final existing = await _firestore.collection('users').doc(uid).get();
+    if (existing.exists) {
+      return FarmoraAuthResult(_parseRole(existing.data()?['role']));
+    }
+    await _createMobileProfile(
+      user: credential.user!,
+      phone: _phoneInE164(phone),
+      name: name.trim(),
+      role: role,
+      provider: 'phone',
+      district: district,
+    );
+    return FarmoraAuthResult(role);
+  }
+
   Future<void> signOut() => _auth.signOut();
 
   String _authMessage(FirebaseAuthException error) {
@@ -227,6 +318,16 @@ class FirebaseAuthService {
         return 'Network error. Check your internet connection.';
       case 'operation-not-allowed':
         return 'Enable this sign-in provider in Firebase Authentication.';
+      case 'invalid-phone-number':
+        return 'Enter a valid phone number with country code.';
+      case 'invalid-verification-code':
+        return 'The OTP is incorrect. Please try again.';
+      case 'session-expired':
+        return 'The OTP expired. Request a new code.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'quota-exceeded':
+        return 'SMS quota exceeded. Use a Firebase test phone number.';
       case 'popup-closed-by-user':
         return 'Google sign-in was cancelled.';
       default:
@@ -239,16 +340,8 @@ class FirebaseAuthService {
 extension FirebaseAuthServiceExtras on FirebaseAuthService {
   User? get currentUser => FirebaseAuth.instance.currentUser;
   Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
-    final authIndex = await FirebaseFirestore.instance.collection('authUsers').doc(uid).get();
-    if (authIndex.exists) {
-      final phone = authIndex.data()?['phone'] as String?;
-      if (phone != null) {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(phone).get();
-        if (doc.exists) return doc.data();
-      }
-    }
-    // Fallback if saved directly under uid
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
     return doc.exists ? doc.data() : null;
   }
 }
