@@ -24,12 +24,14 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     final result = await FilePicker.platform.pickFiles(
         withData: true,
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf']);
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowMultiple: false);
     final file = result?.files.single;
-    if (file?.bytes == null) return;
+    if (file == null) return;
+    if (file.bytes == null) return;
     setState(() => _uploading = true);
     try {
-      final contentType = file!.extension == 'pdf'
+      final contentType = file.extension == 'pdf'
           ? 'application/pdf'
           : 'image/${file.extension == 'jpg' ? 'jpeg' : file.extension}';
       final path = await _service.uploadVerificationDocument(
