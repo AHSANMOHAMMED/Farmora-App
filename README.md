@@ -250,6 +250,30 @@ firebase deploy --only hosting
 
 Do not deploy to production until provider credentials, rules tests, payment webhooks, App Check, backups, monitoring, and privacy/legal documents are ready.
 
+## Web SEO
+
+SEO metadata is defined in `web/index.html` and is included in Firebase Hosting builds:
+
+- English document language, title, description, keywords, author, viewport, theme color, and crawler directives.
+- Sinhala (`si`) and Tamil (`ta`) descriptions, keyword sets, Open Graph locale alternates, and crawler-readable fallback copy.
+- `hreflang` alternates for English, Sinhala, Tamil, and the default locale.
+- Canonical URL for the current Firebase Hosting address.
+- Open Graph and Twitter/X sharing metadata.
+- `WebApplication` JSON-LD structured data for Farmora, supported platforms, languages, and marketplace description.
+- `web/robots.txt` allowing public crawling and linking the sitemap.
+- `web/sitemap.xml` containing the public application entry point.
+- Firebase Hosting content types and short cache policies for crawler files.
+
+Before launch, replace `farmora-1da5a.web.app` in `web/index.html`, `web/robots.txt`, and `web/sitemap.xml` with the final verified custom domain. Then:
+
+1. Deploy with `flutter build web` and `firebase deploy --only hosting`.
+2. Verify `/`, `/robots.txt`, and `/sitemap.xml` return HTTP 200 responses.
+3. Register the final domain in Google Search Console and Bing Webmaster Tools.
+4. Submit the sitemap and inspect the canonical URL and structured data.
+5. Add a real social preview image sized for sharing instead of the current favicon fallback.
+
+The mobile Android/iOS application itself is not indexed like a normal website. App Store and Play Store listing metadata, screenshots, localized keywords, privacy links, and deep links are separate release tasks. The current Flutter Web shell advertises English, Sinhala, and Tamil through metadata and `?lang=` alternate hints, but these URLs are not yet separate server-rendered documents. For strong multilingual indexing, create distinct localized public pages such as `/en/`, `/si/`, and `/ta/` with translated visible content, self-canonical URLs, and matching sitemap entries. Flutter Web is a client-rendered SPA, so indexable product/category pages require prerendering or a server-rendered public marketing/catalogue surface.
+
 ## Android Signing
 
 Production signing uses a local, ignored `android/key.properties` file. Start from the template:
