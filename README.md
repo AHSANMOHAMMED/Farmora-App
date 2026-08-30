@@ -19,7 +19,7 @@ The active branch is `dev/swami`. At the current handoff, `origin/main` is an an
 
 | Area | Status | Current implementation |
 | --- | --- | --- |
-| Onboarding and authentication | Implemented | Splash, onboarding, role selection, email/password login and registration, sign-out, profile and language entry points. |
+| Onboarding and authentication | Implemented baseline | Splash, onboarding, role selection, phone/password login and registration, real Firebase Phone OTP login, Google sign-in, sign-out, profile and language entry points. Firebase profiles are keyed by Auth UID. |
 | Role-based experience | Implemented | Farmer, buyer, transporter, and administrator dashboards and screens. |
 | Farmer marketplace | Implemented | Product creation, editing, deletion, availability, quantity, pricing, categories, orders, verification upload, and earnings UI. |
 | Buyer marketplace | Implemented | Product browsing, product details, cart, order placement, order history, tracking timeline, barcode scanning, reviews, and complaints. |
@@ -347,6 +347,7 @@ Latest verified result at the time of this handoff: CI run [33307080663](https:/
 ### Required integrations
 
 - Configure separate development, staging, and production Firebase projects.
+- Enable and test Firebase Phone Authentication, including Android SHA fingerprints, reCAPTCHA/web configuration, SMS quotas, test phone numbers, resend limits, and localized OTP errors.
 - Resolve Firebase deployment IAM permissions and deploy rules/functions through a controlled account.
 - Add PayHere merchant credentials, webhook signature verification, idempotency, refund handling, and payment reconciliation.
 - Configure Google Maps keys, maps SDKs, location permissions, route display, and opt-in live tracking.

@@ -271,24 +271,24 @@ class FarmoraState extends ChangeNotifier {
 
   /// Initialize Firestore streams after user signs in.
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
-  void initFromFirestore(String uid) {
+  Future<void> initFromFirestore(String uid) async {
     _currentUserId = uid;
-    final isAdmin = role == Role.admin;
+    disposeFirestoreSubscriptions();
 
     // Load user profile and set role
-    _loadUserProfile(uid).then((profile) {
-      if (profile != null) {
-        final roleStr = profile['role'] as String?;
-        if (roleStr != null) {
-          try {
-            role = Role.values.firstWhere((r) => r.name == roleStr);
-          } catch (_) {}
-        }
-        final lang = profile['language'] as String?;
-        if (lang != null) language = lang;
-        notifyListeners();
+    final profile = await _loadUserProfile(uid);
+    if (profile != null) {
+      final roleStr = profile['role'] as String?;
+      if (roleStr != null) {
+        try {
+          role = Role.values.firstWhere((r) => r.name == roleStr);
+        } catch (_) {}
       }
-    });
+      final lang = profile['language'] as String?;
+      if (lang != null) language = lang;
+      notifyListeners();
+    }
+    final isAdmin = role == Role.admin;
 
     // Subscribe to products stream
     _productsSub?.cancel();
@@ -436,6 +436,36 @@ class FarmoraState extends ChangeNotifier {
 
   // ── Suka auth methods ────────────────────────────────
   String? authError;
+
+  Future<bool> sendPhoneOtp(String phone) async {
+    authError = null;
+    try {
+      await _authService.sendPhoneOtp(phone);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      authError = error.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyPhoneOtpLogin(String code) async {
+    authError = null;
+    try {
+      final result = await _authService.loginWithPhoneOtp(code);
+      role = result.role;
+      signedIn = true;
+      notifyListeners();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) initFromFirestore(user.uid);
+      return true;
+    } catch (error) {
+      authError = error.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 
   Future<bool> signInWithBackend(
       {required String phone, required String password}) async {
