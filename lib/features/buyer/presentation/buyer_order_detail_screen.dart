@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'track_order_screen.dart';
+import 'barcode_scan_screen.dart';
+import '../../../services/firebase_service.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -93,6 +95,30 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             // Status Timeline
             _buildStatusTimeline(currentOrder),
             const SizedBox(height: 20),
+            if (currentOrder.status.toLowerCase() != 'delivered')
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text('Verify harvest barcode'),
+                  onPressed: () async {
+                    final result =
+                        await Navigator.of(context).push<Map<String, dynamic>>(
+                      MaterialPageRoute(
+                          builder: (_) => const BarcodeScanScreen()),
+                    );
+                    if (context.mounted && result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Harvest authenticity verified.')),
+                      );
+                    }
+                  },
+                ),
+              ),
+            if (currentOrder.status.toLowerCase() == 'delivered')
+              _TrustActions(order: currentOrder),
+            const SizedBox(height: 16),
 
             // Farmer Info Card
             Container(
@@ -121,7 +147,8 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                           color: AppColors.surfaceContainerHigh,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.agriculture_rounded, color: AppColors.primary, size: 24),
+                        child: const Icon(Icons.agriculture_rounded,
+                            color: AppColors.primary, size: 24),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -152,7 +179,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Divider(color: AppColors.outlineVariant.withValues(alpha: 0.4), height: 1),
+                  Divider(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                      height: 1),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +252,11 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildSummaryRow('Product', currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title),
+                  _buildSummaryRow(
+                      'Product',
+                      currentOrder.productName.isNotEmpty
+                          ? currentOrder.productName
+                          : currentOrder.title),
                   _buildDivider(),
                   _buildSummaryRow('Quantity', currentOrder.quantity),
                   _buildDivider(),
@@ -260,7 +293,8 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: (currentOrder.status.toLowerCase() == 'in transit' || currentOrder.status.toLowerCase() == 'accepted')
+      bottomNavigationBar: (currentOrder.status.toLowerCase() == 'in transit' ||
+              currentOrder.status.toLowerCase() == 'accepted')
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -290,7 +324,10 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                 ),
                 child: const Text(
                   'Track Order',
-                  style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             )
@@ -299,7 +336,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
   }
 
   Widget _buildStatusTimeline(FarmoraOrder order) {
-    final steps = ['Order Placed', 'Accepted by Farmer', 'In Transit', 'Delivered'];
+    final steps = [
+      'Order Placed',
+      'Accepted by Farmer',
+      'In Transit',
+      'Delivered'
+    ];
     int currentStep;
     switch (order.status.toLowerCase()) {
       case 'accepted':
@@ -354,19 +396,27 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: isActive ? AppColors.primary : AppColors.surfaceContainerHigh,
+                        color: isActive
+                            ? AppColors.primary
+                            : AppColors.surfaceContainerHigh,
                         shape: BoxShape.circle,
-                        border: isCurrent ? Border.all(color: AppColors.primaryFixed, width: 3) : null,
+                        border: isCurrent
+                            ? Border.all(
+                                color: AppColors.primaryFixed, width: 3)
+                            : null,
                       ),
                       child: Center(
                         child: isActive
-                            ? const Icon(Icons.check, size: 14, color: Colors.white)
+                            ? const Icon(Icons.check,
+                                size: 14, color: Colors.white)
                             : Text(
                                 '${index + 1}',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: isActive ? Colors.white : AppColors.onSurfaceVariant,
+                                  color: isActive
+                                      ? Colors.white
+                                      : AppColors.onSurfaceVariant,
                                 ),
                               ),
                       ),
@@ -375,7 +425,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                       Container(
                         width: 2,
                         height: 30,
-                        color: index < currentStep ? AppColors.primary : AppColors.surfaceContainerHigh,
+                        color: index < currentStep
+                            ? AppColors.primary
+                            : AppColors.surfaceContainerHigh,
                       ),
                   ],
                 ),
@@ -388,8 +440,11 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
-                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-                        color: isActive ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                        fontWeight:
+                            isCurrent ? FontWeight.w600 : FontWeight.w400,
+                        color: isActive
+                            ? AppColors.onSurface
+                            : AppColors.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -477,6 +532,90 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           color: textColor,
         ),
       ),
+    );
+  }
+}
+
+class _TrustActions extends StatefulWidget {
+  final FarmoraOrder order;
+
+  const _TrustActions({required this.order});
+
+  @override
+  State<_TrustActions> createState() => _TrustActionsState();
+}
+
+class _TrustActionsState extends State<_TrustActions> {
+  final _comment = TextEditingController();
+  int _rating = 5;
+  final _service = FirestoreService();
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _review() async {
+    await _service.submitReview(
+      orderId: widget.order.id,
+      rating: _rating,
+      comment: _comment.text,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review submitted for moderation.')));
+    }
+  }
+
+  Future<void> _dispute() async {
+    final reason = _comment.text.trim();
+    if (reason.isEmpty) return;
+    await _service.openDispute(orderId: widget.order.id, reason: reason);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Complaint opened. Escrow is protected while it is reviewed.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Trust and support',
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          initialValue: _rating,
+          items: [1, 2, 3, 4, 5]
+              .map((value) =>
+                  DropdownMenuItem(value: value, child: Text('$value stars')))
+              .toList(),
+          onChanged: (value) => setState(() => _rating = value ?? 5),
+          decoration: const InputDecoration(labelText: 'Product rating'),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _comment,
+          maxLength: 2000,
+          maxLines: 3,
+          decoration:
+              const InputDecoration(labelText: 'Review or complaint details'),
+        ),
+        Row(
+          children: [
+            Expanded(
+                child: FilledButton(
+                    onPressed: _review, child: const Text('Submit review'))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: OutlinedButton(
+                    onPressed: _dispute, child: const Text('Open complaint'))),
+          ],
+        ),
+      ],
     );
   }
 }

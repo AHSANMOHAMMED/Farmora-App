@@ -13,10 +13,13 @@ class FarmoraOrder {
   final String buyerName;
   final String buyerCompany;
   final String buyerAvatar;
+
+  /// Always empty in marketplace data. Contact is handled by in-app messaging.
   final String buyerPhone;
   final String deliveryAddress;
   final String detail;
-  final String status; // 'Pending', 'Accepted', 'In transit', 'Delivered', 'Declined'
+  final String
+      status; // 'Pending', 'Accepted', 'In transit', 'Delivered', 'Declined'
   final double progress;
   final Color color;
   final String timestamp;
@@ -36,7 +39,7 @@ class FarmoraOrder {
     this.buyerName = 'Local Fresh Market',
     this.buyerCompany = 'Fresh Market Co.',
     this.buyerAvatar = 'assets/images/buyer_sarah.png',
-    this.buyerPhone = '+1 (555) 234-5678',
+    this.buyerPhone = '',
     this.deliveryAddress = '450 West End Ave, Distribution Center Bay 4',
     required this.detail,
     required this.status,
@@ -49,8 +52,11 @@ class FarmoraOrder {
 
   bool get isPending => status.toLowerCase() == 'pending';
   bool get isAccepted => status.toLowerCase() == 'accepted';
-  bool get isCompleted => status.toLowerCase() == 'delivered' || status.toLowerCase() == 'completed';
-  bool get isDeclined => status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
+  bool get isCompleted =>
+      status.toLowerCase() == 'delivered' ||
+      status.toLowerCase() == 'completed';
+  bool get isDeclined =>
+      status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
 
   FarmoraOrder copyWith({
     String? id,
@@ -119,7 +125,7 @@ class FarmoraOrder {
       'buyerName': buyerName,
       'buyerCompany': buyerCompany,
       'buyerAvatar': buyerAvatar,
-      'buyerPhone': buyerPhone,
+      // Never persist or expose personal contact information in an order.
       'deliveryAddress': deliveryAddress,
       'detail': detail,
       'status': status,

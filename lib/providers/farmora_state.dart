@@ -62,8 +62,10 @@ class FarmoraState extends ChangeNotifier {
   List<TransportJob> get jobs => List.unmodifiable(_jobs);
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
   List<MonthlyBarData> get monthlyBars => List.unmodifiable(_monthlyBars);
-  List<EarningsTransaction> get transactions => List.unmodifiable(_transactions);
-  List<VerificationDoc> get verificationDocs => List.unmodifiable(_verificationDocs);
+  List<EarningsTransaction> get transactions =>
+      List.unmodifiable(_transactions);
+  List<VerificationDoc> get verificationDocs =>
+      List.unmodifiable(_verificationDocs);
 
   double get totalEarnings => _totalEarnings;
   double get thisMonth => _thisMonth;
@@ -81,23 +83,31 @@ class FarmoraState extends ChangeNotifier {
     }).toList();
   }
 
-  List<Product> get activeProducts => _products.where((p) => p.isActive).toList();
+  List<Product> get activeProducts =>
+      _products.where((p) => p.isActive).toList();
 
-  List<FarmoraOrder> get pendingOrders => _orders.where((o) => o.isPending).toList();
-  List<FarmoraOrder> get acceptedOrders => _orders.where((o) => o.isAccepted || o.status == 'In transit').toList();
-  List<FarmoraOrder> get completedOrders => _orders.where((o) => o.isCompleted).toList();
+  List<FarmoraOrder> get pendingOrders =>
+      _orders.where((o) => o.isPending).toList();
+  List<FarmoraOrder> get acceptedOrders =>
+      _orders.where((o) => o.isAccepted || o.status == 'In transit').toList();
+  List<FarmoraOrder> get completedOrders =>
+      _orders.where((o) => o.isCompleted).toList();
 
   // ── Cart (Buyer) ─────────────────────────────────────────
   final List<CartItem> _cartItems = [];
   List<CartItem> get cartItems => List.unmodifiable(_cartItems);
-  int get cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity);
-  double get cartTotal => _cartItems.fold(0.0, (sum, item) => sum + (item.product.pricePerUnit * item.quantity));
+  int get cartItemCount =>
+      _cartItems.fold(0, (sum, item) => sum + item.quantity);
+  double get cartTotal => _cartItems.fold(
+      0.0, (sum, item) => sum + (item.product.pricePerUnit * item.quantity));
 
   void addToCart(Product product, {int quantity = 1}) {
-    final existingIndex = _cartItems.indexWhere((c) => c.product.id == product.id);
+    final existingIndex =
+        _cartItems.indexWhere((c) => c.product.id == product.id);
     if (existingIndex != -1) {
       final existing = _cartItems[existingIndex];
-      _cartItems[existingIndex] = existing.copyWith(quantity: existing.quantity + quantity);
+      _cartItems[existingIndex] =
+          existing.copyWith(quantity: existing.quantity + quantity);
     } else {
       _cartItems.add(CartItem(product: product, quantity: quantity));
     }
@@ -128,6 +138,18 @@ class FarmoraState extends ChangeNotifier {
 
   void placeOrder() {
     if (_cartItems.isEmpty) return;
+    if (_currentUserId.isNotEmpty) {
+      // Prices and stock are reloaded and committed by the trusted backend.
+      for (final item in _cartItems) {
+        _firestoreService.createSecureOrder(
+          productId: item.product.id,
+          quantity: item.quantity,
+        );
+      }
+      _cartItems.clear();
+      notifyListeners();
+      return;
+    }
     for (final item in _cartItems) {
       final order = FarmoraOrder(
         id: 'ord-${DateTime.now().millisecondsSinceEpoch}-${item.product.id}',
@@ -137,14 +159,16 @@ class FarmoraState extends ChangeNotifier {
         quantity: '${item.quantity} ${item.product.unit}',
         grade: item.product.isOrganic ? 'Organic' : 'Grade A',
         unitPrice: item.product.price,
-        totalAmount: '\$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
+        totalAmount:
+            '\$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
         totalAmountNumber: item.product.pricePerUnit * item.quantity,
         buyerName: 'You',
         buyerCompany: 'Your Order',
         buyerAvatar: 'assets/images/buyer_sarah.png',
         buyerPhone: '',
         deliveryAddress: 'Delivery address TBD',
-        detail: '${item.quantity} ${item.product.unit} · \$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
+        detail:
+            '${item.quantity} ${item.product.unit} · \$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
         status: 'Pending',
         progress: 0.1,
         color: const Color(0xFF3478C5),
@@ -202,7 +226,7 @@ class FarmoraState extends ChangeNotifier {
 
   void addProduct(Product p) {
     if (_currentUserId.isNotEmpty) {
-      _firestoreService.addProduct(p, _currentUserId);
+      _firestoreService.createSecureProduct(p);
     }
   }
 
@@ -236,8 +260,9 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void acceptJob(String jobId) {
-    // Currently no Firebase hook for accepting transport jobs yet, adding it to UI mockup
-    // _firestoreService.updateJobStatus(jobId, 'Accepted');
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.transitionTransport(jobId, 'accepted');
+    }
   }
 
   Future<void> seedDatabase() async {
@@ -266,7 +291,8 @@ class FarmoraState extends ChangeNotifier {
 
     // Subscribe to products stream
     _productsSub?.cancel();
-    _productsSub = _firestoreService.productsStream().listen((firestoreProducts) {
+    _productsSub =
+        _firestoreService.productsStream().listen((firestoreProducts) {
       _products.clear();
       _products.addAll(firestoreProducts);
       notifyListeners();
@@ -299,7 +325,8 @@ class FarmoraState extends ChangeNotifier {
 
     // Subscribe to verification docs stream (farmer only)
     _verificationSub?.cancel();
-    _verificationSub = _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
+    _verificationSub =
+        _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
       _verificationDocs.clear();
       _verificationDocs.addAll(firestoreDocs);
       notifyListeners();
@@ -320,7 +347,7 @@ class FarmoraState extends ChangeNotifier {
     _thisMonth = 0.0;
     _thisWeek = 0.0;
     _pendingPayments = 0.0;
-    
+
     final Map<String, double> monthlySums = {};
     _transactions.clear();
 
@@ -328,32 +355,53 @@ class FarmoraState extends ChangeNotifier {
     for (final order in _orders) {
       if (order.status != 'Declined') {
         _totalEarnings += order.totalAmountNumber;
-        
+
         if (order.status == 'Pending') {
           _pendingPayments += order.totalAmountNumber;
         } else {
           _transactions.add(EarningsTransaction(
-            id: 'tx-${order.id}', 
-            orderNumber: order.orderNumber, 
-            date: order.timestamp, 
-            amount: order.totalAmountNumber
-          ));
+              id: 'tx-${order.id}',
+              orderNumber: order.orderNumber,
+              date: order.timestamp,
+              amount: order.totalAmountNumber));
         }
 
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
         final monthStr = months[now.month - 1];
-        monthlySums[monthStr] = (monthlySums[monthStr] ?? 0.0) + order.totalAmountNumber;
+        monthlySums[monthStr] =
+            (monthlySums[monthStr] ?? 0.0) + order.totalAmountNumber;
         _thisMonth += order.totalAmountNumber;
       }
     }
-    
+
     _monthlyBars.clear();
     monthlySums.forEach((month, amount) {
-      _monthlyBars.add(MonthlyBarData(month: month, amount: amount, heightRatio: amount / 2000.0, isHighlighted: true));
+      _monthlyBars.add(MonthlyBarData(
+          month: month,
+          amount: amount,
+          heightRatio: amount / 2000.0,
+          isHighlighted: true));
     });
   }
 
-  void updateVerificationDoc(String docId, {String? fileName, String? fileSizeInfo, String? imagePreview, VerificationStatus? status}) {
+  void updateVerificationDoc(String docId,
+      {String? fileName,
+      String? fileSizeInfo,
+      String? imagePreview,
+      VerificationStatus? status}) {
     final index = _verificationDocs.indexWhere((d) => d.id == docId);
     if (index != -1) {
       _verificationDocs[index] = _verificationDocs[index].copyWith(
@@ -373,7 +421,8 @@ class FarmoraState extends ChangeNotifier {
   // ── Suka auth methods ────────────────────────────────
   String? authError;
 
-  Future<bool> signInWithBackend({required String phone, required String password}) async {
+  Future<bool> signInWithBackend(
+      {required String phone, required String password}) async {
     authError = null;
     try {
       final result = await _authService.login(phone: phone, password: password);
@@ -392,10 +441,20 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  Future<bool> registerWithBackend({required String name, required String phone, required String password, required Role role, String? district}) async {
+  Future<bool> registerWithBackend(
+      {required String name,
+      required String phone,
+      required String password,
+      required Role role,
+      String? district}) async {
     authError = null;
     try {
-      final result = await _authService.register(name: name, phone: phone, password: password, role: role, district: district);
+      final result = await _authService.register(
+          name: name,
+          phone: phone,
+          password: password,
+          role: role,
+          district: district);
       this.role = result.role;
       signedIn = true;
       notifyListeners();
@@ -430,10 +489,15 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  Future<bool> registerWithGoogle({required String name, required String phone, required Role role, String? district}) async {
+  Future<bool> registerWithGoogle(
+      {required String name,
+      required String phone,
+      required Role role,
+      String? district}) async {
     authError = null;
     try {
-      final result = await _authService.registerWithGoogle(name: name, phone: phone, role: role);
+      final result = await _authService.registerWithGoogle(
+          name: name, phone: phone, role: role);
       this.role = result.role;
       signedIn = true;
       notifyListeners();
