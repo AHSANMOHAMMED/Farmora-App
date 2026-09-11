@@ -243,6 +243,9 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void addProduct(Product p) {
+    // Always add to local list so it works in demo mode too
+    _products.add(p);
+    notifyListeners();
     if (_currentUserId.isNotEmpty) {
       _firestoreService.createSecureProduct(p);
     }
