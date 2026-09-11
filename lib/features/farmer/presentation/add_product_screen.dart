@@ -22,12 +22,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   String _category = 'Vegetables';
   String _unit = 'kg';
-  DateTime? _availabilityDate = DateTime.now().add(const Duration(days: 1));
-
-  final List<String> _selectedImages = [
-    'assets/images/roma_tomatoes_1.png',
-    'assets/images/roma_tomatoes_2.png',
-  ];
+  DateTime? _availabilityDate;
+  final List<String> _selectedImages = [];
 
   @override
   void dispose() {
@@ -41,7 +37,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _availabilityDate ?? DateTime.now(),
+      initialDate: _availabilityDate ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
@@ -91,9 +87,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       name: name,
       category: _category,
       location: 'Local Farm',
-      quantity: '$quantityVal $_unit available',
+      quantity: '$quantityVal $_unit',
       unit: _unit,
-      price: '\$${priceVal.toStringAsFixed(2)} / $_unit',
+      price: 'LKR ${priceVal.toStringAsFixed(2)}/$_unit',
       pricePerUnit: priceVal,
       emoji: _category == 'Fruits' ? '🍎' : '🍅',
       color: const Color(0xFFFFE1DA),
@@ -122,12 +118,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      // Stitch: fixed top-0 h-16 px-margin-mobile flex items-center gap-md
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withValues(alpha: 0.90),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.04),
-        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
@@ -135,9 +128,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         title: const Text(
           'Add Product',
           style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
             color: AppColors.onSurface,
           ),
         ),
@@ -145,293 +137,231 @@ class _AddProductScreenState extends State<AddProductScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Basic Details — Stitch: bg-surface-container-low rounded-xl p-md shadow-sm
-                  _buildSectionCard(
-                    title: 'Basic Details',
+                  // ── Photo Upload Area ─────────────────────
+                  _buildPhotoUploadArea(),
+                  const SizedBox(height: 24),
+
+                  // ── Product Name ─────────────────────────
+                  _buildFieldLabel('Product Name'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _nameController,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
+                    decoration: _inputDecoration('e.g. Organic Roma Tomatoes'),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Category ─────────────────────────────
+                  _buildFieldLabel('Category'),
+                  const SizedBox(height: 8),
+                  _buildDropdown(
+                    value: _category,
+                    items: const ['Vegetables', 'Fruits', 'Grains', 'Dairy', 'Herbs'],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _category = val);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Quantity + Unit ──────────────────────
+                  Row(
                     children: [
-                      _buildFieldLabel('Product Name'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _nameController,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
-                        decoration: _inputDecoration('e.g. Organic Roma Tomatoes'),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel('Total Quantity'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _quantityController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter qty' : null,
+                              decoration: _inputDecoration('Enter quantity'),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 18),
-                      _buildFieldLabel('Category'),
-                      const SizedBox(height: 6),
-                      _buildDropdown(
-                        value: _category,
-                        items: const ['Vegetables', 'Fruits', 'Grains', 'Dairy', 'Herbs'],
-                        onChanged: (val) {
-                          if (val != null) setState(() => _category = val);
-                        },
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldLabel('Unit Type'),
+                            const SizedBox(height: 8),
+                            _buildDropdown(
+                              value: _unit,
+                              items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _unit = val);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // 2. Inventory & Pricing
-                  _buildSectionCard(
-                    title: 'Inventory & Pricing',
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  // ── Price per Unit ───────────────────────
+                  _buildFieldLabel('Price per Unit'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _priceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter price' : null,
+                    decoration: InputDecoration(
+                      hintText: '0.00',
+                      hintStyle: TextStyle(
+                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+                      ),
+                      prefixText: 'LKR ',
+                      prefixStyle: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLowest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.outlineVariant),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.outlineVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Availability Date ────────────────────
+                  _buildFieldLabel('Availability Date'),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      height: 56,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel('Quantity'),
-                                const SizedBox(height: 6),
-                                TextFormField(
-                                  controller: _quantityController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter qty' : null,
-                                  decoration: _inputDecoration('0.00'),
-                                ),
-                              ],
+                          Text(
+                            _availabilityDate != null
+                                ? DateFormat('MM/dd/yyyy').format(_availabilityDate!)
+                                : 'mm/dd/yyyy',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: _availabilityDate != null
+                                  ? AppColors.onSurface
+                                  : AppColors.onSurfaceVariant.withValues(alpha: 0.50),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildFieldLabel('Unit'),
-                                const SizedBox(height: 6),
-                                _buildDropdown(
-                                  value: _unit,
-                                  items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
-                                  onChanged: (val) {
-                                    if (val != null) setState(() => _unit = val);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
+                          const Icon(Icons.calendar_today_outlined,
+                              color: AppColors.onSurfaceVariant, size: 20),
                         ],
                       ),
-                      const SizedBox(height: 18),
-                      _buildFieldLabel('Price per unit'),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter price' : null,
-                        decoration: InputDecoration(
-                          hintText: '0.00',
-                          hintStyle: TextStyle(
-                            fontFamily: 'Inter',
-                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
-                          ),
-                          // Stitch: $ prefix
-                          prefixText: '\$  ',
-                          prefixStyle: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 15,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surfaceContainerLowest,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      _buildFieldLabel('Availability Date'),
-                      const SizedBox(height: 6),
-                      // Stitch: date input with calendar icon
-                      InkWell(
-                        onTap: _pickDate,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          height: 56,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.outlineVariant),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _availabilityDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(_availabilityDate!)
-                                    : 'Select date',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  color: AppColors.onSurface,
-                                ),
-                              ),
-                              const Icon(Icons.calendar_today_outlined,
-                                  color: AppColors.onSurfaceVariant, size: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // 3. Description
-                  _buildSectionCard(
-                    title: 'Description',
-                    children: [
-                      // Screen reader label
-                      const Offstage(child: Text('Product Description')),
-                      TextFormField(
-                        controller: _descriptionController,
-                        maxLines: 4,
-                        decoration: _inputDecoration(
-                          'Describe the quality, origin, and any certifications...',
-                        ),
-                      ),
-                    ],
+                  // ── Description ──────────────────────────
+                  _buildFieldLabel('Description'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 5,
+                    decoration: _inputDecoration(
+                      'Provide details about the harvest quality, farming methods used, etc.',
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // 4. Product Images — Stitch: grid grid-cols-3 gap-sm, aspect-square cells
-                  _buildSectionCard(
-                    title: 'Product Images',
-                    subtitle: 'Upload up to 5 clear photos of your product.',
-                    children: [
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          // aspect-square = 1:1
-                          childAspectRatio: 1.0,
-                        ),
-                        itemCount: _selectedImages.length < 5
-                            ? _selectedImages.length + 1
-                            : _selectedImages.length,
+                  // ── Photo preview thumbnails ─────────────
+                  if (_selectedImages.isNotEmpty) ...[
+                    _buildFieldLabel('Selected Photos'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 80,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedImages.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
-                          // Add tile
-                          if (index == _selectedImages.length && _selectedImages.length < 5) {
-                            return InkWell(
-                              onTap: _addImageMock,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  // Stitch: bg-surface border-2 border-dashed border-primary/50
-                                  color: AppColors.surfaceContainerLowest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.50),
-                                    width: 2,
-                                    // Dashed border via decoration
-                                  ),
-                                ),
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_photo_alternate_outlined,
-                                      color: AppColors.primary,
-                                      size: 28,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Add',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-
-                          // Image preview tile — Stitch: relative aspect-square rounded-xl overflow-hidden
-                          final imgPath = _selectedImages[index];
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.asset(
-                                  imgPath,
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.asset(
+                                  _selectedImages[index],
+                                  width: 80,
+                                  height: 80,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
+                                    width: 80,
+                                    height: 80,
                                     color: AppColors.surfaceContainer,
                                     child: const Icon(Icons.image_outlined,
                                         color: AppColors.onSurfaceVariant),
                                   ),
                                 ),
-                                // Stitch: close button top-1 right-1 w-8 h-8 bg-surface/80 rounded-full
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: InkWell(
-                                    onTap: () => _removeImage(index),
-                                    child: Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.85),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.12),
-                                            blurRadius: 4,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: AppColors.error,
-                                      ),
+                              ),
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: GestureDetector(
+                                  onTap: () => _removeImage(index),
+                                  child: Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.15),
+                                          blurRadius: 3,
+                                        ),
+                                      ],
                                     ),
+                                    child: const Icon(Icons.close, size: 14, color: AppColors.error),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           );
                         },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
 
-          // Sticky bottom Publish button
-          // Stitch: fixed bottom-0 p-margin-mobile bg-surface/90 backdrop-blur
+          // ── Sticky Publish Button ───────────────────────
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
               decoration: BoxDecoration(
                 color: AppColors.surface.withValues(alpha: 0.92),
                 boxShadow: [
@@ -443,15 +373,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ],
               ),
               child: SizedBox(
-                height: 52,
+                height: 54,
                 child: ElevatedButton.icon(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    // Stitch: bg-primary text-on-primary rounded-xl h-touch-target
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 2,
                   ),
@@ -459,9 +388,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   label: const Text(
                     'Publish Product',
                     style: TextStyle(
-                      fontFamily: 'Inter',
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -473,77 +401,75 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // Stitch: bg-surface-container-low rounded-xl p-md shadow-sm mb-lg
-  Widget _buildSectionCard({
-    required String title,
-    String? subtitle,
-    required List<Widget> children,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+  // ── Photo Upload Area (dashed border) ──────────────────────
+  Widget _buildPhotoUploadArea() {
+    return GestureDetector(
+      onTap: _addImageMock,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 36),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F8E9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.30),
+            width: 2,
+            style: BorderStyle.solid,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Stitch: h2 font-headline-md text-headline-md text-on-surface mb-md
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add_a_photo_outlined,
+                color: AppColors.primary,
+                size: 32,
+              ),
             ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
+            const Text(
+              'Add Photos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 4),
             Text(
-              subtitle,
-              style: const TextStyle(
-                fontFamily: 'Inter',
+              'Tap to upload harvest images',
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.onSurfaceVariant,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.70),
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          ...children,
-        ],
+        ),
       ),
     );
   }
 
-  // Stitch: label block font-label-md text-label-md text-on-surface-variant mb-xs
   Widget _buildFieldLabel(String label) {
     return Text(
       label,
       style: const TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
-        color: AppColors.onSurfaceVariant,
+        color: AppColors.onSurface,
       ),
     );
   }
 
-  // Stitch: input h-[56px] px-md rounded-lg bg-surface border border-outline-variant focus:border-primary
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        fontFamily: 'Inter',
         color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
       ),
       filled: true,
@@ -568,7 +494,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // Stitch: select appearance-none h-[56px] px-md rounded-lg bg-surface border
   Widget _buildDropdown({
     required String value,
     required List<String> items,
