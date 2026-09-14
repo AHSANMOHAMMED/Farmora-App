@@ -404,7 +404,7 @@ class DashboardScreen extends StatelessWidget {
 
   // ── Quick Actions Grid ─────────────────────────────────────
   Widget _buildQuickActions(BuildContext context, Role role) {
-    final actions = _getQuickActions(role);
+    final actions = _getQuickActions(context, role);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -428,34 +428,34 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  List<Map<String, dynamic>> _getQuickActions(Role role) {
+  List<Map<String, dynamic>> _getQuickActions(BuildContext context, Role role) {
     if (role == Role.farmer) {
       return [
         {
           'icon': Icons.add_circle_outline_rounded,
           'label': 'Add Product',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AddProductScreen()),
           ),
         },
         {
           'icon': Icons.receipt_long_outlined,
           'label': 'View Orders',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
           ),
         },
         {
           'icon': Icons.local_shipping_outlined,
           'label': 'Request\nTransport',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
           ),
         },
         {
           'icon': Icons.bar_chart_rounded,
           'label': 'Analytics',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const EarningsScreen()),
           ),
         },
@@ -465,24 +465,24 @@ class DashboardScreen extends StatelessWidget {
         {
           'icon': Icons.search_rounded,
           'label': 'Browse\nProducts',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
           ),
         },
         {
           'icon': Icons.receipt_long_outlined,
           'label': 'My Orders',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
         {
           'icon': Icons.shopping_cart_outlined,
           'label': 'View Cart',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
         {
           'icon': Icons.person_outline_rounded,
           'label': 'Profile',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
       ];
     } else if (role == Role.transporter) {
@@ -490,24 +490,24 @@ class DashboardScreen extends StatelessWidget {
         {
           'icon': Icons.local_shipping_outlined,
           'label': 'Find Jobs',
-          'onTap': (BuildContext ctx) => Navigator.of(ctx).push(
+          'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
           ),
         },
         {
           'icon': Icons.receipt_long_outlined,
           'label': 'My Deliveries',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
         {
           'icon': Icons.map_outlined,
           'label': 'Route Map',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
         {
           'icon': Icons.bar_chart_rounded,
           'label': 'Earnings',
-          'onTap': (BuildContext ctx) {},
+          'onTap': () {},
         },
       ];
     }
@@ -516,22 +516,22 @@ class DashboardScreen extends StatelessWidget {
       {
         'icon': Icons.dashboard_outlined,
         'label': 'Dashboard',
-        'onTap': (BuildContext ctx) {},
+        'onTap': () {},
       },
       {
         'icon': Icons.people_outline_rounded,
         'label': 'Users',
-        'onTap': (BuildContext ctx) {},
+        'onTap': () {},
       },
       {
         'icon': Icons.local_shipping_outlined,
         'label': 'Logistics',
-        'onTap': (BuildContext ctx) {},
+        'onTap': () {},
       },
       {
         'icon': Icons.settings_outlined,
         'label': 'Settings',
-        'onTap': (BuildContext ctx) {},
+        'onTap': () {},
       },
     ];
   }
