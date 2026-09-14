@@ -133,6 +133,14 @@ class FirestoreService {
     });
   }
 
+  /// Update order delivery address
+  Future<void> updateOrderAddress(String orderId, String newAddress) async {
+    await _db.collection('orders').doc(orderId).update({
+      'deliveryAddress': newAddress,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<String> createSecureOrder({
     required String productId,
     required int quantity,

@@ -8,6 +8,7 @@ import 'dashboard_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_orders_screen.dart';
+import '../../farmer/presentation/farmer_jobs_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
@@ -57,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
         DashboardScreen(),
         FarmerProductsScreen(),
         FarmerOrdersScreen(),
+        FarmerJobsScreen(),
         EarningsScreen(),
         ProfileScreen(),
       ];
@@ -74,6 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Orders',
             icon: Icons.shopping_basket_outlined,
             activeIcon: Icons.shopping_basket_rounded),
+        _NavItem(
+            label: 'Deliveries',
+            icon: Icons.local_shipping_outlined,
+            activeIcon: Icons.local_shipping_rounded),
         // Stitch uses payments icon for Earnings
         _NavItem(
             label: 'Earnings',

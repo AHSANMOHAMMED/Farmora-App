@@ -246,6 +246,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      if (currentOrder.status == 'pending')
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          onPressed: () => _editDeliveryAddress(context, state, currentOrder),
+                          color: AppColors.primary,
+                        ),
                     ],
                   ),
                 ],
@@ -764,6 +770,43 @@ class _TrustActionsState extends State<_TrustActions> {
           ],
         ),
       ],
+    );
+  }
+
+  void _editDeliveryAddress(BuildContext context, FarmoraState state, FarmoraOrder order) {
+    final controller = TextEditingController(text: order.deliveryAddress);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Delivery Address'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter new address',
+          ),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                await state.updateOrderAddress(order.id, controller.text.trim());
+                if (context.mounted) {
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Address updated successfully')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 }
