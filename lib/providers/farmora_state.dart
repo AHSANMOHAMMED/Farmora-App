@@ -31,6 +31,8 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
+  String country = 'Sri Lanka';
+  String district = '';
   Role role = Role.farmer;
 
   // Search & Filter State
@@ -77,15 +79,48 @@ class FarmoraState extends ChangeNotifier {
   double get thisWeek => _thisWeek;
   double get pendingPayments => _pendingPayments;
 
+  String sortOrder = 'newest';
+  double? minPrice;
+  double? maxPrice;
+
+  void setSortOrder(String v) {
+    sortOrder = v;
+    notifyListeners();
+  }
+
+  void setPriceRange({double? min, double? max}) {
+    minPrice = min;
+    maxPrice = max;
+    notifyListeners();
+  }
+
   List<Product> get filteredProducts {
-    return _products.where((p) {
+    final list = _products.where((p) {
+      final q = searchQuery.toLowerCase();
       final matchesSearch = searchQuery.isEmpty ||
-          p.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          p.category.toLowerCase().contains(searchQuery.toLowerCase());
+          p.name.toLowerCase().contains(q) ||
+          p.category.toLowerCase().contains(q) ||
+          p.location.toLowerCase().contains(q);
       final matchesCategory = selectedCategory == 'All' ||
           p.category.toLowerCase() == selectedCategory.toLowerCase();
-      return matchesSearch && matchesCategory;
+      final matchesMin = minPrice == null || p.effectivePricePerUnit >= minPrice!;
+      final matchesMax = maxPrice == null || p.effectivePricePerUnit <= maxPrice!;
+      return matchesSearch && matchesCategory && matchesMin && matchesMax;
     }).toList();
+    switch (sortOrder) {
+      case 'priceAsc':
+        list.sort((a, b) => a.effectivePricePerUnit.compareTo(b.effectivePricePerUnit));
+        break;
+      case 'priceDesc':
+        list.sort((a, b) => b.effectivePricePerUnit.compareTo(a.effectivePricePerUnit));
+        break;
+      case 'name':
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      default:
+        break;
+    }
+    return list;
   }
 
   List<Product> get activeProducts =>
@@ -94,7 +129,7 @@ class FarmoraState extends ChangeNotifier {
   List<FarmoraOrder> get pendingOrders =>
       _orders.where((o) => o.isPending).toList();
   List<FarmoraOrder> get acceptedOrders =>
-      _orders.where((o) => o.isAccepted || o.status == 'In transit').toList();
+      _orders.where((o) => o.isAccepted).toList();
   List<FarmoraOrder> get completedOrders =>
       _orders.where((o) => o.isCompleted).toList();
 
@@ -104,7 +139,7 @@ class FarmoraState extends ChangeNotifier {
   int get cartItemCount =>
       _cartItems.fold(0, (sum, item) => sum + item.quantity);
   double get cartTotal => _cartItems.fold(
-      0.0, (sum, item) => sum + (item.product.pricePerUnit * item.quantity));
+      0.0, (sum, item) => sum + (item.product.effectivePricePerUnit * item.quantity));
 
   void addToCart(Product product, {int quantity = 1}) {
     final existingIndex =
@@ -141,20 +176,42 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void placeOrder() {
-    if (_cartItems.isEmpty) return;
-    if (_currentUserId.isNotEmpty) {
-      // Prices and stock are reloaded and committed by the trusted backend.
-      for (final item in _cartItems) {
-        _firestoreService.createSecureOrder(
-          productId: item.product.id,
-          quantity: item.quantity,
-        );
-      }
-      _cartItems.clear();
-      notifyListeners();
-      return;
+  bool _placingOrder = false;
+  bool get placingOrder => _placingOrder;
+  String? _lastOrderKey;
+  DateTime? _lastOrderAt;
+
+  double get cartSubtotal => cartTotal;
+  double get cartDeliveryFee => _cartItems.isEmpty ? 0.0 : 350.0;
+  double get cartGrandTotal => cartSubtotal + cartDeliveryFee;
+
+  Future<bool> placeOrder() async {
+    if (_cartItems.isEmpty || _placingOrder) return false;
+    // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
+    final key = _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
+    if (_lastOrderKey == key &&
+        _lastOrderAt != null &&
+        DateTime.now().difference(_lastOrderAt!).inSeconds < 30) {
+      return false;
     }
+    _placingOrder = true;
+    notifyListeners();
+    try {
+      if (_currentUserId.isNotEmpty) {
+        // Prices and stock are reloaded and committed by the trusted backend.
+        for (final item in _cartItems) {
+          await _firestoreService.createSecureOrder(
+            productId: item.product.id,
+            quantity: item.quantity,
+            deliveryFeeMinor: 35000,
+          );
+        }
+        _lastOrderKey = key;
+        _lastOrderAt = DateTime.now();
+        _cartItems.clear();
+        notifyListeners();
+        return true;
+      }
     for (final item in _cartItems) {
       final order = FarmoraOrder(
         id: 'ord-${DateTime.now().millisecondsSinceEpoch}-${item.product.id}',
@@ -165,15 +222,15 @@ class FarmoraState extends ChangeNotifier {
         grade: item.product.isOrganic ? 'Organic' : 'Grade A',
         unitPrice: item.product.price,
         totalAmount:
-            '\$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
-        totalAmountNumber: item.product.pricePerUnit * item.quantity,
+            'LKR ${(item.product.effectivePricePerUnit * item.quantity).toStringAsFixed(2)}',
+        totalAmountNumber: item.product.effectivePricePerUnit * item.quantity,
         buyerName: 'You',
         buyerCompany: 'Your Order',
         buyerAvatar: 'assets/images/buyer_sarah.png',
         buyerPhone: '',
         deliveryAddress: 'Delivery address TBD',
         detail:
-            '${item.quantity} ${item.product.unit} · \$${(item.product.pricePerUnit * item.quantity).toStringAsFixed(2)}',
+            '${item.quantity} ${item.product.unit} · LKR ${(item.product.effectivePricePerUnit * item.quantity).toStringAsFixed(2)}',
         status: 'Pending',
         progress: 0.1,
         color: const Color(0xFF3478C5),
@@ -185,8 +242,15 @@ class FarmoraState extends ChangeNotifier {
         _firestoreService.addOrder(order);
       }
     }
+    _lastOrderKey = key;
+    _lastOrderAt = DateTime.now();
     _cartItems.clear();
     notifyListeners();
+    return true;
+    } finally {
+      _placingOrder = false;
+      notifyListeners();
+    }
   }
 
   // Actions
@@ -289,6 +353,85 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  // ── Harvest video / QR / auto-delete / profile / trust ──
+  Future<Map<String, String>?> uploadHarvestVideo({
+    required String productId,
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    if (_currentUserId.isEmpty) return null;
+    final result = await _firestoreService.uploadProductVideo(
+      productId: productId,
+      bytes: Uint8List.fromList(bytes),
+      fileName: fileName,
+    );
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(
+        videoPath: result['path'],
+        videoUrl: result['url'],
+        harvestStatus: HarvestStatus.harvested,
+        harvestDate: DateTime.now(),
+      );
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<String?> generateQrForProduct(String productId) async {
+    if (_currentUserId.isEmpty) return null;
+    final payload = await _firestoreService.generateProductQr(
+      productId: productId,
+      farmerId: _currentUserId,
+    );
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(
+        qrCode: payload,
+        packingDate: DateTime.now(),
+        harvestStatus: HarvestStatus.packed,
+      );
+      notifyListeners();
+    }
+    return payload;
+  }
+
+  Future<void> deliverOrderAndCleanupVideo({
+    required String orderId,
+    required String productId,
+    String? videoStoragePath,
+    String? videoDownloadUrl,
+  }) async {
+    if (_currentUserId.isEmpty) return;
+    await _firestoreService.markDeliveredAndCleanupVideo(
+      orderId: orderId,
+      productId: productId,
+      videoStoragePath: videoStoragePath,
+      videoDownloadUrl: videoDownloadUrl,
+    );
+  }
+
+  Future<void> updateProfileLocation({
+    required String newCountry,
+    required String newDistrict,
+  }) async {
+    country = newCountry;
+    district = newDistrict;
+    notifyListeners();
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.updateUserLocation(
+        country: newCountry,
+        district: newDistrict,
+      );
+    }
+  }
+
+  String trustLevelForProduct(Product p) {
+    if (p.harvestStatus == HarvestStatus.delivered) return 'High';
+    if (p.hasQrCode || p.hasVideo) return 'Medium';
+    return p.trustLevel;
+  }
+
   Future<void> seedDatabase() async {
     await _firestoreService.seedDatabase();
   }
@@ -322,6 +465,8 @@ class FarmoraState extends ChangeNotifier {
       role = accountRole;
       language =
           (profile['languageCode'] ?? profile['language'] ?? 'en') as String;
+      country = (profile['country'] ?? 'Sri Lanka').toString();
+      district = (profile['district'] ?? '').toString();
       _profileLoaded = true;
       notifyListeners();
       _registerDeviceToken();
@@ -440,16 +585,16 @@ class FarmoraState extends ChangeNotifier {
     final now = DateTime.now();
     for (final order in _orders) {
       if (order.status != 'Declined') {
-        _totalEarnings += order.totalAmountNumber;
+        _totalEarnings += order.total;
 
         if (order.status == 'Pending') {
-          _pendingPayments += order.totalAmountNumber;
+          _pendingPayments += order.total;
         } else {
           _transactions.add(EarningsTransaction(
               id: 'tx-${order.id}',
               orderNumber: order.orderNumber,
               date: order.timestamp,
-              amount: order.totalAmountNumber));
+              amount: order.total));
         }
 
         const months = [
@@ -468,8 +613,8 @@ class FarmoraState extends ChangeNotifier {
         ];
         final monthStr = months[now.month - 1];
         monthlySums[monthStr] =
-            (monthlySums[monthStr] ?? 0.0) + order.totalAmountNumber;
-        _thisMonth += order.totalAmountNumber;
+            (monthlySums[monthStr] ?? 0.0) + order.total;
+        _thisMonth += order.total;
       }
     }
 
@@ -487,7 +632,8 @@ class FarmoraState extends ChangeNotifier {
       {String? fileName,
       String? fileSizeInfo,
       String? imagePreview,
-      VerificationStatus? status}) {
+      VerificationStatus? status,
+      String? errorMessage}) {
     final index = _verificationDocs.indexWhere((d) => d.id == docId);
     if (index != -1) {
       _verificationDocs[index] = _verificationDocs[index].copyWith(
@@ -495,9 +641,10 @@ class FarmoraState extends ChangeNotifier {
         fileSizeInfo: fileSizeInfo,
         imagePreview: imagePreview,
         status: status ?? VerificationStatus.approved,
-        errorMessage: null,
+        errorMessage: errorMessage,
       );
     }
+    notifyListeners();
   }
 
   Future<Map<String, dynamic>?> _loadUserProfile(String uid) async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/firebase_service.dart';
 
@@ -8,9 +9,9 @@ class ActiveDeliveryScreen extends StatelessWidget {
 
   const ActiveDeliveryScreen({super.key, required this.job});
 
-  Future<void> _markDelivered(BuildContext context) async {
+  Future<void> _transition(BuildContext context, String next) async {
     try {
-      await FirestoreService().transitionTransport(job.id, 'delivered');
+      await FirestoreService().transitionTransport(job.id, next);
       if (context.mounted) Navigator.of(context).pop();
     } catch (error) {
       if (context.mounted) {
@@ -107,29 +108,11 @@ class ActiveDeliveryScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            // Mock map placeholder
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 48, color: AppColors.outlineVariant),
-                    SizedBox(height: 8),
-                    Text(
-                      'Live Tracking Map',
-                      style: TextStyle(
-                          fontFamily: 'Inter',
-                          color: AppColors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
+            RouteProgressMap(
+              progress: RouteProgressMap.progressForJobStatus(job.status),
+              pickupLabel: job.pickup ?? job.route,
+              dropoffLabel: job.dropoff ?? job.detail,
+              statusLabel: '${job.title} • ${job.status.toUpperCase()}',
             ),
             const SizedBox(height: 24),
             const Text(
@@ -172,20 +155,33 @@ class ActiveDeliveryScreen extends StatelessWidget {
             ),
           ],
         ),
-        child: FilledButton(
-          onPressed: () => _markDelivered(context),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Status: ${job.status} • Valid next: ${job.nextStatuses.isEmpty ? 'none (terminal)' : job.nextStatuses.join(', ')}',
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.onSurfaceVariant),
+              textAlign: TextAlign.center,
             ),
-            backgroundColor: AppColors.primary,
-          ),
-          child: const Text(
-            'Mark as Delivered',
-            style: TextStyle(
-                fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+            const SizedBox(height: 8),
+            for (final next in job.nextStatuses)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FilledButton(
+                  onPressed: () => _transition(context, next),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: next == 'cancelled' ? AppColors.error : AppColors.primary,
+                  ),
+                  child: Text(
+                    next == 'pickedUp' ? 'Mark Picked Up' : next == 'inTransit' ? 'Mark In Transit' : next == 'delivered' ? 'Mark as Delivered' : next == 'accepted' ? 'Accept Job' : 'Cancel Job',
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

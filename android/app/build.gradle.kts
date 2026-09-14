@@ -13,6 +13,10 @@ if (signingPropertiesFile.exists()) {
     signingPropertiesFile.inputStream().use(signingProperties::load)
 }
 
+configurations.all {
+    exclude(group = "com.google.firebase", module = "protolite-well-known-types")
+}
+
 android {
     namespace = "com.example.farmora"
     // Firebase Storage and current Flutter plugins require API 36 to compile.
@@ -52,6 +56,14 @@ android {
                 // Never silently sign production artifacts with the debug key.
                 signingConfig = null
             }
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "google/protobuf/descriptor.proto"
+            )
         }
     }
 }

@@ -7,6 +7,7 @@ import '../models/product.dart';
 import '../models/order.dart';
 import '../models/transport_job.dart';
 import '../models/verification_model.dart';
+import '../models/conversation_model.dart';
 
 // ============================================================
 // Firebase Authentication Service
@@ -235,6 +236,30 @@ class FirestoreService {
     return result.data['messageId'] as String;
   }
 
+  Stream<List<FarmoraConversation>> conversationsForUserStream(String uid, {int limit = 50}) {
+    return _db
+        .collection('conversations')
+        .where('participantIds', arrayContains: uid)
+        .orderBy('lastMessageAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraConversation.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Stream<List<FarmoraMessage>> messagesStream(String conversationId, {int limit = 100}) {
+    return _db
+        .collection('messages')
+        .where('conversationId', isEqualTo: conversationId)
+        .orderBy('createdAt')
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraMessage.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
   Future<Map<String, dynamic>> verifyProductBarcode({
     required String barcodeId,
     required String signature,
@@ -244,6 +269,99 @@ class FirestoreService {
       'signature': signature,
     });
     return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  /// Upload harvest video for a product and return download URL + storage path.
+  Future<Map<String, String>> uploadProductVideo({
+    required String productId,
+    required Uint8List bytes,
+    required String fileName,
+    String contentType = 'video/mp4',
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (bytes.length > 100 * 1024 * 1024) {
+      throw StateError('Video must be smaller than 100 MB.');
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final path =
+        'product_videos/$uid/${productId}_${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    final url = await ref.getDownloadURL();
+    await _db.collection('products').doc(productId).update({
+      'videoPath': path,
+      'videoUrl': url,
+      'harvestStatus': 'harvested',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return {'path': path, 'url': url};
+  }
+
+  /// Delete a product video from Storage and clear Firestore fields.
+  Future<void> deleteProductVideo({
+    required String productId,
+    String? storagePath,
+    String? downloadUrl,
+  }) async {
+    try {
+      if (storagePath != null && storagePath.isNotEmpty) {
+        await _storage.ref(storagePath).delete();
+      } else if (downloadUrl != null && downloadUrl.isNotEmpty) {
+        await _storage.refFromURL(downloadUrl).delete();
+      }
+    } catch (_) {
+      // Ignore missing-file errors; still clear Firestore fields.
+    }
+    await _db.collection('products').doc(productId).update({
+      'videoPath': null,
+      'videoUrl': null,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Generate and persist QR payload for a packed product.
+  Future<String> generateProductQr({
+    required String productId,
+    required String farmerId,
+  }) async {
+    final payload = 'FARMORA:$productId:$farmerId:${DateTime.now().millisecondsSinceEpoch}';
+    await _db.collection('products').doc(productId).update({
+      'qrCode': payload,
+      'packingDate': DateTime.now().toIso8601String(),
+      'harvestStatus': 'packed',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return payload;
+  }
+
+  /// Mark order delivered and auto-delete linked product video.
+  Future<void> markDeliveredAndCleanupVideo({
+    required String orderId,
+    required String productId,
+    String? videoStoragePath,
+    String? videoDownloadUrl,
+  }) async {
+    await transitionOrder(orderId, 'delivered');
+    await deleteProductVideo(
+      productId: productId,
+      storagePath: videoStoragePath,
+      downloadUrl: videoDownloadUrl,
+    );
+  }
+
+  /// Update Sri Lankan profile location fields.
+  Future<void> updateUserLocation({
+    required String country,
+    required String district,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    await _db.collection('users').doc(uid).update({
+      'country': country,
+      'district': district,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> submitReview({
@@ -258,15 +376,54 @@ class FirestoreService {
     });
   }
 
+  Future<void> reviewVerificationDoc({
+    required String documentId,
+    required String status,
+  }) async {
+    await _functions.httpsCallable('reviewVerification').call({
+      'documentId': documentId,
+      'status': status,
+    });
+  }
+
+  Future<void> updateNotificationPreferences(Map<String, dynamic> prefs) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    await _db.collection('users').doc(uid).update({
+      'notificationPreferences': prefs,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<String> openDispute({
     required String orderId,
     required String reason,
+    List<String> evidenceUrls = const [],
   }) async {
     final result = await _functions.httpsCallable('openDispute').call({
       'orderId': orderId,
       'reason': reason,
+      'evidenceUrls': evidenceUrls,
     });
     return result.data['disputeId'] as String;
+  }
+
+  Future<String> uploadDisputeEvidence({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (bytes.length > 5 * 1024 * 1024) {
+      throw StateError('Evidence photo must be smaller than 5 MB.');
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final path =
+        'disputes/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return ref.getDownloadURL();
   }
 
   /// Update order status
@@ -437,6 +594,11 @@ class FirestoreService {
         'unit': 'kg',
         'price': 'LKR 4,500 / kg',
         'pricePerUnit': 4500.0,
+        'priceMinor': 450000,
+        'quantityAvailable': 10,
+        'currency': 'LKR',
+        'media': [],
+        'trustLevel': 'Medium',
         'emoji': '🍂',
         'color': 0xFFFFE1DA,
         'imagePath': 'assets/images/placeholder.png',
@@ -455,6 +617,11 @@ class FirestoreService {
         'unit': 'kg',
         'price': 'LKR 350 / kg',
         'pricePerUnit': 350.0,
+        'priceMinor': 35000,
+        'quantityAvailable': 50,
+        'currency': 'LKR',
+        'media': [],
+        'trustLevel': 'High',
         'emoji': '🥕',
         'color': 0xFFFFF3E0,
         'imagePath': 'assets/images/nantes_carrots.png',
@@ -472,6 +639,11 @@ class FirestoreService {
         'unit': 'nuts',
         'price': 'LKR 120 / ea',
         'pricePerUnit': 120.0,
+        'priceMinor': 12000,
+        'quantityAvailable': 100,
+        'currency': 'LKR',
+        'media': [],
+        'trustLevel': 'Standard',
         'emoji': '🥥',
         'color': 0xFFE8F5E9,
         'imagePath': 'assets/images/placeholder.png',
@@ -499,6 +671,12 @@ class FirestoreService {
         'unitPrice': 'LKR 350.00',
         'totalAmount': 'LKR 7,000.00',
         'totalAmountNumber': 7000.0,
+        'subtotalMinor': 700000,
+        'deliveryFeeMinor': 35000,
+        'totalMinor': 735000,
+        'currency': 'LKR',
+        'paymentStatus': 'unpaid',
+        'escrowStatus': 'not_funded',
         'buyerName': 'Sunil Perera',
         'buyerCompany': 'Sunil Fresh Veg',
         'buyerAvatar': 'assets/images/placeholder.png',
@@ -520,6 +698,12 @@ class FirestoreService {
         'unitPrice': 'LKR 4,500.00',
         'totalAmount': 'LKR 22,500.00',
         'totalAmountNumber': 22500.0,
+        'subtotalMinor': 2250000,
+        'deliveryFeeMinor': 35000,
+        'totalMinor': 2285000,
+        'currency': 'LKR',
+        'paymentStatus': 'paid',
+        'escrowStatus': 'funded_pending_delivery',
         'buyerName': 'Nimal Traders',
         'buyerCompany': 'Nimal Exports',
         'buyerAvatar': 'assets/images/placeholder.png',
