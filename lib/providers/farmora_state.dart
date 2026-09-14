@@ -354,6 +354,32 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  void updateJobStatus(String jobId, String status) {
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.transitionTransport(jobId, status);
+    }
+  }
+
+  void createTransportJob(TransportJob job) {
+    _firestoreService.addTransportJob(job);
+    _jobs.insert(0, job);
+    notifyListeners();
+  }
+
+  void updateTransportJob(String jobId, Map<String, dynamic> data) {
+    _firestoreService.updateTransportJob(jobId, data);
+  }
+
+  void deleteTransportJob(String jobId) {
+    _firestoreService.deleteTransportJob(jobId);
+    _jobs.removeWhere((j) => j.id == jobId);
+    notifyListeners();
+  }
+
+  void cancelOrder(String orderId) {
+    _firestoreService.updateOrderStatus(orderId, 'cancelled', 0.0);
+  }
+
   // ── Harvest video / QR / auto-delete / profile / trust ──
   Future<Map<String, String>?> uploadHarvestVideo({
     required String productId,
