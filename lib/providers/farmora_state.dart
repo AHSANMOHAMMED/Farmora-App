@@ -238,9 +238,7 @@ class FarmoraState extends ChangeNotifier {
         requestedDate: 'Today',
         buyerIcon: Icons.shopping_cart_rounded,
       );
-      if (_currentUserId.isNotEmpty) {
-        _firestoreService.addOrder(order);
-      }
+      _orders.insert(0, order);
     }
     _lastOrderKey = key;
     _lastOrderAt = DateTime.now();
@@ -309,6 +307,9 @@ class FarmoraState extends ChangeNotifier {
   void addProduct(Product p) {
     if (_currentUserId.isNotEmpty) {
       _firestoreService.createSecureProduct(p);
+    } else {
+      _products.insert(0, p);
+      notifyListeners();
     }
   }
 
