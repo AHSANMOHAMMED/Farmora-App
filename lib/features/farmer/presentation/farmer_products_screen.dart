@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmer_header.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
@@ -241,8 +242,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: product.imagePath != null && product.imagePath!.isNotEmpty
-                      ? Image.asset(
-                          product.imagePath!,
+                      ? SafeImage(
+                          path: product.imagePath!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => _buildFallbackThumbnail(product),
                         )

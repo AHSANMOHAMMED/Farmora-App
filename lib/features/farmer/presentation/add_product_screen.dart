@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -376,8 +377,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                Image.asset(
-                                  imgPath,
+                                SafeImage(
+                                  path: imgPath,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: AppColors.surfaceContainer,

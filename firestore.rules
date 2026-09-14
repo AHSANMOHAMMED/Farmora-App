@@ -24,7 +24,7 @@ service cloud.firestore {
       allow update: if signedIn() && request.auth.uid == userId
          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
            'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt',
-           'notificationPreferences'
+           'notificationPreferences', 'country', 'district', 'location'
          ]) || admin();
       allow delete: if signedIn() && request.auth.uid == userId;
     }
@@ -41,7 +41,9 @@ service cloud.firestore {
         && request.resource.data.farmerId == resource.data.farmerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'category', 'description', 'media', 'quantityAvailable', 'unit',
-          'priceMinor', 'availability', 'status', 'updatedAt'
+          'priceMinor', 'availability', 'status', 'updatedAt',
+          'videoPath', 'videoUrl', 'qrCode', 'harvestDate', 'packingDate',
+          'harvestStatus', 'trustLevel', 'imageUrls', 'searchTokens'
         ]);
       allow delete: if verified(resource.data.farmerId)
         && resource.data.farmerId == request.auth.uid;

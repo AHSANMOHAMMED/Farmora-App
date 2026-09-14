@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import '../../messaging/presentation/conversations_screen.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -35,6 +37,17 @@ class OrderDetailScreen extends StatelessWidget {
             color: AppColors.onSurface,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Message',
+            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ConversationsScreen(orderId: order.id),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -153,8 +166,8 @@ class OrderDetailScreen extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: ClipOval(
-                              child: Image.asset(
-                                currentOrder.buyerAvatar,
+                              child: SafeImage(
+                                path: currentOrder.buyerAvatar,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const CircleAvatar(
                                   backgroundColor: AppColors.surfaceContainerHigh,

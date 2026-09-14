@@ -5,6 +5,7 @@ import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'track_order_screen.dart';
 import 'barcode_scan_screen.dart';
+import '../../messaging/presentation/conversations_screen.dart';
 import '../../../services/firebase_service.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
@@ -38,6 +39,17 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             color: AppColors.onSurface,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Message',
+            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ConversationsScreen(orderId: order.id),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -59,6 +71,23 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   ),
                 ),
                 _buildStatusBadge(currentOrder.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildMiniBadge(
+                  _paymentLabel(currentOrder.paymentStatus),
+                  _paymentColor(currentOrder.paymentStatus),
+                ),
+                _buildMiniBadge(
+                  _escrowLabel(currentOrder.escrowStatus),
+                  AppColors.onSurfaceVariant,
+                ),
+                if (currentOrder.isDisputed)
+                  _buildMiniBadge('Disputed — payout paused', AppColors.error),
               ],
             ),
             const SizedBox(height: 8),
@@ -534,6 +563,60 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       ),
     );
   }
+
+  String _paymentLabel(String s) {
+    switch (s) {
+      case 'unpaid':
+        return 'Unpaid';
+      case 'paid':
+        return 'Paid';
+      case 'released':
+        return 'Released to farmer';
+      case 'disputed':
+        return 'Payment disputed';
+      case 'payment_failed':
+        return 'Payment failed';
+      default:
+        return 'Payment required';
+    }
+  }
+
+  Color _paymentColor(String s) {
+    switch (s) {
+      case 'paid':
+      case 'released':
+        return AppColors.statusApprovedText;
+      case 'disputed':
+      case 'payment_failed':
+        return AppColors.error;
+      default:
+        return AppColors.statusPendingText;
+    }
+  }
+
+  String _escrowLabel(String s) {
+    switch (s) {
+      case 'funded_pending_delivery':
+        return 'Escrow funded';
+      case 'released':
+        return 'Escrow released';
+      default:
+        return 'Escrow: $s';
+    }
+  }
+
+  Widget _buildMiniBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(9999),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label,
+          style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
 }
 
 class _TrustActions extends StatefulWidget {
@@ -557,14 +640,35 @@ class _TrustActionsState extends State<_TrustActions> {
   }
 
   Future<void> _review() async {
-    await _service.submitReview(
-      orderId: widget.order.id,
-      rating: _rating,
-      comment: _comment.text,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Review submitted for moderation.')));
+    if (!widget.order.canReview) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Reviews are allowed only after delivery, one per order.')));
+      }
+      return;
+    }
+    if (_comment.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Please write a short review comment first.')));
+      }
+      return;
+    }
+    try {
+      await _service.submitReview(
+        orderId: widget.order.id,
+        rating: _rating,
+        comment: _comment.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Review submitted for moderation.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not submit review: $e')));
+      }
     }
   }
 
@@ -586,6 +690,12 @@ class _TrustActionsState extends State<_TrustActions> {
       children: [
         Text('Trust and support',
             style: Theme.of(context).textTheme.titleMedium),
+        if (!widget.order.canReview)
+          const Padding(
+            padding: EdgeInsets.only(top: 4, bottom: 4),
+            child: Text('Reviews unlock after delivery (one per order). Complaints pause escrow release.',
+                style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+          ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           initialValue: _rating,
