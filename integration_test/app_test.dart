@@ -12,10 +12,19 @@ void main() {
     testWidgets('verify full user workflow (login, view products)', (tester) async {
       // Load app widget.
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for splash screen to finish (it has a 2.6s timer + 600ms transition)
+      await tester.pumpAndSettle(const Duration(seconds: 4));
 
       // We expect to see FarmoraApp initialized
       expect(find.byType(FarmoraApp), findsOneWidget);
+      
+      // Now we should be on OnboardingScreen
+      expect(find.text('Skip'), findsOneWidget);
+      
+      // Tap Skip
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
       
       // Find LoginScreen
       expect(find.byType(LoginScreen), findsOneWidget);
