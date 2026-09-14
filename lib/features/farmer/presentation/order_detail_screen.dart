@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../models/transport_job.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../messaging/presentation/conversations_screen.dart';
@@ -421,6 +422,62 @@ class OrderDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+          if (currentOrder.isAccepted)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.95),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Create a transport job
+                    final job = TransportJob(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: 'Delivery for ${currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title}',
+                      route: 'Farm → ${currentOrder.deliveryAddress}',
+                      detail: '${currentOrder.quantity} · Pickup Today',
+                      fee: 'LKR 2,500', // Mock fee
+                      accepted: false,
+                    );
+                    state.createTransportJob(job);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transport requested successfully!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                  icon: const Icon(Icons.local_shipping_outlined, size: 20),
+                  label: const Text(
+                    'Request Transport',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),

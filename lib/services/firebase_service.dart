@@ -501,6 +501,16 @@ class FirestoreService {
     });
   }
 
+  /// Update a transport job
+  Future<void> updateTransportJob(String id, Map<String, dynamic> data) async {
+    await _db.collection('transport_jobs').doc(id).update(data);
+  }
+
+  /// Delete a transport job
+  Future<void> deleteTransportJob(String id) async {
+    await _db.collection('transport_jobs').doc(id).delete();
+  }
+
   /// Real-time stream of transport jobs
   Stream<List<TransportJob>> jobsStream({int limit = 50}) {
     return _db
