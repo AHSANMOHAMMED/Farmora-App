@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/order.dart';
 
 class TrackOrderScreen extends StatelessWidget {
@@ -57,7 +58,7 @@ class TrackOrderScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.statusPendingBg, // mock
+                          color: AppColors.statusPendingBg,
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Text(
@@ -84,7 +85,7 @@ class TrackOrderScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Total: ${order.totalAmount}',
+                    'Total: ${order.displayTotal}',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -95,27 +96,11 @@ class TrackOrderScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            // Mock map placeholder
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 48, color: AppColors.outlineVariant),
-                    SizedBox(height: 8),
-                    Text(
-                      'Live Tracking Map',
-                      style: TextStyle(fontFamily: 'Inter', color: AppColors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
+            RouteProgressMap(
+              progress: RouteProgressMap.progressForOrderStatus(order.status),
+              pickupLabel: order.productName.isNotEmpty ? order.productName : 'Farm pickup',
+              dropoffLabel: order.deliveryAddress.split('\n').first,
+              statusLabel: '${order.status.toUpperCase()} • ${order.deliveryStatus.isNotEmpty ? order.deliveryStatus : 'in network'}',
             ),
             const SizedBox(height: 24),
             const Text(
@@ -136,9 +121,9 @@ class TrackOrderScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _buildTimelineStep('Order Placed', 'Your order was confirmed', true, true),
-                  _buildTimelineStep('Processing', 'Farmer is preparing the order', true, true),
-                  _buildTimelineStep('In Transit', 'Order is on the way', order.status.toLowerCase() == 'in transit' || order.status.toLowerCase() == 'delivered', order.status.toLowerCase() == 'delivered'),
-                  _buildTimelineStep('Delivered', 'Package arrived', order.status.toLowerCase() == 'delivered', order.status.toLowerCase() == 'delivered', isLast: true),
+                  _buildTimelineStep('Processing', 'Farmer is preparing the order', true, order.deliveryStatus.isNotEmpty),
+                  _buildTimelineStep('In Transit', 'Order is on the way', order.status.toLowerCase() == 'in transit' || order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'in transit', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered'),
+                  _buildTimelineStep('Delivered', 'Package arrived', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered', isLast: true),
                 ],
               ),
             ),

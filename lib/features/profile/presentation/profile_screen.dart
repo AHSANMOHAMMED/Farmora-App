@@ -5,6 +5,7 @@ import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'language_picker.dart';
 import 'role_sheet.dart';
+import 'legal_screens.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -15,6 +16,11 @@ class ProfileScreen extends StatelessWidget {
     final state = context.watch<FarmoraState>();
     final role = state.role;
     final isFarmer = role == Role.farmer;
+    
+    // Fetch current user data from state.users
+    final currentUserData = state.users.where((u) => u['uid'] == state.currentUserId).firstOrNull ?? {};
+    final displayName = currentUserData['name'] as String? ?? 'User Profile';
+    final district = currentUserData['district'] as String? ?? state.district;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -77,12 +83,34 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              isFarmer ? 'Rohan Silva' : 'Alex Perera',
+              displayName,
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              'Location: $district, ${state.country}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: AppColors.onSurfaceVariant,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              'District: ${state.district}',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: AppColors.onSurfaceVariant,
+                fontSize: 14,
               ),
             ),
           ),
@@ -174,12 +202,43 @@ class ProfileScreen extends StatelessWidget {
                     color: AppColors.outlineVariant.withValues(alpha: 0.2),
                     height: 1,
                     indent: 56),
-                const ListTile(
-                  leading: Icon(Icons.help_outline_rounded,
+                ListTile(
+                  leading: const Icon(Icons.help_outline_rounded,
                       color: AppColors.primary),
-                  title: Text('Help & Support',
+                  title: const Text('Help & Support',
                       style: TextStyle(fontWeight: FontWeight.w600)),
-                  trailing: Icon(Icons.chevron_right),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SupportScreen()),
+                  ),
+                ),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined,
+                      color: AppColors.primary),
+                  title: const Text('Privacy Policy',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                  ),
+                ),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined,
+                      color: AppColors.primary),
+                  title: const Text('Terms of Service',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+                  ),
                 ),
                 Divider(
                     color: AppColors.outlineVariant.withValues(alpha: 0.2),

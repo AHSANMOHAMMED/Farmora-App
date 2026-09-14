@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../providers/farmora_state.dart';
 
 class CartScreen extends StatelessWidget {
@@ -139,13 +140,13 @@ class CartScreen extends StatelessWidget {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: item.product.imagePath != null
-                                    ? Image.asset(
-                                        item.product.imagePath!,
+                                    ? SafeImage(
+                                        path: item.product.imagePath!,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Text(
+                                        errorBuilder: (_, __, ___) => Center(child: Text(
                                           item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
-                                        ),
+                                        )),
                                       )
                                     : Text(
                                         item.product.emoji,
@@ -266,45 +267,56 @@ class CartScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      _buildFeeRow('Subtotal (${state.cartItemCount} items)',
+                          'LKR ${state.cartSubtotal.toStringAsFixed(2)}'),
+                      const SizedBox(height: 4),
+                      _buildFeeRow('Delivery fee', 'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${state.cartItemCount} items',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 14,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            'Total: \$${state.cartTotal.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
+                          const Text('Payment', style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(color: AppColors.statusPendingBg, borderRadius: BorderRadius.circular(9999)),
+                            child: const Text('Payment required', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700)),
+                          Text(
+                            'LKR ${state.cartGrandTotal.toStringAsFixed(2)}',
+                            style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Server verifies price, stock and totals. Repeated taps create one order.',
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            state.placeOrder();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Order placed successfully!'),
-                                backgroundColor: AppColors.primary,
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                            Navigator.of(context).pop();
-                          },
+                          onPressed: state.placingOrder
+                              ? null
+                              : () async {
+                                  final ok = await state.placeOrder();
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(ok ? 'Order placed successfully!' : 'Already placing this order…'),
+                                      backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  if (ok) Navigator.of(context).pop();
+                                },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
@@ -313,10 +325,12 @@ class CartScreen extends StatelessWidget {
                             ),
                             elevation: 2,
                           ),
-                          icon: const Icon(Icons.check_circle_outline, size: 20),
-                          label: const Text(
-                            'Place Order',
-                            style: TextStyle(
+                          icon: context.watch<FarmoraState>().placingOrder
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_outline, size: 20),
+                          label: Text(
+                            context.watch<FarmoraState>().placingOrder ? 'Placing…' : 'Place Order',
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -329,6 +343,16 @@ class CartScreen extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildFeeRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+        Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }

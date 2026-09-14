@@ -25,8 +25,22 @@ class FarmoraOrder {
   final String timestamp;
   final String requestedDate;
   final IconData buyerIcon;
+  final DateTime createdAt;
+  // Backend (Cloud Functions) schema fields.
+  final String buyerId;
+  final String farmerId;
+  final String transporterId;
+  final List<Map<String, dynamic>> items;
+  final int subtotalMinor;
+  final int deliveryFeeMinor;
+  final int totalMinor;
+  final String currency;
+  final String paymentStatus;
+  final String escrowStatus;
+  final String deliveryStatus;
+  final String? disputeId;
 
-  const FarmoraOrder({
+  FarmoraOrder({
     required this.id,
     this.orderNumber = '#1042-B',
     required this.title,
@@ -48,15 +62,51 @@ class FarmoraOrder {
     this.timestamp = 'Today, 08:45 AM',
     this.requestedDate = 'Oct 24, 2024',
     this.buyerIcon = Icons.storefront_rounded,
-  });
+    DateTime? createdAt,
+    this.buyerId = '',
+    this.farmerId = '',
+    this.transporterId = '',
+    this.items = const [],
+    this.subtotalMinor = 0,
+    this.deliveryFeeMinor = 0,
+    this.totalMinor = 0,
+    this.currency = 'LKR',
+    this.paymentStatus = 'payment_required',
+    this.escrowStatus = 'not_funded',
+    this.deliveryStatus = '',
+    this.disputeId,
+  }) : createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-  bool get isPending => status.toLowerCase() == 'pending';
-  bool get isAccepted => status.toLowerCase() == 'accepted';
-  bool get isCompleted =>
-      status.toLowerCase() == 'delivered' ||
-      status.toLowerCase() == 'completed';
+  static const activeStatuses = {
+    'accepted',
+    'confirmed',
+    'assigned',
+    'pickedup',
+    'intransit',
+    'in transit',
+  };
+
+  String get _norm => status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+
+  bool get isPending => _norm == 'pending';
+  bool get isAccepted => activeStatuses.contains(_norm);
+  bool get isCompleted => _norm == 'delivered' || _norm == 'completed';
   bool get isDeclined =>
       status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
+
+  double get total =>
+      totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
+
+  String get displayTotal {
+    if (totalMinor > 0) {
+      return '$currency ${(totalMinor / 100).toStringAsFixed(2)}';
+    }
+    return totalAmount;
+  }
+
+  bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'released';
+  bool get isDisputed => disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
+  bool get canReview => isCompleted && !isDisputed;
 
   FarmoraOrder copyWith({
     String? id,
@@ -80,6 +130,19 @@ class FarmoraOrder {
     String? timestamp,
     String? requestedDate,
     IconData? buyerIcon,
+    DateTime? createdAt,
+    String? buyerId,
+    String? farmerId,
+    String? transporterId,
+    List<Map<String, dynamic>>? items,
+    int? subtotalMinor,
+    int? deliveryFeeMinor,
+    int? totalMinor,
+    String? currency,
+    String? paymentStatus,
+    String? escrowStatus,
+    String? deliveryStatus,
+    String? disputeId,
   }) {
     return FarmoraOrder(
       id: id ?? this.id,
@@ -103,6 +166,19 @@ class FarmoraOrder {
       timestamp: timestamp ?? this.timestamp,
       requestedDate: requestedDate ?? this.requestedDate,
       buyerIcon: buyerIcon ?? this.buyerIcon,
+      createdAt: createdAt ?? this.createdAt,
+      buyerId: buyerId ?? this.buyerId,
+      farmerId: farmerId ?? this.farmerId,
+      transporterId: transporterId ?? this.transporterId,
+      items: items ?? this.items,
+      subtotalMinor: subtotalMinor ?? this.subtotalMinor,
+      deliveryFeeMinor: deliveryFeeMinor ?? this.deliveryFeeMinor,
+      totalMinor: totalMinor ?? this.totalMinor,
+      currency: currency ?? this.currency,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      escrowStatus: escrowStatus ?? this.escrowStatus,
+      deliveryStatus: deliveryStatus ?? this.deliveryStatus,
+      disputeId: disputeId ?? this.disputeId,
     );
   }
 
@@ -134,6 +210,19 @@ class FarmoraOrder {
       'timestamp': timestamp,
       'requestedDate': requestedDate,
       'buyerIcon': iconKey,
+      'createdAt': createdAt.toIso8601String(),
+      'buyerId': buyerId,
+      'farmerId': farmerId,
+      'transporterId': transporterId,
+      'items': items,
+      'subtotalMinor': subtotalMinor,
+      'deliveryFeeMinor': deliveryFeeMinor,
+      'totalMinor': totalMinor,
+      'currency': currency,
+      'paymentStatus': paymentStatus,
+      'escrowStatus': escrowStatus,
+      'deliveryStatus': deliveryStatus,
+      'disputeId': disputeId,
     };
   }
 
@@ -167,6 +256,24 @@ class FarmoraOrder {
       timestamp: data['timestamp'] ?? '',
       requestedDate: data['requestedDate'] ?? '',
       buyerIcon: iconData,
+      buyerId: (data['buyerId'] ?? '').toString(),
+      farmerId: (data['farmerId'] ?? '').toString(),
+      transporterId: (data['transporterId'] ?? '').toString(),
+      items: (data['items'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
+      subtotalMinor: (data['subtotalMinor'] as num?)?.toInt() ?? 0,
+      deliveryFeeMinor: (data['deliveryFeeMinor'] as num?)?.toInt() ?? 0,
+      totalMinor: (data['totalMinor'] as num?)?.toInt() ?? 0,
+      currency: (data['currency'] ?? 'LKR').toString(),
+      paymentStatus: (data['paymentStatus'] ?? 'payment_required').toString(),
+      escrowStatus: (data['escrowStatus'] ?? 'not_funded').toString(),
+      deliveryStatus: (data['deliveryStatus'] ?? '').toString(),
+      disputeId: data['disputeId'] as String?,
+      createdAt: data['createdAt'] != null
+          ? DateTime.tryParse(data['createdAt'].toString()) ??
+              DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }

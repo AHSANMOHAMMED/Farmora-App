@@ -10,7 +10,7 @@ class LogisticsManagementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final activeDeliveries = state.orders.where((o) => o.status == 'In transit' || o.status == 'Pending').toList();
+    final activeJobs = state.jobs.where((j) => j.isActive || j.status == 'requested').toList();
 
     return Scaffold(
       body: ListView(
@@ -18,14 +18,14 @@ class LogisticsManagementScreen extends StatelessWidget {
         children: [
           const Text('Active Deliveries', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          if (activeDeliveries.isEmpty)
+          if (activeJobs.isEmpty)
             const Center(child: Text('No active deliveries.'))
           else
-            ...activeDeliveries.map((order) {
+            ...activeJobs.map((job) {
               return _buildDeliveryTile(
-                order.orderNumber, 
-                order.status, 
-                'Buyer: ${order.buyerName}'
+                job.orderId != null && job.orderId!.isNotEmpty ? job.orderId! : job.id, 
+                job.status.toUpperCase(), 
+                'Route: ${job.route}'
               );
             }),
         ],
