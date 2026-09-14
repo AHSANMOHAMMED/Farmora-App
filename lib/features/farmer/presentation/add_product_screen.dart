@@ -7,7 +7,12 @@ import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final Product? existingProduct;
+
+  const AddProductScreen({
+    super.key,
+    this.existingProduct,
+  });
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -29,6 +34,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'assets/images/roma_tomatoes_1.png',
     'assets/images/roma_tomatoes_2.png',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingProduct != null) {
+      final p = widget.existingProduct!;
+      _nameController.text = p.name;
+      // Extract numeric part from quantity string (e.g., "50 kg available" -> "50")
+      final qtyMatch = RegExp(r'^([\d.]+)\s').firstMatch(p.quantity);
+      _quantityController.text = qtyMatch != null ? qtyMatch.group(1)! : '';
+      _priceController.text = p.pricePerUnit.toString();
+      _descriptionController.text = p.description ?? '';
+      _category = p.category;
+      _unit = p.unit;
+      _availabilityDate = p.availabilityDate;
+      if (p.images.isNotEmpty) {
+        _selectedImages.clear();
+        _selectedImages.addAll(p.images);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -87,8 +113,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
     final description = _descriptionController.text.trim();
 
+    final isEdit = widget.existingProduct != null;
+    final productId = isEdit ? widget.existingProduct!.id : 'prod-${DateTime.now().millisecondsSinceEpoch}';
+    final productStatus = isEdit ? widget.existingProduct!.status : 'Active';
+
     final newProduct = Product(
-      id: 'prod-${DateTime.now().millisecondsSinceEpoch}',
+      id: productId,
       name: name,
       category: _category,
       location: 'Local Farm',
@@ -99,22 +129,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
       emoji: _category == 'Fruits' ? '🍎' : '🍅',
       color: const Color(0xFFFFE1DA),
       imagePath: _selectedImages.isNotEmpty ? _selectedImages.first : 'assets/images/heirloom_tomatoes.png',
-      status: 'Active',
+      status: productStatus,
       isOrganic: true,
       description: description,
       availabilityDate: _availabilityDate,
       images: _selectedImages,
     );
 
-    context.read<FarmoraState>().addProduct(newProduct);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.primary,
-        content: Text('Published $name successfully!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (isEdit) {
+      context.read<FarmoraState>().updateProduct(newProduct);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primary,
+          content: Text('Updated $name successfully!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      context.read<FarmoraState>().addProduct(newProduct);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primary,
+          content: Text('Published $name successfully!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
 
     Navigator.of(context).pop();
   }
@@ -133,9 +173,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Add Product',
-          style: TextStyle(
+        title: Text(
+          widget.existingProduct != null ? 'Edit Product' : 'Add Product',
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -457,9 +497,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     elevation: 2,
                   ),
                   icon: const Icon(Icons.publish_rounded, size: 20),
-                  label: const Text(
-                    'Publish Product',
-                    style: TextStyle(
+                  label: Text(
+                    widget.existingProduct != null ? 'Save Changes' : 'Publish Product',
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

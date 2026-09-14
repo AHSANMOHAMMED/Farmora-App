@@ -313,6 +313,17 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  void updateProduct(Product p) {
+    final index = _products.indexWhere((prod) => prod.id == p.id);
+    if (index != -1) {
+      _products[index] = p;
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.updateProduct(p.id, p.toMap());
+      }
+      notifyListeners();
+    }
+  }
+
   void add(Product p) => addProduct(p);
 
   void toggleProductStock(String id) {
@@ -378,6 +389,15 @@ class FarmoraState extends ChangeNotifier {
 
   void cancelOrder(String orderId) {
     _firestoreService.updateOrderStatus(orderId, 'cancelled', 0.0);
+  }
+
+  Future<void> updateOrderAddress(String orderId, String newAddress) async {
+    await _firestoreService.updateOrderAddress(orderId, newAddress);
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _orders[idx] = _orders[idx].copyWith(deliveryAddress: newAddress);
+      notifyListeners();
+    }
   }
 
   // ── Harvest video / QR / auto-delete / profile / trust ──

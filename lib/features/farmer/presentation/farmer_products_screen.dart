@@ -466,6 +466,24 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                   },
                 ),
                 ListTile(
+                  leading: const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.onSurface,
+                  ),
+                  title: const Text(
+                    'Edit Listing',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AddProductScreen(existingProduct: product),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.delete_outline, color: AppColors.error),
                   title: const Text(
                     'Remove Listing',
