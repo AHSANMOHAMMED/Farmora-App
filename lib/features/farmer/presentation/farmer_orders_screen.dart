@@ -174,39 +174,37 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
+              padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Status badge + timestamp
-                  // Stitch: flex justify-between items-start mb-sm
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Stitch: inline-flex items-center gap-xs px-sm py-xs rounded-full bg-surface-container
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceContainer,
+                          color: const Color(0xFFE1EFFE),
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.hourglass_top_rounded,
-                              size: 13,
-                              color: AppColors.onSurface,
+                              Icons.emoji_events_outlined,
+                              size: 14,
+                              color: Color(0xFF1D4ED8),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 5),
                             Text(
                               order.status.toUpperCase(),
                               style: const TextStyle(
                                 fontFamily: 'Inter',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.8,
-                                color: AppColors.onSurface,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: Color(0xFF1D4ED8),
                               ),
                             ),
                           ],
@@ -217,7 +215,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
-                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF475467),
                         ),
                       ),
                     ],
@@ -225,25 +224,14 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   const SizedBox(height: 14),
 
                   // Thumbnail + item details
-                  // Stitch: flex gap-md items-center mb-md
                   Row(
                     children: [
-                      // Stitch: w-16 h-16 rounded-lg object-cover bg-surface-container shadow-sm
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainer,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          color: const Color(0xFFE2E8F0),
                           child: _buildOrderThumbnail(order),
                         ),
                       ),
@@ -257,8 +245,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.onSurface,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF101828),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -269,7 +257,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 13,
-                                color: AppColors.onSurfaceVariant,
+                                color: Color(0xFF475467),
                               ),
                             ),
                           ],
@@ -279,9 +267,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // Divider — Stitch: border-t border-surface-variant/50
-                  Divider(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                  // Divider
+                  const Divider(
+                    color: Color(0xFFEAECF0),
                     height: 1,
                   ),
                   const SizedBox(height: 12),
@@ -298,7 +286,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF667085),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -306,17 +295,17 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             children: [
                               Icon(
                                 order.buyerIcon,
-                                size: 15,
-                                color: AppColors.primary,
+                                size: 16,
+                                color: const Color(0xFF0C5123),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Text(
                                 order.buyerCompany,
                                 style: const TextStyle(
                                   fontFamily: 'Inter',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurface,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF101828),
                                 ),
                               ),
                             ],
@@ -331,7 +320,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF667085),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -340,8 +330,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0C5123),
                             ),
                           ),
                         ],
@@ -351,13 +341,12 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
 
                   // Action Buttons for Pending Orders
                   if (order.isPending) ...[
-                    const SizedBox(height: 12),
-                    // Stitch: flex gap-sm mt-md pt-sm
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Expanded(
                           child: SizedBox(
-                            height: 48,
+                            height: 44,
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 state.declineOrder(order.id);
@@ -366,15 +355,14 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 );
                               },
                               style: OutlinedButton.styleFrom(
-                                // Stitch: bg-surface-container text-on-surface rounded-lg
-                                backgroundColor: AppColors.surfaceContainer,
-                                foregroundColor: AppColors.onSurface,
+                                backgroundColor: const Color(0xFFE3EFF8),
+                                foregroundColor: const Color(0xFF101828),
                                 side: BorderSide.none,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              icon: const Icon(Icons.close, size: 18),
+                              icon: const Icon(Icons.close, size: 16),
                               label: const Text(
                                 'Decline',
                                 style: TextStyle(
@@ -389,33 +377,32 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: SizedBox(
-                            height: 48,
+                            height: 44,
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 state.acceptOrder(order.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: AppColors.primary,
-                                    content: Text('Accepted ${order.orderNumber}! Balance updated.'),
+                                  const SnackBar(
+                                    backgroundColor: Color(0xFF0C5123),
+                                    content: Text('Order accepted! Balance updated.'),
                                   ),
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                // Stitch: bg-primary text-on-primary rounded-lg shadow-md
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: const Color(0xFF0C5123),
                                 foregroundColor: Colors.white,
-                                elevation: 2,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              icon: const Icon(Icons.check, size: 18),
+                              icon: const Icon(Icons.check, size: 16),
                               label: const Text(
                                 'Accept',
                                 style: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),

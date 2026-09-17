@@ -11,10 +11,10 @@ class EarningsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF4FAFF),
       appBar: const FarmerHeader(title: 'Earnings'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -22,67 +22,64 @@ class EarningsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Hero Card: Total Earnings
-            // Stitch: bg-primary-container text-on-primary-container
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: AppColors.primaryContainer, // #4caf50
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFF388E3C), // Vibrant green from Image 4
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Stack(
                 children: [
-                  // Cross-hatch pattern overlay (Stitch uses SVG pattern)
+                  // Subtle Plus / Cross Grid Pattern Overlay
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       child: Opacity(
-                        opacity: 0.10,
-                        child: CustomPaint(painter: _CrossHatchPainter()),
+                        opacity: 0.15,
+                        child: CustomPaint(painter: _PlusPatternPainter()),
                       ),
                     ),
                   ),
                   // Wallet icon in bottom-right
                   Positioned(
-                    right: -4,
-                    bottom: -4,
+                    right: 0,
+                    bottom: 0,
                     child: Icon(
                       Icons.account_balance_wallet_rounded,
-                      size: 64,
-                      color: Colors.white.withValues(alpha: 0.20),
+                      size: 56,
+                      color: Colors.white.withValues(alpha: 0.25),
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stitch: text-label-md opacity-80 uppercase tracking-wider
                       Text(
                         'TOTAL EARNINGS',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 1.4,
-                          color: AppColors.onPrimaryContainer.withValues(alpha: 0.80),
+                          letterSpacing: 1.2,
+                          color: const Color(0xFF1B5E20).withValues(alpha: 0.85),
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Stitch: text-headline-lg-mobile font-headline-lg-mobile
                       Text(
                         currencyFormat.format(state.totalEarnings),
                         style: const TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
-                          color: AppColors.onPrimaryContainer,
+                          color: Color(0xFF0A3311),
                         ),
                       ),
                     ],
@@ -90,10 +87,9 @@ class EarningsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // 2. Summary Cards Grid — Stitch: grid-cols-2 gap-sm
-            // This Month + This Week in a row
+            // 2. Summary Cards Row (This Month & This Week)
             Row(
               children: [
                 Expanded(
@@ -102,7 +98,7 @@ class EarningsScreen extends StatelessWidget {
                     amount: currencyFormat.format(state.thisMonth),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _buildMetricCard(
                     title: 'This Week',
@@ -111,22 +107,15 @@ class EarningsScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-            // Pending Payments — Stitch: col-span-2 bg-secondary-container text-on-secondary-container
+            // 3. Pending Payments Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.secondaryContainer,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: const Color(0xFFFDDED2), // Soft peach / coral from Image 4
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,14 +123,13 @@ class EarningsScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Pending Payments',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                          color: AppColors.onSecondaryContainer.withValues(alpha: 0.80),
+                          color: Color(0xFF8C5B4F),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -149,117 +137,79 @@ class EarningsScreen extends StatelessWidget {
                         currencyFormat.format(state.pendingPayments),
                         style: const TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSecondaryContainer,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF6E392B),
                         ),
                       ),
                     ],
                   ),
-                  Icon(
-                    Icons.pending_actions_rounded,
-                    size: 32,
-                    color: AppColors.secondary.withValues(alpha: 0.50),
+                  const Icon(
+                    Icons.assignment_late_outlined,
+                    size: 28,
+                    color: Color(0xFFA66E61),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // 3. Monthly Earnings Bar Chart Card
-            // Stitch: bg-surface-container-lowest p-md rounded-xl
+            // 4. Monthly Earnings Bar Chart Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Stitch: h3 text-headline-md
                   const Text(
                     'Monthly Earnings',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF101828),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Stitch: w-full h-48 flex items-end justify-between gap-1 mt-4 px-2
+                  const SizedBox(height: 28),
                   SizedBox(
-                    height: 192, // h-48
+                    height: 160,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: state.monthlyBars.map((bar) {
                         return Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                // Tooltip on top of highlighted bar
-                                if (bar.isHighlighted)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
-                                    ),
-                                    margin: const EdgeInsets.only(bottom: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.inverseSurface,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      '\$${bar.amount.toInt()}',
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.inverseOnSurface,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(height: 24),
-                                // Bar itself
-                                // Stitch: highlighted bar = bg-primary (not bg-primary-container)
+                                // Bar
                                 FractionallySizedBox(
-                                  heightFactor: bar.heightRatio,
+                                  heightFactor: bar.heightRatio.clamp(0.1, 1.0),
                                   child: Container(
                                     width: double.infinity,
                                     decoration: BoxDecoration(
                                       color: bar.isHighlighted
-                                          ? AppColors.primary  // bg-primary = #006e1c
-                                          : AppColors.surfaceContainerHigh, // other bars
+                                          ? AppColors.primary
+                                          : const Color(0xFFDDE8F0),
                                       borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(4),
                                       ),
-                                      boxShadow: bar.isHighlighted
-                                          ? [
-                                              BoxShadow(
-                                                // Stitch: shadow-[0_4px_12px_rgba(76,175,80,0.3)]
-                                                color: const Color(0xFF4CAF50).withValues(alpha: 0.30),
-                                                blurRadius: 12,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ]
-                                          : null,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                // Label
+                                const SizedBox(height: 10),
+                                // Month Label
                                 Text(
                                   bar.month,
                                   style: TextStyle(
@@ -267,10 +217,10 @@ class EarningsScreen extends StatelessWidget {
                                     fontSize: 12,
                                     fontWeight: bar.isHighlighted
                                         ? FontWeight.w700
-                                        : FontWeight.w500,
+                                        : FontWeight.w600,
                                     color: bar.isHighlighted
                                         ? AppColors.primary
-                                        : AppColors.onSurfaceVariant,
+                                        : const Color(0xFF667085),
                                   ),
                                 ),
                               ],
@@ -285,19 +235,18 @@ class EarningsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // 4. Earnings History List
-            // Stitch: bg-surface-container-lowest p-md rounded-xl
+            // 5. Earnings History Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -308,113 +257,95 @@ class EarningsScreen extends StatelessWidget {
                     'Earnings History',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF101828),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ListView.builder(
+                  ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: state.transactions.length,
+                    separatorBuilder: (_, __) => const Divider(
+                      color: Color(0xFFE4E7EC),
+                      height: 1,
+                    ),
                     itemBuilder: (context, index) {
                       final tx = state.transactions[index];
-                      final isLast = index == state.transactions.length - 1;
-                      return Stack(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            child: Row(
-                              children: [
-                                // Stitch: w-10 h-10 rounded-full bg-surface-container-high
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.surfaceContainerHigh,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.sell_rounded,
-                                    color: AppColors.primary,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Order ${tx.orderNumber}',
-                                        style: const TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.onSurface,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        tx.date,
-                                        style: const TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.5,
-                                          color: AppColors.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '+${currencyFormat.format(tx.amount)}',
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Stitch: absolute bottom-0 left-16 right-0 h-[1px] bg-outline-variant opacity-30
-                          if (!isLast)
-                            Positioned(
-                              bottom: 0,
-                              left: 54,
-                              right: 0,
-                              child: Container(
-                                height: 1,
-                                color: AppColors.outlineVariant.withValues(alpha: 0.30),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          children: [
+                            // Tag Icon circle
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE3EFF8),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.sell_outlined,
+                                color: Color(0xFF0C5123),
+                                size: 18,
                               ),
                             ),
-                        ],
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Order ${tx.orderNumber}',
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF101828),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    tx.date,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      color: Color(0xFF667085),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '+${currencyFormat.format(tx.amount)}',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0C5123),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
-                  const SizedBox(height: 4),
-                  // Stitch: button w-full h-touch-target text-primary font-button-text
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
+                  const SizedBox(height: 6),
+                  // View All Transactions Button
+                  Center(
                     child: TextButton(
                       onPressed: () => _showAllTransactionsModal(context, state),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
                       ),
                       child: const Text(
                         'View All Transactions',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0C5123),
                         ),
                       ),
                     ),
@@ -428,7 +359,7 @@ class EarningsScreen extends StatelessWidget {
     );
   }
 
-  // Stitch: bg-surface-container-high text-on-surface p-md rounded-xl shadow-sm
+  // Metric Card (This Month / This Week)
   Widget _buildMetricCard({
     required String title,
     required String amount,
@@ -436,15 +367,8 @@ class EarningsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFFE3EFF8), // Soft light blue from Image 4
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,18 +379,17 @@ class EarningsScreen extends StatelessWidget {
               fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: AppColors.onSurfaceVariant,
+              color: Color(0xFF475467),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             amount,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0C5123),
             ),
           ),
         ],
@@ -475,10 +398,10 @@ class EarningsScreen extends StatelessWidget {
   }
 
   void _showAllTransactionsModal(BuildContext context, FarmoraState state) {
-    final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -498,7 +421,7 @@ class EarningsScreen extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
+                      color: Color(0xFF101828),
                     ),
                   ),
                   IconButton(
@@ -518,8 +441,8 @@ class EarningsScreen extends StatelessWidget {
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const CircleAvatar(
-                        backgroundColor: AppColors.surfaceContainerHigh,
-                        child: Icon(Icons.sell, color: AppColors.primary, size: 20),
+                        backgroundColor: Color(0xFFE3EFF8),
+                        child: Icon(Icons.sell_outlined, color: Color(0xFF0C5123), size: 18),
                       ),
                       title: Text(
                         'Order ${tx.orderNumber}',
@@ -530,7 +453,7 @@ class EarningsScreen extends StatelessWidget {
                         '+${currencyFormat.format(tx.amount)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                          color: Color(0xFF0C5123),
                           fontSize: 16,
                         ),
                       ),
@@ -546,19 +469,21 @@ class EarningsScreen extends StatelessWidget {
   }
 }
 
-// Custom painter for crosshatch pattern matching Stitch SVG
-class _CrossHatchPainter extends CustomPainter {
+// Plus sign grid pattern matching Image 4
+class _PlusPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 1;
-    const step = 12.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+      ..strokeWidth = 1.5;
+    const spacing = 24.0;
+    const plusSize = 3.0;
+
+    for (double x = 12; x < size.width; x += spacing) {
+      for (double y = 12; y < size.height; y += spacing) {
+        canvas.drawLine(Offset(x - plusSize, y), Offset(x + plusSize, y), paint);
+        canvas.drawLine(Offset(x, y - plusSize), Offset(x, y + plusSize), paint);
+      }
     }
   }
 

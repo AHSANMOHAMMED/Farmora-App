@@ -50,16 +50,257 @@ class FarmoraState extends ChangeNotifier {
   final List<Map<String, dynamic>> _users = [];
 
   // Earnings Stats
-  double _totalEarnings = 0.0;
-  double _thisMonth = 0.0;
-  double _thisWeek = 0.0;
-  double _pendingPayments = 0.0;
+  double _totalEarnings = 4580.0;
+  double _thisMonth = 1200.0;
+  double _thisWeek = 350.0;
+  double _pendingPayments = 150.0;
 
   final List<MonthlyBarData> _monthlyBars = [];
   final List<EarningsTransaction> _transactions = [];
 
   // Verification Documents
   final List<VerificationDoc> _verificationDocs = [];
+
+  FarmoraState() {
+    _loadInitialMockData();
+  }
+
+  void _loadInitialMockData() {
+    _products.clear();
+    _products.addAll([
+      const Product(
+        id: 'prod-1',
+        name: 'Heirloom Tomatoes',
+        category: 'Vegetables',
+        location: 'Green Valley Farm',
+        quantity: '50 kg available',
+        unit: 'kg',
+        price: '\$4.50 / kg',
+        pricePerUnit: 4.50,
+        emoji: '🍅',
+        imagePath: 'assets/images/heirloom_tomatoes.png',
+        status: 'Active',
+        isOrganic: true,
+        description: 'Organic • 50 kg available',
+      ),
+      const Product(
+        id: 'prod-2',
+        name: 'Dinosaur Kale',
+        category: 'Vegetables',
+        location: 'Sunny Ridge Field',
+        quantity: '120 bunches',
+        unit: 'ea',
+        price: '\$2.00 / ea',
+        pricePerUnit: 2.00,
+        emoji: '🥬',
+        imagePath: 'assets/images/dinosaur_kale.png',
+        status: 'Active',
+        isOrganic: false,
+        description: 'Convention • 120 bunches',
+      ),
+      const Product(
+        id: 'prod-3',
+        name: 'Black Beauty Eggplant',
+        category: 'Vegetables',
+        location: 'Hilltop Gardens',
+        quantity: 'Restocking soon',
+        unit: 'kg',
+        price: '\$3.75 / kg',
+        pricePerUnit: 3.75,
+        emoji: '🍆',
+        imagePath: 'assets/images/black_beauty_eggplant.png',
+        status: 'Empty',
+        isOrganic: true,
+        description: 'Organic • Restocking soon',
+      ),
+      const Product(
+        id: 'prod-4',
+        name: 'Nantes Carrots',
+        category: 'Vegetables',
+        location: 'Riverbed Acres',
+        quantity: '200 kg available',
+        unit: 'kg',
+        price: '\$1.50 / kg',
+        pricePerUnit: 1.50,
+        emoji: '🥕',
+        imagePath: 'assets/images/nantes_carrots.png',
+        status: 'Active',
+        isOrganic: true,
+        description: 'Organic • 200 kg available',
+      ),
+    ]);
+
+    _orders.clear();
+    _orders.addAll([
+      const FarmoraOrder(
+        id: 'ord-1',
+        orderNumber: '#1042-A',
+        title: 'Cherry Tomatoes',
+        productName: 'Cherry Tomatoes',
+        quantity: '25 kg • Grade A',
+        grade: 'Grade A',
+        unitPrice: '\$5.00',
+        totalAmount: '\$125.00',
+        totalAmountNumber: 125.00,
+        buyerName: 'Local Fresh Market',
+        buyerCompany: 'Local Fresh Market',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '450 West End Ave, Distribution Center Bay 4',
+        detail: '25 kg • Grade A',
+        status: 'Pending',
+        progress: 0.1,
+        color: Color(0xFF006E1C),
+        timestamp: 'Today, 08:45 AM',
+        requestedDate: 'Oct 24, 2023',
+        buyerIcon: Icons.storefront_rounded,
+      ),
+      const FarmoraOrder(
+        id: 'ord-2',
+        orderNumber: '#1042-B',
+        title: 'Romaine Lettuce',
+        productName: 'Romaine Lettuce',
+        quantity: '50 heads • Organic',
+        grade: 'Organic',
+        unitPrice: '\$1.51',
+        totalAmount: '\$75.50',
+        totalAmountNumber: 75.50,
+        buyerName: 'Green Leaf Bistro',
+        buyerCompany: 'Green Leaf Bistro',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '782 King Street, Downtown',
+        detail: '50 heads • Organic',
+        status: 'Pending',
+        progress: 0.1,
+        color: Color(0xFF006E1C),
+        timestamp: 'Yesterday, 14:20 PM',
+        requestedDate: 'Oct 24, 2023',
+        buyerIcon: Icons.restaurant_rounded,
+      ),
+      const FarmoraOrder(
+        id: 'ord-3',
+        orderNumber: '#1042-C',
+        title: '120 Crates Organic Fuji Apples',
+        productName: 'Organic Fuji Apples',
+        quantity: '120 Crates (40 lbs ea)',
+        grade: 'Organic',
+        unitPrice: '\$45.00',
+        totalAmount: '\$5,400.00',
+        totalAmountNumber: 5400.00,
+        buyerName: 'Sarah Jenkins',
+        buyerCompany: 'Fresh Market Co.',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '450 West End Ave, Distribution Center Bay 4',
+        detail: '120 Crates (40 lbs ea)',
+        status: 'Pending',
+        progress: 0.1,
+        color: Color(0xFF006E1C),
+        timestamp: 'Oct 24, 2023',
+        requestedDate: 'Oct 24, 2023',
+        buyerIcon: Icons.storefront_rounded,
+      ),
+      const FarmoraOrder(
+        id: 'ord-4',
+        orderNumber: '#8892',
+        title: 'Heirloom Tomatoes',
+        productName: 'Heirloom Tomatoes',
+        quantity: '28 kg • Organic',
+        grade: 'Organic',
+        unitPrice: '\$4.50',
+        totalAmount: '\$125.00',
+        totalAmountNumber: 125.00,
+        buyerName: 'Fresh Market Co.',
+        buyerCompany: 'Fresh Market Co.',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '450 West End Ave',
+        detail: '28 kg • Organic',
+        status: 'Delivered',
+        progress: 1.0,
+        color: Color(0xFF006E1C),
+        timestamp: 'May 24, 2024',
+        requestedDate: 'May 24, 2024',
+      ),
+      const FarmoraOrder(
+        id: 'ord-5',
+        orderNumber: '#8890',
+        title: 'Dinosaur Kale',
+        productName: 'Dinosaur Kale',
+        quantity: '42 bunches',
+        grade: 'Conventional',
+        unitPrice: '\$2.00',
+        totalAmount: '\$85.50',
+        totalAmountNumber: 85.50,
+        buyerName: 'Green Leaf Bistro',
+        buyerCompany: 'Green Leaf Bistro',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '782 King Street',
+        detail: '42 bunches',
+        status: 'Delivered',
+        progress: 1.0,
+        color: Color(0xFF006E1C),
+        timestamp: 'May 21, 2024',
+        requestedDate: 'May 21, 2024',
+      ),
+      const FarmoraOrder(
+        id: 'ord-6',
+        orderNumber: '#8885',
+        title: 'Nantes Carrots',
+        productName: 'Nantes Carrots',
+        quantity: '140 kg • Organic',
+        grade: 'Organic',
+        unitPrice: '\$1.50',
+        totalAmount: '\$210.00',
+        totalAmountNumber: 210.00,
+        buyerName: 'Local Fresh Market',
+        buyerCompany: 'Local Fresh Market',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '450 West End Ave',
+        detail: '140 kg • Organic',
+        status: 'Delivered',
+        progress: 1.0,
+        color: Color(0xFF006E1C),
+        timestamp: 'May 18, 2024',
+        requestedDate: 'May 18, 2024',
+      ),
+      const FarmoraOrder(
+        id: 'ord-7',
+        orderNumber: '#8881',
+        title: 'Romaine Lettuce',
+        productName: 'Romaine Lettuce',
+        quantity: '40 heads',
+        grade: 'Organic',
+        unitPrice: '\$1.62',
+        totalAmount: '\$65.00',
+        totalAmountNumber: 65.00,
+        buyerName: 'Bistro 44',
+        buyerCompany: 'Bistro 44',
+        buyerAvatar: 'assets/images/buyer_sarah.png',
+        deliveryAddress: '12 Harbor Road',
+        detail: '40 heads',
+        status: 'Delivered',
+        progress: 1.0,
+        color: Color(0xFF006E1C),
+        timestamp: 'May 15, 2024',
+        requestedDate: 'May 15, 2024',
+      ),
+    ]);
+
+    _monthlyBars.clear();
+    _monthlyBars.addAll([
+      const MonthlyBarData(month: 'Jan', amount: 800, heightRatio: 0.35, isHighlighted: false),
+      const MonthlyBarData(month: 'Feb', amount: 950, heightRatio: 0.45, isHighlighted: false),
+      const MonthlyBarData(month: 'Mar', amount: 1100, heightRatio: 0.55, isHighlighted: false),
+      const MonthlyBarData(month: 'Apr', amount: 850, heightRatio: 0.40, isHighlighted: false),
+      const MonthlyBarData(month: 'May', amount: 1200, heightRatio: 0.85, isHighlighted: true),
+    ]);
+
+    _transactions.clear();
+    _transactions.addAll([
+      const EarningsTransaction(id: 'tx-1', orderNumber: '#8892', date: 'May 24, 2024', amount: 125.00),
+      const EarningsTransaction(id: 'tx-2', orderNumber: '#8890', date: 'May 21, 2024', amount: 85.50),
+      const EarningsTransaction(id: 'tx-3', orderNumber: '#8885', date: 'May 18, 2024', amount: 210.00),
+      const EarningsTransaction(id: 'tx-4', orderNumber: '#8881', date: 'May 15, 2024', amount: 65.00),
+    ]);
+  }
 
   // Getters
   List<Product> get products => List.unmodifiable(_products);

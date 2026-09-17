@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/farmer_header.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
@@ -13,133 +14,137 @@ class FarmerProductsScreen extends StatefulWidget {
 }
 
 class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
-  String _activeFilter = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final allProducts = state.filteredProducts;
+    final allProducts = state.products;
 
-    final filteredProducts = _activeFilter == 'All'
-        ? allProducts
-        : allProducts.where((p) {
-            switch (_activeFilter) {
-              case 'Active':
-                return p.isActive;
-              case 'Pending':
-                return p.status.toLowerCase() == 'pending';
-              case 'Out of Stock':
-                return p.isEmpty;
-              default:
-                return true;
-            }
-          }).toList();
-
-    final activeCount = allProducts.where((p) => p.isActive).length;
-    final pendingCount = allProducts.where((p) => p.status.toLowerCase() == 'pending').length;
-    final outOfStockCount = allProducts.where((p) => p.isEmpty).length;
+    final filteredProducts = allProducts.where((p) {
+      if (_searchQuery.isEmpty) return true;
+      return p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          p.category.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          p.description.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header: Title + Search + Bell ──────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  const Text(
-                    'My Products',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+      backgroundColor: const Color(0xFF4E5A4E), // Olive sage canvas background from reference Image 2
+      appBar: const FarmerHeader(title: 'Products'),
+      body: Column(
+        children: [
+          // ── Search Bar & Filter Row ─────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F8FB),
+                      borderRadius: BorderRadius.circular(9999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                      decoration: const InputDecoration(
+                        hintText: 'Search products...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          color: Color(0xFF667085),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: Color(0xFF344054),
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.search_rounded, color: AppColors.onSurface, size: 26),
-                  ),
-                  Stack(
-                    children: [
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.notifications_none_rounded, color: AppColors.onSurface, size: 26),
-                      ),
-                      Positioned(
-                        right: 10,
-                        top: 10,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F8FB),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Filter Tabs ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFilterTab('All', allProducts.length, isActive: true),
-                    const SizedBox(width: 8),
-                    _buildFilterTab('Active', activeCount),
-                    const SizedBox(width: 8),
-                    _buildFilterTab('Pending', pendingCount),
-                    const SizedBox(width: 8),
-                    _buildFilterTab('Out of Stock', outOfStockCount),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Product List ───────────────────────────────
-            Expanded(
-              child: filteredProducts.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.outlineVariant),
-                          SizedBox(height: 12),
-                          Text(
-                            'No products found',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      itemCount: filteredProducts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final product = filteredProducts[index];
-                        return _buildProductCard(context, state, product);
-                      },
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.tune_rounded,
+                      color: Color(0xFF344054),
+                      size: 20,
                     ),
+                    onPressed: () {
+                      _showFilterModal(context);
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          // ── Products List ────────────────────────────────────
+          Expanded(
+            child: filteredProducts.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 64,
+                          color: Color(0xFF8C9B8C),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'No products found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                    itemCount: filteredProducts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final product = filteredProducts[index];
+                      return _buildProductCard(context, state, product);
+                    },
+                  ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -149,170 +154,107 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Icon(Icons.add, size: 30),
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, size: 28),
       ),
     );
   }
 
-  // ── Filter Tab ────────────────────────────────────────────
-  Widget _buildFilterTab(String label, int count, {bool isActive = false}) {
-    final isSelected = _activeFilter == label || (label == 'All' && _activeFilter == 'All');
-    return GestureDetector(
-      onTap: () => setState(() => _activeFilter = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.outlineVariant,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          '$label ($count)',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Product Card (full-width image) ───────────────────────
+  // ── Product Card matching Image 2 ───────────────────────────
   Widget _buildProductCard(BuildContext context, FarmoraState state, Product product) {
     final isEmpty = product.isEmpty;
-    final isPending = product.status.toLowerCase() == 'pending';
 
     return GestureDetector(
       onTap: () => _showProductActionsModal(context, state, product),
       child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
+          color: const Color(0xFFF3F8FB),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // ── Product Image ───────────────────────────
-            Stack(
-              children: [
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: AppColors.surfaceContainer,
-                  child: product.imagePath != null && product.imagePath!.isNotEmpty
-                      ? Image.asset(
-                          product.imagePath!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildFallbackImage(product),
-                        )
-                      : _buildFallbackImage(product),
-                ),
-                // Status badge
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: _buildStatusBadge(product.status, isEmpty, isPending),
-                ),
-              ],
+            // Thumbnail Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 76,
+                height: 76,
+                color: const Color(0xFFE2E8F0),
+                child: product.imagePath != null && product.imagePath!.isNotEmpty
+                    ? Image.asset(
+                        product.imagePath!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackImage(product),
+                      )
+                    : _fallbackImage(product),
+              ),
             ),
+            const SizedBox(width: 14),
 
-            // ── Product Info ─────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(16),
+            // Info Column
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 16, color: AppColors.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          product.location,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                  // Row: Title + Status Badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Price',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF101828),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'LKR ${product.pricePerUnit.toStringAsFixed(2)}/${product.unit}',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: isEmpty ? AppColors.onSurfaceVariant : AppColors.primary,
-                              decoration: isEmpty ? TextDecoration.lineThrough : null,
-                              decorationColor: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Available',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${product.quantity} ${product.unit}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: isEmpty ? AppColors.error : AppColors.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(width: 8),
+                      _buildStatusPill(isEmpty),
                     ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Subtitle
+                  Text(
+                    product.description.isNotEmpty
+                        ? product.description
+                        : '${product.isOrganic ? "Organic" : "Convention"} • ${product.quantity}',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: Color(0xFF475467),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Price
+                  Text(
+                    product.price.isNotEmpty
+                        ? product.price
+                        : '\$${product.pricePerUnit.toStringAsFixed(2)} / ${product.unit}',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ],
               ),
@@ -323,63 +265,104 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
     );
   }
 
-  // ── Status Badge ──────────────────────────────────────────
-  Widget _buildStatusBadge(String status, bool isEmpty, bool isPending) {
-    Color bgColor;
-    Color textColor;
-    String label;
-
+  // ── Status Pill (ACTIVE / EMPTY) ────────────────────────────
+  Widget _buildStatusPill(bool isEmpty) {
     if (isEmpty) {
-      bgColor = const Color(0xFFFFDAD6);
-      textColor = const Color(0xFF93000A);
-      label = 'Out of Stock';
-    } else if (isPending) {
-      bgColor = const Color(0xFFFFF3E0);
-      textColor = const Color(0xFFE65100);
-      label = 'Pending';
-    } else {
-      bgColor = const Color(0xFFE8F5E9);
-      textColor = const Color(0xFF2E7D32);
-      label = 'Active';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          'EMPTY',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: Color(0xFF4B5563),
+          ),
+        ),
+      );
     }
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFE1EFFE),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: textColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
+      child: const Text(
+        'ACTIVE',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: Color(0xFF1D4ED8),
+        ),
       ),
     );
   }
 
-  Widget _buildFallbackImage(Product product) {
+  Widget _fallbackImage(Product product) {
     return Center(
       child: Text(
         product.emoji,
-        style: const TextStyle(fontSize: 48),
+        style: const TextStyle(fontSize: 32),
       ),
+    );
+  }
+
+  void _showFilterModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filter Products',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('All Products'),
+                onTap: () {
+                  setState(() => _searchQuery = '');
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              ListTile(
+                title: const Text('Organic Only'),
+                onTap: () {
+                  setState(() => _searchQuery = 'Organic');
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              ListTile(
+                title: const Text('In Stock (Active)'),
+                onTap: () {
+                  setState(() => _searchQuery = 'available');
+                  Navigator.of(ctx).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -417,14 +400,14 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     color: AppColors.primary,
                   ),
                   title: Text(
-                    product.isActive ? 'Mark as Out of Stock' : 'Mark as Active / In Stock',
+                    product.isActive ? 'Mark as Out of Stock (Empty)' : 'Mark as Active / In Stock',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     state.toggleProductStock(product.id);
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Updated ${product.name} stock status')),
+                      SnackBar(content: Text('Updated ${product.name} status')),
                     );
                   },
                 ),

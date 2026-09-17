@@ -20,10 +20,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  String _category = 'Vegetables';
+  String? _category;
   String _unit = 'kg';
   DateTime? _availabilityDate;
-  final List<String> _selectedImages = [];
+  final List<String> _selectedImages = [
+    'assets/images/roma_tomatoes_1.png',
+    'assets/images/roma_tomatoes_2.png',
+  ];
 
   @override
   void dispose() {
@@ -56,7 +59,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (picked != null) setState(() => _availabilityDate = picked);
   }
 
-  void _addImageMock() {
+  void _addImage() {
     if (_selectedImages.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Maximum 5 images allowed.')),
@@ -81,22 +84,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final quantityVal = _quantityController.text.trim();
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
     final description = _descriptionController.text.trim();
+    final category = _category ?? 'Vegetables';
 
     final newProduct = Product(
       id: 'prod-${DateTime.now().millisecondsSinceEpoch}',
       name: name,
-      category: _category,
+      category: category,
       location: 'Local Farm',
-      quantity: '$quantityVal $_unit',
+      quantity: '$quantityVal $_unit available',
       unit: _unit,
-      price: 'LKR ${priceVal.toStringAsFixed(2)}/$_unit',
+      price: '\$${priceVal.toStringAsFixed(2)} / $_unit',
       pricePerUnit: priceVal,
-      emoji: _category == 'Fruits' ? '🍎' : '🍅',
+      emoji: category == 'Fruits' ? '🍎' : '🍅',
       color: const Color(0xFFFFE1DA),
-      imagePath: _selectedImages.isNotEmpty ? _selectedImages.first : 'assets/images/heirloom_tomatoes.png',
+      imagePath: _selectedImages.isNotEmpty ? _selectedImages.first : 'assets/images/roma_tomatoes_1.png',
       status: 'Active',
       isOrganic: true,
-      description: description,
+      description: description.isNotEmpty ? description : 'Organic • $quantityVal $_unit available',
       availabilityDate: _availabilityDate,
       images: _selectedImages,
     );
@@ -117,9 +121,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF4FAFF),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFFF4FAFF),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -128,8 +132,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         title: const Text(
           'Add Product',
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
+            fontFamily: 'Inter',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
           ),
         ),
@@ -137,257 +142,289 @@ class _AddProductScreenState extends State<AddProductScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Photo Upload Area ─────────────────────
-                  _buildPhotoUploadArea(),
-                  const SizedBox(height: 24),
-
-                  // ── Product Name ─────────────────────────
-                  _buildFieldLabel('Product Name'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nameController,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
-                    decoration: _inputDecoration('e.g. Organic Roma Tomatoes'),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Category ─────────────────────────────
-                  _buildFieldLabel('Category'),
-                  const SizedBox(height: 8),
-                  _buildDropdown(
-                    value: _category,
-                    items: const ['Vegetables', 'Fruits', 'Grains', 'Dairy', 'Herbs'],
-                    onChanged: (val) {
-                      if (val != null) setState(() => _category = val);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Quantity + Unit ──────────────────────
-                  Row(
+                  // ── Section 1: Basic Details ─────────────
+                  _buildSectionCard(
+                    title: 'Basic Details',
                     children: [
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldLabel('Total Quantity'),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _quantityController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter qty' : null,
-                              decoration: _inputDecoration('Enter quantity'),
-                            ),
-                          ],
-                        ),
+                      _buildFieldLabel('Product Name'),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _nameController,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
+                        decoration: _inputDecoration('e.g. Organic Roma Tomatoes'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldLabel('Unit Type'),
-                            const SizedBox(height: 8),
-                            _buildDropdown(
-                              value: _unit,
-                              items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _unit = val);
-                              },
+                      const SizedBox(height: 16),
+                      _buildFieldLabel('Category'),
+                      const SizedBox(height: 6),
+                      _buildCategoryDropdown(),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Section 2: Inventory & Pricing ───────
+                  _buildSectionCard(
+                    title: 'Inventory & Pricing',
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel('Quantity'),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _quantityController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty) ? 'Enter quantity' : null,
+                                  decoration: _inputDecoration('0.00'),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel('Unit'),
+                                const SizedBox(height: 6),
+                                _buildUnitDropdown(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFieldLabel('Price per unit'),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Enter price' : null,
+                        decoration: _inputDecoration('0.00', prefix: '\$ '),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFieldLabel('Availability Date'),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: _pickDate,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          height: 52,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F8FB),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFD0D5DD)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _availabilityDate != null
+                                    ? DateFormat('MM/dd/yyyy').format(_availabilityDate!)
+                                    : 'mm/dd/yyyy',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  color: _availabilityDate != null
+                                      ? AppColors.onSurface
+                                      : const Color(0xFF98A2B3),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                color: Color(0xFF475467),
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // ── Price per Unit ───────────────────────
-                  _buildFieldLabel('Price per Unit'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter price' : null,
-                    decoration: InputDecoration(
-                      hintText: '0.00',
-                      hintStyle: TextStyle(
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+                  // ── Section 3: Description ───────────────
+                  _buildSectionCard(
+                    title: 'Description',
+                    children: [
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLines: 4,
+                        decoration: _inputDecoration(
+                          'Describe the quality, origin, and any certifications...',
+                        ),
                       ),
-                      prefixText: 'LKR ',
-                      prefixStyle: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.surfaceContainerLowest,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.outlineVariant),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.outlineVariant),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // ── Availability Date ────────────────────
-                  _buildFieldLabel('Availability Date'),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: _pickDate,
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      height: 56,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.outlineVariant),
+                  // ── Section 4: Product Images ────────────
+                  _buildSectionCard(
+                    title: 'Product Images',
+                    children: [
+                      const Text(
+                        'Upload up to 5 clear photos of your product.',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: Color(0xFF475467),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      const SizedBox(height: 14),
+                      Row(
                         children: [
-                          Text(
-                            _availabilityDate != null
-                                ? DateFormat('MM/dd/yyyy').format(_availabilityDate!)
-                                : 'mm/dd/yyyy',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: _availabilityDate != null
-                                  ? AppColors.onSurface
-                                  : AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+                          // Add Button (Dashed border)
+                          GestureDetector(
+                            onTap: _addImage,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4FAFF),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.60),
+                                  width: 1.5,
+                                  strokeAlign: BorderSide.strokeAlignInside,
+                                ),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_outlined,
+                                    color: AppColors.primary,
+                                    size: 24,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Add',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const Icon(Icons.calendar_today_outlined,
-                              color: AppColors.onSurfaceVariant, size: 20),
+                          const SizedBox(width: 10),
+
+                          // Thumbnails
+                          Expanded(
+                            child: SizedBox(
+                              height: 80,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _selectedImages.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                                itemBuilder: (context, index) {
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.asset(
+                                          _selectedImages[index],
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 80,
+                                            height: 80,
+                                            color: const Color(0xFFE2E8F0),
+                                            child: const Icon(Icons.image, color: Colors.grey),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 4,
+                                        right: 4,
+                                        child: GestureDetector(
+                                          onTap: () => _removeImage(index),
+                                          child: Container(
+                                            width: 22,
+                                            height: 22,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.85),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.15),
+                                                  blurRadius: 3,
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              size: 14,
+                                              color: Color(0xFF344054),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-
-                  // ── Description ──────────────────────────
-                  _buildFieldLabel('Description'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _descriptionController,
-                    maxLines: 5,
-                    decoration: _inputDecoration(
-                      'Provide details about the harvest quality, farming methods used, etc.',
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Photo preview thumbnails ─────────────
-                  if (_selectedImages.isNotEmpty) ...[
-                    _buildFieldLabel('Selected Photos'),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 80,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _selectedImages.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          return Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                  _selectedImages[index],
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: AppColors.surfaceContainer,
-                                    child: const Icon(Icons.image_outlined,
-                                        color: AppColors.onSurfaceVariant),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: GestureDetector(
-                                  onTap: () => _removeImage(index),
-                                  child: Container(
-                                    width: 22,
-                                    height: 22,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.15),
-                                          blurRadius: 3,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(Icons.close, size: 14, color: AppColors.error),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
           ),
 
-          // ── Sticky Publish Button ───────────────────────
+          // ── Sticky Publish Button ────────────────────────
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: 0.92),
+                color: const Color(0xFFF4FAFF).withValues(alpha: 0.95),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, -3),
                   ),
                 ],
               ),
               child: SizedBox(
-                height: 54,
+                height: 52,
                 child: ElevatedButton.icon(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 2,
+                    elevation: 0,
                   ),
-                  icon: const Icon(Icons.publish_rounded, size: 20),
+                  icon: const Icon(Icons.file_upload_outlined, size: 20),
                   label: const Text(
                     'Publish Product',
                     style: TextStyle(
+                      fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -401,56 +438,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // ── Photo Upload Area (dashed border) ──────────────────────
-  Widget _buildPhotoUploadArea() {
-    return GestureDetector(
-      onTap: _addImageMock,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 36),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F8E9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.30),
-            width: 2,
-            style: BorderStyle.solid,
+  // ── Section Card Container ─────────────────────────────────
+  Widget _buildSectionCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDF6FC), // Soft light blue-grey card from Image 3
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF101828),
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add_a_photo_outlined,
-                color: AppColors.primary,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Add Photos',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Tap to upload harvest images',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.70),
-              ),
-            ),
-          ],
-        ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
       ),
     );
   }
@@ -459,63 +473,106 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Text(
       label,
       style: const TextStyle(
-        fontSize: 14,
+        fontFamily: 'Inter',
+        fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: AppColors.onSurface,
+        color: Color(0xFF344054),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(String hint, {String? prefix}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+      hintStyle: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 14,
+        color: Color(0xFF98A2B3),
+      ),
+      prefixText: prefix,
+      prefixStyle: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF344054),
       ),
       filled: true,
-      fillColor: AppColors.surfaceContainerLowest,
+      fillColor: const Color(0xFFF3F8FB),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.outlineVariant),
+        borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.outlineVariant),
+        borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.error),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
 
-  Widget _buildDropdown({
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
+  Widget _buildCategoryDropdown() {
     return Container(
-      height: 56,
+      height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: const Color(0xFFF3F8FB),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.outlineVariant),
+        border: Border.all(color: const Color(0xFFD0D5DD)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: _category,
+          hint: const Text(
+            'Select a category',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: Color(0xFF98A2B3),
+            ),
+          ),
           isExpanded: true,
-          icon: const Icon(Icons.expand_more, color: AppColors.onSurfaceVariant, size: 22),
-          items: items.map((item) {
-            return DropdownMenuItem(value: item, child: Text(item));
-          }).toList(),
-          onChanged: onChanged,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF344054)),
+          items: const [
+            DropdownMenuItem(value: 'Vegetables', child: Text('Vegetables')),
+            DropdownMenuItem(value: 'Fruits', child: Text('Fruits')),
+            DropdownMenuItem(value: 'Grains', child: Text('Grains')),
+            DropdownMenuItem(value: 'Dairy', child: Text('Dairy')),
+            DropdownMenuItem(value: 'Herbs', child: Text('Herbs')),
+          ],
+          onChanged: (val) => setState(() => _category = val),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnitDropdown() {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F8FB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD0D5DD)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _unit,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF344054)),
+          items: const [
+            DropdownMenuItem(value: 'kg', child: Text('kg')),
+            DropdownMenuItem(value: 'ea', child: Text('ea')),
+            DropdownMenuItem(value: 'bunches', child: Text('bunches')),
+            DropdownMenuItem(value: 'lbs', child: Text('lbs')),
+            DropdownMenuItem(value: 'box', child: Text('box')),
+          ],
+          onChanged: (val) {
+            if (val != null) setState(() => _unit = val);
+          },
         ),
       ),
     );
