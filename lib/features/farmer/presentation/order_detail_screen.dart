@@ -18,9 +18,9 @@ class OrderDetailScreen extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF4FAFF),
       appBar: AppBar(
-        backgroundColor: AppColors.surface.withValues(alpha: 0.9),
+        backgroundColor: const Color(0xFFF4FAFF),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -31,7 +31,7 @@ class OrderDetailScreen extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
           ),
         ),
@@ -39,7 +39,7 @@ class OrderDetailScreen extends StatelessWidget {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -51,16 +51,17 @@ class OrderDetailScreen extends StatelessWidget {
                       'ORDER ${currentOrder.orderNumber.toUpperCase()}',
                       style: const TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color: AppColors.tertiary,
+                        color: Color(0xFF475467),
                       ),
                     ),
+                    // Status Badge: PENDING REVIEW
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceContainerHigh,
+                        color: const Color(0xFFE1EFFE),
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Row(
@@ -69,23 +70,22 @@ class OrderDetailScreen extends StatelessWidget {
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: BoxDecoration(
-                              color: currentOrder.isPending
-                                  ? AppColors.primaryContainer
-                                  : currentOrder.isAccepted
-                                      ? AppColors.primary
-                                      : AppColors.error,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0C5123),
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            currentOrder.status.toUpperCase(),
+                            currentOrder.isPending
+                                ? 'PENDING REVIEW'
+                                : currentOrder.status.toUpperCase(),
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.onSurface,
+                              letterSpacing: 0.5,
+                              color: Color(0xFF1D4ED8),
                             ),
                           ),
                         ],
@@ -93,25 +93,30 @@ class OrderDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+
+                // Title
                 Text(
                   currentOrder.title,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF101828),
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
+
+                // Requested Date
                 Row(
                   children: [
                     const Icon(
                       Icons.calendar_today_outlined,
                       size: 16,
-                      color: AppColors.onSurfaceVariant,
+                      color: Color(0xFF475467),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Text(
                       currentOrder.requestedDate.contains('Requested')
                           ? currentOrder.requestedDate
@@ -119,7 +124,7 @@ class OrderDetailScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                        color: Color(0xFF475467),
                       ),
                     ),
                   ],
@@ -131,13 +136,13 @@ class OrderDetailScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLowest,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
-                        offset: const Offset(0, 3),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -146,20 +151,17 @@ class OrderDetailScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                currentOrder.buyerAvatar,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const CircleAvatar(
-                                  backgroundColor: AppColors.surfaceContainerHigh,
-                                  child: Icon(Icons.person, color: AppColors.primary),
-                                ),
+                          // Sarah Jenkins Avatar
+                          ClipOval(
+                            child: Image.asset(
+                              'assets/images/buyer_sarah.png',
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Color(0xFFE2E8F0),
+                                child: Icon(Icons.person, color: AppColors.primary),
                               ),
                             ),
                           ),
@@ -173,8 +175,8 @@ class OrderDetailScreen extends StatelessWidget {
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF101828),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -183,7 +185,7 @@ class OrderDetailScreen extends StatelessWidget {
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 13,
-                                    color: AppColors.onSurfaceVariant,
+                                    color: Color(0xFF667085),
                                   ),
                                 ),
                               ],
@@ -192,7 +194,7 @@ class OrderDetailScreen extends StatelessWidget {
                           Row(
                             children: [
                               _buildActionCircle(
-                                icon: Icons.call_outlined,
+                                icon: Icons.phone_outlined,
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Calling ${currentOrder.buyerName}...')),
@@ -201,7 +203,7 @@ class OrderDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               _buildActionCircle(
-                                icon: Icons.chat_bubble_outline,
+                                icon: Icons.chat_bubble_outline_rounded,
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Opening chat with ${currentOrder.buyerName}...')),
@@ -213,7 +215,7 @@ class OrderDetailScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Divider(color: AppColors.outlineVariant.withValues(alpha: 0.4), height: 1),
+                      const Divider(color: Color(0xFFEAECF0), height: 1),
                       const SizedBox(height: 14),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +223,7 @@ class OrderDetailScreen extends StatelessWidget {
                           const Icon(
                             Icons.location_on_outlined,
                             size: 22,
-                            color: AppColors.tertiary,
+                            color: Color(0xFF475467),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -233,7 +235,7 @@ class OrderDetailScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 12,
-                                    color: AppColors.onSurfaceVariant,
+                                    color: Color(0xFF667085),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -243,7 +245,8 @@ class OrderDetailScreen extends StatelessWidget {
                                     fontFamily: 'Inter',
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
-                                    color: AppColors.onSurface,
+                                    color: Color(0xFF101828),
+                                    height: 1.3,
                                   ),
                                 ),
                               ],
@@ -254,20 +257,20 @@ class OrderDetailScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // 3. Order Summary Card
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLowest,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
-                        offset: const Offset(0, 3),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -279,16 +282,31 @@ class OrderDetailScreen extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF101828),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildSummaryRow('Product', currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title),
+                      _buildSummaryRow(
+                        'Product',
+                        currentOrder.productName.isNotEmpty
+                            ? currentOrder.productName
+                            : currentOrder.title,
+                      ),
                       _buildDivider(),
-                      _buildSummaryRow('Quantity', currentOrder.quantity),
+                      _buildSummaryRow(
+                        'Quantity',
+                        currentOrder.quantity.isNotEmpty
+                            ? currentOrder.quantity
+                            : currentOrder.detail,
+                      ),
                       _buildDivider(),
-                      _buildSummaryRow('Unit Price', currentOrder.unitPrice),
+                      _buildSummaryRow(
+                        'Unit Price',
+                        currentOrder.unitPrice.isNotEmpty
+                            ? currentOrder.unitPrice
+                            : '\$45.00',
+                      ),
                       _buildDivider(),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -300,17 +318,17 @@ class OrderDetailScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF101828),
                               ),
                             ),
                             Text(
                               currentOrder.totalAmount,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0C5123),
                               ),
                             ),
                           ],
@@ -323,94 +341,96 @@ class OrderDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // Bottom Action Buttons
-          if (currentOrder.isPending)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.95),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          state.declineOrder(currentOrder.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order rejected'),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.errorContainer, width: 2),
-                          minimumSize: const Size.fromHeight(50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
+          // 4. Bottom Action Buttons (Reject / Accept Order)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4FAFF).withValues(alpha: 0.95),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        state.declineOrder(currentOrder.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Order rejected'),
+                            backgroundColor: AppColors.error,
                           ),
+                        );
+                        Navigator.of(context).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFD92D20),
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFFDA29B), width: 1.5),
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9999),
                         ),
-                        child: const Text(
-                          'Reject',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      child: const Text(
+                        'Reject',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFD92D20),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          state.acceptOrder(currentOrder.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order accepted! Balance updated.'),
-                              backgroundColor: AppColors.primary,
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        state.acceptOrder(currentOrder.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Order accepted! Balance updated.'),
+                            backgroundColor: AppColors.primary,
                           ),
+                        );
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9999),
                         ),
-                        icon: const Icon(Icons.check_circle_outline, size: 20),
-                        label: const Text(
-                          'Accept Order',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                      label: const Text(
+                        'Accept Order',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -424,10 +444,10 @@ class OrderDetailScreen extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: const BoxDecoration(
-          color: AppColors.surfaceContainer,
+          color: Color(0xFFE1EFFE),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 18, color: AppColors.primary),
+        child: Icon(icon, size: 18, color: const Color(0xFF0C5123)),
       ),
     );
   }
@@ -443,7 +463,7 @@ class OrderDetailScreen extends StatelessWidget {
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
-              color: AppColors.onSurfaceVariant,
+              color: Color(0xFF475467),
             ),
           ),
           Text(
@@ -451,8 +471,8 @@ class OrderDetailScreen extends StatelessWidget {
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF101828),
             ),
           ),
         ],
@@ -461,8 +481,8 @@ class OrderDetailScreen extends StatelessWidget {
   }
 
   Widget _buildDivider() {
-    return Divider(
-      color: AppColors.outlineVariant.withValues(alpha: 0.3),
+    return const Divider(
+      color: Color(0xFFEAECF0),
       height: 1,
     );
   }
