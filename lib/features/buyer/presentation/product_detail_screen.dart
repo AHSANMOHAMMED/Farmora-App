@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/harvest_video_player.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
@@ -67,6 +70,19 @@ class ProductDetailScreen extends StatelessWidget {
                         : _buildFallbackImage(),
                   ),
                 ),
+                if (product.videoUrl != null && product.videoUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  HarvestVideoPlayer(videoUrl: product.videoUrl!),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Harvest status: ${product.harvestStatus.name}',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Product Name & Status
@@ -102,6 +118,8 @@ class ProductDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                TrustBadge(trustLevel: state.trustLevelForProduct(product)),
                 const SizedBox(height: 8),
 
                 // Location & Category
@@ -260,36 +278,66 @@ class ProductDetailScreen extends StatelessWidget {
                             ),
                           ),
                         )
-                      : ElevatedButton.icon(
-                          onPressed: () {
-                            state.addToCart(product);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Added ${product.name} to cart'),
-                                backgroundColor: AppColors.primary,
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
+                      : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    _showMakeOfferDialog(context, product);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: const BorderSide(color: AppColors.primary, width: 2),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.local_offer, size: 20),
+                                  label: const Text(
+                                    'Make Offer',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 2,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    state.addToCart(product);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Added ${product.name} to cart'),
+                                        backgroundColor: AppColors.primary,
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
+                                  label: const Text(
+                                    'Add to Cart',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
-                          label: const Text(
-                            'Add to Cart',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                 ),
               ),
             ),
@@ -333,6 +381,97 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showMakeOfferDialog(BuildContext context, Product product) {
+    final quantityController = TextEditingController(text: '1');
+    final priceController = TextEditingController(
+      text: product.price.replaceAll(RegExp(r'[^0-9.]'), ''),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Make an Offer'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: quantityController,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                decoration: const InputDecoration(
+                  labelText: 'Proposed Price (Total)',
+                  prefixText: 'LKR ',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final qty = int.tryParse(quantityController.text) ?? 1;
+                final price = double.tryParse(priceController.text) ?? 0.0;
+
+                final state = context.read<FarmoraState>();
+                if (state.currentUserId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please sign in to make an offer.')),
+                  );
+                  return;
+                }
+                if (product.farmerId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('This product is missing farmer information.')),
+                  );
+                  return;
+                }
+                if (qty < 1 || price <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enter a valid quantity and price.')),
+                  );
+                  return;
+                }
+
+                final fs = FirestoreService();
+                try {
+                  await fs.createOffer(
+                    productId: product.id,
+                    proposedQuantity: qty,
+                    proposedPrice: price,
+                  );
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Offer sent to farmer!')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to send offer: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Send Offer'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

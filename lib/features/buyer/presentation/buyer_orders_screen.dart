@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmer_header.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'buyer_order_detail_screen.dart';
@@ -15,10 +16,12 @@ class BuyerOrdersScreen extends StatefulWidget {
 
 class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
   int _selectedTab = 0; // 0: Active, 1: Completed
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l10n = AppLocalizations.of(context);
 
     List<FarmoraOrder> displayOrders;
     if (_selectedTab == 0) {
@@ -27,74 +30,116 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
       displayOrders = state.completedOrders;
     }
 
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      displayOrders = displayOrders.where((o) {
+        return o.productName.toLowerCase().contains(q) ||
+            o.title.toLowerCase().contains(q) ||
+            o.buyerCompany.toLowerCase().contains(q) ||
+            o.orderNumber.toLowerCase().contains(q);
+      }).toList();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: const FarmerHeader(title: 'My Orders'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Segmented tabs
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(9999),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                  ),
+      appBar: FarmerHeader(title: l10n.orders),
+      body: state.currentUserId.isNotEmpty && !state.profileLoaded
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 12),
+                  Text(l10n.loading),
                 ],
               ),
-              child: Row(
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTabButton(0, 'Active'),
-                  _buildTabButton(1, 'Completed'),
+                  // Segmented tabs
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(9999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTabButton(0, l10n.pending),
+                        _buildTabButton(1, l10n.delivered),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: l10n.search,
+                      prefixIcon: const Icon(Icons.search,
+                          color: AppColors.onSurfaceVariant),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Orders list
+                  if (displayOrders.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.receipt_long_outlined,
+                              size: 64,
+                              color: AppColors.outlineVariant,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.noOrders,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayOrders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        return _buildOrderCard(
+                            context, state, displayOrders[index]);
+                      },
+                    ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Orders list
-            if (displayOrders.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 60),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.receipt_long_outlined,
-                        size: 64,
-                        color: AppColors.outlineVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _selectedTab == 0 ? 'No active orders' : 'No completed orders',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: displayOrders.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildOrderCard(context, state, displayOrders[index]);
-                },
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -127,7 +172,8 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, FarmoraState state, FarmoraOrder order) {
+  Widget _buildOrderCard(
+      BuildContext context, FarmoraState state, FarmoraOrder order) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 import 'user_management_screen.dart';
 import 'logistics_management_screen.dart';
 import 'system_settings_screen.dart';
@@ -55,6 +56,11 @@ class _OverviewTab extends StatelessWidget {
         children: [
           _buildStatCardsRow(state),
           const SizedBox(height: 24),
+          const Text('Escrow releases',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _EscrowReleaseSection(),
+          const SizedBox(height: 24),
           const Text('Recent Activities', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Card(
@@ -77,7 +83,7 @@ class _OverviewTab extends StatelessWidget {
                   ),
                   title: Text('Order ${tx.orderNumber} completed'),
                   subtitle: Text(tx.date),
-                  trailing: Text('\$${tx.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: Text('LKR ${tx.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 );
               },
             ),
@@ -94,6 +100,58 @@ class _OverviewTab extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(child: _StatCard(title: 'Active Orders', value: '${state.orders.length}', icon: Icons.shopping_bag, color: Colors.green)),
       ],
+    );
+  }
+}
+
+class _EscrowReleaseSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final eligible = state.orders
+        .where((o) =>
+            o.status.toLowerCase() == 'delivered' &&
+            o.paymentStatus == 'paid' &&
+            (o.disputeId == null || o.disputeId!.isEmpty))
+        .toList();
+    if (eligible.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('No orders eligible for escrow release.'),
+        ),
+      );
+    }
+    return Column(
+      children: eligible
+          .map(
+            (o) => Card(
+              child: ListTile(
+                title: Text(o.productName.isNotEmpty ? o.productName : o.title),
+                subtitle: Text('${o.orderNumber} · ${o.totalAmount}'),
+                trailing: FilledButton(
+                  onPressed: () async {
+                    try {
+                      await FirestoreService().releaseEscrow(orderId: o.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Escrow released')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Release failed: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Release'),
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }

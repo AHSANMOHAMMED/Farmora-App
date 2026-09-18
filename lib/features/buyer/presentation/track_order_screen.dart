@@ -120,10 +120,54 @@ class TrackOrderScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildTimelineStep('Order Placed', 'Your order was confirmed', true, true),
-                  _buildTimelineStep('Processing', 'Farmer is preparing the order', true, order.deliveryStatus.isNotEmpty),
-                  _buildTimelineStep('In Transit', 'Order is on the way', order.status.toLowerCase() == 'in transit' || order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'in transit', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered'),
-                  _buildTimelineStep('Delivered', 'Package arrived', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered', order.status.toLowerCase() == 'delivered' || order.deliveryStatus.toLowerCase() == 'delivered', isLast: true),
+                  ...(() {
+                    final s = order.status
+                        .toLowerCase()
+                        .replaceAll(' ', '')
+                        .replaceAll('_', '');
+                    final steps = <(String, String, bool)>[
+                      (
+                        'Order placed',
+                        order.deliveryAddress.isNotEmpty
+                            ? order.deliveryAddress
+                            : 'Awaiting farmer confirmation',
+                        true
+                      ),
+                      (
+                        'Confirmed',
+                        'Farmer accepted the order',
+                        {
+                          'confirmed',
+                          'assigned',
+                          'pickedup',
+                          'intransit',
+                          'delivered',
+                          'completed',
+                          'accepted'
+                        }.contains(s)
+                      ),
+                      (
+                        'In transit',
+                        'On the way to the buyer',
+                        {'intransit', 'delivered', 'completed'}.contains(s)
+                      ),
+                      (
+                        'Delivered',
+                        'Buyer received the produce',
+                        {'delivered', 'completed'}.contains(s)
+                      ),
+                    ];
+                    return [
+                      for (var i = 0; i < steps.length; i++)
+                        _buildTimelineStep(
+                          steps[i].$1,
+                          steps[i].$2,
+                          steps[i].$3,
+                          steps[i].$3,
+                          isLast: i == steps.length - 1,
+                        ),
+                    ];
+                  })(),
                 ],
               ),
             ),

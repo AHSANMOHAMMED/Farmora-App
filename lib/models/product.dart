@@ -62,7 +62,7 @@ class Product {
     this.color = const Color(0xFFE8F5E9),
     this.imagePath,
     this.status = 'Active',
-    this.isOrganic = true,
+    this.isOrganic = false,
     this.trustLevel = 'Standard',
     this.description = '',
     this.availabilityDate,

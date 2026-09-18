@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
@@ -7,20 +10,82 @@ import 'language_picker.dart';
 import 'role_sheet.dart';
 import 'legal_screens.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
+import '../../messaging/presentation/conversations_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _exportData(BuildContext context) async {
+    try {
+      final data = await context.read<FarmoraState>().exportUserData();
+      final encoded = const JsonEncoder.withIndent('  ').convert(data);
+      await Clipboard.setData(ClipboardData(text: encoded));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data export copied to clipboard.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account'),
+        content: const Text(
+          'This permanently deletes your Farmora account and related data. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await context.read<FarmoraState>().deleteAccount();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete account: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final role = state.role;
     final isFarmer = role == Role.farmer;
-    
+    final isTransporter = role == Role.transporter;
+    final showVerification = isFarmer || isTransporter;
+
     // Fetch current user data from state.users
-    final currentUserData = state.users.where((u) => u['uid'] == state.currentUserId).firstOrNull ?? {};
-    final displayName = currentUserData['name'] as String? ?? 'User Profile';
-    final district = currentUserData['district'] as String? ?? state.district;
+    final currentUserData = state.users
+            .where((u) => u['uid'] == state.currentUserId)
+            .firstOrNull ??
+        {};
+    final displayName = state.displayName.isNotEmpty
+        ? state.displayName
+        : (currentUserData['name'] as String? ?? 'User Profile');
+    final district = state.district.isNotEmpty
+        ? state.district
+        : (currentUserData['district'] as String? ?? '');
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -61,22 +126,23 @@ class ProfileScreen extends StatelessWidget {
                           ),
                   ),
                 ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.verified,
-                      size: 16,
-                      color: Colors.white,
+                if (state.isVerified)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.verified,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -127,8 +193,8 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Account Verification Card (for Farmer)
-          if (isFarmer) ...[
+          // Account Verification Card (farmer + transporter)
+          if (showVerification) ...[
             Card(
               color: AppColors.surfaceContainerLowest,
               elevation: 1,
@@ -148,7 +214,9 @@ class ProfileScreen extends StatelessWidget {
                   'Account Verification',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
-                subtitle: const Text('2 documents pending review'),
+                subtitle: Text(state.isVerified
+                    ? 'Verified'
+                    : 'Submit documents for review'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -157,6 +225,46 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (isTransporter) ...[
+            Card(
+              color: AppColors.surfaceContainerLowest,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline,
+                        color: AppColors.primary),
+                    title: const Text('Messages',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const ConversationsScreen()),
+                    ),
+                  ),
+                  Divider(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                      height: 1,
+                      indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.notifications_none_rounded,
+                        color: AppColors.primary),
+                    title: const Text('Notifications',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen()),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -223,7 +331,8 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyScreen()),
                   ),
                 ),
                 Divider(
@@ -237,7 +346,8 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const TermsOfServiceScreen()),
                   ),
                 ),
                 Divider(
@@ -251,6 +361,48 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   onTap: () => context.read<FarmoraState>().signOut(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Privacy section
+          Card(
+            color: AppColors.surfaceContainerLowest,
+            elevation: 1,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Privacy',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.download_outlined,
+                      color: AppColors.primary),
+                  title: const Text('Export my data',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Download a copy of your Farmora data'),
+                  onTap: () => _exportData(context),
+                ),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.delete_forever_outlined,
+                      color: AppColors.error),
+                  title: const Text('Delete account',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, color: AppColors.error)),
+                  subtitle: const Text('Permanently remove your account'),
+                  onTap: () => _deleteAccount(context),
                 ),
               ],
             ),

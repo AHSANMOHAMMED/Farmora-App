@@ -6,18 +6,39 @@ import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/product_tile.dart';
 import '../../../core/widgets/order_card.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
+import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../farmer/presentation/add_product_screen.dart';
+import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final role = state.role;
     final isBuyer = role == Role.buyer;
+    final pendingCount = state.pendingOrders.length;
+    final earningsLabel = 'LKR ${state.totalEarnings.toStringAsFixed(0)}';
+    final name = state.displayName.isNotEmpty ? state.displayName : role.label;
+    final categories = <String>{
+      ...state.products.map((p) => p.category).where((c) => c.isNotEmpty),
+      'Vegetables',
+      'Fruits',
+      'Spices',
+      'Grains',
+      'Herbs',
+    }.toList()
+      ..sort();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -26,20 +47,26 @@ class DashboardScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               backgroundColor: const Color(0xffdcefe2),
-              child: Icon(role.icon, color: const Color(0xff1f7a4d)),
+              backgroundImage:
+                  state.photoUrl.isNotEmpty ? NetworkImage(state.photoUrl) : null,
+              child: state.photoUrl.isEmpty
+                  ? Icon(role.icon, color: const Color(0xff1f7a4d))
+                  : null,
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                    '${_greeting()}, $name',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   Text(
-                    'Your Farmora network is growing.',
-                    style: TextStyle(color: Colors.black54),
+                    state.district.isNotEmpty
+                        ? '${state.district}, Sri Lanka'
+                        : 'Your Farmora network in Sri Lanka.',
+                    style: const TextStyle(color: Colors.black54),
                   ),
                 ],
               ),
@@ -54,9 +81,15 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         if (isBuyer)
-          const SearchBar(
+          SearchBar(
             hintText: 'Search fresh produce',
-            leading: Icon(Icons.search_rounded),
+            leading: const Icon(Icons.search_rounded),
+            onSubmitted: (q) {
+              state.setSearchQuery(q);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
+              );
+            },
           ),
         if (isBuyer) const SizedBox(height: 20),
         Container(
@@ -80,9 +113,13 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Support local farmers today.',
-                      style: TextStyle(color: Color(0xffd8f1df)),
+                    Text(
+                      isBuyer
+                          ? 'Fresh produce from Sri Lankan farms.'
+                          : role == Role.farmer
+                              ? 'List harvest from ${state.district.isNotEmpty ? state.district : 'your district'}.'
+                              : 'Deliver across Sri Lankan districts.',
+                      style: const TextStyle(color: Color(0xffd8f1df)),
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
@@ -128,21 +165,29 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (isBuyer)
-          const Wrap(
+          Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(
-                avatar: Icon(Icons.grass, size: 18),
-                label: Text('Vegetables'),
-              ),
-              Chip(
-                avatar: Icon(Icons.apple, size: 18),
-                label: Text('Fruits'),
-              ),
-              Chip(
-                avatar: Icon(Icons.local_florist, size: 18),
-                label: Text('Herbs'),
+              ...categories.take(6).map(
+                    (cat) => ActionChip(
+                      avatar: const Icon(Icons.eco, size: 18),
+                      label: Text(cat),
+                      onPressed: () {
+                        state.setSelectedCategory(cat);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const BuyerProductsScreen()),
+                        );
+                      },
+                    ),
+                  ),
+              ActionChip(
+                avatar: const Icon(Icons.local_offer_outlined, size: 18),
+                label: const Text('My Offers'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BuyerOffersScreen()),
+                ),
               ),
             ],
           ),
@@ -150,20 +195,40 @@ class DashboardScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: StatCard(
-                  label: 'Active products',
-                  value: role == Role.farmer ? '${state.products.length}' : '8',
-                  icon: Icons.insights_rounded,
+                child: GestureDetector(
+                  onTap: () async {
+                    if (role == Role.farmer) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const FarmerOffersScreen()),
+                      );
+                    }
+                  },
+                  child: StatCard(
+                    label: 'Offers',
+                    value: role == Role.farmer ? 'Open' : '${state.jobs.length}',
+                    icon: Icons.local_offer_rounded,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: StatCard(
-                  label: 'Pending orders',
-                  value: '4',
+                  label: role == Role.farmer ? 'Pending orders' : 'Jobs',
+                  value: '$pendingCount',
                   icon: Icons.trending_up_rounded,
                 ),
               ),
+              if (role == Role.farmer) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatCard(
+                    label: 'Earnings',
+                    value: earningsLabel,
+                    icon: Icons.payments_outlined,
+                  ),
+                ),
+              ],
             ],
           ),
         const SizedBox(height: 24),
@@ -172,14 +237,32 @@ class DashboardScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 12),
-        if (isBuyer) ...state.products.take(2).map((p) => ProductTile(p)),
-        if (!isBuyer)
-          const OrderCard(
-            title: 'Organic Tomatoes',
-            detail: '20 kg · Today',
-            status: 'In transit',
-            color: Color(0xff3478c5),
-          ),
+        if (isBuyer) ...[
+          if (state.products.isEmpty)
+            const Text('No products listed yet. Check back soon.',
+                style: TextStyle(color: Colors.black54))
+          else
+            ...state.products.take(4).map((p) => ProductTile(p)),
+        ],
+        if (!isBuyer) ...[
+          if (state.orders.isEmpty)
+            const Text('No recent orders yet.',
+                style: TextStyle(color: Colors.black54))
+          else
+            ...state.orders.take(3).map(
+                  (o) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OrderCard(
+                      title: o.productName.isNotEmpty ? o.productName : o.title,
+                      detail: o.detail.isNotEmpty
+                          ? o.detail
+                          : '${o.quantity} · ${o.displayTotal}',
+                      status: o.status,
+                      color: o.color,
+                    ),
+                  ),
+                ),
+        ],
         const SizedBox(height: 16),
       ],
     );

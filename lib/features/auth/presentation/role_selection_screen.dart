@@ -239,7 +239,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
               const Center(
                 child: Text(
-                  'Demo mode · Instant access',
+                  'Choose your role to continue',
                   style: TextStyle(color: Colors.black38, fontSize: 12),
                 ),
               ),

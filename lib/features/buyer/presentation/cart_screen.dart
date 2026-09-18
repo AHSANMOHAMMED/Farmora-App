@@ -279,7 +279,7 @@ class CartScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(color: AppColors.statusPendingBg, borderRadius: BorderRadius.circular(9999)),
-                            child: const Text('Payment required', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
+                            child: const Text('COD after delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
                           ),
                         ],
                       ),
@@ -295,7 +295,18 @@ class CartScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      const Text('Server verifies price, stock and totals. Repeated taps create one order.',
+                      TextField(
+                        onChanged: (v) => state.deliveryAddressDraft = v,
+                        decoration: const InputDecoration(
+                          labelText: 'Delivery address',
+                          hintText: 'Street, city, district',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text('Server verifies price, stock and totals. Pay COD after delivery (or PayHere when configured).',
                           style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -305,11 +316,21 @@ class CartScreen extends StatelessWidget {
                           onPressed: state.placingOrder
                               ? null
                               : () async {
-                                  final ok = await state.placeOrder();
+                                  final address = state.deliveryAddressDraft.trim();
+                                  if (address.length < 5) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Enter a delivery address to place the order.'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  final ok = await state.placeOrder(deliveryAddress: address);
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok ? 'Order placed successfully!' : 'Already placing this order…'),
+                                      content: Text(ok ? 'Order placed successfully!' : 'Could not place order. Check address or try again.'),
                                       backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,

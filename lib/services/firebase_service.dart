@@ -3,11 +3,15 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
+import '../core/config/app_backend.dart';
 import '../models/product.dart';
 import '../models/order.dart';
 import '../models/transport_job.dart';
 import '../models/verification_model.dart';
 import '../models/conversation_model.dart';
+import '../models/offer.dart';
+import '../models/notification_model.dart';
+import 'spark_backend.dart';
 
 // ============================================================
 // Firebase Authentication Service
@@ -16,11 +20,16 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  late final SparkBackend _spark = SparkBackend(_db);
 
   Future<void> registerDeviceToken({
     required String token,
     required String platform,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.registerDeviceToken(token: token, platform: platform);
+      return;
+    }
     await _functions.httpsCallable('registerDeviceToken').call({
       'token': token,
       'platform': platform,
@@ -28,17 +37,26 @@ class FirestoreService {
   }
 
   Future<void> unregisterDeviceToken(String token) async {
+    if (!kUseCloudFunctions) {
+      await _spark.unregisterDeviceToken(token);
+      return;
+    }
     await _functions
         .httpsCallable('unregisterDeviceToken')
         .call({'token': token});
   }
 
   Future<Map<String, dynamic>> getPlatformSettings() async {
+    if (!kUseCloudFunctions) return _spark.getPlatformSettings();
     final result = await _functions.httpsCallable('getPlatformSettings').call();
     return Map<String, dynamic>.from(result.data as Map);
   }
 
   Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
+    if (!kUseCloudFunctions) {
+      await _spark.updatePlatformSettings(settings);
+      return;
+    }
     await _functions.httpsCallable('updatePlatformSettings').call(settings);
   }
 
@@ -48,7 +66,8 @@ class FirestoreService {
         snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
   }
 
-  Stream<List<Map<String, dynamic>>> notificationsStream(String userId,
+  // ── Notifications ──────────────────────────────────────────
+  Stream<List<FarmoraNotification>> notificationsStream(String userId,
       {int limit = 50}) {
     return _db
         .collection('notifications')
@@ -56,8 +75,31 @@ class FirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraNotification.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Future<void> sendInAppNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String type = 'general',
+    String? referenceId,
+  }) async {
+    try {
+      await _db.collection('notifications').add({
+        'userId': userId,
+        'title': title,
+        'body': body,
+        'type': type,
+        'read': false,
+        'referenceId': referenceId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Notification failure shouldn't crash main operation
+    }
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -65,6 +107,21 @@ class FirestoreService {
         .collection('notifications')
         .doc(notificationId)
         .update({'read': true});
+  }
+
+  Future<void> markAllNotificationsRead(String userId) async {
+    try {
+      final batch = _db.batch();
+      final snap = await _db
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('read', isEqualTo: false)
+          .get();
+      for (final doc in snap.docs) {
+        batch.update(doc.reference, {'read': true});
+      }
+      await batch.commit();
+    } catch (_) {}
   }
 
   Future<void> updateUserLanguage(String languageCode) async {
@@ -123,6 +180,101 @@ class FirestoreService {
             .toList());
   }
 
+  // ── Offers ────────────────────────────────────────────────
+
+  Future<String> createOffer({
+    required String productId,
+    required int proposedQuantity,
+    required double proposedPrice,
+  }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.createOffer(
+        productId: productId,
+        proposedQuantity: proposedQuantity,
+        proposedPrice: proposedPrice,
+      );
+    }
+    final result = await _functions.httpsCallable('createOffer').call({
+      'productId': productId,
+      'proposedQuantity': proposedQuantity,
+      'proposedPrice': proposedPrice,
+    });
+    return result.data['offerId'] as String;
+  }
+
+  /// Legacy direct write — prefer [createOffer].
+  Future<void> addOffer(FarmoraOffer o) async {
+    await createOffer(
+      productId: o.productId,
+      proposedQuantity: o.proposedQuantity,
+      proposedPrice: o.proposedPrice,
+    );
+  }
+
+  Future<String> acceptOffer({
+    required String offerId,
+    int deliveryFeeMinor = 50000,
+  }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.acceptOffer(
+        offerId: offerId,
+        deliveryFeeMinor: deliveryFeeMinor,
+      );
+    }
+    final result = await _functions.httpsCallable('acceptOffer').call({
+      'offerId': offerId,
+      'deliveryFeeMinor': deliveryFeeMinor,
+    });
+    return result.data['orderId'] as String;
+  }
+
+  Future<void> rejectOffer(String offerId) async {
+    if (!kUseCloudFunctions) {
+      await _spark.rejectOffer(offerId);
+      return;
+    }
+    await _functions.httpsCallable('rejectOffer').call({'offerId': offerId});
+  }
+
+  Future<void> updateOfferStatus(String id, String status) async {
+    if (status == 'accepted') {
+      await acceptOffer(offerId: id);
+      return;
+    }
+    if (status == 'rejected') {
+      await rejectOffer(id);
+      return;
+    }
+    await _db.collection('offers').doc(id).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<List<FarmoraOffer>> offersByFarmerStream(String farmerId, {int limit = 50}) {
+    return _db
+        .collection('offers')
+        .where('farmerId', isEqualTo: farmerId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraOffer.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Stream<List<FarmoraOffer>> offersByBuyerStream(String buyerId, {int limit = 50}) {
+    return _db
+        .collection('offers')
+        .where('buyerId', isEqualTo: buyerId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraOffer.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
   // ── Orders ────────────────────────────────────────────────
 
   /// Add a new order
@@ -133,42 +285,199 @@ class FirestoreService {
     });
   }
 
-  /// Update order delivery address
+  /// Update order delivery address via trusted Cloud Function.
   Future<void> updateOrderAddress(String orderId, String newAddress) async {
-    await _db.collection('orders').doc(orderId).update({
-      'deliveryAddress': newAddress,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await updateOrderAddressCallable(
+      orderId: orderId,
+      deliveryAddress: newAddress,
+    );
   }
 
   Future<String> createSecureOrder({
     required String productId,
     required int quantity,
     int deliveryFeeMinor = 0,
+    String? offerId,
+    required String deliveryAddress,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.createOrder(
+        productId: productId,
+        quantity: quantity,
+        deliveryFeeMinor: deliveryFeeMinor,
+        deliveryAddress: deliveryAddress,
+      );
+    }
     final result = await _functions.httpsCallable('createOrder').call({
       'productId': productId,
       'quantity': quantity,
       'deliveryFeeMinor': deliveryFeeMinor,
+      'deliveryAddress': deliveryAddress,
+      if (offerId != null) 'offerId': offerId,
     });
     return result.data['orderId'] as String;
   }
 
+  Future<void> requestTransport({
+    required String orderId,
+    int? deliveryFeeMinor,
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.requestTransport(
+        orderId: orderId,
+        deliveryFeeMinor: deliveryFeeMinor,
+      );
+      return;
+    }
+    await _functions.httpsCallable('requestTransport').call({
+      'orderId': orderId,
+      if (deliveryFeeMinor != null) 'deliveryFeeMinor': deliveryFeeMinor,
+    });
+  }
+
+  Future<void> updateOrderAddressCallable({
+    required String orderId,
+    required String deliveryAddress,
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.updateOrderAddress(
+        orderId: orderId,
+        deliveryAddress: deliveryAddress,
+      );
+      return;
+    }
+    await _functions.httpsCallable('updateOrderAddress').call({
+      'orderId': orderId,
+      'deliveryAddress': deliveryAddress,
+    });
+  }
+
+  Future<void> setUserSuspended({
+    required String userId,
+    required bool suspended,
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.setUserSuspended(userId: userId, suspended: suspended);
+      return;
+    }
+    await _functions.httpsCallable('setUserSuspended').call({
+      'userId': userId,
+      'suspended': suspended,
+    });
+  }
+
+  Future<void> releaseEscrow({required String orderId}) async {
+    if (!kUseCloudFunctions) {
+      await _spark.releaseEscrow(orderId: orderId);
+      return;
+    }
+    await _functions.httpsCallable('releaseEscrow').call({'orderId': orderId});
+  }
+
+  Future<Map<String, dynamic>> exportUserData() async {
+    if (!kUseCloudFunctions) return _spark.exportUserData();
+    final result = await _functions.httpsCallable('exportUserData').call();
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<void> deleteAccount() async {
+    if (!kUseCloudFunctions) {
+      await _spark.deleteAccount();
+      return;
+    }
+    await _functions.httpsCallable('deleteAccount').call();
+  }
+
+  Future<Map<String, dynamic>> createPayHereCheckout({
+    required String orderId,
+  }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.createPayHereCheckout(orderId: orderId);
+    }
+    final result = await _functions.httpsCallable('createPayHereCheckout').call({
+      'orderId': orderId,
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<void> publishChatPublicKey(String publicKeyB64) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    await _db.collection('users').doc(uid).update({
+      'chatPublicKey': publicKeyB64,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<String?> fetchChatPublicKey(String userId) async {
+    final snap = await _db.collection('users').doc(userId).get();
+    final key = snap.data()?['chatPublicKey'];
+    return key is String && key.isNotEmpty ? key : null;
+  }
+
+  Future<void> updateTransporterProfile({
+    String? vehicleType,
+    int? capacityKg,
+    List<String>? serviceDistricts,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    final updates = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (vehicleType != null) updates['vehicleType'] = vehicleType;
+    if (capacityKg != null) updates['capacityKg'] = capacityKg;
+    if (serviceDistricts != null) updates['serviceDistricts'] = serviceDistricts;
+    await _db.collection('users').doc(uid).update(updates);
+  }
+
+  Future<void> markPaymentReceived({
+    required String orderId,
+    String method = 'cod',
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.markPaymentReceived(orderId: orderId, method: method);
+      return;
+    }
+    await _functions.httpsCallable('markPaymentReceived').call({
+      'orderId': orderId,
+      'method': method,
+    });
+  }
+
   Future<String> createSecureProduct(Product product) async {
+    if (!kUseCloudFunctions) {
+      return _spark.createProduct(product);
+    }
+    final quantityAvailable = product.quantityAvailable > 0
+        ? product.quantityAvailable
+        : int.tryParse(RegExp(r'\d+').firstMatch(product.quantity)?.group(0) ?? '') ?? 0;
+    final media = product.media.isNotEmpty
+        ? product.media
+        : (product.imageUrls.isNotEmpty
+            ? product.imageUrls
+            : product.images.where((u) => u.startsWith('http')).toList());
     final result = await _functions.httpsCallable('createProduct').call({
       'name': product.name,
       'category': product.category,
       'description': product.description,
       'unit': product.unit,
       'location': product.location,
-      'priceMinor': product.pricePerUnit.round() * 100,
-      'quantityAvailable': int.tryParse(product.quantity) ?? 0,
-      'media': product.images,
+      'priceMinor': product.priceMinor > 0
+          ? product.priceMinor
+          : (product.pricePerUnit * 100).round(),
+      'quantityAvailable': quantityAvailable,
+      'media': media,
+      'isOrganic': product.isOrganic,
     });
     return result.data['productId'] as String;
   }
 
   Future<void> transitionOrder(String orderId, String status) async {
+    if (!kUseCloudFunctions) {
+      await _spark.transitionOrder(orderId, status);
+      return;
+    }
     await _functions.httpsCallable('transitionOrder').call({
       'orderId': orderId,
       'status': status,
@@ -176,9 +485,29 @@ class FirestoreService {
   }
 
   Future<void> transitionTransport(String jobId, String status) async {
+    if (!kUseCloudFunctions) {
+      await _spark.transitionTransport(jobId, status);
+      return;
+    }
     await _functions.httpsCallable('transitionTransport').call({
       'jobId': jobId,
       'status': status,
+    });
+  }
+
+  Future<void> updateTransportJobLocation({
+    required String jobId,
+    required double lat,
+    required double lng,
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.updateTransportLocation(jobId: jobId, lat: lat, lng: lng);
+      return;
+    }
+    await _functions.httpsCallable('updateTransportLocation').call({
+      'jobId': jobId,
+      'lat': lat,
+      'lng': lng,
     });
   }
 
@@ -186,6 +515,12 @@ class FirestoreService {
     required String documentType,
     required String storagePath,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.submitVerification(
+        documentType: documentType,
+        storagePath: storagePath,
+      );
+    }
     final result = await _functions.httpsCallable('submitVerification').call({
       'documentType': documentType,
       'storagePath': storagePath,
@@ -231,11 +566,37 @@ class FirestoreService {
     return url;
   }
 
+  /// Upload a product image to Storage and return its download URL.
+  Future<String> uploadProductImage({
+    required Uint8List bytes,
+    required String fileName,
+    String contentType = 'image/jpeg',
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (bytes.length > 5 * 1024 * 1024) {
+      throw StateError('Image must be smaller than 5 MB.');
+    }
+    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final path =
+        'product_images/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return ref.getDownloadURL();
+  }
+
   Future<String> sendEncryptedMessage({
     required String orderId,
     required String recipientId,
     required String ciphertext,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.sendEncryptedMessage(
+        orderId: orderId,
+        recipientId: recipientId,
+        ciphertext: ciphertext,
+      );
+    }
     final result = await _functions.httpsCallable('sendMessage').call({
       'orderId': orderId,
       'recipientId': recipientId,
@@ -272,11 +633,55 @@ class FirestoreService {
     required String barcodeId,
     required String signature,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.verifyProductBarcode(
+        barcodeId: barcodeId,
+        signature: signature,
+      );
+    }
     final result = await _functions.httpsCallable('verifyBarcode').call({
       'barcodeId': barcodeId,
       'signature': signature,
     });
     return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  /// Issue a signed authenticity barcode for an order. Returns scan payload `id|signature`.
+  Future<Map<String, String>> issueOrderBarcode(String orderId) async {
+    if (!kUseCloudFunctions) {
+      final issued = await _spark.issueOrderBarcode(orderId);
+      return {
+        ...issued,
+        'scanPayload': '${issued['barcodeId']}|${issued['signature']}',
+      };
+    }
+    final result = await _functions.httpsCallable('issueBarcode').call({
+      'orderId': orderId,
+    });
+    final data = Map<String, dynamic>.from(result.data as Map);
+    final barcodeId = data['barcodeId'] as String;
+    final signature = data['signature'] as String;
+    return {
+      'barcodeId': barcodeId,
+      'signature': signature,
+      'scanPayload': '$barcodeId|$signature',
+    };
+  }
+
+  /// Generate and persist QR payload for a packed product.
+  /// Prefer [issueOrderBarcode] for delivery authenticity verification.
+  Future<String> generateProductQr({
+    required String productId,
+    required String farmerId,
+  }) async {
+    final payload = 'FARMORA:$productId:$farmerId:${DateTime.now().millisecondsSinceEpoch}';
+    await _db.collection('products').doc(productId).update({
+      'qrCode': payload,
+      'packingDate': DateTime.now().toIso8601String(),
+      'harvestStatus': 'packed',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return payload;
   }
 
   /// Upload harvest video for a product and return download URL + storage path.
@@ -301,6 +706,7 @@ class FirestoreService {
       'videoPath': path,
       'videoUrl': url,
       'harvestStatus': 'harvested',
+      'harvestDate': DateTime.now().toIso8601String(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     return {'path': path, 'url': url};
@@ -326,21 +732,6 @@ class FirestoreService {
       'videoUrl': null,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-  }
-
-  /// Generate and persist QR payload for a packed product.
-  Future<String> generateProductQr({
-    required String productId,
-    required String farmerId,
-  }) async {
-    final payload = 'FARMORA:$productId:$farmerId:${DateTime.now().millisecondsSinceEpoch}';
-    await _db.collection('products').doc(productId).update({
-      'qrCode': payload,
-      'packingDate': DateTime.now().toIso8601String(),
-      'harvestStatus': 'packed',
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    return payload;
   }
 
   /// Mark order delivered and auto-delete linked product video.
@@ -377,6 +768,14 @@ class FirestoreService {
     required int rating,
     required String comment,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.submitReview(
+        orderId: orderId,
+        rating: rating,
+        comment: comment,
+      );
+      return;
+    }
     await _functions.httpsCallable('submitReview').call({
       'orderId': orderId,
       'rating': rating,
@@ -388,6 +787,10 @@ class FirestoreService {
     required String documentId,
     required String status,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.reviewVerification(documentId: documentId, status: status);
+      return;
+    }
     await _functions.httpsCallable('reviewVerification').call({
       'documentId': documentId,
       'status': status,
@@ -408,6 +811,13 @@ class FirestoreService {
     required String reason,
     List<String> evidenceUrls = const [],
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.openDispute(
+        orderId: orderId,
+        reason: reason,
+        evidenceUrls: evidenceUrls,
+      );
+    }
     final result = await _functions.httpsCallable('openDispute').call({
       'orderId': orderId,
       'reason': reason,
@@ -434,7 +844,7 @@ class FirestoreService {
     return ref.getDownloadURL();
   }
 
-  /// Update order status
+  /// Update order status via trusted Cloud Function (auto-creates transport job on confirm).
   Future<void> updateOrderStatus(
       String id, String status, double progress) async {
     final normalized = switch (status.toLowerCase()) {
@@ -501,22 +911,21 @@ class FirestoreService {
 
   // ── Transport Jobs ────────────────────────────────────────
 
-  /// Add a new transport job
+  /// Prefer [requestTransport] — client writes to transport_jobs are denied by rules.
   Future<void> addTransportJob(TransportJob j) async {
-    await _db.collection('transport_jobs').add({
-      ...j.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final orderId = j.orderId;
+    if (orderId == null || orderId.isEmpty) {
+      throw StateError('orderId required; use requestTransport.');
+    }
+    await requestTransport(orderId: orderId);
   }
 
-  /// Update a transport job
   Future<void> updateTransportJob(String id, Map<String, dynamic> data) async {
-    await _db.collection('transport_jobs').doc(id).update(data);
+    throw UnsupportedError('Use transitionTransport Cloud Function.');
   }
 
-  /// Delete a transport job
   Future<void> deleteTransportJob(String id) async {
-    await _db.collection('transport_jobs').doc(id).delete();
+    throw UnsupportedError('Transport jobs cannot be deleted from the client.');
   }
 
   /// Real-time stream of transport jobs
@@ -587,7 +996,7 @@ class FirestoreService {
     await _db.collection('verification_docs').doc(id).update(data);
   }
 
-  /// Verification docs stream for a farmer
+  /// Verification docs stream for a farmer/transporter
   Stream<List<VerificationDoc>> verificationDocsStream(String farmerId) {
     return _db
         .collection('verification_docs')
@@ -598,170 +1007,36 @@ class FirestoreService {
             .toList());
   }
 
+  /// Pending / all verification docs for admin review.
+  Stream<List<VerificationDoc>> pendingVerificationDocsStream({
+    bool pendingOnly = true,
+  }) {
+    Query<Map<String, dynamic>> query = _db.collection('verification_docs');
+    if (pendingOnly) {
+      query = query.where('status', isEqualTo: 'pending');
+    }
+    return query
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) {
+              final data = doc.data();
+              // Map Cloud Function fields onto VerificationDoc shape
+              return VerificationDoc.fromMap(doc.id, {
+                ...data,
+                'title': data['title'] ?? data['documentType'] ?? 'Document',
+                'description': data['description'] ?? data['storagePath'] ?? '',
+              });
+            }).toList());
+  }
+
   // ── Database Seeding ──────────────────────────────────────
 
-  /// Seeds the database with mock Sri Lankan data for testing
+  /// Seeds demo products/orders/jobs (Spark: admin Firestore writes).
   Future<void> seedDatabase() async {
-    // 1. Seed Products
-    final products = [
-      {
-        'name': 'Ceylon Cinnamon',
-        'category': 'Spices',
-        'location': 'Kandy',
-        'quantity': '10 kg available',
-        'unit': 'kg',
-        'price': 'LKR 4,500 / kg',
-        'pricePerUnit': 4500.0,
-        'priceMinor': 450000,
-        'quantityAvailable': 10,
-        'currency': 'LKR',
-        'media': [],
-        'trustLevel': 'Medium',
-        'emoji': '🍂',
-        'color': 0xFFFFE1DA,
-        'imagePath': 'assets/images/placeholder.png',
-        'status': 'Active',
-        'isOrganic': true,
-        'description':
-            'Premium grade Ceylon Cinnamon sticks, freshly harvested.',
-        'farmerId': 'mock-farmer-id',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'name': 'Nuwara Eliya Carrots',
-        'category': 'Vegetables',
-        'location': 'Nuwara Eliya',
-        'quantity': '50 kg available',
-        'unit': 'kg',
-        'price': 'LKR 350 / kg',
-        'pricePerUnit': 350.0,
-        'priceMinor': 35000,
-        'quantityAvailable': 50,
-        'currency': 'LKR',
-        'media': [],
-        'trustLevel': 'High',
-        'emoji': '🥕',
-        'color': 0xFFFFF3E0,
-        'imagePath': 'assets/images/nantes_carrots.png',
-        'status': 'Active',
-        'isOrganic': true,
-        'description': 'Fresh, crisp carrots from the hills of Nuwara Eliya.',
-        'farmerId': 'mock-farmer-id',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'name': 'King Coconut (Thambili)',
-        'category': 'Fruits',
-        'location': 'Kurunegala',
-        'quantity': '100 nuts',
-        'unit': 'nuts',
-        'price': 'LKR 120 / ea',
-        'pricePerUnit': 120.0,
-        'priceMinor': 12000,
-        'quantityAvailable': 100,
-        'currency': 'LKR',
-        'media': [],
-        'trustLevel': 'Standard',
-        'emoji': '🥥',
-        'color': 0xFFE8F5E9,
-        'imagePath': 'assets/images/placeholder.png',
-        'status': 'Active',
-        'isOrganic': true,
-        'description':
-            'Sweet and refreshing King Coconuts, rich in electrolytes.',
-        'farmerId': 'mock-farmer-id',
-        'createdAt': FieldValue.serverTimestamp(),
-      }
-    ];
-
-    for (var p in products) {
-      await _db.collection('products').add(p);
+    if (!kUseCloudFunctions) {
+      await _spark.seedDatabase();
+      return;
     }
-
-    // 2. Seed Orders
-    final orders = [
-      {
-        'orderNumber': '#1042-SL',
-        'title': '20 kg Nuwara Eliya Carrots',
-        'productName': 'Nuwara Eliya Carrots',
-        'quantity': '20 kg',
-        'grade': 'Grade A Premium',
-        'unitPrice': 'LKR 350.00',
-        'totalAmount': 'LKR 7,000.00',
-        'totalAmountNumber': 7000.0,
-        'subtotalMinor': 700000,
-        'deliveryFeeMinor': 35000,
-        'totalMinor': 735000,
-        'currency': 'LKR',
-        'paymentStatus': 'unpaid',
-        'escrowStatus': 'not_funded',
-        'buyerName': 'Sunil Perera',
-        'buyerCompany': 'Sunil Fresh Veg',
-        'buyerAvatar': 'assets/images/placeholder.png',
-        'deliveryAddress': '12 Galle Road,\nColombo 03',
-        'detail': '20 kg · LKR 7,000.00 · Requested for Today',
-        'status': 'Pending',
-        'progress': 0.25,
-        'color': 0xFF3478C5,
-        'timestamp': 'Today, 09:15 AM',
-        'requestedDate': 'Today',
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'orderNumber': '#1043-SL',
-        'title': '5 kg Ceylon Cinnamon',
-        'productName': 'Ceylon Cinnamon',
-        'quantity': '5 kg',
-        'grade': 'Organic',
-        'unitPrice': 'LKR 4,500.00',
-        'totalAmount': 'LKR 22,500.00',
-        'totalAmountNumber': 22500.0,
-        'subtotalMinor': 2250000,
-        'deliveryFeeMinor': 35000,
-        'totalMinor': 2285000,
-        'currency': 'LKR',
-        'paymentStatus': 'paid',
-        'escrowStatus': 'funded_pending_delivery',
-        'buyerName': 'Nimal Traders',
-        'buyerCompany': 'Nimal Exports',
-        'buyerAvatar': 'assets/images/placeholder.png',
-        'deliveryAddress': '45 Kandy Road,\nPeradeniya',
-        'detail': '5 kg · LKR 22,500.00 · Requested for Tomorrow',
-        'status': 'Accepted',
-        'progress': 0.6,
-        'color': 0xFF1F7A4D,
-        'timestamp': 'Yesterday, 14:20 PM',
-        'requestedDate': 'Tomorrow',
-        'createdAt': FieldValue.serverTimestamp(),
-      }
-    ];
-
-    for (var o in orders) {
-      await _db.collection('orders').add(o);
-    }
-
-    // 3. Seed Transport Jobs
-    final jobs = [
-      {
-        'title': 'Carrot Transport',
-        'route': 'Nuwara Eliya → Colombo',
-        'detail': '20 kg · Pickup today, 10:30 AM',
-        'fee': 'LKR 3,500',
-        'accepted': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      {
-        'title': 'Coconut Transport',
-        'route': 'Kurunegala → Kandy',
-        'detail': '100 nuts · Pickup tomorrow, 7:00 AM',
-        'fee': 'LKR 2,200',
-        'accepted': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      }
-    ];
-
-    for (var j in jobs) {
-      await _db.collection('transport_jobs').add(j);
-    }
+    await _functions.httpsCallable('seedDatabase').call();
   }
 }

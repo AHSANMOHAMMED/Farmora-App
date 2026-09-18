@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/farmora_state.dart';
 import '../../home/presentation/home_screen.dart';
 import 'phone_otp_dialog.dart';
@@ -292,10 +293,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
 
                   // 2. Welcome Back Greeting
-                  const Text(
-                    'Welcome Back',
+                  Text(
+                    AppLocalizations.of(context).welcomeBack,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
                       color: AppColors.forestGreen,

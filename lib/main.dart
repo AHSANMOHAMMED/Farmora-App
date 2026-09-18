@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 
@@ -9,6 +11,7 @@ export 'firebase_options.dart';
 export 'models/user_role.dart';
 export 'models/product.dart';
 export 'models/order.dart';
+export 'models/offer.dart';
 export 'models/transport_job.dart';
 export 'models/earnings_model.dart';
 export 'models/verification_model.dart';
@@ -58,13 +61,32 @@ export 'features/auth/presentation/register_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase — this will work once you run `flutterfire configure`
-  // and replace the placeholder values in firebase_options.dart.
-  // If Firebase isn't configured yet, the app still works in demo mode
-  // because FarmoraState has hardcoded mock data as defaults.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase once `flutterfire configure` has filled firebase_options.dart.
+  // Without Firebase the auth gate stays signed-out — no mock marketplace data.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await _activateAppCheck();
+  } catch (e) {
+    debugPrint('Firebase initialization failed (running in offline/mock mode): $e');
+  }
 
   runApp(const FarmoraApp());
+}
+
+Future<void> _activateAppCheck() async {
+  try {
+    await FirebaseAppCheck.instance.activate(
+      // Debug provider for local builds. Production: Play Integrity / DeviceCheck.
+      providerAndroid: kDebugMode
+          ? const AndroidDebugProvider()
+          : const AndroidPlayIntegrityProvider(),
+      providerApple: kDebugMode
+          ? const AppleDebugProvider()
+          : const AppleDeviceCheckProvider(),
+    );
+  } catch (e) {
+    debugPrint('App Check not activated: $e');
+  }
 }

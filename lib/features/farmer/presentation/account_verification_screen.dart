@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../../models/user_role.dart';
 import '../../../models/verification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
@@ -18,6 +19,60 @@ class AccountVerificationScreen extends StatefulWidget {
 class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   final _service = FirestoreService();
   bool _uploading = false;
+  final _vehicleTypeController = TextEditingController();
+  final _capacityController = TextEditingController();
+  final _districtsController = TextEditingController();
+  bool _savingProfile = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<FarmoraState>();
+      _vehicleTypeController.text = state.vehicleType;
+      _capacityController.text =
+          state.capacityKg > 0 ? '${state.capacityKg}' : '';
+      _districtsController.text = state.serviceDistricts.join(', ');
+    });
+  }
+
+  @override
+  void dispose() {
+    _vehicleTypeController.dispose();
+    _capacityController.dispose();
+    _districtsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTransporterProfile() async {
+    if (_savingProfile) return;
+    setState(() => _savingProfile = true);
+    try {
+      final districts = _districtsController.text
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await context.read<FarmoraState>().updateTransporterProfile(
+            vehicleType: _vehicleTypeController.text.trim(),
+            capacityKg: int.tryParse(_capacityController.text.trim()) ?? 0,
+            serviceDistricts: districts,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transporter profile saved.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save profile: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingProfile = false);
+    }
+  }
 
   Future<void> _pickDocument(VerificationDoc doc) async {
     if (_uploading) return;
@@ -56,6 +111,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final docs = state.verificationDocs;
+    final isTransporter = state.role == Role.transporter;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -103,6 +159,65 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                if (isTransporter) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Vehicle & service area',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _vehicleTypeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Vehicle type',
+                            hintText: 'e.g. Pickup, Van, Lorry',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _capacityController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Capacity (kg)',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _districtsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Service districts',
+                            hintText: 'Comma-separated, e.g. Colombo, Gampaha',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton(
+                            onPressed:
+                                _savingProfile ? null : _saveTransporterProfile,
+                            child: Text(
+                                _savingProfile ? 'Saving…' : 'Save profile'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 // List of Verification Cards
                 ...docs.map((doc) => _buildDocCard(context, state, doc)),

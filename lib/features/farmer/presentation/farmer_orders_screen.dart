@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmer_header.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'order_detail_screen.dart';
@@ -15,10 +16,12 @@ class FarmerOrdersScreen extends StatefulWidget {
 
 class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
   int _selectedTab = 0; // 0: Pending, 1: Accepted, 2: Completed
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l10n = AppLocalizations.of(context);
 
     List<FarmoraOrder> displayOrders;
     if (_selectedTab == 0) {
@@ -29,77 +32,118 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
       displayOrders = state.completedOrders;
     }
 
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      displayOrders = displayOrders.where((o) {
+        return o.productName.toLowerCase().contains(q) ||
+            o.title.toLowerCase().contains(q) ||
+            o.buyerCompany.toLowerCase().contains(q) ||
+            o.orderNumber.toLowerCase().contains(q);
+      }).toList();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: const FarmerHeader(title: 'Orders'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Segmented Filter Tabs
-            // Stitch: flex items-center w-full bg-surface-container-low rounded-full p-xs sticky
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(9999),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                  ),
+      appBar: FarmerHeader(title: l10n.orders),
+      body: state.currentUserId.isNotEmpty && !state.profileLoaded
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 12),
+                  Text(l10n.loading),
                 ],
               ),
-              child: Row(
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTabButton(0, 'Pending'),
-                  _buildTabButton(1, 'Accepted'),
-                  _buildTabButton(2, 'Completed'),
+                  // 1. Segmented Filter Tabs
+                  // Stitch: flex items-center w-full bg-surface-container-low rounded-full p-xs sticky
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(9999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTabButton(0, l10n.pending),
+                        _buildTabButton(1, l10n.accepted),
+                        _buildTabButton(2, l10n.delivered),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: l10n.search,
+                      prefixIcon: const Icon(Icons.search,
+                          color: AppColors.onSurfaceVariant),
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 2. Orders List
+                  if (displayOrders.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.shopping_basket_outlined,
+                              size: 64,
+                              color: AppColors.outlineVariant,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.noOrders,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayOrders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final order = displayOrders[index];
+                        return _buildOrderCard(context, state, order);
+                      },
+                    ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // 2. Orders List
-            if (displayOrders.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 60),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.shopping_basket_outlined,
-                        size: 64,
-                        color: AppColors.outlineVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No ${_selectedTab == 0 ? "pending" : _selectedTab == 1 ? "accepted" : "completed"} orders',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: displayOrders.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  final order = displayOrders[index];
-                  return _buildOrderCard(context, state, order);
-                },
-              ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -185,7 +229,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                     children: [
                       // Stitch: inline-flex items-center gap-xs px-sm py-xs rounded-full bg-surface-container
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainer,
                           borderRadius: BorderRadius.circular(9999),
@@ -253,7 +298,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              order.productName.isNotEmpty ? order.productName : order.title,
+                              order.productName.isNotEmpty
+                                  ? order.productName
+                                  : order.title,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 16,
@@ -265,7 +312,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              order.quantity.isNotEmpty ? order.quantity : order.detail,
+                              order.quantity.isNotEmpty
+                                  ? order.quantity
+                                  : order.detail,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 13,
@@ -362,7 +411,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                               onPressed: () {
                                 state.declineOrder(order.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Declined ${order.orderNumber}')),
+                                  SnackBar(
+                                      content: Text(
+                                          'Declined ${order.orderNumber}')),
                                 );
                               },
                               style: OutlinedButton.styleFrom(
@@ -396,7 +447,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     backgroundColor: AppColors.primary,
-                                    content: Text('Accepted ${order.orderNumber}! Balance updated.'),
+                                    content: Text(
+                                        'Accepted ${order.orderNumber}! Balance updated.'),
                                   ),
                                 );
                               },
@@ -436,24 +488,24 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
   Widget _buildOrderThumbnail(FarmoraOrder order) {
     final name = (order.productName + order.title).toLowerCase();
     if (name.contains('cherry')) {
-      return Image.asset('assets/images/cherry_tomatoes.png', fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon());
+      return Image.asset('assets/images/cherry_tomatoes.png',
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon());
     }
     if (name.contains('lettuce') || name.contains('romaine')) {
-      return Image.asset('assets/images/romaine_lettuce.png', fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon());
+      return Image.asset('assets/images/romaine_lettuce.png',
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon());
     }
     if (name.contains('apple') || name.contains('fuji')) {
-      return Image.asset('assets/images/heirloom_tomatoes.png', fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon());
+      return Image.asset('assets/images/heirloom_tomatoes.png',
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon());
     }
     if (name.contains('carrot')) {
-      return Image.asset('assets/images/nantes_carrots.png', fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon());
+      return Image.asset('assets/images/nantes_carrots.png',
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon());
     }
     if (name.contains('kale')) {
-      return Image.asset('assets/images/dinosaur_kale.png', fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon());
+      return Image.asset('assets/images/dinosaur_kale.png',
+          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon());
     }
     return _fallbackIcon();
   }

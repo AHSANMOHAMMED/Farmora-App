@@ -17,7 +17,14 @@ class BuyerProductsScreen extends StatefulWidget {
 
 class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _categories = ['All', 'Vegetables', 'Fruits', 'Herbs'];
+  final List<String> _categories = [
+    'All',
+    'Vegetables',
+    'Fruits',
+    'Spices',
+    'Grains',
+    'Herbs',
+  ];
 
   @override
   void dispose() {
@@ -363,7 +370,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
-                  TrustBadge(trustLevel: product.trustLevel),
+                  TrustBadge(trustLevel: state.trustLevelForProduct(product)),
                   const SizedBox(height: 6),
                   Text(
                     product.price,

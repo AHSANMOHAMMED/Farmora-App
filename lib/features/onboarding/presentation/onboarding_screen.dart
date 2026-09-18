@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/presentation/login_screen.dart';
 
 /// Data model representing an individual onboarding slide.
@@ -181,9 +182,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: const Text(
-                        'Skip',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context).skip,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -293,7 +294,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                isLastPage ? 'Get Started' : 'Next',
+                                isLastPage
+                                    ? AppLocalizations.of(context).done
+                                    : AppLocalizations.of(context).next,
                                 style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w700,

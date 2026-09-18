@@ -2,7 +2,7 @@ import 'package:farmora/models/dispute_model.dart';
 import 'package:farmora/models/order.dart';
 import 'package:farmora/models/product.dart';
 import 'package:farmora/models/transport_job.dart';
-import 'package:farmora/features/messaging/presentation/chat_screen.dart';
+import 'package:farmora/services/chat_crypto.dart';
 import 'package:farmora/core/widgets/route_progress_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -128,12 +128,9 @@ void main() {
     });
   });
 
-  group('Chat codec meets 16-char backend minimum', () {
-    test('short messages padded, round-trip decode', () {
-      final enc = encodeChatOutgoing('hi');
-      expect(enc.length, greaterThanOrEqualTo(16));
-      expect(decodeChatIncoming(enc), 'hi');
-      expect(decodeChatIncoming('plain legacy text'), 'plain legacy text');
+  group('Chat crypto prefix', () {
+    test('farmora2 ciphertext prefix is defined', () {
+      expect(ChatCrypto.ciphertextPrefix, 'farmora2:');
     });
   });
 }
