@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 import '../../home/presentation/home_screen.dart';
 import 'login_screen.dart';
 import 'role_selection_screen.dart';
@@ -38,28 +42,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _hasPhoto = false;
   bool _isLoading = false;
+  bool _isPickingPhoto = false;
+  bool _acceptedTerms = false;
+  final _picker = ImagePicker();
+  Uint8List? _photoBytes;
+  String? _photoName;
+  String? _photoContentType;
 
   static const List<String> _districts = [
-    'Nuwara Eliya',
-    'Kandy',
-    'Colombo',
-    'Kurunegala',
+    'Ampara',
     'Anuradhapura',
-    'Matale',
     'Badulla',
+    'Batticaloa',
+    'Colombo',
+    'Galle',
     'Gampaha',
     'Hambantota',
     'Jaffna',
-    'Galle',
-    'Ratnapura',
+    'Kalutara',
+    'Kandy',
+    'Kegalle',
+    'Kilinochchi',
+    'Kurunegala',
+    'Mannar',
+    'Matale',
+    'Matara',
     'Monaragala',
+    'Mullaitivu',
+    'Nuwara Eliya',
     'Polonnaruwa',
     'Puttalam',
-    'Kalutara',
-    'Kegalle',
-    'Matara',
-    'Batticaloa',
-    'Ampara',
+    'Ratnapura',
     'Trincomalee',
     'Vavuniya',
   ];
@@ -75,6 +88,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please accept the Terms of Service and Privacy Policy.'),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 350));
@@ -88,6 +109,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       role: widget.selectedRole,
       district: _selectedDistrict,
     );
+
+    if (success && _photoBytes != null && _photoName != null) {
+      try {
+        await FirestoreService().uploadProfilePhoto(
+          bytes: _photoBytes!,
+          fileName: _photoName!,
+          contentType: _photoContentType ?? 'image/jpeg',
+        );
+      } catch (_) {
+        // Registration succeeded; photo upload is optional.
+      }
+    }
 
     if (success) {
       if (widget.onRegistered != null) {
@@ -157,16 +190,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _togglePhoto() {
-    setState(() => _hasPhoto = !_hasPhoto);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _hasPhoto ? 'Profile photo selected' : 'Profile photo removed',
-        ),
-        duration: const Duration(milliseconds: 1200),
-      ),
-    );
+  Future<void> _togglePhoto() async {
+    if (_hasPhoto) {
+      setState(() {
+        _hasPhoto = false;
+        _photoBytes = null;
+        _photoName = null;
+        _photoContentType = null;
+      });
+      return;
+    }
+    if (_isPickingPhoto) return;
+    setState(() => _isPickingPhoto = true);
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1024,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      setState(() {
+        _photoBytes = bytes;
+        _photoName = file.name;
+        _photoContentType = file.mimeType ?? 'image/jpeg';
+        _hasPhoto = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not pick photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
+    }
   }
 
   @override
@@ -401,6 +459,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                CheckboxListTile(
+                  value: _acceptedTerms,
+                  onChanged: (v) =>
+                      setState(() => _acceptedTerms = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'I agree to the Terms of Service and Privacy Policy',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // 4. Primary Green Button "Create Account"
                 SizedBox(

@@ -87,7 +87,19 @@ The application is built with Flutter and Firebase. The visual experience follow
 
 ### PayHere 💳
 
-PayHere is intentionally **skipped for now** because merchant credentials are not available. Existing checkout/webhook code is scaffolded but must not be treated as production payment functionality until credentials, webhook validation, idempotency, refunds, reconciliation, and legal escrow decisions are supplied.
+PayHere checkout and webhooks are **implemented and env-gated**. Without `PAYHERE_MERCHANT_ID` / `PAYHERE_MERCHANT_SECRET`, `createPayHereCheckout` returns `{ enabled: false, useCod: true }` and buyers pay via COD (`markPaymentReceived`). When credentials are set on Cloud Functions (and optionally `PAYHERE_SANDBOX=true`), checkout hashes and webhook signature verification activate. Never commit real merchant secrets.
+
+### Maps 🗺️
+
+Pass `--dart-define=GOOGLE_MAPS_API_KEY=...` at build time. When set, `RouteProgressMap` can render Google Maps; otherwise it falls back to the progress visualization (no key required for demos).
+
+### Acceptance path (COD demo)
+
+1. Admin verifies farmer + transporter.
+2. Farmer lists product; buyer orders with delivery address (or offer → accept).
+3. Farmer confirms → transport job auto-created.
+4. Transporter completes transitions; farmer issues barcode; buyer verifies.
+5. Buyer confirms COD payment and reviews; admin releases escrow when eligible.
 
 ## Architecture
 

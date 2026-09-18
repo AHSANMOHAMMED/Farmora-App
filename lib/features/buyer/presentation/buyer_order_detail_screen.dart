@@ -7,6 +7,7 @@ import 'track_order_screen.dart';
 import 'barcode_scan_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../../services/firebase_service.dart';
+import '../../reviews/presentation/submit_review_screen.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -20,6 +21,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       (o) => o.id == order.id,
       orElse: () => order,
     );
+    final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -325,11 +327,173 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+            if (linkedJob != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Logistics & Transport',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryContainer,
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Text(
+                            linkedJob.status.toUpperCase(),
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSummaryRow(
+                      'Provider',
+                      linkedJob.transporterId != null && linkedJob.transporterId!.isNotEmpty
+                          ? 'Assigned (${linkedJob.transporterId})'
+                          : 'Pending Assignment',
+                    ),
+                    _buildDivider(),
+                    _buildSummaryRow('Route', linkedJob.route),
+                    _buildDivider(),
+                    _buildSummaryRow('Fee', linkedJob.fee),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
-      bottomNavigationBar: (currentOrder.status.toLowerCase() == 'in transit' ||
-              currentOrder.status.toLowerCase() == 'accepted')
+      bottomNavigationBar: (() {
+            final s = currentOrder.status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+            final trackable = {'confirmed','assigned','pickedup','intransit','accepted'}.contains(s);
+            final delivered = s == 'delivered' || s == 'completed';
+            final unpaid = currentOrder.paymentStatus == 'payment_required' || currentOrder.paymentStatus == 'unpaid';
+            if (delivered && unpaid) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton(
+                      onPressed: () async {
+                        try {
+                          final checkout = await FirestoreService()
+                              .createPayHereCheckout(orderId: currentOrder.id);
+                          if (!context.mounted) return;
+                          if (checkout['enabled'] == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'PayHere ready (${checkout['sandbox'] == true ? 'sandbox' : 'live'}). '
+                                  'Complete payment on ${checkout['checkoutUrl'] ?? 'PayHere'}.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          await FirestoreService()
+                              .markPaymentReceived(orderId: currentOrder.id);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('COD payment confirmed.')),
+                          );
+                          final leaveReview = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Leave a review?'),
+                              content: const Text(
+                                'Payment confirmed. Would you like to rate this order?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Later'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Review'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (leaveReview == true && context.mounted) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    SubmitReviewScreen(order: currentOrder),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Payment confirm failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Pay (PayHere if enabled, else COD)'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          await FirestoreService()
+                              .markPaymentReceived(orderId: currentOrder.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('COD payment confirmed.')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('COD failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Confirm COD only'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return trackable
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -404,7 +568,8 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     ),
                   ),
                 )
-              : null,
+              : null;
+          })(),
     );
   }
 
@@ -661,6 +826,43 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
+
+  void _editDeliveryAddress(BuildContext context, FarmoraState state, FarmoraOrder order) {
+    final controller = TextEditingController(text: order.deliveryAddress);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Delivery Address'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter new address',
+          ),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                await state.updateOrderAddress(order.id, controller.text.trim());
+                if (context.mounted) {
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Address updated successfully')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TrustActions extends StatefulWidget {
@@ -770,43 +972,6 @@ class _TrustActionsState extends State<_TrustActions> {
           ],
         ),
       ],
-    );
-  }
-
-  void _editDeliveryAddress(BuildContext context, FarmoraState state, FarmoraOrder order) {
-    final controller = TextEditingController(text: order.deliveryAddress);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Delivery Address'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Enter new address',
-          ),
-          maxLines: 2,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await state.updateOrderAddress(order.id, controller.text.trim());
-                if (context.mounted) {
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Address updated successfully')),
-                  );
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
   }
 }

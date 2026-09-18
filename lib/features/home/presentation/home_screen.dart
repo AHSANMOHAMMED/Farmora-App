@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'dashboard_screen.dart';
@@ -16,9 +17,11 @@ import '../../transporter/presentation/transporter_dashboard_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
+import '../../admin/presentation/verification_review_screen.dart';
 import '../../admin/presentation/user_management_screen.dart';
 import '../../admin/presentation/logistics_management_screen.dart';
 import '../../admin/presentation/system_settings_screen.dart';
+import '../../buyer/presentation/buyer_offers_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Widget> screens;
     List<_NavItem> navItems;
 
+    final l10n = AppLocalizations.of(context);
+
     if (role == Role.farmer) {
       // Stitch bottom nav: Home, Products, Orders, Earnings, Profile
       screens = const [
@@ -62,31 +67,29 @@ class _HomeScreenState extends State<HomeScreen> {
         EarningsScreen(),
         ProfileScreen(),
       ];
-      navItems = const [
+      navItems = [
         _NavItem(
-            label: 'Home',
+            label: l10n.home,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
-        // Stitch uses potted_plant icon for Products
         _NavItem(
-            label: 'Products',
+            label: l10n.myProducts,
             icon: Icons.local_florist_outlined,
             activeIcon: Icons.local_florist_rounded),
         _NavItem(
-            label: 'Orders',
+            label: l10n.orders,
             icon: Icons.shopping_basket_outlined,
             activeIcon: Icons.shopping_basket_rounded),
         _NavItem(
-            label: 'Deliveries',
+            label: l10n.deliveries,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
-        // Stitch uses payments icon for Earnings
         _NavItem(
-            label: 'Earnings',
+            label: l10n.earnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
         _NavItem(
-            label: 'Profile',
+            label: l10n.profile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];
@@ -97,46 +100,51 @@ class _HomeScreenState extends State<HomeScreen> {
         DeliveryHistoryScreen(),
         ProfileScreen(),
       ];
-      navItems = const [
+      navItems = [
         _NavItem(
-            label: 'Overview',
+            label: l10n.overview,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
-            label: 'Jobs',
+            label: l10n.jobs,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
         _NavItem(
-            label: 'Orders',
+            label: l10n.orders,
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
         _NavItem(
-            label: 'Profile',
+            label: l10n.profile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.admin) {
       screens = const [
         AdminDashboardScreen(),
+        VerificationReviewScreen(),
         UserManagementScreen(),
         LogisticsManagementScreen(),
         SystemSettingsScreen(),
       ];
-      navItems = const [
+      navItems = [
         _NavItem(
-            label: 'Dashboard',
+            label: l10n.dashboard,
             icon: Icons.dashboard_outlined,
             activeIcon: Icons.dashboard_rounded),
         _NavItem(
-            label: 'Users',
+            label: l10n.verification,
+            icon: Icons.verified_user_outlined,
+            activeIcon: Icons.verified_user_rounded),
+        _NavItem(
+            label: l10n.users,
             icon: Icons.people_outline_rounded,
             activeIcon: Icons.people_rounded),
         _NavItem(
-            label: 'Logistics',
+            label: l10n.logistics,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
         _NavItem(
-            label: 'Settings',
+            label: l10n.settings,
             icon: Icons.settings_outlined,
             activeIcon: Icons.settings_rounded),
       ];
@@ -144,24 +152,29 @@ class _HomeScreenState extends State<HomeScreen> {
       screens = const [
         DashboardScreen(),
         BuyerProductsScreen(),
+        BuyerOffersScreen(),
         BuyerOrdersScreen(),
         ProfileScreen(),
       ];
-      navItems = const [
+      navItems = [
         _NavItem(
-            label: 'Home',
+            label: l10n.home,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
-            label: 'Products',
+            label: l10n.myProducts,
             icon: Icons.local_florist_outlined,
             activeIcon: Icons.local_florist_rounded),
         _NavItem(
-            label: 'Orders',
+            label: l10n.myOffers,
+            icon: Icons.local_offer_outlined,
+            activeIcon: Icons.local_offer_rounded),
+        _NavItem(
+            label: l10n.orders,
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
         _NavItem(
-            label: 'Profile',
+            label: l10n.profile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];

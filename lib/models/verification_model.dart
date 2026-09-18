@@ -122,11 +122,11 @@ class VerificationDoc {
 
     return VerificationDoc(
       id: id,
-      title: data['title'] ?? '',
-      description: data['description'] ?? '',
+      title: (data['title'] ?? data['documentType'] ?? '').toString(),
+      description: (data['description'] ?? data['storagePath'] ?? '').toString(),
       icon: iconData,
       status: statusVal,
-      fileName: data['fileName'] as String?,
+      fileName: data['fileName'] as String? ?? data['storagePath'] as String?,
       fileSizeInfo: data['fileSizeInfo'] as String?,
       imagePreview: data['imagePreview'] as String?,
       errorMessage: data['errorMessage'] as String?,

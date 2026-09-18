@@ -65,6 +65,8 @@ class FirebaseAuthService {
       'authProvider': provider,
       'isVerified': false,
       'isSuspended': false,
+      'termsAcceptedAt': FieldValue.serverTimestamp(),
+      'privacyAcceptedAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

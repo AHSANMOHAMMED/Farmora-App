@@ -11,6 +11,7 @@ import '../models/transport_job.dart';
 import '../models/earnings_model.dart';
 import '../models/verification_model.dart';
 import '../models/cart_item.dart';
+import '../models/notification_model.dart';
 import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
@@ -28,12 +29,31 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<TransportJob>>? _jobsSub;
   StreamSubscription<List<VerificationDoc>>? _verificationSub;
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
+  StreamSubscription<List<FarmoraNotification>>? _notificationsSub;
   StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
   String country = 'Sri Lanka';
   String district = '';
+  bool isVerified = false;
+  String vehicleType = '';
+  int capacityKg = 0;
+  List<String> serviceDistricts = [];
+  String displayName = '';
+  String photoUrl = '';
+  /// Default cart delivery fee in LKR major units (from platform settings).
+  double defaultDeliveryFeeLkr = 350.0;
   Role role = Role.farmer;
+
+  /// Locale driven by [language] preference (English / සිංහල / தமிழ் / en|si|ta).
+  Locale get locale {
+    final code = switch (language) {
+      'සිංහල' || 'si' => 'si',
+      'தமிழ்' || 'ta' => 'ta',
+      _ => 'en',
+    };
+    return Locale(code);
+  }
 
   // Search & Filter State
   String searchQuery = '';
@@ -63,11 +83,16 @@ class FarmoraState extends ChangeNotifier {
   // Verification Documents
   final List<VerificationDoc> _verificationDocs = [];
 
+  // Notifications
+  final List<FarmoraNotification> _notifications = [];
+
   // Getters
   List<Product> get products => List.unmodifiable(_products);
   List<FarmoraOrder> get orders => List.unmodifiable(_orders);
   List<TransportJob> get jobs => List.unmodifiable(_jobs);
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
+  List<FarmoraNotification> get notifications => List.unmodifiable(_notifications);
+  int get unreadNotificationsCount => _notifications.where((n) => !n.read).length;
   List<MonthlyBarData> get monthlyBars => List.unmodifiable(_monthlyBars);
   List<EarningsTransaction> get transactions =>
       List.unmodifiable(_transactions);
@@ -182,11 +207,16 @@ class FarmoraState extends ChangeNotifier {
   DateTime? _lastOrderAt;
 
   double get cartSubtotal => cartTotal;
-  double get cartDeliveryFee => _cartItems.isEmpty ? 0.0 : 350.0;
+  double get cartDeliveryFee => _cartItems.isEmpty ? 0.0 : defaultDeliveryFeeLkr;
   double get cartGrandTotal => cartSubtotal + cartDeliveryFee;
 
-  Future<bool> placeOrder() async {
+  String deliveryAddressDraft = '';
+
+  Future<bool> placeOrder({String? deliveryAddress}) async {
     if (_cartItems.isEmpty || _placingOrder) return false;
+    if (_currentUserId.isEmpty) return false;
+    final address = (deliveryAddress ?? deliveryAddressDraft).trim();
+    if (address.length < 5) return false;
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
     final key = _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
     if (_lastOrderKey == key &&
@@ -197,54 +227,19 @@ class FarmoraState extends ChangeNotifier {
     _placingOrder = true;
     notifyListeners();
     try {
-      if (_currentUserId.isNotEmpty) {
-        // Prices and stock are reloaded and committed by the trusted backend.
-        for (final item in _cartItems) {
-          await _firestoreService.createSecureOrder(
-            productId: item.product.id,
-            quantity: item.quantity,
-            deliveryFeeMinor: 35000,
-          );
-        }
-        _lastOrderKey = key;
-        _lastOrderAt = DateTime.now();
-        _cartItems.clear();
-        notifyListeners();
-        return true;
+      for (final item in _cartItems) {
+        await _firestoreService.createSecureOrder(
+          productId: item.product.id,
+          quantity: item.quantity,
+          deliveryFeeMinor: (cartDeliveryFee * 100).round(),
+          deliveryAddress: address,
+        );
       }
-    for (final item in _cartItems) {
-      final order = FarmoraOrder(
-        id: 'ord-${DateTime.now().millisecondsSinceEpoch}-${item.product.id}',
-        orderNumber: '#${_orders.length + 1001}',
-        title: item.product.name,
-        productName: item.product.name,
-        quantity: '${item.quantity} ${item.product.unit}',
-        grade: item.product.isOrganic ? 'Organic' : 'Grade A',
-        unitPrice: item.product.price,
-        totalAmount:
-            'LKR ${(item.product.effectivePricePerUnit * item.quantity).toStringAsFixed(2)}',
-        totalAmountNumber: item.product.effectivePricePerUnit * item.quantity,
-        buyerName: 'You',
-        buyerCompany: 'Your Order',
-        buyerAvatar: 'assets/images/buyer_sarah.png',
-        buyerPhone: '',
-        deliveryAddress: 'Delivery address TBD',
-        detail:
-            '${item.quantity} ${item.product.unit} · LKR ${(item.product.effectivePricePerUnit * item.quantity).toStringAsFixed(2)}',
-        status: 'Pending',
-        progress: 0.1,
-        color: const Color(0xFF3478C5),
-        timestamp: 'Just now',
-        requestedDate: 'Today',
-        buyerIcon: Icons.shopping_cart_rounded,
-      );
-      _orders.insert(0, order);
-    }
-    _lastOrderKey = key;
-    _lastOrderAt = DateTime.now();
-    _cartItems.clear();
-    notifyListeners();
-    return true;
+      _lastOrderKey = key;
+      _lastOrderAt = DateTime.now();
+      _cartItems.clear();
+      notifyListeners();
+      return true;
     } finally {
       _placingOrder = false;
       notifyListeners();
@@ -285,8 +280,8 @@ class FarmoraState extends ChangeNotifier {
     language = value;
     if (_currentUserId.isNotEmpty) {
       final languageCode = switch (value) {
-        'සිංහල' => 'si',
-        'தமிழ்' => 'ta',
+        'සිංහල' || 'si' => 'si',
+        'தமிழ்' || 'ta' => 'ta',
         _ => 'en',
       };
       _firestoreService.updateUserLanguage(languageCode);
@@ -371,10 +366,19 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  void createTransportJob(TransportJob job) {
-    _firestoreService.addTransportJob(job);
-    _jobs.insert(0, job);
-    notifyListeners();
+  Future<void> createTransportJob(TransportJob job) async {
+    final orderId = job.orderId;
+    if (orderId == null || orderId.isEmpty) {
+      throw StateError('orderId required to request transport');
+    }
+    await _firestoreService.requestTransport(orderId: orderId);
+  }
+
+  Future<void> requestTransportForOrder(String orderId, {int? deliveryFeeMinor}) async {
+    await _firestoreService.requestTransport(
+      orderId: orderId,
+      deliveryFeeMinor: deliveryFeeMinor,
+    );
   }
 
   void updateTransportJob(String jobId, Map<String, dynamic> data) {
@@ -392,12 +396,48 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> updateOrderAddress(String orderId, String newAddress) async {
-    await _firestoreService.updateOrderAddress(orderId, newAddress);
+    await _firestoreService.updateOrderAddressCallable(
+      orderId: orderId,
+      deliveryAddress: newAddress,
+    );
     final idx = _orders.indexWhere((o) => o.id == orderId);
     if (idx != -1) {
       _orders[idx] = _orders[idx].copyWith(deliveryAddress: newAddress);
       notifyListeners();
     }
+  }
+
+  Future<void> updateTransporterProfile({
+    String? vehicleType,
+    int? capacityKg,
+    List<String>? serviceDistricts,
+  }) async {
+    await _firestoreService.updateTransporterProfile(
+      vehicleType: vehicleType,
+      capacityKg: capacityKg,
+      serviceDistricts: serviceDistricts,
+    );
+    if (vehicleType != null) this.vehicleType = vehicleType;
+    if (capacityKg != null) this.capacityKg = capacityKg;
+    if (serviceDistricts != null) this.serviceDistricts = serviceDistricts;
+    notifyListeners();
+  }
+
+  Future<void> setUserSuspended(String userId, bool suspended) async {
+    await _firestoreService.setUserSuspended(userId: userId, suspended: suspended);
+  }
+
+  Future<void> releaseEscrow(String orderId) async {
+    await _firestoreService.releaseEscrow(orderId: orderId);
+  }
+
+  Future<Map<String, dynamic>> exportUserData() async {
+    return _firestoreService.exportUserData();
+  }
+
+  Future<void> deleteAccount() async {
+    await _firestoreService.deleteAccount();
+    signOut();
   }
 
   // ── Harvest video / QR / auto-delete / profile / trust ──
@@ -510,13 +550,29 @@ class FarmoraState extends ChangeNotifier {
         return;
       }
       role = accountRole;
-      language =
-          (profile['languageCode'] ?? profile['language'] ?? 'en') as String;
+      final rawLang =
+          (profile['languageCode'] ?? profile['language'] ?? 'en').toString();
+      language = switch (rawLang) {
+        'si' || 'සිංහල' => 'සිංහල',
+        'ta' || 'தமிழ்' => 'தமிழ்',
+        'en' || 'English' => 'English',
+        _ => rawLang,
+      };
       country = (profile['country'] ?? 'Sri Lanka').toString();
       district = (profile['district'] ?? '').toString();
+      displayName = (profile['name'] ?? profile['displayName'] ?? '').toString();
+      photoUrl = (profile['photoUrl'] ?? '').toString();
+      isVerified = profile['isVerified'] == true;
+      vehicleType = (profile['vehicleType'] ?? '').toString();
+      capacityKg = (profile['capacityKg'] as num?)?.toInt() ?? 0;
+      serviceDistricts = (profile['serviceDistricts'] as List? ?? [])
+          .map((e) => e.toString())
+          .where((e) => e.isNotEmpty)
+          .toList();
       _profileLoaded = true;
       notifyListeners();
       _registerDeviceToken();
+      _loadPlatformSettings();
     } catch (_) {
       await FirebaseAuth.instance.signOut();
       _currentUserId = '';
@@ -566,20 +622,31 @@ class FarmoraState extends ChangeNotifier {
     final jobsStream = switch (role) {
       Role.admin => _firestoreService.jobsStream(),
       Role.transporter => _firestoreService.jobsForTransporterStream(uid),
-      _ => null,
+      _ => _firestoreService.jobsStream(),
     };
-    _jobsSub = jobsStream?.listen((firestoreJobs) {
+    _jobsSub = jobsStream.listen((firestoreJobs) {
       _jobs.clear();
       _jobs.addAll(firestoreJobs);
       notifyListeners();
     });
 
-    // Subscribe to verification docs stream (farmer only)
+    // Subscribe to verification docs (admin sees pending/all; others see own)
     _verificationSub?.cancel();
-    _verificationSub =
-        _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
+    final verificationStream = isAdmin
+        ? _firestoreService.pendingVerificationDocsStream(pendingOnly: false)
+        : _firestoreService.verificationDocsStream(uid);
+    _verificationSub = verificationStream.listen((firestoreDocs) {
       _verificationDocs.clear();
       _verificationDocs.addAll(firestoreDocs);
+      notifyListeners();
+    });
+
+    // Subscribe to notifications stream
+    _notificationsSub?.cancel();
+    _notificationsSub =
+        _firestoreService.notificationsStream(uid).listen((notifs) {
+      _notifications.clear();
+      _notifications.addAll(notifs);
       notifyListeners();
     });
   }
@@ -591,6 +658,42 @@ class FarmoraState extends ChangeNotifier {
     _jobsSub?.cancel();
     _verificationSub?.cancel();
     _usersSub?.cancel();
+    _notificationsSub?.cancel();
+  }
+
+  Future<void> sendInAppNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String type = 'general',
+    String? referenceId,
+  }) async {
+    await _firestoreService.sendInAppNotification(
+      userId: userId,
+      title: title,
+      body: body,
+      type: type,
+      referenceId: referenceId,
+    );
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _firestoreService.markNotificationRead(id);
+    final idx = _notifications.indexWhere((n) => n.id == id);
+    if (idx != -1) {
+      _notifications[idx] = _notifications[idx].copyWith(read: true);
+      notifyListeners();
+    }
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.markAllNotificationsRead(_currentUserId);
+    }
+    for (int i = 0; i < _notifications.length; i++) {
+      _notifications[i] = _notifications[i].copyWith(read: true);
+    }
+    notifyListeners();
   }
 
   Future<void> _registerDeviceToken() async {
@@ -630,48 +733,62 @@ class FarmoraState extends ChangeNotifier {
     _transactions.clear();
 
     final now = DateTime.now();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
     for (final order in _orders) {
-      if (order.status != 'Declined') {
-        _totalEarnings += order.total;
+      if (order.isPending) {
+        _pendingPayments += order.total;
+      }
 
-        if (order.status == 'Pending') {
-          _pendingPayments += order.total;
-        } else {
-          _transactions.add(EarningsTransaction(
-              id: 'tx-${order.id}',
-              orderNumber: order.orderNumber,
-              date: order.timestamp,
-              amount: order.total));
-        }
+      // Earnings only from delivered/completed orders that are paid (LKR).
+      final paid = order.paymentStatus == 'paid' ||
+          order.paymentStatus == 'released';
+      if (!order.isCompleted || !paid) continue;
 
-        const months = [
-          'Jan',
-          'Feb',
-          'Mar',
-          'Apr',
-          'May',
-          'Jun',
-          'Jul',
-          'Aug',
-          'Sep',
-          'Oct',
-          'Nov',
-          'Dec'
-        ];
-        final monthStr = months[now.month - 1];
-        monthlySums[monthStr] =
-            (monthlySums[monthStr] ?? 0.0) + order.total;
+      _totalEarnings += order.total;
+      _transactions.add(EarningsTransaction(
+        id: 'tx-${order.id}',
+        orderNumber: order.orderNumber,
+        date: order.timestamp,
+        amount: order.total,
+      ));
+
+      final orderMonth = order.createdAt.millisecondsSinceEpoch > 0
+          ? order.createdAt
+          : now;
+      final monthStr = months[orderMonth.month - 1];
+      monthlySums[monthStr] = (monthlySums[monthStr] ?? 0.0) + order.total;
+      if (orderMonth.year == now.year && orderMonth.month == now.month) {
         _thisMonth += order.total;
+      }
+      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      if (!orderMonth.isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
+        _thisWeek += order.total;
       }
     }
 
+    final maxAmount = monthlySums.values.fold<double>(0, (a, b) => a > b ? a : b);
     _monthlyBars.clear();
     monthlySums.forEach((month, amount) {
       _monthlyBars.add(MonthlyBarData(
-          month: month,
-          amount: amount,
-          heightRatio: amount / 2000.0,
-          isHighlighted: true));
+        month: month,
+        amount: amount,
+        heightRatio: maxAmount > 0 ? amount / maxAmount : 0,
+        isHighlighted: true,
+      ));
     });
   }
 
@@ -692,6 +809,19 @@ class FarmoraState extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  Future<void> _loadPlatformSettings() async {
+    try {
+      final settings = await _firestoreService.getPlatformSettings();
+      final feeMinor = (settings['defaultDeliveryFeeMinor'] as num?)?.toInt();
+      if (feeMinor != null && feeMinor >= 0) {
+        defaultDeliveryFeeLkr = feeMinor / 100.0;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep last known / default fee.
+    }
   }
 
   Future<Map<String, dynamic>?> _loadUserProfile(String uid) async {

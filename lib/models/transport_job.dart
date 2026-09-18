@@ -10,7 +10,12 @@ class TransportJob {
   final String? transporterId;
   final String? pickup;
   final String? dropoff;
+  final String? buyerId;
+  final String? farmerId;
   final DateTime? updatedAt;
+  final String? district;
+  final int? capacityKg;
+  final int? weightKg;
 
   const TransportJob({
     required this.id,
@@ -24,7 +29,12 @@ class TransportJob {
     this.transporterId,
     this.pickup,
     this.dropoff,
+    this.buyerId,
+    this.farmerId,
     this.updatedAt,
+    this.district,
+    this.capacityKg,
+    this.weightKg,
   });
 
   static const validTransitions = {
@@ -55,7 +65,12 @@ class TransportJob {
     String? transporterId,
     String? pickup,
     String? dropoff,
+    String? buyerId,
+    String? farmerId,
     DateTime? updatedAt,
+    String? district,
+    int? capacityKg,
+    int? weightKg,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -69,7 +84,12 @@ class TransportJob {
       transporterId: transporterId ?? this.transporterId,
       pickup: pickup ?? this.pickup,
       dropoff: dropoff ?? this.dropoff,
+      buyerId: buyerId ?? this.buyerId,
+      farmerId: farmerId ?? this.farmerId,
       updatedAt: updatedAt ?? this.updatedAt,
+      district: district ?? this.district,
+      capacityKg: capacityKg ?? this.capacityKg,
+      weightKg: weightKg ?? this.weightKg,
     );
   }
 
@@ -86,6 +106,11 @@ class TransportJob {
       'transporterId': transporterId,
       'pickup': pickup,
       'dropoff': dropoff,
+      'buyerId': buyerId,
+      'farmerId': farmerId,
+      'district': district,
+      'capacityKg': capacityKg,
+      'weightKg': weightKg,
     };
   }
 
@@ -104,9 +129,15 @@ class TransportJob {
       transporterId: data['transporterId'] as String?,
       pickup: data['pickup'] as String?,
       dropoff: data['dropoff'] as String?,
+      buyerId: data['buyerId'] as String?,
+      farmerId: data['farmerId'] as String?,
       updatedAt: data['updatedAt'] != null
           ? DateTime.tryParse(data['updatedAt'].toString())
           : null,
+      district: (data['district'] ?? data['serviceDistrict'])?.toString(),
+      capacityKg: (data['capacityKg'] as num?)?.toInt(),
+      weightKg: (data['weightKg'] as num?)?.toInt() ??
+          (data['capacityKg'] as num?)?.toInt(),
     );
   }
 }

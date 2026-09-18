@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/async_state_view.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 
@@ -10,12 +12,16 @@ class FarmerJobsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l10n = AppLocalizations.of(context);
     final currentUserId = state.currentUserId;
-    
-    // Filter jobs belonging to this farmer
-    // (A job belongs to the farmer if the associated order's farmerId == currentUserId)
-    final farmerOrders = state.orders.where((o) => o.farmerId == currentUserId).map((o) => o.id).toSet();
-    final myJobs = state.jobs.where((j) => j.orderId != null && farmerOrders.contains(j.orderId)).toList();
+
+    final farmerOrders = state.orders
+        .where((o) => o.farmerId == currentUserId)
+        .map((o) => o.id)
+        .toSet();
+    final myJobs = state.jobs
+        .where((j) => j.orderId != null && farmerOrders.contains(j.orderId))
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -23,9 +29,9 @@ class FarmerJobsScreen extends StatelessWidget {
         backgroundColor: AppColors.surface.withValues(alpha: 0.9),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'My Deliveries',
-          style: TextStyle(
+        title: Text(
+          l10n.deliveries,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -33,44 +39,27 @@ class FarmerJobsScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: myJobs.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.local_shipping_outlined,
-                    size: 64,
-                    color: AppColors.outlineVariant,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'No delivery requests',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: myJobs.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final job = myJobs[index];
-                return _buildJobCard(context, state, job);
-              },
-            ),
+      body: AsyncStateView(
+        isLoading: currentUserId.isNotEmpty && !state.profileLoaded,
+        isEmpty: myJobs.isEmpty,
+        emptyMessage: l10n.noJobs,
+        child: ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: myJobs.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final job = myJobs[index];
+            return _buildJobCard(context, state, job);
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildJobCard(BuildContext context, FarmoraState state, TransportJob job) {
+  Widget _buildJobCard(
+      BuildContext context, FarmoraState state, TransportJob job) {
     final bool canCancel = job.status == 'requested';
-    
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
@@ -108,7 +97,8 @@ class FarmerJobsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.route_outlined, size: 18, color: AppColors.onSurfaceVariant),
+                const Icon(Icons.route_outlined,
+                    size: 18, color: AppColors.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -146,7 +136,8 @@ class FarmerJobsScreen extends StatelessWidget {
                     label: const Text('Cancel Request'),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.error,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                     ),
                   )
                 else
@@ -213,12 +204,14 @@ class FarmerJobsScreen extends StatelessWidget {
     );
   }
 
-  void _showCancelDialog(BuildContext context, FarmoraState state, TransportJob job) {
+  void _showCancelDialog(
+      BuildContext context, FarmoraState state, TransportJob job) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel Request?'),
-        content: const Text('Are you sure you want to cancel this transport request?'),
+        content: const Text(
+            'Are you sure you want to cancel this transport request?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

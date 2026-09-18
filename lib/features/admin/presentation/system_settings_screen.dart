@@ -124,26 +124,31 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           ),
           const Divider(),
           ListTile(
-            title: const Text('Seed Database (Test Data)'),
-            subtitle:
-                const Text('Inject Sri Lankan test data for development.'),
+            title: const Text('Seed Sri Lankan marketplace'),
+            subtitle: const Text(
+              'Requires registered farmer + buyer. Attaches real LKR produce, '
+              'orders and jobs to those accounts.',
+            ),
             trailing: const Icon(Icons.add_box),
             onTap: () async {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Seeding database...')),
+                const SnackBar(content: Text('Seeding Sri Lankan marketplace…')),
               );
               try {
                 await FirestoreService().seedDatabase();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Database seeded successfully.')),
+                      content: Text(
+                        'Seeded. Sign in as farmer/buyer/transporter to see data.',
+                      ),
+                    ),
                   );
                 }
               } catch (error) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error seeding database: $error')),
+                    SnackBar(content: Text('Seed failed: $error')),
                   );
                 }
               }

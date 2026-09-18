@@ -1,0 +1,98 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:cryptography/cryptography.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+/// X25519 + AES-GCM chat crypto. Public keys live on the user profile;
+/// private keys stay in secure storage (`farmora_x25519_sk`).
+class ChatCrypto {
+  ChatCrypto._();
+  static final ChatCrypto instance = ChatCrypto._();
+
+  static const _skKey = 'farmora_x25519_sk';
+  static const ciphertextPrefix = 'farmora2:';
+
+  final _storage = const FlutterSecureStorage();
+  final _x25519 = X25519();
+  final _aesGcm = AesGcm.with256bits();
+
+  SimpleKeyPair? _cachedPair;
+
+  Future<SimpleKeyPair> ensureKeyPair() async {
+    if (_cachedPair != null) return _cachedPair!;
+    final existing = await _storage.read(key: _skKey);
+    if (existing != null && existing.isNotEmpty) {
+      final seed = base64Url.decode(existing);
+      _cachedPair = await _x25519.newKeyPairFromSeed(seed);
+      return _cachedPair!;
+    }
+    final pair = await _x25519.newKeyPair();
+    final seed = await pair.extractPrivateKeyBytes();
+    await _storage.write(key: _skKey, value: base64UrlEncode(seed));
+    _cachedPair = pair;
+    return pair;
+  }
+
+  Future<String> publicKeyBase64() async {
+    final pair = await ensureKeyPair();
+    final pub = await pair.extractPublicKey();
+    return base64UrlEncode(pub.bytes);
+  }
+
+  Future<SecretKey> _sharedSecret(String peerPublicKeyB64) async {
+    final pair = await ensureKeyPair();
+    final peerBytes = base64Url.decode(peerPublicKeyB64);
+    final peerKey = SimplePublicKey(peerBytes, type: KeyPairType.x25519);
+    return _x25519.sharedSecretKey(keyPair: pair, remotePublicKey: peerKey);
+  }
+
+  /// Encrypt plaintext for [peerPublicKeyB64]. Returns `farmora2:<b64>`.
+  Future<String> encrypt({
+    required String plaintext,
+    required String peerPublicKeyB64,
+  }) async {
+    final shared = await _sharedSecret(peerPublicKeyB64);
+    // Derive AES key from shared secret bytes (HKDF-like via SHA-256).
+    final sharedBytes = await shared.extractBytes();
+    final digest = await Sha256().hash(sharedBytes);
+    final aesKey = SecretKey(digest.bytes);
+    final secretBox = await _aesGcm.encrypt(
+      utf8.encode(plaintext),
+      secretKey: aesKey,
+    );
+    final packed = BytesBuilder()
+      ..add(secretBox.nonce)
+      ..add(secretBox.cipherText)
+      ..add(secretBox.mac.bytes);
+    return '$ciphertextPrefix${base64UrlEncode(packed.toBytes())}';
+  }
+
+  /// Decrypt `farmora2:` ciphertext. Falls back for legacy `farmora1:` pad.
+  Future<String> decrypt({
+    required String ciphertext,
+    required String peerPublicKeyB64,
+  }) async {
+    if (ciphertext.startsWith('farmora1:')) {
+      var out = ciphertext.substring('farmora1:'.length);
+      return out.replaceAll(RegExp(r'\.+$'), '');
+    }
+    if (!ciphertext.startsWith(ciphertextPrefix)) {
+      return ciphertext;
+    }
+    final raw = base64Url.decode(ciphertext.substring(ciphertextPrefix.length));
+    if (raw.length < 12 + 16) return '[undecryptable]';
+    final nonce = raw.sublist(0, 12);
+    final mac = Mac(raw.sublist(raw.length - 16));
+    final cipherText = raw.sublist(12, raw.length - 16);
+    final shared = await _sharedSecret(peerPublicKeyB64);
+    final sharedBytes = await shared.extractBytes();
+    final digest = await Sha256().hash(sharedBytes);
+    final aesKey = SecretKey(digest.bytes);
+    final clear = await _aesGcm.decrypt(
+      SecretBox(cipherText, nonce: nonce, mac: mac),
+      secretKey: aesKey,
+    );
+    return utf8.decode(clear);
+  }
+}

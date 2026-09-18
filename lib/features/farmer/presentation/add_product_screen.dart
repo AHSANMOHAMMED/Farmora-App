@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Product? existingProduct;
@@ -20,6 +22,8 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
+  final _firestore = FirestoreService();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
@@ -28,12 +32,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   String _category = 'Vegetables';
   String _unit = 'kg';
+  bool _isOrganic = false;
   DateTime? _availabilityDate = DateTime.now().add(const Duration(days: 1));
 
-  final List<String> _selectedImages = [
-    'assets/images/roma_tomatoes_1.png',
-    'assets/images/roma_tomatoes_2.png',
-  ];
+  final List<String> _selectedImages = [];
+  bool _isSubmitting = false;
+  bool _isPicking = false;
 
   @override
   void initState() {
@@ -41,17 +45,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (widget.existingProduct != null) {
       final p = widget.existingProduct!;
       _nameController.text = p.name;
-      // Extract numeric part from quantity string (e.g., "50 kg available" -> "50")
       final qtyMatch = RegExp(r'^([\d.]+)\s').firstMatch(p.quantity);
-      _quantityController.text = qtyMatch != null ? qtyMatch.group(1)! : '';
+      _quantityController.text = qtyMatch != null
+          ? qtyMatch.group(1)!
+          : (p.quantityAvailable > 0 ? '${p.quantityAvailable}' : '');
       _priceController.text = p.pricePerUnit.toString();
-      _descriptionController.text = p.description ?? '';
+      _descriptionController.text = p.description;
       _category = p.category;
       _unit = p.unit;
+      _isOrganic = p.isOrganic;
       _availabilityDate = p.availabilityDate;
-      if (p.images.isNotEmpty) {
-        _selectedImages.clear();
-        _selectedImages.addAll(p.images);
+      final existingMedia = [
+        ...p.media,
+        ...p.imageUrls,
+        ...p.images,
+      ].where((u) => u.isNotEmpty).toSet().toList();
+      if (existingMedia.isNotEmpty) {
+        _selectedImages.addAll(existingMedia);
       }
     }
   }
@@ -87,16 +97,38 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (picked != null) setState(() => _availabilityDate = picked);
   }
 
-  void _addImageMock() {
-    if (_selectedImages.length >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 5 images allowed.')),
+  Future<void> _pickImages() async {
+    if (_selectedImages.length >= 5 || _isPicking) return;
+    setState(() => _isPicking = true);
+    try {
+      final remaining = 5 - _selectedImages.length;
+      final files = await _picker.pickMultiImage(
+        imageQuality: 75,
+        maxWidth: 1600,
       );
-      return;
+      if (files.isEmpty) return;
+      final urls = <String>[];
+      for (final file in files.take(remaining)) {
+        final bytes = await file.readAsBytes();
+        final contentType = file.mimeType ?? 'image/jpeg';
+        final url = await _firestore.uploadProductImage(
+          bytes: bytes,
+          fileName: file.name,
+          contentType: contentType,
+        );
+        urls.add(url);
+      }
+      if (!mounted) return;
+      setState(() => _selectedImages.addAll(urls));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image upload failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
     }
-    setState(() {
-      _selectedImages.add('assets/images/heirloom_tomatoes.png');
-    });
   }
 
   void _removeImage(int index) {
@@ -105,58 +137,147 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
     final name = _nameController.text.trim();
-    final quantityVal = _quantityController.text.trim();
+    final quantityVal = int.tryParse(_quantityController.text.trim()) ?? 0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
     final description = _descriptionController.text.trim();
 
+    if (quantityVal < 0 || priceVal < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid quantity and price.')),
+      );
+      return;
+    }
+
     final isEdit = widget.existingProduct != null;
-    final productId = isEdit ? widget.existingProduct!.id : 'prod-${DateTime.now().millisecondsSinceEpoch}';
+    final productId = isEdit ? widget.existingProduct!.id : '';
     final productStatus = isEdit ? widget.existingProduct!.status : 'Active';
+    final media = List<String>.from(_selectedImages);
+
+    final state = context.read<FarmoraState>();
+    final location = state.district.trim();
+    if (location.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Set your district in Profile before listing produce.'),
+        ),
+      );
+      return;
+    }
 
     final newProduct = Product(
       id: productId,
       name: name,
       category: _category,
-      location: 'Local Farm',
+      location: location,
       quantity: '$quantityVal $_unit available',
       unit: _unit,
-      price: '\$${priceVal.toStringAsFixed(2)} / $_unit',
+      price: 'LKR ${priceVal.toStringAsFixed(2)} / $_unit',
       pricePerUnit: priceVal,
-      emoji: _category == 'Fruits' ? '🍎' : '🍅',
-      color: const Color(0xFFFFE1DA),
-      imagePath: _selectedImages.isNotEmpty ? _selectedImages.first : 'assets/images/heirloom_tomatoes.png',
+      priceMinor: (priceVal * 100).round(),
+      quantityAvailable: quantityVal,
+      emoji: _category == 'Fruits'
+          ? '🍌'
+          : _category == 'Spices'
+              ? '🌿'
+              : _category == 'Grains'
+                  ? '🌾'
+                  : '🥬',
+      color: const Color(0xFFE8F5E9),
+      imagePath: media.isNotEmpty ? media.first : null,
       status: productStatus,
-      isOrganic: true,
+      isOrganic: _isOrganic,
       description: description,
       availabilityDate: _availabilityDate,
-      images: _selectedImages,
+      images: media,
+      media: media,
+      imageUrls: media,
     );
 
-    if (isEdit) {
-      context.read<FarmoraState>().updateProduct(newProduct);
+    setState(() => _isSubmitting = true);
+    try {
+      if (isEdit) {
+        state.updateProduct(newProduct);
+        if (state.currentUserId.isNotEmpty) {
+          await _firestore.updateProduct(productId, {
+            'name': name,
+            'category': _category,
+            'description': description,
+            'unit': _unit,
+            'media': media,
+            'imageUrls': media,
+            'quantityAvailable': quantityVal,
+            'priceMinor': (priceVal * 100).round(),
+            'isOrganic': _isOrganic,
+            'status': productStatus,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+        }
+      } else {
+        if (state.currentUserId.isNotEmpty) {
+          final newId = await _firestore.createSecureProduct(newProduct);
+          if (!mounted) return;
+          final uploadVideo = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Add harvest video?'),
+              content: const Text(
+                'Optional: upload a short harvest video (MP4, max 100 MB). '
+                'It is auto-deleted after delivery.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Skip'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Upload'),
+                ),
+              ],
+            ),
+          );
+          if (uploadVideo == true && mounted) {
+            final file = await _picker.pickVideo(
+              source: ImageSource.gallery,
+              maxDuration: const Duration(minutes: 3),
+            );
+            if (file != null) {
+              final bytes = await file.readAsBytes();
+              await state.uploadHarvestVideo(
+                productId: newId,
+                bytes: bytes,
+                fileName: file.name,
+              );
+            }
+          }
+        } else {
+          state.addProduct(newProduct);
+        }
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.primary,
-          content: Text('Updated $name successfully!'),
+          content: Text(isEdit ? 'Updated $name successfully!' : 'Published $name successfully!'),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } else {
-      context.read<FarmoraState>().addProduct(newProduct);
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().contains('verification')
+          ? 'Account verification is required before publishing products.'
+          : 'Failed to save product: $e';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.primary,
-          content: Text('Published $name successfully!'),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(message)),
       );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
-
-    Navigator.of(context).pop();
   }
 
   @override
@@ -201,17 +322,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       TextFormField(
                         controller: _nameController,
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
-                        decoration: _inputDecoration('e.g. Organic Roma Tomatoes'),
+                        decoration: _inputDecoration('e.g. Nuwara Eliya Carrots'),
                       ),
                       const SizedBox(height: 18),
                       _buildFieldLabel('Category'),
                       const SizedBox(height: 6),
                       _buildDropdown(
                         value: _category,
-                        items: const ['Vegetables', 'Fruits', 'Grains', 'Dairy', 'Herbs'],
+                        items: const [
+                          'Vegetables',
+                          'Fruits',
+                          'Spices',
+                          'Grains',
+                          'Herbs',
+                        ],
                         onChanged: (val) {
                           if (val != null) setState(() => _category = val);
                         },
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Organic certified'),
+                        value: _isOrganic,
+                        onChanged: (v) => setState(() => _isOrganic = v),
                       ),
                     ],
                   ),
@@ -272,8 +405,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             fontFamily: 'Inter',
                             color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
                           ),
-                          // Stitch: $ prefix
-                          prefixText: '\$  ',
+                          // LKR prefix for Sri Lankan pricing
+                          prefixText: 'LKR ',
                           prefixStyle: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 15,
@@ -373,7 +506,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           // Add tile
                           if (index == _selectedImages.length && _selectedImages.length < 5) {
                             return InkWell(
-                              onTap: _addImageMock,
+                              onTap: _isPicking ? null : _pickImages,
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
                                 decoration: BoxDecoration(
@@ -486,7 +619,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               child: SizedBox(
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: _submit,
+                  onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     // Stitch: bg-primary text-on-primary rounded-xl h-touch-target
                     backgroundColor: AppColors.primary,
@@ -496,9 +629,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     elevation: 2,
                   ),
-                  icon: const Icon(Icons.publish_rounded, size: 20),
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.publish_rounded, size: 20),
                   label: Text(
-                    widget.existingProduct != null ? 'Save Changes' : 'Publish Product',
+                    _isSubmitting
+                        ? 'Saving...'
+                        : (widget.existingProduct != null
+                            ? 'Save Changes'
+                            : 'Publish Product'),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,

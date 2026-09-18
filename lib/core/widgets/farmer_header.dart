@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../../features/farmer/presentation/account_verification_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../providers/farmora_state.dart';
 
 class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -74,33 +77,81 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
               ),
             ],
           ),
-          InkWell(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const AccountVerificationScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.outlineVariant, width: 1.5),
+          Row(
+            children: [
+              Consumer<FarmoraState>(
+                builder: (context, state, _) {
+                  final unreadCount = state.unreadNotificationsCount;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_none_rounded, color: AppColors.onSurface),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                          );
+                        },
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              unreadCount > 9 ? '9+' : '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/farmer_headshot.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const CircleAvatar(
-                    backgroundColor: AppColors.surfaceContainerHigh,
-                    child: Icon(Icons.person, color: AppColors.primary, size: 20),
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AccountVerificationScreen(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.outlineVariant, width: 1.5),
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/farmer_headshot.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const CircleAvatar(
+                        backgroundColor: AppColors.surfaceContainerHigh,
+                        child: Icon(Icons.person, color: AppColors.primary, size: 20),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),

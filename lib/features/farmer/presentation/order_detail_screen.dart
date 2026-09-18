@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
-import '../../../models/transport_job.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 
 class OrderDetailScreen extends StatelessWidget {
@@ -19,6 +21,7 @@ class OrderDetailScreen extends StatelessWidget {
       (o) => o.id == order.id,
       orElse: () => order,
     );
+    final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -333,6 +336,67 @@ class OrderDetailScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!currentOrder.isPending && !currentOrder.isDeclined) ...[
+                  const SizedBox(height: 20),
+                  _AuthenticityBarcodeCard(orderId: currentOrder.id),
+                ],
+                if (linkedJob != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Transport Job',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryContainer,
+                                borderRadius: BorderRadius.circular(9999),
+                              ),
+                              child: Text(
+                                linkedJob.status.toUpperCase(),
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSummaryRow('Driver', linkedJob.transporterId != null ? 'Assigned (${linkedJob.transporterId})' : 'Pending'),
+                        _buildDivider(),
+                        _buildSummaryRow('Fee', linkedJob.fee),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -443,23 +507,62 @@ class OrderDetailScreen extends StatelessWidget {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Create a transport job
-                    final job = TransportJob(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      title: 'Delivery for ${currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title}',
-                      route: 'Farm → ${currentOrder.deliveryAddress}',
-                      detail: '${currentOrder.quantity} · Pickup Today',
-                      fee: 'LKR 2,500', // Mock fee
-                      accepted: false,
+                  onPressed: () async {
+                    final feeController = TextEditingController(
+                      text: currentOrder.deliveryFeeMinor > 0
+                          ? (currentOrder.deliveryFeeMinor / 100)
+                              .toStringAsFixed(0)
+                          : '500',
                     );
-                    state.createTransportJob(job);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Transport requested successfully!'),
-                        backgroundColor: AppColors.primary,
+                    final fee = await showDialog<int>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Transport fee (LKR)'),
+                        content: TextField(
+                          controller: feeController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Offered delivery fee',
+                            prefixText: 'LKR ',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              final major =
+                                  int.tryParse(feeController.text.trim()) ?? 0;
+                              Navigator.pop(ctx, major * 100);
+                            },
+                            child: const Text('Request'),
+                          ),
+                        ],
                       ),
                     );
+                    if (fee == null || fee < 0) return;
+                    try {
+                      await state.requestTransportForOrder(
+                        currentOrder.id,
+                        deliveryFeeMinor: fee,
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Transport requested successfully!'),
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Transport request failed: $e')),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -534,6 +637,128 @@ class OrderDetailScreen extends StatelessWidget {
     return Divider(
       color: AppColors.outlineVariant.withValues(alpha: 0.3),
       height: 1,
+    );
+  }
+}
+
+class _AuthenticityBarcodeCard extends StatefulWidget {
+  final String orderId;
+
+  const _AuthenticityBarcodeCard({required this.orderId});
+
+  @override
+  State<_AuthenticityBarcodeCard> createState() =>
+      _AuthenticityBarcodeCardState();
+}
+
+class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
+  final _service = FirestoreService();
+  bool _busy = false;
+  String? _scanPayload;
+  String? _error;
+
+  Future<void> _issue() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result = await _service.issueOrderBarcode(widget.orderId);
+      if (!mounted) return;
+      setState(() => _scanPayload = result['scanPayload']);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Authenticity barcode',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Issue a signed QR for the buyer to scan after delivery.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_scanPayload != null) ...[
+            Center(
+              child: QrImageView(
+                data: _scanPayload!,
+                size: 200,
+                backgroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SelectableText(
+              _scanPayload!,
+              style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: _scanPayload!));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Barcode payload copied')),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy payload'),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _busy ? null : _issue,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.qr_code_2),
+                label: Text(_busy ? 'Issuing...' : 'Issue authenticity QR'),
+              ),
+            ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

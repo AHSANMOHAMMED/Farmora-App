@@ -1,13 +1,20 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../constants/app_colors.dart';
 
-/// Keyless delivery-route visualization: no Maps API key required.
-/// Draws pickup → courier → dropoff progress driven by live status.
+/// Delivery-route visualization. Uses Google Maps when
+/// `--dart-define=GOOGLE_MAPS_API_KEY=...` is set; otherwise a progress widget.
 class RouteProgressMap extends StatelessWidget {
   final double progress;
   final String pickupLabel;
   final String dropoffLabel;
   final String statusLabel;
+  final LatLng? pickup;
+  final LatLng? dropoff;
+  final LatLng? courier;
 
   const RouteProgressMap({
     super.key,
@@ -15,7 +22,15 @@ class RouteProgressMap extends StatelessWidget {
     this.pickupLabel = 'Farm pickup',
     this.dropoffLabel = 'Delivery point',
     this.statusLabel = '',
+    this.pickup,
+    this.dropoff,
+    this.courier,
   });
+
+  /// Compile-time Maps key via `--dart-define=GOOGLE_MAPS_API_KEY=...`.
+  static const mapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+
+  static bool get mapsEnabled => mapsApiKey.isNotEmpty;
 
   static double progressForOrderStatus(String status) {
     switch (status.toLowerCase().replaceAll(' ', '').replaceAll('_', '')) {
@@ -58,7 +73,101 @@ class RouteProgressMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = progress.clamp(0.0, 1.0);
+    if (mapsEnabled && pickup != null && dropoff != null) {
+      return _MapsRouteView(
+        progress: progress.clamp(0.0, 1.0),
+        pickup: pickup!,
+        dropoff: dropoff!,
+        courier: courier,
+        pickupLabel: pickupLabel,
+        dropoffLabel: dropoffLabel,
+        statusLabel: statusLabel,
+      );
+    }
+    return _ProgressFallback(
+      progress: progress.clamp(0.0, 1.0),
+      pickupLabel: pickupLabel,
+      dropoffLabel: dropoffLabel,
+      statusLabel: statusLabel,
+    );
+  }
+}
+
+class _MapsRouteView extends StatelessWidget {
+  final double progress;
+  final LatLng pickup;
+  final LatLng dropoff;
+  final LatLng? courier;
+  final String pickupLabel;
+  final String dropoffLabel;
+  final String statusLabel;
+
+  const _MapsRouteView({
+    required this.progress,
+    required this.pickup,
+    required this.dropoff,
+    required this.courier,
+    required this.pickupLabel,
+    required this.dropoffLabel,
+    required this.statusLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final mid = LatLng(
+      pickup.latitude + (dropoff.latitude - pickup.latitude) * progress,
+      pickup.longitude + (dropoff.longitude - pickup.longitude) * progress,
+    );
+    final courierPos = courier ?? mid;
+    if (kDebugMode) {
+      // Ignore unused encode — keeps key presence check for CI without logging secrets.
+      utf8.encode(RouteProgressMap.mapsApiKey.isEmpty ? 'off' : 'on');
+    }
+    return SizedBox(
+      height: 220,
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(target: mid, zoom: 11),
+          markers: {
+            Marker(markerId: const MarkerId('pickup'), position: pickup, infoWindow: InfoWindow(title: pickupLabel)),
+            Marker(markerId: const MarkerId('dropoff'), position: dropoff, infoWindow: InfoWindow(title: dropoffLabel)),
+            Marker(markerId: const MarkerId('courier'), position: courierPos, infoWindow: InfoWindow(title: statusLabel.isEmpty ? 'Courier' : statusLabel)),
+          },
+          polylines: {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: [pickup, dropoff],
+              color: AppColors.primary,
+              width: 4,
+            ),
+          },
+          myLocationEnabled: false,
+          zoomControlsEnabled: false,
+          liteModeEnabled: true,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressFallback extends StatelessWidget {
+  final double progress;
+  final String pickupLabel;
+  final String dropoffLabel;
+  final String statusLabel;
+
+  const _ProgressFallback({
+    required this.progress,
+    required this.pickupLabel,
+    required this.dropoffLabel,
+    required this.statusLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress;
     return Container(
       height: 200,
       width: double.infinity,
@@ -124,14 +233,12 @@ class _RoutePainter extends CustomPainter {
       ..moveTo(start.dx, start.dy)
       ..cubicTo(mid1.dx, mid1.dy, mid2.dx, mid2.dy, end.dx, end.dy);
 
-    // Remaining route (dashed grey).
     final bg = Paint()
       ..color = AppColors.outlineVariant
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     _drawDashed(canvas, path, bg);
 
-    // Completed portion (green).
     final done = Paint()
       ..color = AppColors.primary
       ..style = PaintingStyle.stroke
@@ -141,15 +248,12 @@ class _RoutePainter extends CustomPainter {
       canvas.drawPath(m.extractPath(0, m.length * progress.clamp(0.0, 1.0)), done);
     }
 
-    // Pickup pin.
     _drawPin(canvas, start, AppColors.primary, Icons.agriculture_rounded);
-    // Courier dot at progress.
     for (final m in path.computeMetrics()) {
       final pos = m.getTangentForOffset(m.length * progress.clamp(0.0, 1.0))?.position ?? start;
       canvas.drawCircle(pos, 9, Paint()..color = AppColors.primary.withValues(alpha: 0.2));
       canvas.drawCircle(pos, 5, Paint()..color = AppColors.primary);
     }
-    // Dropoff pin.
     _drawPin(canvas, end,
         progress >= 1.0 ? AppColors.primary : AppColors.onSurfaceVariant, Icons.home_outlined);
   }

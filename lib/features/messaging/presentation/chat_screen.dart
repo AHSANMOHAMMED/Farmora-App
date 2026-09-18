@@ -2,19 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/conversation_model.dart';
+import '../../../services/chat_crypto.dart';
 import '../../../services/firebase_service.dart';
-
-/// Backend requires 16..20000 chars. Wrap + pad, strip on display.
-String encodeChatOutgoing(String text) {
-  final payload = 'farmora1:${text.trim()}';
-  return payload.length >= 16 ? payload : payload.padRight(16, '.');
-}
-
-String decodeChatIncoming(String body) {
-  var out = body;
-  if (out.startsWith('farmora1:')) out = out.substring('farmora1:'.length);
-  return out.replaceAll(RegExp(r'\.+$'), '');
-}
 
 class ChatScreen extends StatefulWidget {
   final FarmoraConversation conversation;
@@ -29,6 +18,25 @@ class _ChatScreenState extends State<ChatScreen> {
   final _service = FirestoreService();
   bool _sending = false;
   String? _error;
+  String? _peerPublicKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapKeys();
+  }
+
+  Future<void> _bootstrapKeys() async {
+    try {
+      final pub = await ChatCrypto.instance.publicKeyBase64();
+      await _service.publishChatPublicKey(pub);
+      final peerId = _recipientOf(widget.conversation);
+      final peerKey = await _service.fetchChatPublicKey(peerId);
+      if (mounted) setState(() => _peerPublicKey = peerKey);
+    } catch (_) {
+      // Crypto bootstrap is best-effort; send will surface errors.
+    }
+  }
 
   @override
   void dispose() {
@@ -51,16 +59,44 @@ class _ChatScreenState extends State<ChatScreen> {
       _error = null;
     });
     try {
+      final peerKey = _peerPublicKey ??
+          await _service.fetchChatPublicKey(_recipientOf(widget.conversation));
+      if (peerKey == null || peerKey.isEmpty) {
+        throw StateError('Recipient has no chat key yet. Ask them to open chat once.');
+      }
+      final ciphertext = await ChatCrypto.instance.encrypt(
+        plaintext: text,
+        peerPublicKeyB64: peerKey,
+      );
       await _service.sendEncryptedMessage(
         orderId: widget.conversation.orderId,
         recipientId: _recipientOf(widget.conversation),
-        ciphertext: encodeChatOutgoing(text),
+        ciphertext: ciphertext,
       );
       _controller.clear();
     } catch (e) {
       setState(() => _error = 'Could not send. Check connection and retry. ($e)');
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<String> _decode(String body) async {
+    final peerKey = _peerPublicKey;
+    if (peerKey == null || peerKey.isEmpty) {
+      if (body.startsWith('farmora1:')) {
+        return body.substring('farmora1:'.length).replaceAll(RegExp(r'\.+$'), '');
+      }
+      if (body.startsWith(ChatCrypto.ciphertextPrefix)) return '[encrypted]';
+      return body;
+    }
+    try {
+      return await ChatCrypto.instance.decrypt(
+        ciphertext: body,
+        peerPublicKeyB64: peerKey,
+      );
+    } catch (_) {
+      return '[undecryptable]';
     }
   }
 
@@ -80,7 +116,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
                 final msgs = snap.data ?? const <FarmoraMessage>[];
                 if (msgs.isEmpty) {
-                  return const Center(child: Text('Say hello — messages are order-scoped and private.'));
+                  return const Center(child: Text('Say hello — messages are order-scoped and E2E encrypted.'));
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -98,8 +134,15 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: mine ? AppColors.primary : AppColors.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(decodeChatIncoming(m.body),
-                            style: TextStyle(color: mine ? Colors.white : AppColors.onSurface)),
+                        child: FutureBuilder<String>(
+                          future: _decode(m.body),
+                          builder: (context, dec) {
+                            return Text(
+                              dec.data ?? '…',
+                              style: TextStyle(color: mine ? Colors.white : AppColors.onSurface),
+                            );
+                          },
+                        ),
                       ),
                     );
                   },

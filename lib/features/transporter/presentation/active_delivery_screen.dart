@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/transport_job.dart';
+import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
+import '../../messaging/presentation/conversations_screen.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {
   final TransportJob job;
@@ -11,7 +14,20 @@ class ActiveDeliveryScreen extends StatelessWidget {
 
   Future<void> _transition(BuildContext context, String next) async {
     try {
+      if (next == 'pickedUp' || next == 'inTransit') {
+        await DeliveryLocationService.instance
+            .requestConsentAndStart(jobId: job.id);
+        final pos = await DeliveryLocationService.instance.currentPosition();
+        if (pos != null) {
+          await FirestoreService().updateTransportJobLocation(
+            jobId: job.id,
+            lat: pos.latitude,
+            lng: pos.longitude,
+          );
+        }
+      }
       await FirestoreService().transitionTransport(job.id, next);
+      DeliveryLocationService.instance.onJobStatusChanged(job.id, next);
       if (context.mounted) Navigator.of(context).pop();
     } catch (error) {
       if (context.mounted) {
@@ -23,6 +39,14 @@ class ActiveDeliveryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final destination = job.dropoff ?? job.route;
+    final steps = [
+      ('Accepted', job.status != 'requested'),
+      ('Picked up', ['pickedUp', 'inTransit', 'delivered'].contains(job.status)),
+      ('In transit', ['inTransit', 'delivered'].contains(job.status)),
+      ('Delivered', job.status == 'delivered'),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -41,6 +65,22 @@ class ActiveDeliveryScreen extends StatelessWidget {
             color: AppColors.onSurface,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Messages',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+            ),
+            icon: const Icon(Icons.chat_bubble_outline),
+          ),
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            ),
+            icon: const Icon(Icons.notifications_none_rounded),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -59,13 +99,15 @@ class ActiveDeliveryScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        job.title,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.onSurface,
+                      Expanded(
+                        child: Text(
+                          job.title,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSurface,
+                          ),
                         ),
                       ),
                       Container(
@@ -75,9 +117,9 @@ class ActiveDeliveryScreen extends StatelessWidget {
                           color: AppColors.statusApprovedBg,
                           borderRadius: BorderRadius.circular(9999),
                         ),
-                        child: const Text(
-                          'IN TRANSIT',
-                          style: TextStyle(
+                        child: Text(
+                          job.status.toUpperCase(),
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -88,14 +130,14 @@ class ActiveDeliveryScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.location_on, color: AppColors.primary),
-                      SizedBox(width: 8),
+                      const Icon(Icons.location_on, color: AppColors.primary),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Destination: Main Warehouse, Colombo',
-                          style: TextStyle(
+                          'Destination: $destination',
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -104,6 +146,11 @@ class ActiveDeliveryScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (job.fee.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('Fee: ${job.fee}',
+                        style: const TextStyle(fontFamily: 'Inter')),
+                  ],
                 ],
               ),
             ),
@@ -132,125 +179,73 @@ class ActiveDeliveryScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildTimelineStep('Picked up', '10:30 AM', true, true),
-                  _buildTimelineStep(
-                      'In Transit', 'Current Status', true, false),
-                  _buildTimelineStep('Delivered', 'Pending', false, false,
-                      isLast: true),
+                  for (var i = 0; i < steps.length; i++)
+                    _buildTimelineStep(
+                      steps[i].$1,
+                      steps[i].$2 ? 'Done' : 'Pending',
+                      steps[i].$2,
+                      i < steps.length - 1 && steps[i].$2,
+                      isLast: i == steps.length - 1,
+                    ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Status: ${job.status} • Valid next: ${job.nextStatuses.isEmpty ? 'none (terminal)' : job.nextStatuses.join(', ')}',
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            for (final next in job.nextStatuses)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FilledButton(
-                  onPressed: () => _transition(context, next),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    backgroundColor: next == 'cancelled' ? AppColors.error : AppColors.primary,
-                  ),
-                  child: Text(
-                    next == 'pickedUp' ? 'Mark Picked Up' : next == 'inTransit' ? 'Mark In Transit' : next == 'delivered' ? 'Mark as Delivered' : next == 'accepted' ? 'Accept Job' : 'Cancel Job',
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+      bottomNavigationBar: job.canTransition
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              child: FilledButton(
+                onPressed: () => _transition(context, job.nextStatuses.first),
+                child: Text('Mark ${job.nextStatuses.first}'),
               ),
-          ],
-        ),
-      ),
+            )
+          : null,
     );
   }
 
   Widget _buildTimelineStep(
-      String title, String subtitle, bool isActive, bool isCompleted,
-      {bool isLast = false}) {
+    String title,
+    String subtitle,
+    bool completed,
+    bool showLine, {
+    bool isLast = false,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Column(
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerHigh,
-                shape: BoxShape.circle,
-              ),
-              child: isCompleted
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : isActive
-                      ? Center(
-                          child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                  color: Colors.white, shape: BoxShape.circle)))
-                      : null,
+            Icon(
+              completed ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: completed ? AppColors.primary : AppColors.outlineVariant,
             ),
             if (!isLast)
               Container(
                 width: 2,
-                height: 30,
-                color: isCompleted
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerHigh,
+                height: 28,
+                color: showLine ? AppColors.primary : AppColors.outlineVariant,
               ),
           ],
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive
-                      ? AppColors.onSurface
-                      : AppColors.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontFamily: 'Inter', fontWeight: FontWeight.w600)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: AppColors.onSurfaceVariant)),
+              ],
+            ),
           ),
         ),
       ],

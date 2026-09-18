@@ -11,7 +11,7 @@ class EarningsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -221,7 +221,7 @@ class EarningsScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      '\$${bar.amount.toInt()}',
+                                      'LKR ${bar.amount.toInt()}',
                                       style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 11,
@@ -475,7 +475,7 @@ class EarningsScreen extends StatelessWidget {
   }
 
   void _showAllTransactionsModal(BuildContext context, FarmoraState state) {
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
