@@ -26,6 +26,8 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<Product>>? _productsSub;
   StreamSubscription<List<FarmoraOrder>>? _ordersSub;
   StreamSubscription<List<TransportJob>>? _jobsSub;
+  StreamSubscription<List<TransportJob>>? _availableJobsSub;
+  StreamSubscription<List<TransportJob>>? _completedJobsSub;
   StreamSubscription<List<VerificationDoc>>? _verificationSub;
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
   bool signedIn = false;
@@ -44,6 +46,8 @@ class FarmoraState extends ChangeNotifier {
 
   // Transport Jobs
   final List<TransportJob> _jobs = [];
+  final List<TransportJob> _availableJobs = [];
+  final List<TransportJob> _completedJobs = [];
 
   // Users
   final List<Map<String, dynamic>> _users = [];
@@ -64,6 +68,8 @@ class FarmoraState extends ChangeNotifier {
   List<Product> get products => List.unmodifiable(_products);
   List<FarmoraOrder> get orders => List.unmodifiable(_orders);
   List<TransportJob> get jobs => List.unmodifiable(_jobs);
+  List<TransportJob> get availableJobs => List.unmodifiable(_availableJobs);
+  List<TransportJob> get completedJobs => List.unmodifiable(_completedJobs);
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
   List<MonthlyBarData> get monthlyBars => List.unmodifiable(_monthlyBars);
   List<EarningsTransaction> get transactions =>
@@ -96,6 +102,16 @@ class FarmoraState extends ChangeNotifier {
       _orders.where((o) => o.isAccepted || o.status == 'In transit').toList();
   List<FarmoraOrder> get completedOrders =>
       _orders.where((o) => o.isCompleted).toList();
+
+  // Transport Job status filters
+  List<TransportJob> get activeJobs => _jobs
+      .where((j) =>
+          j.status == TransportJobStatus.accepted ||
+          j.status == TransportJobStatus.inTransit)
+      .toList();
+
+  List<TransportJob> get pendingJobs =>
+      _jobs.where((j) => j.status == TransportJobStatus.pending).toList();
 
   // ── Cart (Buyer) ─────────────────────────────────────────
   final List<CartItem> _cartItems = [];
@@ -272,6 +288,38 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  /// Transition a transport job to a new status
+  Future<void> transitionTransportJob(
+      String jobId, TransportJobStatus newStatus) async {
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.updateTransportJobStatus(jobId, newStatus);
+    }
+  }
+
+  /// Accept and assign a job to the current transporter
+  Future<void> assignJobToMe(String jobId) async {
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.assignTransportJob(jobId, _currentUserId);
+    }
+  }
+
+  /// Cancel a transport job
+  Future<void> cancelTransportJob(String jobId) async {
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.cancelTransportJob(jobId);
+    }
+  }
+
+  /// Mark delivery as picked up (in transit)
+  Future<void> markPickedUp(String jobId) async {
+    await transitionTransportJob(jobId, TransportJobStatus.inTransit);
+  }
+
+  /// Mark delivery as delivered
+  Future<void> markDelivered(String jobId) async {
+    await transitionTransportJob(jobId, TransportJobStatus.delivered);
+  }
+
   Future<void> seedDatabase() async {
     await _firestoreService.seedDatabase();
   }
@@ -370,6 +418,29 @@ class FarmoraState extends ChangeNotifier {
       },
       onError: (Object error) => debugPrint('Jobs stream: $error'),
     );
+
+    // Available jobs stream (for transporters)
+    if (role == Role.transporter) {
+      _availableJobsSub = _firestoreService.availableJobsStream().listen(
+        (items) {
+          _availableJobs
+            ..clear()
+            ..addAll(items);
+          notifyListeners();
+        },
+        onError: (Object error) => debugPrint('Available jobs stream: $error'),
+      );
+
+      _completedJobsSub = _firestoreService.completedJobsStream(uid).listen(
+        (items) {
+          _completedJobs
+            ..clear()
+            ..addAll(items);
+          notifyListeners();
+        },
+        onError: (Object error) => debugPrint('Completed jobs stream: $error'),
+      );
+    }
   }
 
   /// Cancel all Firestore subscriptions
@@ -377,6 +448,8 @@ class FarmoraState extends ChangeNotifier {
     _productsSub?.cancel();
     _ordersSub?.cancel();
     _jobsSub?.cancel();
+    _availableJobsSub?.cancel();
+    _completedJobsSub?.cancel();
     _verificationSub?.cancel();
     _usersSub?.cancel();
   }
