@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/transport_job.dart';
-import '../../../services/firebase_service.dart';
+import '../../../providers/farmora_state.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {
   final TransportJob job;
 
   const ActiveDeliveryScreen({super.key, required this.job});
 
-  Future<void> _markDelivered(BuildContext context) async {
-    try {
-      await FirestoreService().transitionTransport(job.id, 'delivered');
-      if (context.mounted) Navigator.of(context).pop();
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not update delivery: $error')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final currentJob = state.jobs.firstWhere(
+      (j) => j.id == job.id,
+      orElse: () => job,
+    );
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -40,12 +35,21 @@ class ActiveDeliveryScreen extends StatelessWidget {
             color: AppColors.onSurface,
           ),
         ),
+        actions: [
+          if (currentJob.status != TransportJobStatus.cancelled &&
+              currentJob.status != TransportJobStatus.delivered)
+            IconButton(
+              icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+              onPressed: () => _showCancelDialog(context, currentJob.id),
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Job Info Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -59,7 +63,7 @@ class ActiveDeliveryScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        job.title,
+                        currentJob.title,
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 20,
@@ -67,34 +71,18 @@ class ActiveDeliveryScreen extends StatelessWidget {
                           color: AppColors.onSurface,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.statusApprovedBg,
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: const Text(
-                          'IN TRANSIT',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.statusApprovedText,
-                          ),
-                        ),
-                      ),
+                      _buildStatusChip(currentJob.status),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.location_on, color: AppColors.primary),
-                      SizedBox(width: 8),
+                      const Icon(Icons.route, color: AppColors.primary),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Destination: Main Warehouse, Colombo',
-                          style: TextStyle(
+                          currentJob.route,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -103,11 +91,36 @@ class ActiveDeliveryScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    currentJob.detail,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  if (currentJob.cargoWeightKg != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.scale, size: 16, color: AppColors.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${currentJob.cargoWeightKg!.toStringAsFixed(1)} kg',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Mock map placeholder
+
+            // Map placeholder
             Container(
               height: 200,
               width: double.infinity,
@@ -132,6 +145,8 @@ class ActiveDeliveryScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+
+            // Delivery Status Timeline
             const Text(
               'Delivery Status',
               style: TextStyle(
@@ -147,117 +162,280 @@ class ActiveDeliveryScreen extends StatelessWidget {
                 color: AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
+              child: _buildTimeline(currentJob.status),
+            ),
+            const SizedBox(height: 24),
+
+            // Pickup Information
+            const Text(
+              'Pickup Information',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
                 children: [
-                  _buildTimelineStep('Picked up', '10:30 AM', true, true),
-                  _buildTimelineStep(
-                      'In Transit', 'Current Status', true, false),
-                  _buildTimelineStep('Delivered', 'Pending', false, false,
-                      isLast: true),
+                  const Icon(Icons.person, color: AppColors.onSurfaceVariant),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Farmer Name',
+                        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        currentJob.pickupAddress ?? 'Pickup location',
+                        style: const TextStyle(fontFamily: 'Inter', color: AppColors.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: FilledButton(
-          onPressed: () => _markDelivered(context),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            backgroundColor: AppColors.primary,
-          ),
-          child: const Text(
-            'Mark as Delivered',
-            style: TextStyle(
-                fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+      bottomNavigationBar: _buildBottomButton(context, currentJob),
+    );
+  }
+
+  Widget _buildStatusChip(TransportJobStatus status) {
+    final (backgroundColor, textColor) = switch (status) {
+      TransportJobStatus.pending => (AppColors.surfaceContainerHigh, AppColors.onSurfaceVariant),
+      TransportJobStatus.accepted => (AppColors.primaryContainer, AppColors.onPrimaryContainer),
+      TransportJobStatus.inTransit => (AppColors.statusApprovedBg, AppColors.statusApprovedText),
+      TransportJobStatus.delivered => (AppColors.statusApprovedBg, AppColors.statusApprovedText),
+      TransportJobStatus.cancelled => (AppColors.errorContainer, AppColors.error),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(9999),
+      ),
+      child: Text(
+        status.label.toUpperCase(),
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textColor,
         ),
       ),
     );
   }
 
-  Widget _buildTimelineStep(
-      String title, String subtitle, bool isActive, bool isCompleted,
-      {bool isLast = false}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
+  Widget _buildTimeline(TransportJobStatus currentStatus) {
+    final steps = [
+      ('Accepted', 'Job assigned', TransportJobStatus.accepted),
+      ('Picked Up', 'Cargo collected', TransportJobStatus.inTransit),
+      ('Delivered', 'Drop-off complete', TransportJobStatus.delivered),
+    ];
+
+    return Column(
+      children: steps.asMap().entries.map((entry) {
+        final index = entry.key;
+        final (title, subtitle, status) = entry.value;
+        final isActive = currentStatus == status;
+        final isCompleted = _isStepCompleted(currentStatus, status);
+        final isLast = index == steps.length - 1;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerHigh,
-                shape: BoxShape.circle,
-              ),
-              child: isCompleted
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : isActive
-                      ? Center(
-                          child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                  color: Colors.white, shape: BoxShape.circle)))
-                      : null,
+            Column(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? AppColors.statusApprovedBg
+                        : isActive
+                            ? AppColors.primary
+                            : AppColors.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: isCompleted
+                      ? const Icon(Icons.check, size: 14, color: AppColors.statusApprovedText)
+                      : isActive
+                          ? Center(
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            )
+                          : null,
+                ),
+                if (!isLast)
+                  Container(
+                    width: 2,
+                    height: 30,
+                    color: isCompleted ? AppColors.primary : AppColors.surfaceContainerHigh,
+                  ),
+              ],
             ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 30,
-                color: isCompleted
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerHigh,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      color: isActive
+                          ? AppColors.onSurface
+                          : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
+            ),
           ],
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive
-                      ? AppColors.onSurface
-                      : AppColors.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+        );
+      }).toList(),
+    );
+  }
+
+  bool _isStepCompleted(TransportJobStatus current, TransportJobStatus step) {
+    return switch (current) {
+      TransportJobStatus.delivered => true,
+      TransportJobStatus.inTransit => step == TransportJobStatus.accepted,
+      TransportJobStatus.accepted => step == TransportJobStatus.accepted,
+      _ => false,
+    };
+  }
+
+  Widget? _buildBottomButton(BuildContext context, TransportJob job) {
+    if (job.status == TransportJobStatus.delivered ||
+        job.status == TransportJobStatus.cancelled) {
+      return null;
+    }
+
+    final (buttonText, nextStatus) = switch (job.status) {
+      TransportJobStatus.accepted => ('Mark as Picked Up', TransportJobStatus.inTransit),
+      TransportJobStatus.inTransit => ('Mark as Delivered', TransportJobStatus.delivered),
+      _ => (null, null),
+    };
+
+    if (buttonText == null || nextStatus == null) return null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
           ),
+        ],
+      ),
+      child: FilledButton(
+        onPressed: () async {
+          try {
+            await context.read<FarmoraState>().transitionTransportJob(job.id, nextStatus);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Delivery updated to ${nextStatus.label}')),
+              );
+            }
+          } catch (error) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not update delivery: $error')),
+              );
+            }
+          }
+        },
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          backgroundColor: AppColors.primary,
         ),
-      ],
+        child: Text(
+          buttonText,
+          style: const TextStyle(
+              fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  void _showCancelDialog(BuildContext context, String jobId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Cancel Delivery',
+          style: TextStyle(fontFamily: 'Inter'),
+        ),
+        content: const Text(
+          'Are you sure you want to cancel this delivery? This action cannot be undone.',
+          style: TextStyle(fontFamily: 'Inter'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('No', style: TextStyle(fontFamily: 'Inter')),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await context.read<FarmoraState>().cancelTransportJob(jobId);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Delivery cancelled')),
+                  );
+                }
+              } catch (error) {
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not cancel delivery: $error')),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Yes, Cancel',
+              style: TextStyle(fontFamily: 'Inter', color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

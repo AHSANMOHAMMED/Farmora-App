@@ -316,6 +316,106 @@ class FirestoreService {
             .toList());
   }
 
+  /// Available jobs stream (pending status, no transporter assigned)
+  Stream<List<TransportJob>> availableJobsStream() {
+    return _db
+        .collection('transport_jobs')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Completed jobs stream (delivered status, filtered by transporter)
+  Stream<List<TransportJob>> completedJobsStream(String transporterId) {
+    return _db
+        .collection('transport_jobs')
+        .where('transporterId', isEqualTo: transporterId)
+        .where('status', isEqualTo: 'delivered')
+        .orderBy('deliveredAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Update transport job status with proper transition logic
+  Future<void> updateTransportJobStatus(
+      String jobId, TransportJobStatus newStatus) async {
+    final jobRef = _db.collection('transport_jobs').doc(jobId);
+    final jobDoc = await jobRef.get();
+    if (!jobDoc.exists) throw StateError('Transport job not found.');
+
+    final job = TransportJob.fromMap(jobId, jobDoc.data()!);
+    if (!job.canTransitionTo(newStatus)) {
+      throw StateError(
+          'Invalid transition from ${job.status.label} to ${newStatus.label}');
+    }
+
+    final updates = <String, dynamic>{
+      'status': newStatus.name,
+      'accepted': newStatus == TransportJobStatus.accepted,
+    };
+
+    final now = FieldValue.serverTimestamp();
+    switch (newStatus) {
+      case TransportJobStatus.accepted:
+        updates['acceptedAt'] = now;
+        break;
+      case TransportJobStatus.inTransit:
+        updates['pickedUpAt'] = now;
+        break;
+      case TransportJobStatus.delivered:
+        updates['deliveredAt'] = now;
+        break;
+      case TransportJobStatus.cancelled:
+        break;
+      case TransportJobStatus.pending:
+        break;
+    }
+
+    await jobRef.update(updates);
+  }
+
+  /// Assign a transport job to a transporter
+  Future<void> assignTransportJob(String jobId, String transporterId) async {
+    await _db.collection('transport_jobs').doc(jobId).update({
+      'transporterId': transporterId,
+      'status': 'accepted',
+      'accepted': true,
+      'acceptedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Cancel a transport job
+  Future<void> cancelTransportJob(String jobId) async {
+    await _db.collection('transport_jobs').doc(jobId).update({
+      'status': 'cancelled',
+      'accepted': false,
+    });
+  }
+
+  /// Get transporter stats (completed count, earnings)
+  Future<Map<String, dynamic>> getTransporterStats(String transporterId) async {
+    final completedSnapshot = await _db
+        .collection('transport_jobs')
+        .where('transporterId', isEqualTo: transporterId)
+        .where('status', isEqualTo: 'delivered')
+        .get();
+
+    final pendingSnapshot = await _db
+        .collection('transport_jobs')
+        .where('transporterId', isEqualTo: transporterId)
+        .where('status', whereIn: ['accepted', 'in_transit']).get();
+
+    return {
+      'completedCount': completedSnapshot.docs.length,
+      'pendingCount': pendingSnapshot.docs.length,
+    };
+  }
+
   /// Add a verification document
   Future<void> addVerificationDoc(VerificationDoc d, String farmerId) async {
     await _db.collection('verification_docs').add({
@@ -465,6 +565,11 @@ class FirestoreService {
         'detail': '20 kg · Pickup today, 10:30 AM',
         'fee': 'LKR 3,500',
         'accepted': false,
+        'status': 'pending',
+        'createdBy': 'mock-farmer-id',
+        'pickupAddress': 'Nuwara Eliya Market',
+        'dropoffAddress': 'Colombo Wholesale Market',
+        'cargoWeightKg': 20.0,
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
@@ -473,6 +578,11 @@ class FirestoreService {
         'detail': '100 nuts · Pickup tomorrow, 7:00 AM',
         'fee': 'LKR 2,200',
         'accepted': false,
+        'status': 'pending',
+        'createdBy': 'mock-farmer-id',
+        'pickupAddress': 'Kurunegala Farm',
+        'dropoffAddress': 'Kandy Distribution Center',
+        'cargoWeightKg': 50.0,
         'createdAt': FieldValue.serverTimestamp(),
       }
     ];
