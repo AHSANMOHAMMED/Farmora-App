@@ -402,50 +402,6 @@ class FarmoraState extends ChangeNotifier {
       });
     }
 
-<<<<<<< HEAD
-    _ordersSub = orders.listen(
-      (items) {
-        _orders
-          ..clear()
-          ..addAll(items);
-        _recalculateStats();
-        notifyListeners();
-      },
-      onError: (Object error) => debugPrint('Orders stream: $error'),
-    );
-    _jobsSub = jobs.listen(
-      (items) {
-        _jobs
-          ..clear()
-          ..addAll(items);
-        notifyListeners();
-      },
-      onError: (Object error) => debugPrint('Jobs stream: $error'),
-    );
-
-    // Available jobs stream (for transporters)
-    if (role == Role.transporter) {
-      _availableJobsSub = _firestoreService.availableJobsStream().listen(
-        (items) {
-          _availableJobs
-            ..clear()
-            ..addAll(items);
-          notifyListeners();
-        },
-        onError: (Object error) => debugPrint('Available jobs stream: $error'),
-      );
-
-      _completedJobsSub = _firestoreService.completedJobsStream(uid).listen(
-        (items) {
-          _completedJobs
-            ..clear()
-            ..addAll(items);
-          notifyListeners();
-        },
-        onError: (Object error) => debugPrint('Completed jobs stream: $error'),
-      );
-    }
-=======
     // Subscribe to orders stream
     _ordersSub?.cancel();
     final ordersStream = switch (role) {
@@ -474,6 +430,30 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Available and completed jobs streams (for transporters)
+    _availableJobsSub?.cancel();
+    _completedJobsSub?.cancel();
+    if (role == Role.transporter) {
+      _availableJobsSub = _firestoreService.availableJobsStream().listen(
+        (firestoreJobs) {
+          _availableJobs
+            ..clear()
+            ..addAll(firestoreJobs);
+          notifyListeners();
+        },
+        onError: (Object error) => debugPrint('Available jobs stream: $error'),
+      );
+      _completedJobsSub = _firestoreService.completedJobsStream(uid).listen(
+        (firestoreJobs) {
+          _completedJobs
+            ..clear()
+            ..addAll(firestoreJobs);
+          notifyListeners();
+        },
+        onError: (Object error) => debugPrint('Completed jobs stream: $error'),
+      );
+    }
+
     // Subscribe to verification docs stream (farmer only)
     _verificationSub?.cancel();
     _verificationSub =
@@ -482,7 +462,6 @@ class FarmoraState extends ChangeNotifier {
       _verificationDocs.addAll(firestoreDocs);
       notifyListeners();
     });
->>>>>>> 1f1f9aeca9393852231c8095a92777ea72c9a6fa
   }
 
   /// Cancel all Firestore subscriptions

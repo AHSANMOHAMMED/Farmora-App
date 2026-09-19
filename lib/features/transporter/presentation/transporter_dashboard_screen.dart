@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/farmora_state.dart';
-import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/job_card.dart';
 import 'active_delivery_screen.dart';
 
@@ -19,7 +18,7 @@ class TransporterDashboardScreen extends StatelessWidget {
         backgroundColor: AppColors.surface.withValues(alpha: 0.9),
         elevation: 0,
         title: const Text(
-          'Transporter Dashboard',
+          'Farmora',
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
@@ -33,7 +32,28 @@ class TransporterDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Earnings Summary
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Hi, Sureka!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.surfaceContainerHigh,
+                  child: Text(
+                    state.currentUserId.isEmpty ? 'S' : 'U',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('Keep the supply chain moving 🚚',
+                style: TextStyle(color: AppColors.onSurfaceVariant)),
+            const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -53,7 +73,7 @@ class TransporterDashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '\$${state.totalEarnings.toStringAsFixed(2)}',
+                    'Rs. ${state.totalEarnings.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 32,
@@ -65,23 +85,28 @@ class TransporterDashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Row(
+            Row(
               children: [
-                Expanded(
-                  child: StatCard(
-                    label: 'Completed',
-                    value: '12',
-                    icon: Icons.check_circle_outline,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: StatCard(
-                    label: 'Pending',
-                    value: '2',
-                    icon: Icons.pending_actions,
-                  ),
-                ),
+                Expanded(child: _DashboardStat(
+                  label: 'Completed',
+                  value: '${state.completedJobs.length}',
+                  icon: Icons.check_circle_outline,
+                  color: AppColors.primary,
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _DashboardStat(
+                  label: 'Pending',
+                  value: '${state.availableJobs.length}',
+                  icon: Icons.pending_actions,
+                  color: Colors.orange,
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _DashboardStat(
+                  label: 'Ongoing',
+                  value: '${state.activeJobs.length}',
+                  icon: Icons.local_shipping_outlined,
+                  color: Colors.blue,
+                )),
               ],
             ),
             const SizedBox(height: 24),
@@ -134,6 +159,39 @@ class TransporterDashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
+
+class _DashboardStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _DashboardStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 11)),
           ],
         ),
       ),
