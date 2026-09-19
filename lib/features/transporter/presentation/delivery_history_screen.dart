@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../providers/farmora_state.dart';
 
 class DeliveryHistoryScreen extends StatelessWidget {
   const DeliveryHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final jobs = context.watch<FarmoraState>().completedJobs;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -25,11 +28,17 @@ class DeliveryHistoryScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView.separated(
+      body: jobs.isEmpty
+          ? const Center(
+              child: Text('No completed deliveries',
+                  style: TextStyle(color: AppColors.onSurfaceVariant)),
+            )
+          : ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: 5, // Mock data
+        itemCount: jobs.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
+          final job = jobs[index];
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -50,7 +59,7 @@ class DeliveryHistoryScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Delivery #${1000 + index}',
+                      job.orderId ?? job.id,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -59,7 +68,7 @@ class DeliveryHistoryScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'May ${20 - index}, 2024',
+                      job.deliveredAt?.toIso8601String().split('T').first ?? '',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -69,9 +78,9 @@ class DeliveryHistoryScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Organic Vegetables',
-                  style: TextStyle(
+                Text(
+                  job.title,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -79,13 +88,13 @@ class DeliveryHistoryScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.route, size: 16, color: AppColors.onSurfaceVariant),
-                    SizedBox(width: 4),
+                    const Icon(Icons.route, size: 16, color: AppColors.onSurfaceVariant),
+                    const SizedBox(width: 4),
                     Text(
-                      'Kandy → Colombo',
-                      style: TextStyle(
+                      job.route,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
                         color: AppColors.onSurfaceVariant,
@@ -113,9 +122,9 @@ class DeliveryHistoryScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Text(
-                      'LKR 4,500',
-                      style: TextStyle(
+                    Text(
+                      job.fee,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
