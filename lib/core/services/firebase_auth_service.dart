@@ -241,7 +241,8 @@ class FirebaseAuthService {
   }
 
   Future<UserCredential> _confirmPhoneOtp(String code) async {
-    if (!RegExp(r'^\d{6}$').hasMatch(code.trim())) {
+    final trimmedCode = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(trimmedCode)) {
       throw const FarmoraAuthException('Enter the 6-digit verification code.');
     }
     try {
@@ -250,12 +251,12 @@ class FirebaseAuthService {
         if (confirmation == null) {
           throw const FarmoraAuthException('Request a new OTP first.');
         }
-        return await confirmation.confirm(code.trim());
+        return await confirmation.confirm(trimmedCode);
       }
       final credential = _automaticCredential ??
           PhoneAuthProvider.credential(
             verificationId: _verificationId ?? '',
-            smsCode: code.trim(),
+            smsCode: trimmedCode,
           );
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (error) {
@@ -326,7 +327,7 @@ class FirebaseAuthService {
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
       case 'quota-exceeded':
-        return 'SMS quota exceeded. Use a Firebase test phone number on Spark.';
+        return 'SMS quota exceeded. Use a Firebase test phone number.';
       case 'popup-closed-by-user':
         return 'Google sign-in was cancelled.';
       default:

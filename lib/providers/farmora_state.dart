@@ -1,5 +1,6 @@
-import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -18,9 +19,8 @@ class FarmoraState extends ChangeNotifier {
   late final _firestoreService = kajana_service.FirestoreService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
-  String displayName = '';
-  String? profilePhotoUrl;
-  String? userEmail;
+  bool _profileLoaded = false;
+  bool get profileLoaded => _profileLoaded;
 
   // Stream subscriptions for real-time Firestore sync
   StreamSubscription<List<Product>>? _productsSub;
@@ -30,6 +30,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<TransportJob>>? _completedJobsSub;
   StreamSubscription<List<VerificationDoc>>? _verificationSub;
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
+  StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
   Role role = Role.farmer;
@@ -216,24 +217,34 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  Future<void> signOut() async {
-    disposeFirestoreSubscriptions();
-    await _authService.signOut();
+  void signOut() {
     signedIn = false;
     _currentUserId = '';
-    displayName = '';
-    profilePhotoUrl = null;
-    userEmail = null;
+    _profileLoaded = false;
+    disposeFirestoreSubscriptions();
+    _deviceTokenSub?.cancel();
+    _deviceTokenSub = null;
+    _authService.signOut();
     notifyListeners();
   }
 
   void setRole(Role r) {
+    // A signed-in account's role is owned by its Firestore profile.
+    if (_currentUserId.isNotEmpty) return;
     role = r;
     notifyListeners();
   }
 
   void setLanguage(String value) {
     language = value;
+    if (_currentUserId.isNotEmpty) {
+      final languageCode = switch (value) {
+        'සිංහල' => 'si',
+        'தமிழ்' => 'ta',
+        _ => 'en',
+      };
+      _firestoreService.updateUserLanguage(languageCode);
+    }
     notifyListeners();
   }
 
@@ -261,12 +272,18 @@ class FarmoraState extends ChangeNotifier {
       final current = _products[index];
       final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
       _products[index] = current.copyWith(status: newStatus);
+      if (_currentUserId.isNotEmpty) {
+        _firestoreService.updateProduct(id, {'status': newStatus});
+      }
       notifyListeners();
     }
   }
 
   void deleteProduct(String id) {
     _products.removeWhere((p) => p.id == id);
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.deleteProduct(id);
+    }
     notifyListeners();
   }
 
@@ -328,77 +345,64 @@ class FarmoraState extends ChangeNotifier {
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
   Future<void> initFromFirestore(String uid) async {
     _currentUserId = uid;
+    _profileLoaded = false;
     disposeFirestoreSubscriptions();
 
+    // Load user profile and set role
     try {
       final profile = await _loadUserProfile(uid);
-      if (profile == null) return;
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      displayName = (profile['displayName'] ??
-              profile['name'] ??
-              firebaseUser?.displayName ??
-              'Farmora User')
-          .toString();
-      profilePhotoUrl =
-          (profile['photoUrl'] as String?) ?? firebaseUser?.photoURL;
-      userEmail = (profile['email'] as String?) ?? firebaseUser?.email;
-      final roleStr = profile['role'] as String?;
-      if (roleStr != null) {
-        role = Role.values.firstWhere((value) => value.name == roleStr);
+      if (profile == null) {
+        await FirebaseAuth.instance.signOut();
+        _currentUserId = '';
+        notifyListeners();
+        return;
       }
-      final lang = profile['language'] as String?;
-      if (lang != null) language = lang;
+
+      final roleStr = profile['role'] as String?;
+      final accountRole =
+          Role.values.where((r) => r.name == roleStr).firstOrNull;
+      if (accountRole == null) {
+        await FirebaseAuth.instance.signOut();
+        _currentUserId = '';
+        notifyListeners();
+        return;
+      }
+      role = accountRole;
+      language =
+          (profile['languageCode'] ?? profile['language'] ?? 'en') as String;
+      _profileLoaded = true;
       notifyListeners();
-    } catch (error) {
-      debugPrint('Could not load user profile: $error');
+      _registerDeviceToken();
+    } catch (_) {
+      await FirebaseAuth.instance.signOut();
+      _currentUserId = '';
+      notifyListeners();
       return;
     }
+    final isAdmin = role == Role.admin;
 
-    _productsSub = _firestoreService.productsStream().listen(
-      (items) {
-        _products
-          ..clear()
-          ..addAll(items);
+    // Subscribe to products stream
+    _productsSub?.cancel();
+    final productsStream = role == Role.farmer
+        ? _firestoreService.productsByFarmerStream(uid)
+        : _firestoreService.productsStream();
+    _productsSub = productsStream.listen((firestoreProducts) {
+      _products.clear();
+      _products.addAll(firestoreProducts);
+      notifyListeners();
+    });
+
+    // Subscribe to users stream
+    _usersSub?.cancel();
+    if (isAdmin) {
+      _usersSub = _firestoreService.usersStream().listen((firestoreUsers) {
+        _users.clear();
+        _users.addAll(firestoreUsers);
         notifyListeners();
-      },
-      onError: (Object error) => debugPrint('Products stream: $error'),
-    );
-
-    Stream<List<FarmoraOrder>>? orders;
-    Stream<List<TransportJob>>? jobs;
-    switch (role) {
-      case Role.farmer:
-        orders = _firestoreService.ordersByFarmerStream(uid);
-        jobs = _firestoreService.jobsByCreatorStream(uid);
-        _verificationSub = _firestoreService.verificationDocsStream(uid).listen(
-          (items) {
-            _verificationDocs
-              ..clear()
-              ..addAll(items);
-            notifyListeners();
-          },
-          onError: (Object error) => debugPrint('Verification stream: $error'),
-        );
-      case Role.buyer:
-        orders = _firestoreService.ordersByBuyerStream(uid);
-        jobs = _firestoreService.jobsByCreatorStream(uid);
-      case Role.transporter:
-        orders = _firestoreService.ordersByTransporterStream(uid);
-        jobs = _firestoreService.jobsByTransporterStream(uid);
-      case Role.admin:
-        orders = _firestoreService.ordersStream();
-        jobs = _firestoreService.jobsStream();
-        _usersSub = _firestoreService.usersStream().listen(
-          (items) {
-            _users
-              ..clear()
-              ..addAll(items);
-            notifyListeners();
-          },
-          onError: (Object error) => debugPrint('Users stream: $error'),
-        );
+      });
     }
 
+<<<<<<< HEAD
     _ordersSub = orders.listen(
       (items) {
         _orders
@@ -441,6 +445,44 @@ class FarmoraState extends ChangeNotifier {
         onError: (Object error) => debugPrint('Completed jobs stream: $error'),
       );
     }
+=======
+    // Subscribe to orders stream
+    _ordersSub?.cancel();
+    final ordersStream = switch (role) {
+      Role.admin => _firestoreService.ordersStream(),
+      Role.farmer => _firestoreService.ordersByFarmerStream(uid),
+      Role.buyer => _firestoreService.ordersByBuyerStream(uid),
+      Role.transporter => _firestoreService.ordersByTransporterStream(uid),
+    };
+    _ordersSub = ordersStream.listen((firestoreOrders) {
+      _orders.clear();
+      _orders.addAll(firestoreOrders);
+      _recalculateStats();
+      notifyListeners();
+    });
+
+    // Subscribe to transport jobs stream
+    _jobsSub?.cancel();
+    final jobsStream = switch (role) {
+      Role.admin => _firestoreService.jobsStream(),
+      Role.transporter => _firestoreService.jobsForTransporterStream(uid),
+      _ => null,
+    };
+    _jobsSub = jobsStream?.listen((firestoreJobs) {
+      _jobs.clear();
+      _jobs.addAll(firestoreJobs);
+      notifyListeners();
+    });
+
+    // Subscribe to verification docs stream (farmer only)
+    _verificationSub?.cancel();
+    _verificationSub =
+        _firestoreService.verificationDocsStream(uid).listen((firestoreDocs) {
+      _verificationDocs.clear();
+      _verificationDocs.addAll(firestoreDocs);
+      notifyListeners();
+    });
+>>>>>>> 1f1f9aeca9393852231c8095a92777ea72c9a6fa
   }
 
   /// Cancel all Firestore subscriptions
@@ -452,6 +494,33 @@ class FarmoraState extends ChangeNotifier {
     _completedJobsSub?.cancel();
     _verificationSub?.cancel();
     _usersSub?.cancel();
+  }
+
+  Future<void> _registerDeviceToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final token = await messaging.getToken();
+      if (token == null || token.isEmpty) return;
+      final platform = kIsWeb
+          ? 'web'
+          : defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android';
+      await _firestoreService.registerDeviceToken(
+        token: token,
+        platform: platform,
+      );
+      _deviceTokenSub?.cancel();
+      _deviceTokenSub = messaging.onTokenRefresh.listen((nextToken) {
+        _firestoreService.registerDeviceToken(
+          token: nextToken,
+          platform: platform,
+        );
+      });
+    } catch (_) {
+      // Push setup is optional until each platform's messaging credentials exist.
+    }
   }
 
   void _recalculateStats() {
@@ -539,8 +608,8 @@ class FarmoraState extends ChangeNotifier {
       await _authService.sendPhoneOtp(phone);
       notifyListeners();
       return true;
-    } catch (e) {
-      authError = e.toString();
+    } catch (error) {
+      authError = error.toString();
       notifyListeners();
       return false;
     }
@@ -555,55 +624,6 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) initFromFirestore(user.uid);
-      return true;
-    } catch (e) {
-      authError = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> verifyPhoneOtpRegistration({
-    required String code,
-    required String name,
-    required String phone,
-    required Role role,
-    String? district,
-  }) async {
-    authError = null;
-    try {
-      final result = await _authService.registerWithPhoneOtp(
-        code: code,
-        name: name,
-        phone: phone,
-        role: role,
-        district: district,
-      );
-      this.role = result.role;
-      signedIn = true;
-      notifyListeners();
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) initFromFirestore(user.uid);
-      return true;
-    } catch (e) {
-      authError = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> uploadProfilePhoto({
-    required Uint8List bytes,
-    required String fileName,
-    required String contentType,
-  }) async {
-    try {
-      profilePhotoUrl = await _firestoreService.uploadProfilePhoto(
-        bytes: bytes,
-        fileName: fileName,
-        contentType: contentType,
-      );
-      notifyListeners();
       return true;
     } catch (error) {
       authError = error.toString();

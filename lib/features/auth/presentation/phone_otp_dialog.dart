@@ -36,11 +36,6 @@ Future<bool> showPhoneOtpDialog({
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Spark plan: use the fixed code configured for this test phone number in Firebase Console.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
           ],
         ),
         actions: [

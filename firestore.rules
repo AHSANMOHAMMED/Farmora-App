@@ -22,9 +22,10 @@ service cloud.firestore {
         && request.resource.data.role in ['farmer', 'buyer', 'transporter']
         && request.resource.data.isVerified == false;
       allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt'
-        ]) || admin();
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+           'displayName', 'languageCode', 'photoUrl', 'address', 'updatedAt',
+           'notificationPreferences'
+         ]) || admin();
       allow delete: if signedIn() && request.auth.uid == userId;
     }
 
@@ -40,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.farmerId == resource.data.farmerId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'category', 'description', 'media', 'quantityAvailable', 'unit',
-          'priceMinor', 'availability', 'updatedAt'
+          'priceMinor', 'availability', 'status', 'updatedAt'
         ]);
       allow delete: if verified(resource.data.farmerId)
         && resource.data.farmerId == request.auth.uid;
@@ -53,8 +54,9 @@ service cloud.firestore {
     }
 
     match /transport_jobs/{jobId} {
-      allow read: if signedIn() && (resource.data.createdBy == request.auth.uid
-        || resource.data.transporterId == request.auth.uid || admin());
+      allow read: if admin()
+        || (verified(request.auth.uid) && resource.data.status == 'requested')
+        || (signedIn() && resource.data.transporterId == request.auth.uid);
       allow create, update, delete: if false;
     }
 

@@ -16,10 +16,63 @@ class FirestoreService {
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  Future<void> registerDeviceToken({
+    required String token,
+    required String platform,
+  }) async {
+    await _functions.httpsCallable('registerDeviceToken').call({
+      'token': token,
+      'platform': platform,
+    });
+  }
+
+  Future<void> unregisterDeviceToken(String token) async {
+    await _functions
+        .httpsCallable('unregisterDeviceToken')
+        .call({'token': token});
+  }
+
+  Future<Map<String, dynamic>> getPlatformSettings() async {
+    final result = await _functions.httpsCallable('getPlatformSettings').call();
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
+  Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
+    await _functions.httpsCallable('updatePlatformSettings').call(settings);
+  }
+
   // ── Users ─────────────────────────────────────────────────
-  Stream<List<Map<String, dynamic>>> usersStream() {
-    return _db.collection('users').snapshots().map((snap) =>
+  Stream<List<Map<String, dynamic>>> usersStream({int limit = 100}) {
+    return _db.collection('users').limit(limit).snapshots().map((snap) =>
         snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
+  }
+
+  Stream<List<Map<String, dynamic>>> notificationsStream(String userId,
+      {int limit = 50}) {
+    return _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await _db
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'read': true});
+  }
+
+  Future<void> updateUserLanguage(String languageCode) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    await _db.collection('users').doc(uid).update({
+      'languageCode': languageCode,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ── Products ──────────────────────────────────────────────
@@ -44,10 +97,11 @@ class FirestoreService {
   }
 
   /// Real-time stream of all products
-  Stream<List<Product>> productsStream() {
+  Stream<List<Product>> productsStream({int limit = 50}) {
     return _db
         .collection('products')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => Product.fromMap(doc.id, doc.data()))
@@ -55,11 +109,13 @@ class FirestoreService {
   }
 
   /// Products stream filtered by farmer
-  Stream<List<Product>> productsByFarmerStream(String farmerId) {
+  Stream<List<Product>> productsByFarmerStream(String farmerId,
+      {int limit = 50}) {
     return _db
         .collection('products')
         .where('farmerId', isEqualTo: farmerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => Product.fromMap(doc.id, doc.data()))
@@ -226,10 +282,11 @@ class FirestoreService {
   }
 
   /// Real-time stream of all orders
-  Stream<List<FarmoraOrder>> ordersStream() {
+  Stream<List<FarmoraOrder>> ordersStream({int limit = 50}) {
     return _db
         .collection('orders')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -237,11 +294,13 @@ class FirestoreService {
   }
 
   /// Orders stream filtered by farmer
-  Stream<List<FarmoraOrder>> ordersByFarmerStream(String farmerId) {
+  Stream<List<FarmoraOrder>> ordersByFarmerStream(String farmerId,
+      {int limit = 50}) {
     return _db
         .collection('orders')
         .where('farmerId', isEqualTo: farmerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -249,11 +308,26 @@ class FirestoreService {
   }
 
   /// Orders stream filtered by buyer
-  Stream<List<FarmoraOrder>> ordersByBuyerStream(String buyerId) {
+  Stream<List<FarmoraOrder>> ordersByBuyerStream(String buyerId,
+      {int limit = 50}) {
     return _db
         .collection('orders')
         .where('buyerId', isEqualTo: buyerId)
         .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  Stream<List<FarmoraOrder>> ordersByTransporterStream(String transporterId,
+      {int limit = 50}) {
+    return _db
+        .collection('orders')
+        .where('transporterId', isEqualTo: transporterId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
@@ -261,17 +335,6 @@ class FirestoreService {
   }
 
   // ── Transport Jobs ────────────────────────────────────────
-
-  Stream<List<FarmoraOrder>> ordersByTransporterStream(String transporterId) {
-    return _db
-        .collection('orders')
-        .where('transporterId', isEqualTo: transporterId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => FarmoraOrder.fromMap(doc.id, doc.data()))
-            .toList());
-  }
 
   /// Add a new transport job
   Future<void> addTransportJob(TransportJob j) async {
@@ -282,10 +345,28 @@ class FirestoreService {
   }
 
   /// Real-time stream of transport jobs
-  Stream<List<TransportJob>> jobsStream() {
+  Stream<List<TransportJob>> jobsStream({int limit = 50}) {
     return _db
         .collection('transport_jobs')
         .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Streams only requested jobs or jobs already assigned to this provider.
+  Stream<List<TransportJob>> jobsForTransporterStream(String transporterId,
+      {int limit = 50}) {
+    return _db
+        .collection('transport_jobs')
+        .where(Filter.or(
+          Filter('status', isEqualTo: 'requested'),
+          Filter('transporterId', isEqualTo: transporterId),
+        ))
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => TransportJob.fromMap(doc.id, doc.data()))

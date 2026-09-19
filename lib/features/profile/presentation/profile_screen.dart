@@ -6,7 +6,6 @@ import '../../../providers/farmora_state.dart';
 import 'language_picker.dart';
 import 'role_sheet.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
-import '../../auth/presentation/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -16,10 +15,6 @@ class ProfileScreen extends StatelessWidget {
     final state = context.watch<FarmoraState>();
     final role = state.role;
     final isFarmer = role == Role.farmer;
-    final name = state.displayName.trim().isEmpty
-        ? 'Farmora User'
-        : state.displayName.trim();
-    final photoUrl = state.profilePhotoUrl;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -43,9 +38,9 @@ class ProfileScreen extends StatelessWidget {
                     border: Border.all(color: AppColors.primary, width: 2),
                   ),
                   child: ClipOval(
-                    child: photoUrl != null && photoUrl.isNotEmpty
-                        ? Image.network(
-                            photoUrl,
+                    child: isFarmer
+                        ? Image.asset(
+                            'assets/images/farmer_headshot.png',
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Icon(
                               Icons.person,
@@ -82,7 +77,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              name,
+              isFarmer ? 'Rohan Silva' : 'Alex Perera',
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 20,
@@ -150,7 +145,7 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.primary),
-                  title: const Text('Switch Role',
+                  title: const Text('Account Role',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text('Current: ${role.label}'),
                   trailing: const Icon(Icons.chevron_right),
@@ -196,14 +191,7 @@ class ProfileScreen extends StatelessWidget {
                   title: const Text('Sign Out',
                       style: TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
-                  onTap: () async {
-                    await context.read<FarmoraState>().signOut();
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
-                    );
-                  },
+                  onTap: () => context.read<FarmoraState>().signOut(),
                 ),
               ],
             ),
