@@ -54,6 +54,28 @@ const config = (name: string): string => {
   return value;
 };
 
+const notifyUser = async (
+  userId: string,
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+): Promise<void> => {
+  const snapshot = await db.collection("users").doc(userId).collection("device_tokens")
+    .where("enabled", "==", true).get();
+  const tokens = snapshot.docs.map((doc) => String(doc.data().token)).filter(Boolean);
+  if (tokens.length === 0) return;
+  const result = await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data,
+  });
+  const removals = result.responses.map((response, index) =>
+    !response.success && response.error?.code === "messaging/registration-token-not-registered"
+      ? snapshot.docs[index].ref.delete()
+      : Promise.resolve());
+  await Promise.all(removals);
+};
+
 // ─── setUserRole ──────────────────────────────────────────────
 // Sets a custom claim on the user's auth token and creates/updates
 // the user document in Firestore.
@@ -98,6 +120,73 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
   return { success: true, role };
 });
 
+export const registerDeviceToken = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const token = typeof data.token === "string" ? data.token.trim() : "";
+  const platform = data.platform === "android" || data.platform === "ios" || data.platform === "web"
+    ? data.platform
+    : "";
+  if (token.length < 20 || token.length > 4096 || !platform) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid notification device token.");
+  }
+  const tokenId = createHash("sha256").update(token).digest("hex");
+  await db.collection("users").doc(uid).collection("device_tokens").doc(tokenId).set({
+    token,
+    platform,
+    enabled: true,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { success: true };
+});
+
+export const unregisterDeviceToken = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const token = typeof data.token === "string" ? data.token.trim() : "";
+  if (token.length < 20 || token.length > 4096) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid notification device token.");
+  }
+  const tokenId = createHash("sha256").update(token).digest("hex");
+  await db.collection("users").doc(uid).collection("device_tokens").doc(tokenId).delete();
+  return { success: true };
+});
+
+export const getPlatformSettings = functions.https.onCall(async (_data, context) => {
+  requireAdmin(context);
+  const snapshot = await db.collection("platform_settings").doc("global").get();
+  return snapshot.exists
+    ? snapshot.data()
+    : { maintenanceMode: false, platformFeeBps: 0, sessionTimeoutMinutes: 60 };
+});
+
+export const updatePlatformSettings = functions.https.onCall(async (data, context) => {
+  const uid = requireAdmin(context);
+  const updates: Record<string, unknown> = {};
+  if (typeof data.maintenanceMode === "boolean") updates.maintenanceMode = data.maintenanceMode;
+  if (data.platformFeeBps !== undefined) {
+    const fee = Number(data.platformFeeBps);
+    if (!Number.isSafeInteger(fee) || fee < 0 || fee > 10000) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid platform fee.");
+    }
+    updates.platformFeeBps = fee;
+  }
+  if (data.sessionTimeoutMinutes !== undefined) {
+    const timeout = Number(data.sessionTimeoutMinutes);
+    if (!Number.isSafeInteger(timeout) || timeout < 5 || timeout > 1440) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid session timeout.");
+    }
+    updates.sessionTimeoutMinutes = timeout;
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new functions.https.HttpsError("invalid-argument", "No settings supplied.");
+  }
+  await db.collection("platform_settings").doc("global").set({
+    ...updates,
+    updatedBy: uid,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { success: true };
+});
+
 // ─── onOrderCreated ───────────────────────────────────────────
 // Triggered when a new order is created. Validates and calculates
 // server-side totals to prevent client-side manipulation.
@@ -140,6 +229,12 @@ export const onOrderCreated = functions.firestore
         read: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      await notifyUser(
+        farmerId,
+        "New order received",
+        `You have a new order worth LKR ${calculatedTotal}`,
+        { type: "new_order", orderId: context.params.orderId }
+      );
     }
   });
 
@@ -279,7 +374,13 @@ export const createOrder = functions.https.onCall(async (data, context) => {
 
 export const createProduct = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
+  const user = await requireRole(uid, ["farmer"]);
+  if (user.isVerified !== true) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Account verification is required before publishing products."
+    );
+  }
   const name = typeof data.name === "string" ? data.name.trim() : "";
   const category = typeof data.category === "string" ? data.category.trim() : "";
   const unit = typeof data.unit === "string" ? data.unit.trim() : "";
@@ -300,8 +401,11 @@ export const createProduct = functions.https.onCall(async (data, context) => {
     unit,
     location,
     priceMinor,
+    price: `LKR ${(priceMinor / 100).toFixed(2)}`,
+    pricePerUnit: priceMinor / 100,
     currency: "LKR",
     quantityAvailable,
+    quantity: String(quantityAvailable),
     status: quantityAvailable > 0 ? "Active" : "Empty",
     media: Array.isArray(data.media) ? data.media.slice(0, 5) : [],
     listingVersion: 1,
