@@ -12,15 +12,12 @@ class OrderDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final currentOrder = state.orders.firstWhere(
-      (o) => o.id == order.id,
-      orElse: () => order,
-    );
+    final currentOrder = state.orders.firstWhere((o) => o.id == order.id, orElse: () => order);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAFF),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF4FAFF),
+        backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
@@ -28,311 +25,233 @@ class OrderDetailScreen extends StatelessWidget {
         ),
         title: const Text(
           'Order Detail',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.onSurface,
-          ),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.onSurface),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _buildProfileAvatar(),
+          ),
+        ],
       ),
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Order Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'ORDER ${currentOrder.orderNumber.toUpperCase()}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: Color(0xFF475467),
-                      ),
-                    ),
-                    // Status Badge: PENDING REVIEW
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE1EFFE),
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF0C5123),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            currentOrder.isPending
-                                ? 'PENDING REVIEW'
-                                : currentOrder.status.toUpperCase(),
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              color: Color(0xFF1D4ED8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Title
-                Text(
-                  currentOrder.title,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF101828),
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Requested Date
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 16,
-                      color: Color(0xFF475467),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      currentOrder.requestedDate.contains('Requested')
-                          ? currentOrder.requestedDate
-                          : 'Requested for ${currentOrder.requestedDate}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: Color(0xFF475467),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // 2. Buyer Info Card
+                // ── Buyer Info Card ──
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2)),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          // Sarah Jenkins Avatar
-                          ClipOval(
-                            child: Image.asset(
-                              'assets/images/buyer_sarah.png',
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Color(0xFFE2E8F0),
-                                child: Icon(Icons.person, color: AppColors.primary),
-                              ),
-                            ),
+                      ClipOval(
+                        child: Image.asset(
+                          currentOrder.buyerAvatar,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 48,
+                            height: 48,
+                            color: AppColors.surfaceContainerLow,
+                            child: const Icon(Icons.person, color: AppColors.primary),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  currentOrder.buyerName,
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF101828),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  currentOrder.buyerCompany,
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 13,
-                                    color: Color(0xFF667085),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              _buildActionCircle(
-                                icon: Icons.phone_outlined,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Calling ${currentOrder.buyerName}...')),
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              _buildActionCircle(
-                                icon: Icons.chat_bubble_outline_rounded,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Opening chat with ${currentOrder.buyerName}...')),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 14),
-                      const Divider(color: Color(0xFFEAECF0), height: 1),
-                      const SizedBox(height: 14),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 22,
-                            color: Color(0xFF475467),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Delivery Address',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 12,
-                                    color: Color(0xFF667085),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  currentOrder.deliveryAddress,
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF101828),
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              currentOrder.buyerCompany,
+                              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              '${currentOrder.buyerName} • ${currentOrder.buyerPhone.isNotEmpty ? currentOrder.buyerPhone : '(555) 123-4567'}',
+                              style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppColors.onSurfaceVariant),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        child: const Icon(Icons.phone, color: Colors.white, size: 20),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // 3. Order Summary Card
+                // ── Stats Row ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'TOTAL VALUE',
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant, letterSpacing: 0.5),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              currentOrder.totalAmount,
+                              style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'ORDER DATE',
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant, letterSpacing: 0.5),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              currentOrder.requestedDate,
+                              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ── Order Details ──
+                const Text(
+                  'Order Details',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 12),
+
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildOrderItem(
+                        currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title,
+                        '${currentOrder.quantity.isNotEmpty ? currentOrder.quantity : currentOrder.detail} @ ${currentOrder.unitPrice.isNotEmpty ? currentOrder.unitPrice : 'LKR 45.00'}',
+                        currentOrder.totalAmount,
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Delivery & Logistics ──
+                const Text(
+                  'Delivery & Logistics',
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 12),
+
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Order Summary',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF101828),
+                      // Map placeholder
+                      Container(
+                        height: 140,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE3F2FD),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.map_outlined, size: 48, color: AppColors.primary),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildSummaryRow(
-                        'Product',
-                        currentOrder.productName.isNotEmpty
-                            ? currentOrder.productName
-                            : currentOrder.title,
-                      ),
-                      _buildDivider(),
-                      _buildSummaryRow(
-                        'Quantity',
-                        currentOrder.quantity.isNotEmpty
-                            ? currentOrder.quantity
-                            : currentOrder.detail,
-                      ),
-                      _buildDivider(),
-                      _buildSummaryRow(
-                        'Unit Price',
-                        currentOrder.unitPrice.isNotEmpty
-                            ? currentOrder.unitPrice
-                            : '\$45.00',
-                      ),
-                      _buildDivider(),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Total',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF101828),
-                              ),
+
+                      // Delivery info
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(color: Color(0xFFE8F5E9), shape: BoxShape.circle),
+                            child: const Icon(Icons.local_shipping_outlined, size: 18, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Requested Delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+                                SizedBox(height: 2),
+                                Text('Oct 26, 2023 - Morning (8AM - 12PM)', style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: AppColors.onSurfaceVariant)),
+                              ],
                             ),
-                            Text(
-                              currentOrder.totalAmount,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0C5123),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Destination
+                      const Text(
+                        'DESTINATION',
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant, letterSpacing: 0.5),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        currentOrder.deliveryAddress,
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurface, height: 1.4),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Note: Deliver to the back alley loading dock.',
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontStyle: FontStyle.italic, color: AppColors.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -341,89 +260,63 @@ class OrderDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // 4. Bottom Action Buttons (Reject / Accept Order)
+          // ── Bottom Action Buttons ──
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
               decoration: BoxDecoration(
-                color: const Color(0xFFF4FAFF).withValues(alpha: 0.95),
+                color: AppColors.surface.withValues(alpha: 0.95),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, -4)),
                 ],
               ),
               child: Row(
                 children: [
                   Expanded(
-                    flex: 1,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        state.declineOrder(currentOrder.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Order rejected'),
-                            backgroundColor: AppColors.error,
-                          ),
-                        );
-                        Navigator.of(context).pop();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFD92D20),
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFFFDA29B), width: 1.5),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9999),
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          state.declineOrder(currentOrder.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Order rejected'), backgroundColor: AppColors.error),
+                          );
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          backgroundColor: const Color(0xFFFEE2E2),
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ),
-                      child: const Text(
-                        'Reject',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFD92D20),
-                        ),
+                        child: const Text('Reject', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        state.acceptOrder(currentOrder.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Order accepted! Balance updated.'),
-                            backgroundColor: AppColors.primary,
-                          ),
-                        );
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(50),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9999),
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          state.acceptOrder(currentOrder.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Order accepted!'), backgroundColor: AppColors.primary),
+                          );
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ),
-                      icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
-                      label: const Text(
-                        'Accept Order',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        icon: const Icon(Icons.check_circle_outline, size: 20),
+                        label: const Text('Accept Order', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ),
@@ -436,54 +329,54 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionCircle({required IconData icon, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: const BoxDecoration(
-          color: Color(0xFFE1EFFE),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 18, color: const Color(0xFF0C5123)),
-      ),
+  Widget _buildProfileAvatar() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+      child: const Icon(Icons.person, color: Colors.white, size: 22),
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
+  Widget _buildOrderItem(String name, String detail, String price) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: Color(0xFF475467),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.eco, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
           Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF101828),
-            ),
+            price,
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return const Divider(
-      color: Color(0xFFEAECF0),
-      height: 1,
     );
   }
 }

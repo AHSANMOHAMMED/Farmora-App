@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/farmer_header.dart';
 import '../../../providers/farmora_state.dart';
 
 class EarningsScreen extends StatelessWidget {
@@ -11,482 +10,387 @@ class EarningsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAFF),
-      appBar: const FarmerHeader(title: 'Earnings'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Hero Card: Total Earnings
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: const Color(0xFF388E3C), // Vibrant green from Image 4
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Subtle Plus / Cross Grid Pattern Overlay
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Opacity(
-                        opacity: 0.15,
-                        child: CustomPaint(painter: _PlusPatternPainter()),
-                      ),
-                    ),
-                  ),
-                  // Wallet icon in bottom-right
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Icon(
-                      Icons.account_balance_wallet_rounded,
-                      size: 56,
-                      color: Colors.white.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'TOTAL EARNINGS',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: const Color(0xFF1B5E20).withValues(alpha: 0.85),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        currencyFormat.format(state.totalEarnings),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: Color(0xFF0A3311),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 2. Summary Cards Row (This Month & This Week)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'This Month',
-                    amount: currencyFormat.format(state.thisMonth),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'This Week',
-                    amount: currencyFormat.format(state.thisWeek),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 3. Pending Payments Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFDDED2), // Soft peach / coral from Image 4
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header ──
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Pending Payments',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF8C5B4F),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        currencyFormat.format(state.pendingPayments),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF6E392B),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Icon(
-                    Icons.assignment_late_outlined,
-                    size: 28,
-                    color: Color(0xFFA66E61),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 4. Monthly Earnings Bar Chart Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
                   const Text(
-                    'Monthly Earnings',
+                    'Earnings Dashboard',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 18,
+                      fontSize: 24,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF101828),
+                      color: AppColors.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    height: 160,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: state.monthlyBars.map((bar) {
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                // Bar
-                                FractionallySizedBox(
-                                  heightFactor: bar.heightRatio.clamp(0.1, 1.0),
-                                  child: Container(
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: bar.isHighlighted
-                                          ? AppColors.primary
-                                          : const Color(0xFFDDE8F0),
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(4),
+                  _buildProfileAvatar(),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // ── Total Earnings Hero Card ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total Earnings',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      currencyFormat.format(state.totalEarnings),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.trending_up, size: 16, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            '+15.2% vs last month',
+                            style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── This Month & This Week Cards ──
+              Row(
+                children: [
+                  Expanded(child: _buildMetricCard('This Month', currencyFormat.format(state.thisMonth), Icons.calendar_today)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildMetricCard('This Week', currencyFormat.format(state.thisWeek), Icons.calendar_view_week)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // ── Pending Payments ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.receipt_long, size: 18, color: Color(0xFFE65100)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Pending Payments',
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currencyFormat.format(state.pendingPayments),
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    GestureDetector(
+                      onTap: () {},
+                      child: const Row(
+                        children: [
+                          Text('View All', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          Icon(Icons.chevron_right, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Monthly Revenue Chart ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Monthly Revenue',
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            children: [
+                              Text('2024', style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+                              Icon(Icons.keyboard_arrow_down, size: 18),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 140,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: state.monthlyBars.map((bar) {
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  FractionallySizedBox(
+                                    heightFactor: bar.heightRatio.clamp(0.1, 1.0),
+                                    child: Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: bar.isHighlighted ? AppColors.primary : const Color(0xFFC8E6C9),
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 10),
-                                // Month Label
-                                Text(
-                                  bar.month,
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 12,
-                                    fontWeight: bar.isHighlighted
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: bar.isHighlighted
-                                        ? AppColors.primary
-                                        : const Color(0xFF667085),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 5. Earnings History Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Earnings History',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF101828),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: state.transactions.length,
-                    separatorBuilder: (_, __) => const Divider(
-                      color: Color(0xFFE4E7EC),
-                      height: 1,
-                    ),
-                    itemBuilder: (context, index) {
-                      final tx = state.transactions[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          children: [
-                            // Tag Icon circle
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFE3EFF8),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.sell_outlined,
-                                color: Color(0xFF0C5123),
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                                  const SizedBox(height: 8),
                                   Text(
-                                    'Order ${tx.orderNumber}',
-                                    style: const TextStyle(
+                                    bar.month,
+                                    style: TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF101828),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    tx.date,
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 12,
-                                      color: Color(0xFF667085),
+                                      fontSize: 11,
+                                      fontWeight: bar.isHighlighted ? FontWeight.w700 : FontWeight.w500,
+                                      color: bar.isHighlighted ? AppColors.primary : AppColors.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Text(
-                              '+${currencyFormat.format(tx.amount)}',
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0C5123),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 6),
-                  // View All Transactions Button
-                  Center(
-                    child: TextButton(
-                      onPressed: () => _showAllTransactionsModal(context, state),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                      ),
-                      child: const Text(
-                        'View All Transactions',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0C5123),
-                        ),
+                          );
+                        }).toList(),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Recent Earnings ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Recent Earnings',
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                  ),
+                  IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.tune, size: 20, color: AppColors.onSurfaceVariant),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+
+              ...state.transactions.take(4).map((tx) => _buildEarningItem(tx, currencyFormat)),
+
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton(
+                  onPressed: () {},
+                  child: const Text(
+                    'Load More History',
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Metric Card (This Month / This Week)
-  Widget _buildMetricCard({
-    required String title,
-    required String amount,
-  }) {
+  Widget _buildProfileAvatar() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+      child: const Icon(Icons.person, color: Colors.white, size: 22),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String amount, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE3EFF8), // Soft light blue from Image 4
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475467),
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.onSurfaceVariant),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             amount,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0C5123),
-            ),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.onSurface),
           ),
         ],
       ),
     );
   }
 
-  void _showAllTransactionsModal(BuildContext context, FarmoraState state) {
-    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  Widget _buildEarningItem(dynamic tx, NumberFormat currencyFormat) {
+    final isPending = tx.status == 'Pending' || tx.status == 'pending';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 1)),
+        ],
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isPending ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPending ? Icons.schedule : Icons.check_circle_outline,
+              size: 20,
+              color: isPending ? const Color(0xFFE65100) : AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Order ${tx.orderNumber}',
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  tx.date,
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: AppColors.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'All Transactions',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF101828),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
+              Text(
+                '+${currencyFormat.format(tx.amount)}',
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
               ),
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: state.transactions.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final tx = state.transactions[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
-                        backgroundColor: Color(0xFFE3EFF8),
-                        child: Icon(Icons.sell_outlined, color: Color(0xFF0C5123), size: 18),
-                      ),
-                      title: Text(
-                        'Order ${tx.orderNumber}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(tx.date),
-                      trailing: Text(
-                        '+${currencyFormat.format(tx.amount)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0C5123),
-                          fontSize: 16,
-                        ),
-                      ),
-                    );
-                  },
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isPending ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isPending ? 'Pending' : 'Completed',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isPending ? const Color(0xFFE65100) : const Color(0xFF2E7D32),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
-}
-
-// Plus sign grid pattern matching Image 4
-class _PlusPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 1.5;
-    const spacing = 24.0;
-    const plusSize = 3.0;
-
-    for (double x = 12; x < size.width; x += spacing) {
-      for (double y = 12; y < size.height; y += spacing) {
-        canvas.drawLine(Offset(x - plusSize, y), Offset(x + plusSize, y), paint);
-        canvas.drawLine(Offset(x, y - plusSize), Offset(x, y + plusSize), paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
