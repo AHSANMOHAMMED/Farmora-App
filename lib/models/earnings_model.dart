@@ -32,6 +32,7 @@ class EarningsTransaction {
   final String date;
   final double amount;
   final bool isCredit;
+  final String status;
 
   const EarningsTransaction({
     required this.id,
@@ -39,5 +40,6 @@ class EarningsTransaction {
     required this.date,
     required this.amount,
     this.isCredit = true,
+    this.status = 'Completed',
   });
 }

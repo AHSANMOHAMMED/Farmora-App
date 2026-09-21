@@ -1,0 +1,1 @@
+Start-Process -FilePath 'python' -ArgumentList '-m','http.server','8083','--directory','C:\Users\Gowsikan Sivananthan\Desktop\Farmora-app\Farmora-App\build\web' -WindowStyle Hidden -PassThru | Select-Object -ExpandProperty Id

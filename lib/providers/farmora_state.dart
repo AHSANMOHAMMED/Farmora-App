@@ -70,10 +70,25 @@ class FarmoraState extends ChangeNotifier {
     _products.addAll([
       const Product(
         id: 'prod-1',
+        name: 'Sweet Corn',
+        category: 'Vegetables',
+        location: 'Valley Farms',
+        quantity: '50 kg available',
+        unit: 'kg',
+        price: '\$3.00 / kg',
+        pricePerUnit: 3.00,
+        emoji: '🌽',
+        imagePath: 'assets/images/heirloom_tomatoes.png',
+        status: 'Active',
+        isOrganic: false,
+        description: '50 kg available',
+      ),
+      const Product(
+        id: 'prod-2',
         name: 'Heirloom Tomatoes',
         category: 'Vegetables',
         location: 'Green Valley Farm',
-        quantity: '50 kg available',
+        quantity: '12 kg available',
         unit: 'kg',
         price: '\$4.50 / kg',
         pricePerUnit: 4.50,
@@ -81,25 +96,55 @@ class FarmoraState extends ChangeNotifier {
         imagePath: 'assets/images/heirloom_tomatoes.png',
         status: 'Active',
         isOrganic: true,
-        description: 'Organic • 50 kg available',
-      ),
-      const Product(
-        id: 'prod-2',
-        name: 'Dinosaur Kale',
-        category: 'Vegetables',
-        location: 'Sunny Ridge Field',
-        quantity: '120 bunches',
-        unit: 'ea',
-        price: '\$2.00 / ea',
-        pricePerUnit: 2.00,
-        emoji: '🥬',
-        imagePath: 'assets/images/dinosaur_kale.png',
-        status: 'Active',
-        isOrganic: false,
-        description: 'Convention • 120 bunches',
+        description: '12 kg available',
       ),
       const Product(
         id: 'prod-3',
+        name: 'Organic Carrots',
+        category: 'Vegetables',
+        location: 'Riverbed Acres',
+        quantity: '0 kg available',
+        unit: 'kg',
+        price: '\$2.10 / kg',
+        pricePerUnit: 2.10,
+        emoji: '🥕',
+        imagePath: 'assets/images/nantes_carrots.png',
+        status: 'Empty',
+        isOrganic: true,
+        description: '0 kg available',
+      ),
+      const Product(
+        id: 'prod-4',
+        name: 'Gala Apples',
+        category: 'Fruits',
+        location: 'Orchard Hills',
+        quantity: '120 kg available',
+        unit: 'kg',
+        price: '\$1.80 / kg',
+        pricePerUnit: 1.80,
+        emoji: '🍎',
+        imagePath: 'assets/images/heirloom_tomatoes.png',
+        status: 'Active',
+        isOrganic: false,
+        description: '120 kg available',
+      ),
+      const Product(
+        id: 'prod-5',
+        name: 'Romaine Lettuce',
+        category: 'Vegetables',
+        location: 'Sunny Ridge Field',
+        quantity: '200 heads',
+        unit: 'ea',
+        price: '\$1.50 / ea',
+        pricePerUnit: 1.50,
+        emoji: '🥬',
+        imagePath: 'assets/images/romaine_lettuce.png',
+        status: 'Active',
+        isOrganic: true,
+        description: '200 heads available',
+      ),
+      const Product(
+        id: 'prod-6',
         name: 'Black Beauty Eggplant',
         category: 'Vegetables',
         location: 'Hilltop Gardens',
@@ -111,22 +156,7 @@ class FarmoraState extends ChangeNotifier {
         imagePath: 'assets/images/black_beauty_eggplant.png',
         status: 'Empty',
         isOrganic: true,
-        description: 'Organic • Restocking soon',
-      ),
-      const Product(
-        id: 'prod-4',
-        name: 'Nantes Carrots',
-        category: 'Vegetables',
-        location: 'Riverbed Acres',
-        quantity: '200 kg available',
-        unit: 'kg',
-        price: '\$1.50 / kg',
-        pricePerUnit: 1.50,
-        emoji: '🥕',
-        imagePath: 'assets/images/nantes_carrots.png',
-        status: 'Active',
-        isOrganic: true,
-        description: 'Organic • 200 kg available',
+        description: 'Restocking soon',
       ),
     ]);
 
@@ -134,94 +164,94 @@ class FarmoraState extends ChangeNotifier {
     _orders.addAll([
       const FarmoraOrder(
         id: 'ord-1',
-        orderNumber: '#1042-A',
-        title: 'Cherry Tomatoes',
-        productName: 'Cherry Tomatoes',
-        quantity: '25 kg • Grade A',
+        orderNumber: 'ORD-8924',
+        title: 'Heirloom Tomatoes',
+        productName: 'Heirloom Tomatoes',
+        quantity: '50 kg',
         grade: 'Grade A',
-        unitPrice: '\$5.00',
+        unitPrice: '\$2.50',
         totalAmount: '\$125.00',
         totalAmountNumber: 125.00,
-        buyerName: 'Local Fresh Market',
-        buyerCompany: 'Local Fresh Market',
+        buyerName: 'Green Grocery',
+        buyerCompany: 'Green Grocery Store',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '450 West End Ave, Distribution Center Bay 4',
-        detail: '25 kg • Grade A',
+        deliveryAddress: '123 Market St, San Francisco, CA 94103',
+        detail: '50 kg',
         status: 'Pending',
-        progress: 0.1,
+        progress: 0.0,
         color: Color(0xFF006E1C),
-        timestamp: 'Today, 08:45 AM',
+        timestamp: 'Oct 24, 09:30 AM',
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.storefront_rounded,
       ),
       const FarmoraOrder(
         id: 'ord-2',
-        orderNumber: '#1042-B',
-        title: 'Romaine Lettuce',
-        productName: 'Romaine Lettuce',
-        quantity: '50 heads • Organic',
-        grade: 'Organic',
-        unitPrice: '\$1.51',
-        totalAmount: '\$75.50',
-        totalAmountNumber: 75.50,
-        buyerName: 'Green Leaf Bistro',
-        buyerCompany: 'Green Leaf Bistro',
+        orderNumber: 'ORD-8925',
+        title: 'Crisphead Lettuce',
+        productName: 'Crisphead Lettuce',
+        quantity: '20 Boxes',
+        grade: 'Grade A',
+        unitPrice: '\$4.00',
+        totalAmount: '\$80.00',
+        totalAmountNumber: 80.00,
+        buyerName: 'Valley Farm',
+        buyerCompany: 'Valley Farm-to-Table',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '782 King Street, Downtown',
-        detail: '50 heads • Organic',
+        deliveryAddress: '456 Farm Road, Napa, CA 94558',
+        detail: '20 Boxes',
         status: 'Pending',
-        progress: 0.1,
+        progress: 0.0,
         color: Color(0xFF006E1C),
-        timestamp: 'Yesterday, 14:20 PM',
+        timestamp: 'Oct 24, 11:15 AM',
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.restaurant_rounded,
       ),
       const FarmoraOrder(
         id: 'ord-3',
-        orderNumber: '#1042-C',
-        title: '120 Crates Organic Fuji Apples',
-        productName: 'Organic Fuji Apples',
-        quantity: '120 Crates (40 lbs ea)',
+        orderNumber: 'ORD-8928',
+        title: 'Organic Carrots',
+        productName: 'Organic Carrots',
+        quantity: '100 kg',
         grade: 'Organic',
-        unitPrice: '\$45.00',
-        totalAmount: '\$5,400.00',
-        totalAmountNumber: 5400.00,
-        buyerName: 'Sarah Jenkins',
-        buyerCompany: 'Fresh Market Co.',
+        unitPrice: '\$1.50',
+        totalAmount: '\$150.00',
+        totalAmountNumber: 150.00,
+        buyerName: 'Local Co-op',
+        buyerCompany: 'Local Co-op \u2606',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '450 West End Ave, Distribution Center Bay 4',
-        detail: '120 Crates (40 lbs ea)',
+        deliveryAddress: '789 Co-op Lane, Berkeley, CA 94704',
+        detail: 'Please ensure stems are kept long if possible.',
         status: 'Pending',
-        progress: 0.1,
+        progress: 0.0,
         color: Color(0xFF006E1C),
-        timestamp: 'Oct 24, 2023',
+        timestamp: 'Oct 24, 02:45 PM',
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.storefront_rounded,
       ),
       const FarmoraOrder(
         id: 'ord-4',
-        orderNumber: '#8892',
+        orderNumber: 'ORD-8892',
         title: 'Heirloom Tomatoes',
         productName: 'Heirloom Tomatoes',
-        quantity: '28 kg • Organic',
+        quantity: '28 kg',
         grade: 'Organic',
         unitPrice: '\$4.50',
         totalAmount: '\$125.00',
         totalAmountNumber: 125.00,
-        buyerName: 'Fresh Market Co.',
+        buyerName: 'Fresh Market',
         buyerCompany: 'Fresh Market Co.',
         buyerAvatar: 'assets/images/buyer_sarah.png',
         deliveryAddress: '450 West End Ave',
-        detail: '28 kg • Organic',
-        status: 'Delivered',
-        progress: 1.0,
+        detail: '28 kg',
+        status: 'Accepted',
+        progress: 0.65,
         color: Color(0xFF006E1C),
-        timestamp: 'May 24, 2024',
-        requestedDate: 'May 24, 2024',
+        timestamp: 'Oct 23, 2024',
+        requestedDate: 'Oct 23, 2024',
       ),
       const FarmoraOrder(
         id: 'ord-5',
-        orderNumber: '#8890',
+        orderNumber: 'ORD-8890',
         title: 'Dinosaur Kale',
         productName: 'Dinosaur Kale',
         quantity: '42 bunches',
@@ -229,7 +259,7 @@ class FarmoraState extends ChangeNotifier {
         unitPrice: '\$2.00',
         totalAmount: '\$85.50',
         totalAmountNumber: 85.50,
-        buyerName: 'Green Leaf Bistro',
+        buyerName: 'Green Leaf',
         buyerCompany: 'Green Leaf Bistro',
         buyerAvatar: 'assets/images/buyer_sarah.png',
         deliveryAddress: '782 King Street',
@@ -237,33 +267,33 @@ class FarmoraState extends ChangeNotifier {
         status: 'Delivered',
         progress: 1.0,
         color: Color(0xFF006E1C),
-        timestamp: 'May 21, 2024',
-        requestedDate: 'May 21, 2024',
+        timestamp: 'Jun 22, 2024',
+        requestedDate: 'Jun 22, 2024',
       ),
       const FarmoraOrder(
         id: 'ord-6',
-        orderNumber: '#8885',
+        orderNumber: 'ORD-8885',
         title: 'Nantes Carrots',
         productName: 'Nantes Carrots',
-        quantity: '140 kg • Organic',
+        quantity: '140 kg',
         grade: 'Organic',
         unitPrice: '\$1.50',
         totalAmount: '\$210.00',
         totalAmountNumber: 210.00,
-        buyerName: 'Local Fresh Market',
+        buyerName: 'Local Fresh',
         buyerCompany: 'Local Fresh Market',
         buyerAvatar: 'assets/images/buyer_sarah.png',
         deliveryAddress: '450 West End Ave',
-        detail: '140 kg • Organic',
+        detail: '140 kg',
         status: 'Delivered',
         progress: 1.0,
         color: Color(0xFF006E1C),
-        timestamp: 'May 18, 2024',
-        requestedDate: 'May 18, 2024',
+        timestamp: 'Jun 15, 2024',
+        requestedDate: 'Jun 15, 2024',
       ),
       const FarmoraOrder(
         id: 'ord-7',
-        orderNumber: '#8881',
+        orderNumber: 'ORD-8881',
         title: 'Romaine Lettuce',
         productName: 'Romaine Lettuce',
         quantity: '40 heads',
@@ -279,26 +309,27 @@ class FarmoraState extends ChangeNotifier {
         status: 'Delivered',
         progress: 1.0,
         color: Color(0xFF006E1C),
-        timestamp: 'May 15, 2024',
-        requestedDate: 'May 15, 2024',
+        timestamp: 'Jun 10, 2024',
+        requestedDate: 'Jun 10, 2024',
       ),
     ]);
 
     _monthlyBars.clear();
     _monthlyBars.addAll([
-      const MonthlyBarData(month: 'Jan', amount: 800, heightRatio: 0.35, isHighlighted: false),
-      const MonthlyBarData(month: 'Feb', amount: 950, heightRatio: 0.45, isHighlighted: false),
-      const MonthlyBarData(month: 'Mar', amount: 1100, heightRatio: 0.55, isHighlighted: false),
-      const MonthlyBarData(month: 'Apr', amount: 850, heightRatio: 0.40, isHighlighted: false),
-      const MonthlyBarData(month: 'May', amount: 1200, heightRatio: 0.85, isHighlighted: true),
+      const MonthlyBarData(month: 'Jan', amount: 800, heightRatio: 0.45, isHighlighted: false),
+      const MonthlyBarData(month: 'Feb', amount: 950, heightRatio: 0.55, isHighlighted: false),
+      const MonthlyBarData(month: 'Mar', amount: 600, heightRatio: 0.35, isHighlighted: false),
+      const MonthlyBarData(month: 'Apr', amount: 700, heightRatio: 0.40, isHighlighted: false),
+      const MonthlyBarData(month: 'May', amount: 1100, heightRatio: 0.75, isHighlighted: false),
+      const MonthlyBarData(month: 'Jun', amount: 1200, heightRatio: 0.90, isHighlighted: true),
     ]);
 
     _transactions.clear();
     _transactions.addAll([
-      const EarningsTransaction(id: 'tx-1', orderNumber: '#8892', date: 'May 24, 2024', amount: 125.00),
-      const EarningsTransaction(id: 'tx-2', orderNumber: '#8890', date: 'May 21, 2024', amount: 85.50),
-      const EarningsTransaction(id: 'tx-3', orderNumber: '#8885', date: 'May 18, 2024', amount: 210.00),
-      const EarningsTransaction(id: 'tx-4', orderNumber: '#8881', date: 'May 15, 2024', amount: 65.00),
+      const EarningsTransaction(id: 'tx-1', orderNumber: '#8921', date: 'June 24, 2024', amount: 240.00, status: 'Completed'),
+      const EarningsTransaction(id: 'tx-2', orderNumber: '#8918', date: 'June 22, 2024', amount: 85.50, status: 'Completed'),
+      const EarningsTransaction(id: 'tx-3', orderNumber: '#8915', date: 'June 21, 2024', amount: 150.00, status: 'Pending'),
+      const EarningsTransaction(id: 'tx-4', orderNumber: '#8890', date: 'June 15, 2024', amount: 420.00, status: 'Completed'),
     ]);
   }
 
@@ -516,12 +547,48 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void acceptOrder(String orderId) {
+    // Update local state (works in demo mode too)
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(
+        status: 'Accepted',
+        progress: 0.6,
+      );
+      _recalculateStats();
+      notifyListeners();
+    }
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Accepted', 0.6);
     }
   }
 
+  void completeOrder(String orderId) {
+    // Update local state (works in demo mode too)
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(
+        status: 'Delivered',
+        progress: 1.0,
+      );
+      _recalculateStats();
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.updateOrderStatus(orderId, 'Delivered', 1.0);
+    }
+  }
+
   void declineOrder(String orderId) {
+    // Update local state (works in demo mode too)
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(
+        status: 'Declined',
+        progress: 0.0,
+      );
+      _recalculateStats();
+      notifyListeners();
+    }
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Declined', 0.0);
     }
@@ -577,15 +644,22 @@ class FarmoraState extends ChangeNotifier {
     }
     final isAdmin = role == Role.admin;
 
-    // Subscribe to products stream
+    // Subscribe to products stream (merge with mock data, never clear)
     _productsSub?.cancel();
     final productsStream = role == Role.farmer
         ? _firestoreService.productsByFarmerStream(uid)
         : _firestoreService.productsStream();
     _productsSub = productsStream.listen((firestoreProducts) {
-      _products.clear();
-      _products.addAll(firestoreProducts);
-      notifyListeners();
+      if (firestoreProducts.isNotEmpty) {
+        // Merge: add Firestore products that don't already exist by id
+        for (final fp in firestoreProducts) {
+          if (!_products.any((p) => p.id == fp.id)) {
+            _products.add(fp);
+          }
+        }
+        notifyListeners();
+      }
+      // When empty, keep mock data untouched
     });
 
     // Subscribe to users stream
@@ -598,7 +672,7 @@ class FarmoraState extends ChangeNotifier {
       });
     }
 
-    // Subscribe to orders stream
+    // Subscribe to orders stream (merge with mock data, never clear)
     _ordersSub?.cancel();
     final ordersStream = switch (role) {
       Role.admin => _firestoreService.ordersStream(),
@@ -607,10 +681,16 @@ class FarmoraState extends ChangeNotifier {
       Role.transporter => _firestoreService.ordersByTransporterStream(uid),
     };
     _ordersSub = ordersStream.listen((firestoreOrders) {
-      _orders.clear();
-      _orders.addAll(firestoreOrders);
-      _recalculateStats();
-      notifyListeners();
+      if (firestoreOrders.isNotEmpty) {
+        for (final fo in firestoreOrders) {
+          if (!_orders.any((o) => o.id == fo.id)) {
+            _orders.add(fo);
+          }
+        }
+        _recalculateStats();
+        notifyListeners();
+      }
+      // When empty, keep mock data untouched
     });
 
     // Subscribe to transport jobs stream
@@ -673,6 +753,8 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void _recalculateStats() {
+    // Don't recalculate if no orders — keep mock data
+    if (_orders.isEmpty) return;
     _totalEarnings = 0.0;
     _thisMonth = 0.0;
     _thisWeek = 0.0;
