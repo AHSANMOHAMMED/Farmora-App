@@ -15,6 +15,7 @@ import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/transporter_dashboard_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
+import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../admin/presentation/verification_review_screen.dart';
@@ -98,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
         TransporterDashboardScreen(),
         AvailableJobsScreen(),
         DeliveryHistoryScreen(),
+        TransporterEarningsScreen(),
         ProfileScreen(),
       ];
       navItems = [
@@ -113,6 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: l10n.orders,
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
+        _NavItem(
+            label: l10n.earnings,
+            icon: Icons.payments_outlined,
+            activeIcon: Icons.payments_rounded),
         _NavItem(
             label: l10n.profile,
             icon: Icons.person_outline_rounded,
