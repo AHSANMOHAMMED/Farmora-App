@@ -2,13 +2,16 @@
 // ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
 /// To regenerate this file, run `flutterfire configure`.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
+    if (kIsWeb) {
+      return web;
+    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -44,8 +47,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_IOS_API_KEY',
-    appId: 'REPLACE_WITH_IOS_APP_ID',
+    apiKey: 'AIzaSyBbyW98LURPAlM5jcT_bdETj-3Xq2Yw5Kg',
+    appId: '1:33678627494:web:11924c52ff26413d549a67',
     messagingSenderId: '33678627494',
     projectId: 'farmingapp-24b34',
     storageBucket: 'farmingapp-24b34.firebasestorage.app',
@@ -53,8 +56,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_MACOS_API_KEY',
-    appId: 'REPLACE_WITH_MACOS_APP_ID',
+    apiKey: 'AIzaSyBbyW98LURPAlM5jcT_bdETj-3Xq2Yw5Kg',
+    appId: '1:33678627494:web:11924c52ff26413d549a67',
     messagingSenderId: '33678627494',
     projectId: 'farmingapp-24b34',
     storageBucket: 'farmingapp-24b34.firebasestorage.app',
