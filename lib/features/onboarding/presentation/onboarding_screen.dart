@@ -29,6 +29,10 @@ class OnboardingSlideData {
 /// Tailored for rural users and participants with varying digital literacy,
 /// featuring large touch targets, high contrast, and role-focused guidance.
 class OnboardingScreen extends StatefulWidget {
+  /// Number of onboarding slides; static so navigation logic outside
+  /// `build` can reference it without the localization-dependent list.
+  static const int slideCount = 3;
+
   final VoidCallback? onComplete;
 
   const OnboardingScreen({
@@ -44,41 +48,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const List<OnboardingSlideData> _slides = [
-    // Screen 1: Farmer
-    OnboardingSlideData(
-      roleBadge: 'FOR FARMERS',
-      roleIcon: Icons.agriculture_rounded,
-      title: 'Sell Your Harvest Directly',
-      description:
-          'Connect directly with buyers without middlemen. Set your own fair prices and receive fast, guaranteed payouts.',
-      imagePath: 'assets/images/onboarding_farmer.png',
-      highlights: ['Direct Sales', 'Fair Pricing', 'Fast Payout'],
-      fallbackIcon: Icons.eco_rounded,
-    ),
-    // Screen 2: Buyer
-    OnboardingSlideData(
-      roleBadge: 'FOR BUYERS',
-      roleIcon: Icons.storefront_rounded,
-      title: 'Get Fresh Products Easily',
-      description:
-          'Browse farm-fresh produce straight from local fields. Enjoy trusted quality and transparent wholesale prices.',
-      imagePath: 'assets/images/onboarding_buyer.png',
-      highlights: ['100% Farm Fresh', 'Direct Sourcing', 'Easy Ordering'],
-      fallbackIcon: Icons.shopping_basket_rounded,
-    ),
-    // Screen 3: Transport
-    OnboardingSlideData(
-      roleBadge: 'FOR TRANSPORTERS',
-      roleIcon: Icons.local_shipping_rounded,
-      title: 'Reliable Transport for Every Order',
-      description:
-          'Find dependable delivery trips along your routes. Transport fresh produce safely and maximize your vehicle earnings.',
-      imagePath: 'assets/images/onboarding_transport.png',
-      highlights: ['Verified Cargo', 'Guaranteed Trips', 'Extra Income'],
-      fallbackIcon: Icons.local_shipping_rounded,
-    ),
-  ];
+  List<OnboardingSlideData> _slides(AppLocalizations l10n) => [
+        // Screen 1: Farmer
+        OnboardingSlideData(
+          roleBadge: l10n.forFarmers,
+          roleIcon: Icons.agriculture_rounded,
+          title: l10n.onboardingSlide1Title,
+          description: l10n.onboardingSlide1Desc,
+          imagePath: 'assets/images/onboarding_farmer.png',
+          highlights: [l10n.onboardingSlide1H1, l10n.onboardingSlide1H2, l10n.onboardingSlide1H3],
+          fallbackIcon: Icons.eco_rounded,
+        ),
+        // Screen 2: Buyer
+        OnboardingSlideData(
+          roleBadge: l10n.forBuyers,
+          roleIcon: Icons.storefront_rounded,
+          title: l10n.onboardingSlide2Title,
+          description: l10n.onboardingSlide2Desc,
+          imagePath: 'assets/images/onboarding_buyer.png',
+          highlights: [l10n.onboardingSlide2H1, l10n.onboardingSlide2H2, l10n.onboardingSlide2H3],
+          fallbackIcon: Icons.shopping_basket_rounded,
+        ),
+        // Screen 3: Transport
+        OnboardingSlideData(
+          roleBadge: l10n.forTransporters,
+          roleIcon: Icons.local_shipping_rounded,
+          title: l10n.onboardingSlide3Title,
+          description: l10n.onboardingSlide3Desc,
+          imagePath: 'assets/images/onboarding_transport.png',
+          highlights: [l10n.onboardingSlide3H1, l10n.onboardingSlide3H2, l10n.onboardingSlide3H3],
+          fallbackIcon: Icons.local_shipping_rounded,
+        ),
+      ];
 
   @override
   void dispose() {
@@ -87,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _onNext() {
-    if (_currentPage < _slides.length - 1) {
+    if (_currentPage < OnboardingScreen.slideCount - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOutCubic,
@@ -128,7 +129,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLastPage = _currentPage == _slides.length - 1;
+    final isLastPage = _currentPage == OnboardingScreen.slideCount - 1;
+    final l10n = AppLocalizations.of(context);
+    final slides = _slides(l10n);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -200,12 +203,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _slides.length,
+                itemCount: slides.length,
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                 },
                 itemBuilder: (context, index) {
-                  final slide = _slides[index];
+                  final slide = slides[index];
                   return _buildSlide(slide);
                 },
               ),
@@ -233,7 +236,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // Animated Page Indicator Dots
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_slides.length, (index) {
+                    children: List.generate(slides.length, (index) {
                       final isActive = index == _currentPage;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 300),

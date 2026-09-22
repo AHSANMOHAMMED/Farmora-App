@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 void main() {
   group('Harvest video product model', () {
     test('hasVideo true when url or path set', () {
-      final withUrl = Product(
+      const withUrl = Product(
         id: 'p1',
         name: 'Carrots',
         category: 'Vegetables',
@@ -15,7 +15,7 @@ void main() {
         price: 'LKR 100',
         pricePerUnit: 100,
         emoji: '🥕',
-        color: const Color(0xFFFFF3E0),
+        color: Color(0xFFFFF3E0),
         status: 'Active',
         isOrganic: true,
         trustLevel: 'Medium',
@@ -32,9 +32,8 @@ void main() {
       );
       expect(withPath.hasVideo, isTrue);
 
-      final cleared = withUrl.copyWith(videoUrl: '', videoPath: '');
-      // copyWith keeps previous if we pass empty - check hasVideo on fresh
-      final none = Product(
+      withUrl.copyWith(videoUrl: '', videoPath: '');
+      const none = Product(
         id: 'p2',
         name: 'Tea',
         category: 'Spices',
@@ -44,7 +43,7 @@ void main() {
         price: 'LKR 500',
         pricePerUnit: 500,
         emoji: '🍃',
-        color: const Color(0xFFE8F5E9),
+        color: Color(0xFFE8F5E9),
         status: 'Active',
         isOrganic: true,
         trustLevel: 'Low',

@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:farmora/main.dart';
+import 'package:farmora/l10n/app_localizations.dart';
+
+/// Localization delegates required by screens that call
+/// `AppLocalizations.of(context)`.
+const _l10nDelegates = <LocalizationsDelegate<dynamic>>[
+  AppLocalizations.delegate,
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
 
 void main() {
   group('Farmora Login Screen Tests', () {
@@ -9,6 +20,8 @@ void main() {
       return ChangeNotifierProvider<FarmoraState>(
         create: (_) => state ?? FarmoraState(),
         child: const MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: LoginScreen(),
         ),
       );
@@ -33,7 +46,7 @@ void main() {
       expect(find.text('Farmora'), findsOneWidget);
 
       // 2. Welcome Back text
-      expect(find.text('Welcome Back'), findsOneWidget);
+      expect(find.text('Welcome back!'), findsOneWidget);
 
       // 3. Input fields
       expect(find.text('Phone Number'), findsOneWidget);

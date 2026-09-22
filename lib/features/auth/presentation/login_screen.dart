@@ -293,26 +293,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
 
                   // 2. Welcome Back Greeting
-                  Text(
-                    AppLocalizations.of(context).welcomeBack,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.forestGreen,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Sign in to manage your harvest, orders, and transport.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                      height: 1.35,
-                    ),
-                  ),
+                  Builder(builder: (context) {
+                    final l10n = AppLocalizations.of(context);
+                    return Column(
+                      children: [
+                        Text(
+                          l10n.welcomeBack,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.forestGreen,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          l10n.signInSubtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                   const SizedBox(height: 20),
 
                   // 3. Card Container for Inputs

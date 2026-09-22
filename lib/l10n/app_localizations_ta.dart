@@ -562,4 +562,165 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get verifyTransporterHint =>
       'கிடைக்கும் வேலைகளைப் பார்க்க கணக்கை சரிபார்க்கவும்.';
+
+  @override
+  String get joinFarmoraAs => 'Farmora இல் சேரவும்';
+
+  @override
+  String get roleSelectionSubtitle =>
+      'Farmora க்கு வரவேற்கிறோம். வேளாண் சந்தையில் நீங்கள் பங்கேற்கும் விதத்தைத் தேர்வு செய்யவும்.';
+
+  @override
+  String get continueToFarmora => 'Farmora க்கு தொடரவும்';
+
+  @override
+  String get alreadyHaveAccount => 'ஏற்கனவே கணக்கு உள்ளதா? ';
+
+  @override
+  String get logInLink => 'உள்நுழை';
+
+  @override
+  String get registerLink => 'பதிவு செய்';
+
+  @override
+  String get chooseRoleHint => 'தொடர உங்கள் பங்கைத் தேர்வு செய்யவும்';
+
+  @override
+  String get iWantToSell => 'என் பொருட்களை விற்க விரும்புகிறேன்';
+
+  @override
+  String get iWantToBuy => 'பொருட்களை வாங்க விரும்புகிறேன்';
+
+  @override
+  String get iWantToDeliver => 'பொருட்களை விநியோகிக்க விரும்புகிறேன்';
+
+  @override
+  String joiningAs(String role) {
+    return '$role ஆக சேர்கிறேன்';
+  }
+
+  @override
+  String get changeRole => 'மாற்று';
+
+  @override
+  String get uploadPhotoOptional => 'புகைப்படத்தை பதிவேற்று (விருப்பம்)';
+
+  @override
+  String get fullName => 'முழு பெயர்';
+
+  @override
+  String get districtLocation => 'மாவட்டம் / இடம்';
+
+  @override
+  String get confirmPassword => 'கடவுச்சொல்லை உறுதிப்படுத்து';
+
+  @override
+  String get nameHint => 'எ.கா. கமல் பெரேரா';
+
+  @override
+  String get phoneHint => 'எ.கா. 077 123 4567';
+
+  @override
+  String get selectDistrict => 'உங்கள் மாவட்டத்தைத் தேர்வு செய்க';
+
+  @override
+  String get passwordHint => 'வலுவான கடவுச்சொல்லை உருவாக்குங்கள்';
+
+  @override
+  String get confirmPasswordHint => 'கடவுச்சொல்லை மீண்டும் உள்ளிடுங்கள்';
+
+  @override
+  String get enterYourPassword => 'உங்கள் கடவுச்சொல்லை உள்ளிடுங்கள்';
+
+  @override
+  String get forgotPassword => 'கடவுச்சொல் மறந்ததா?';
+
+  @override
+  String get signInSubtitle =>
+      'உங்கள் அறுவடை, ஆர்டர்கள் மற்றும் போக்குவரத்தை நிர்வகிக்க உள்நுழையவும்.';
+
+  @override
+  String get nameRequiredError => 'உங்கள் முழு பெயரை உள்ளிடவும்';
+
+  @override
+  String get phoneRequiredError => 'உங்கள் தொலைபேசி எண்ணை உள்ளிடவும்';
+
+  @override
+  String get districtRequiredError => 'உங்கள் மாவட்டத்தைத் தேர்வு செய்யவும்';
+
+  @override
+  String get passwordRequiredError => 'கடவுச்சொல்லை உள்ளிடவும்';
+
+  @override
+  String get passwordTooShort =>
+      'கடவுச்சொல் குறைந்தது 6 எழுத்துகள் இருக்க வேண்டும்';
+
+  @override
+  String get confirmPasswordRequiredError =>
+      'உங்கள் கடவுச்சொல்லை உறுதிப்படுத்தவும்';
+
+  @override
+  String get passwordsDoNotMatch => 'கடவுச்சொற்கள் பொருந்தவில்லை';
+
+  @override
+  String get agreeToTerms =>
+      'சேவை விதிமுறைகள் மற்றும் தனியுரிமைக் கொள்கையை நான் ஏற்கிறேன்';
+
+  @override
+  String get forFarmers => 'விவசாயிகளுக்கான';
+
+  @override
+  String get forBuyers => 'வாங்குபவர்களுக்கான';
+
+  @override
+  String get forTransporters => 'போக்குவரத்தாளர்களுக்கான';
+
+  @override
+  String get onboardingSlide1Title => 'உங்கள் அறுவடையை நேரடியாக விற்கவும்';
+
+  @override
+  String get onboardingSlide1Desc =>
+      'இடைத்தரகர்கள் இல்லாமல் வாங்குபவர்களுடன் நேரடியாக தொடர்பு கொள்ளுங்கள். சொந்த நியாயமான விலையை நிர்ணயித்து விரைவான, உத்தரவாதமான கொடுப்பனவுகளைப் பெறுங்கள்.';
+
+  @override
+  String get onboardingSlide1H1 => 'நேரடி விற்பனை';
+
+  @override
+  String get onboardingSlide1H2 => 'நியாயமான விலை';
+
+  @override
+  String get onboardingSlide1H3 => 'விரைவான பணம்';
+
+  @override
+  String get onboardingSlide2Title => 'புதிய பொருட்களை எளிதாகப் பெறுங்கள்';
+
+  @override
+  String get onboardingSlide2Desc =>
+      'உள்ளூர் வயல்களில் இருந்து நேரடியாக பண்ணை-புதிய காய்கறிகளை உலாவுங்கள். நம்பகமான தரம் மற்றும் வெளிப்படையான மொத்த விலைகளை அனுபவிக்கவும்.';
+
+  @override
+  String get onboardingSlide2H1 => '100% பண்ணை புதியது';
+
+  @override
+  String get onboardingSlide2H2 => 'நேரடி மூலம்';
+
+  @override
+  String get onboardingSlide2H3 => 'எளிதான ஆர்டர்';
+
+  @override
+  String get onboardingSlide3Title =>
+      'ஒவ்வொரு ஆர்டருக்கும் நம்பகமான போக்குவரத்து';
+
+  @override
+  String get onboardingSlide3Desc =>
+      'உங்கள் வழிகளில் நம்பகமான டெலிவரி பயணங்களைக் கண்டறியுங்கள். புதிய உற்பத்திப் பொருட்களை பாதுகாப்பாக கொண்டு சென்று உங்கள் வாகன வருவாயை அதிகரிக்கவும்.';
+
+  @override
+  String get onboardingSlide3H1 => 'சரிபார்க்கப்பட்ட சரக்கு';
+
+  @override
+  String get onboardingSlide3H2 => 'உத்தரவாத பயணங்கள்';
+
+  @override
+  String get onboardingSlide3H3 => 'கூடுதல் வருவாய்';
 }

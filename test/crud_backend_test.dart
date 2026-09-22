@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 void main() {
   group('Product Model CRUD', () {
     test('Product creation and serialization', () {
-      final p = Product(
+      const p = Product(
         id: 'p1',
         name: 'Fresh Carrots',
         price: 'LKR 250/kg',
@@ -65,7 +65,7 @@ void main() {
 
   group('TransportJob Model CRUD (Epic 2)', () {
     test('Job linking to Order, status progression', () {
-      final job = TransportJob(
+      const job = TransportJob(
         id: 'job-1',
         title: 'Delivery for Fresh Carrots',
         route: 'Farm → Colombo Port',
