@@ -45,7 +45,7 @@ void main() {
   group('Product create payload fields', () {
     test('quantityAvailable and media urls are available for secure create',
         () {
-      final product = Product(
+      const product = Product(
         name: 'Beans',
         category: 'Vegetables',
         location: 'Local Farm',
@@ -55,9 +55,9 @@ void main() {
         pricePerUnit: 150,
         priceMinor: 15000,
         quantityAvailable: 20,
-        media: const ['https://example.com/a.jpg'],
-        imageUrls: const ['https://example.com/a.jpg'],
-        images: const ['https://example.com/a.jpg'],
+        media: ['https://example.com/a.jpg'],
+        imageUrls: ['https://example.com/a.jpg'],
+        images: ['https://example.com/a.jpg'],
         farmerId: 'farmer-9',
       );
 

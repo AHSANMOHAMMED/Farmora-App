@@ -562,4 +562,162 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get verifyTransporterHint =>
       'Verify your transporter account to see available jobs.';
+
+  @override
+  String get joinFarmoraAs => 'Join Farmora as';
+
+  @override
+  String get roleSelectionSubtitle =>
+      'Welcome to Farmora. Choose how you want to participate in the agricultural marketplace.';
+
+  @override
+  String get continueToFarmora => 'Continue to Farmora';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account? ';
+
+  @override
+  String get logInLink => 'Log In';
+
+  @override
+  String get registerLink => 'Register';
+
+  @override
+  String get chooseRoleHint => 'Choose your role to continue';
+
+  @override
+  String get iWantToSell => 'I want to sell my products';
+
+  @override
+  String get iWantToBuy => 'I want to buy products';
+
+  @override
+  String get iWantToDeliver => 'I want to deliver products';
+
+  @override
+  String joiningAs(String role) {
+    return 'Joining as $role';
+  }
+
+  @override
+  String get changeRole => 'Change';
+
+  @override
+  String get uploadPhotoOptional => 'Upload Photo (Optional)';
+
+  @override
+  String get fullName => 'Full Name';
+
+  @override
+  String get districtLocation => 'District / Location';
+
+  @override
+  String get confirmPassword => 'Confirm Password';
+
+  @override
+  String get nameHint => 'e.g. Kamal Perera';
+
+  @override
+  String get phoneHint => 'e.g. 077 123 4567';
+
+  @override
+  String get selectDistrict => 'Select your district';
+
+  @override
+  String get passwordHint => 'Create a strong password';
+
+  @override
+  String get confirmPasswordHint => 'Re-enter your password';
+
+  @override
+  String get enterYourPassword => 'Enter your password';
+
+  @override
+  String get forgotPassword => 'Forgot Password?';
+
+  @override
+  String get signInSubtitle =>
+      'Sign in to manage your harvest, orders, and transport.';
+
+  @override
+  String get nameRequiredError => 'Please enter your full name';
+
+  @override
+  String get phoneRequiredError => 'Please enter your phone number';
+
+  @override
+  String get districtRequiredError => 'Please select your district';
+
+  @override
+  String get passwordRequiredError => 'Please enter a password';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters';
+
+  @override
+  String get confirmPasswordRequiredError => 'Please confirm your password';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match';
+
+  @override
+  String get agreeToTerms =>
+      'I agree to the Terms of Service and Privacy Policy';
+
+  @override
+  String get forFarmers => 'FOR FARMERS';
+
+  @override
+  String get forBuyers => 'FOR BUYERS';
+
+  @override
+  String get forTransporters => 'FOR TRANSPORTERS';
+
+  @override
+  String get onboardingSlide1Title => 'Sell Your Harvest Directly';
+
+  @override
+  String get onboardingSlide1Desc =>
+      'Connect directly with buyers without middlemen. Set your own fair prices and receive fast, guaranteed payouts.';
+
+  @override
+  String get onboardingSlide1H1 => 'Direct Sales';
+
+  @override
+  String get onboardingSlide1H2 => 'Fair Pricing';
+
+  @override
+  String get onboardingSlide1H3 => 'Fast Payout';
+
+  @override
+  String get onboardingSlide2Title => 'Get Fresh Products Easily';
+
+  @override
+  String get onboardingSlide2Desc =>
+      'Browse farm-fresh produce straight from local fields. Enjoy trusted quality and transparent wholesale prices.';
+
+  @override
+  String get onboardingSlide2H1 => '100% Farm Fresh';
+
+  @override
+  String get onboardingSlide2H2 => 'Direct Sourcing';
+
+  @override
+  String get onboardingSlide2H3 => 'Easy Ordering';
+
+  @override
+  String get onboardingSlide3Title => 'Reliable Transport for Every Order';
+
+  @override
+  String get onboardingSlide3Desc =>
+      'Find dependable delivery trips along your routes. Transport fresh produce safely and maximize your vehicle earnings.';
+
+  @override
+  String get onboardingSlide3H1 => 'Verified Cargo';
+
+  @override
+  String get onboardingSlide3H2 => 'Guaranteed Trips';
+
+  @override
+  String get onboardingSlide3H3 => 'Extra Income';
 }

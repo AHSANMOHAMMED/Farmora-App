@@ -1,7 +1,47 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:provider/provider.dart';
 import 'package:farmora/main.dart';
+import 'package:farmora/l10n/app_localizations.dart';
+
+/// Localization delegates required by screens that call
+/// `AppLocalizations.of(context)`.
+const _l10nDelegates = <LocalizationsDelegate<dynamic>>[
+  AppLocalizations.delegate,
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
+
+/// Platform fake returning a fake picked image so the optional
+/// photo-uploader flow can be tested without a real gallery picker.
+class _FakeImagePickerPlatform extends ImagePickerPlatform {
+  final XFile pickImageResult;
+
+  _FakeImagePickerPlatform(this.pickImageResult);
+
+  @override
+  Future<XFile?> getImageFromSource({
+    required ImageSource source,
+    ImagePickerOptions options = const ImagePickerOptions(),
+  }) async {
+    return pickImageResult;
+  }
+}
+
+void _mockImagePicker() {
+  ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+    XFile.fromData(
+      Uint8List.fromList(List.filled(16, 0xFF)),
+      name: 'profile.jpg',
+      mimeType: 'image/jpeg',
+    ),
+  );
+}
 
 void main() {
   group('Farmora Register Screen Tests', () {
@@ -13,6 +53,8 @@ void main() {
       return ChangeNotifierProvider<FarmoraState>(
         create: (_) => state ?? FarmoraState(),
         child: MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: RegisterScreen(
             selectedRole: selectedRole,
             onRegistered: onRegistered,
@@ -78,11 +120,12 @@ void main() {
 
     testWidgets('toggles optional profile photo on tap', (tester) async {
       setupViewport(tester);
+      _mockImagePicker();
       await tester.pumpWidget(createRegisterTestWidget());
 
       expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
 
-      // Tap to toggle photo
+      // Tap to pick a photo
       await tester.tap(find.text('Upload Photo (Optional)'));
       await tester.pump();
 
@@ -192,12 +235,23 @@ void main() {
 
     testWidgets('tapping Log In navigates to LoginScreen', (tester) async {
       setupViewport(tester);
-      await tester.pumpWidget(createRegisterTestWidget());
+      await tester.pumpWidget(
+        ChangeNotifierProvider<FarmoraState>(
+          create: (_) => FarmoraState(),
+          child: const MaterialApp(
+            localizationsDelegates: _l10nDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: RegisterScreen(
+              selectedRole: Role.farmer,
+            ),
+          ),
+        ),
+      );
 
       await tester.tap(find.text('Log In'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Welcome Back'), findsOneWidget);
+      expect(find.text('Welcome back!'), findsOneWidget);
     });
   });
 }

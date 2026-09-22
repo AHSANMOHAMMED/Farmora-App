@@ -3,7 +3,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:farmora/main.dart' as app;
 import 'package:farmora/app.dart';
 import 'package:farmora/features/auth/presentation/login_screen.dart';
-import 'package:farmora/features/home/presentation/home_screen.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

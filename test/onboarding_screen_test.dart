@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmora/main.dart';
+import 'package:farmora/l10n/app_localizations.dart';
+
+/// Localization delegates required by screens that call
+/// `AppLocalizations.of(context)`.
+const _l10nDelegates = <LocalizationsDelegate<dynamic>>[
+  AppLocalizations.delegate,
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
 
 void main() {
   group('Farmora Onboarding Screens Tests', () {
@@ -9,6 +20,8 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: OnboardingScreen(),
         ),
       );
@@ -35,6 +48,8 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: OnboardingScreen(),
         ),
       );
@@ -58,13 +73,15 @@ void main() {
       expect(find.text('Reliable Transport for Every Order'), findsOneWidget);
       expect(find.text('FOR TRANSPORTERS'), findsOneWidget);
       expect(find.text('Verified Cargo'), findsOneWidget);
-      expect(find.text('Get Started'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
     });
 
     testWidgets('Back button navigates back to previous slide',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: OnboardingScreen(),
         ),
       );
@@ -86,6 +103,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: OnboardingScreen(
             onComplete: () => completed = true,
           ),
@@ -106,6 +125,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: _l10nDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: OnboardingScreen(
             onComplete: () => completed = true,
           ),
@@ -122,8 +143,8 @@ void main() {
 
       expect(completed, isFalse);
 
-      // Tap Get Started on Screen 3
-      await tester.tap(find.text('Get Started'));
+      // Tap Done on Screen 3
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
 
       expect(completed, isTrue);

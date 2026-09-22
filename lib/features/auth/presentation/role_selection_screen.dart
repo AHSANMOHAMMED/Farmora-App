@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/user_role.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -41,29 +42,29 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Role? _selectedRole;
 
-  static const List<_RoleOption> _roleOptions = [
-    // 1. Farmer
-    _RoleOption(
-      role: Role.farmer,
-      title: 'Farmer',
-      description: 'I want to sell my products',
-      icon: Icons.agriculture_rounded,
-    ),
-    // 2. Buyer
-    _RoleOption(
-      role: Role.buyer,
-      title: 'Buyer',
-      description: 'I want to buy products',
-      icon: Icons.shopping_basket_rounded,
-    ),
-    // 3. Transport Provider
-    _RoleOption(
-      role: Role.transporter,
-      title: 'Transport Provider',
-      description: 'I want to deliver products',
-      icon: Icons.local_shipping_rounded,
-    ),
-  ];
+  List<_RoleOption> _roleOptions(AppLocalizations l10n) => [
+        // 1. Farmer
+        _RoleOption(
+          role: Role.farmer,
+          title: l10n.farmer,
+          description: l10n.iWantToSell,
+          icon: Icons.agriculture_rounded,
+        ),
+        // 2. Buyer
+        _RoleOption(
+          role: Role.buyer,
+          title: l10n.buyer,
+          description: l10n.iWantToBuy,
+          icon: Icons.shopping_basket_rounded,
+        ),
+        // 3. Transport Provider
+        _RoleOption(
+          role: Role.transporter,
+          title: l10n.transporter,
+          description: l10n.iWantToDeliver,
+          icon: Icons.local_shipping_rounded,
+        ),
+      ];
 
   @override
   void initState() {
@@ -88,6 +89,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final isSelected = _selectedRole != null;
+    final l10n = AppLocalizations.of(context);
+    final roleOptions = _roleOptions(l10n);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -130,9 +133,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               const SizedBox(height: 28),
 
               // Title: "Join Farmora as"
-              const Text(
-                'Join Farmora as',
-                style: TextStyle(
+              Text(
+                l10n.joinFarmoraAs,
+                style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
                   color: AppColors.forestGreen,
@@ -141,9 +144,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Welcome to Farmora. Choose how you want to participate in the agricultural marketplace.',
-                style: TextStyle(
+              Text(
+                l10n.roleSelectionSubtitle,
+                style: const TextStyle(
                   fontSize: 15,
                   color: AppColors.textSecondary,
                   height: 1.4,
@@ -152,7 +155,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               const SizedBox(height: 24),
 
               // Three Large Selectable Cards
-              ..._roleOptions.map((option) {
+              ...roleOptions.map((option) {
                 final isCardSelected = _selectedRole == option.role;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -182,7 +185,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Continue to Farmora',
+                        l10n.continueToFarmora,
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -206,9 +209,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Already have an account? ',
-                    style: TextStyle(
+                  Text(
+                    l10n.alreadyHaveAccount,
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -222,9 +225,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         ),
                       );
                     },
-                    child: const Text(
-                      'Log In',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.logInLink,
+                      style: const TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
@@ -237,10 +240,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               const SizedBox(height: 12),
 
-              const Center(
+              Center(
                 child: Text(
-                  'Choose your role to continue',
-                  style: TextStyle(color: Colors.black38, fontSize: 12),
+                  l10n.chooseRoleHint,
+                  style: const TextStyle(color: Colors.black38, fontSize: 12),
                 ),
               ),
             ],

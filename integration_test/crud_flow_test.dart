@@ -4,12 +4,9 @@ import 'package:integration_test/integration_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:farmora/main.dart' as app;
-import 'package:farmora/app.dart';
-import 'package:farmora/features/auth/presentation/login_screen.dart';
 import 'package:farmora/features/home/presentation/home_screen.dart';
 import 'package:farmora/providers/farmora_state.dart';
 import 'package:farmora/models/user_role.dart';
-import 'package:farmora/features/auth/presentation/auth_gate.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 void main() {
@@ -99,10 +96,7 @@ void main() {
       // BUYER FLOW (Orders CRUD)
       // ==========================================
       expect(find.text('Marketplace'), findsOneWidget);
-      // Since it's a real Firebase project, we might not find products consistently,
-      // but if we do, we can proceed.
-      final productsList = find.byType(Card); // Finding card is risky without keys
-      
+
       // Switch role to Transporter
       state.signOut();
       await tester.pumpAndSettle();

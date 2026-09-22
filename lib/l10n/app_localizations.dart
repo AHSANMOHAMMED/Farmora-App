@@ -1203,6 +1203,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verify your transporter account to see available jobs.'**
   String get verifyTransporterHint;
+
+  /// No description provided for @joinFarmoraAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Join Farmora as'**
+  String get joinFarmoraAs;
+
+  /// No description provided for @roleSelectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Farmora. Choose how you want to participate in the agricultural marketplace.'**
+  String get roleSelectionSubtitle;
+
+  /// No description provided for @continueToFarmora.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to Farmora'**
+  String get continueToFarmora;
+
+  /// No description provided for @alreadyHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
+  String get alreadyHaveAccount;
+
+  /// No description provided for @logInLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Log In'**
+  String get logInLink;
+
+  /// No description provided for @registerLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get registerLink;
+
+  /// No description provided for @chooseRoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your role to continue'**
+  String get chooseRoleHint;
+
+  /// No description provided for @iWantToSell.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to sell my products'**
+  String get iWantToSell;
+
+  /// No description provided for @iWantToBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to buy products'**
+  String get iWantToBuy;
+
+  /// No description provided for @iWantToDeliver.
+  ///
+  /// In en, this message translates to:
+  /// **'I want to deliver products'**
+  String get iWantToDeliver;
+
+  /// No description provided for @joiningAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Joining as {role}'**
+  String joiningAs(String role);
+
+  /// No description provided for @changeRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get changeRole;
+
+  /// No description provided for @uploadPhotoOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Photo (Optional)'**
+  String get uploadPhotoOptional;
+
+  /// No description provided for @fullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name'**
+  String get fullName;
+
+  /// No description provided for @districtLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'District / Location'**
+  String get districtLocation;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
+
+  /// No description provided for @nameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Kamal Perera'**
+  String get nameHint;
+
+  /// No description provided for @phoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 077 123 4567'**
+  String get phoneHint;
+
+  /// No description provided for @selectDistrict.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your district'**
+  String get selectDistrict;
+
+  /// No description provided for @passwordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a strong password'**
+  String get passwordHint;
+
+  /// No description provided for @confirmPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-enter your password'**
+  String get confirmPasswordHint;
+
+  /// No description provided for @enterYourPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get enterYourPassword;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get forgotPassword;
+
+  /// No description provided for @signInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to manage your harvest, orders, and transport.'**
+  String get signInSubtitle;
+
+  /// No description provided for @nameRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your full name'**
+  String get nameRequiredError;
+
+  /// No description provided for @phoneRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your phone number'**
+  String get phoneRequiredError;
+
+  /// No description provided for @districtRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select your district'**
+  String get districtRequiredError;
+
+  /// No description provided for @passwordRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a password'**
+  String get passwordRequiredError;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters'**
+  String get passwordTooShort;
+
+  /// No description provided for @confirmPasswordRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please confirm your password'**
+  String get confirmPasswordRequiredError;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @agreeToTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the Terms of Service and Privacy Policy'**
+  String get agreeToTerms;
+
+  /// No description provided for @forFarmers.
+  ///
+  /// In en, this message translates to:
+  /// **'FOR FARMERS'**
+  String get forFarmers;
+
+  /// No description provided for @forBuyers.
+  ///
+  /// In en, this message translates to:
+  /// **'FOR BUYERS'**
+  String get forBuyers;
+
+  /// No description provided for @forTransporters.
+  ///
+  /// In en, this message translates to:
+  /// **'FOR TRANSPORTERS'**
+  String get forTransporters;
+
+  /// No description provided for @onboardingSlide1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sell Your Harvest Directly'**
+  String get onboardingSlide1Title;
+
+  /// No description provided for @onboardingSlide1Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect directly with buyers without middlemen. Set your own fair prices and receive fast, guaranteed payouts.'**
+  String get onboardingSlide1Desc;
+
+  /// No description provided for @onboardingSlide1H1.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Sales'**
+  String get onboardingSlide1H1;
+
+  /// No description provided for @onboardingSlide1H2.
+  ///
+  /// In en, this message translates to:
+  /// **'Fair Pricing'**
+  String get onboardingSlide1H2;
+
+  /// No description provided for @onboardingSlide1H3.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast Payout'**
+  String get onboardingSlide1H3;
+
+  /// No description provided for @onboardingSlide2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Fresh Products Easily'**
+  String get onboardingSlide2Title;
+
+  /// No description provided for @onboardingSlide2Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse farm-fresh produce straight from local fields. Enjoy trusted quality and transparent wholesale prices.'**
+  String get onboardingSlide2Desc;
+
+  /// No description provided for @onboardingSlide2H1.
+  ///
+  /// In en, this message translates to:
+  /// **'100% Farm Fresh'**
+  String get onboardingSlide2H1;
+
+  /// No description provided for @onboardingSlide2H2.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Sourcing'**
+  String get onboardingSlide2H2;
+
+  /// No description provided for @onboardingSlide2H3.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy Ordering'**
+  String get onboardingSlide2H3;
+
+  /// No description provided for @onboardingSlide3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reliable Transport for Every Order'**
+  String get onboardingSlide3Title;
+
+  /// No description provided for @onboardingSlide3Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Find dependable delivery trips along your routes. Transport fresh produce safely and maximize your vehicle earnings.'**
+  String get onboardingSlide3Desc;
+
+  /// No description provided for @onboardingSlide3H1.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified Cargo'**
+  String get onboardingSlide3H1;
+
+  /// No description provided for @onboardingSlide3H2.
+  ///
+  /// In en, this message translates to:
+  /// **'Guaranteed Trips'**
+  String get onboardingSlide3H2;
+
+  /// No description provided for @onboardingSlide3H3.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Income'**
+  String get onboardingSlide3H3;
 }
 
 class _AppLocalizationsDelegate

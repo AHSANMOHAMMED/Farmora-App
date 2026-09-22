@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -288,7 +289,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Field 1: Full Name
-                      _buildFieldLabel('Full Name'),
+                      _buildFieldLabel(AppLocalizations.of(context).fullName),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _nameController,
@@ -297,12 +298,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: _buildInputDecoration(
-                          hintText: 'e.g. Kamal Perera',
+                          hintText: AppLocalizations.of(context).nameHint,
                           icon: Icons.person_outline_rounded,
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your full name';
+                            return AppLocalizations.of(context)
+                                .nameRequiredError;
                           }
                           return null;
                         },
@@ -310,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Field 2: Phone Number
-                      _buildFieldLabel('Phone Number'),
+                      _buildFieldLabel(AppLocalizations.of(context).phoneNumber),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _phoneController,
@@ -320,12 +322,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: _buildInputDecoration(
-                          hintText: 'e.g. 077 123 4567',
+                          hintText: AppLocalizations.of(context).phoneHint,
                           icon: Icons.phone_outlined,
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your phone number';
+                            return AppLocalizations.of(context)
+                                .phoneRequiredError;
                           }
                           return null;
                         },
@@ -333,7 +336,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Field 3: District / Location
-                      _buildFieldLabel('District / Location'),
+                      _buildFieldLabel(
+                          AppLocalizations.of(context).districtLocation),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedDistrict,
@@ -355,7 +359,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: AppColors.textPrimary,
                         ),
                         decoration: _buildInputDecoration(
-                          hintText: 'Select your district',
+                          hintText: AppLocalizations.of(context).selectDistrict,
                           icon: Icons.location_on_outlined,
                         ),
                         items: _districts.map((d) {
@@ -369,7 +373,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please select your district';
+                            return AppLocalizations.of(context)
+                                .districtRequiredError;
                           }
                           return null;
                         },
@@ -377,7 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Field 4: Password
-                      _buildFieldLabel('Password'),
+                      _buildFieldLabel(AppLocalizations.of(context).password),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _passwordController,
@@ -387,7 +392,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: _buildInputDecoration(
-                          hintText: 'Create a strong password',
+                          hintText: AppLocalizations.of(context).passwordHint,
                           icon: Icons.lock_outline_rounded,
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -406,10 +411,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a password';
+                            return AppLocalizations.of(context)
+                                .passwordRequiredError;
                           }
                           if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
+                            return AppLocalizations.of(context)
+                                .passwordTooShort;
                           }
                           return null;
                         },
@@ -417,7 +424,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Field 5: Confirm Password
-                      _buildFieldLabel('Confirm Password'),
+                      _buildFieldLabel(
+                          AppLocalizations.of(context).confirmPassword),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _confirmPasswordController,
@@ -427,7 +435,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: _buildInputDecoration(
-                          hintText: 'Re-enter your password',
+                          hintText:
+                              AppLocalizations.of(context).confirmPasswordHint,
                           icon: Icons.lock_outline_rounded,
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -447,10 +456,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please confirm your password';
+                            return AppLocalizations.of(context)
+                                .confirmPasswordRequiredError;
                           }
                           if (value != _passwordController.text) {
-                            return 'Passwords do not match';
+                            return AppLocalizations.of(context)
+                                .passwordsDoNotMatch;
                           }
                           return null;
                         },
@@ -466,9 +477,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       setState(() => _acceptedTerms = v ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'I agree to the Terms of Service and Privacy Policy',
-                    style: TextStyle(fontSize: 13),
+                  title: Text(
+                    AppLocalizations.of(context).agreeToTerms,
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -548,9 +559,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Text(
-                      'Already have an account? ',
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.of(context).alreadyHaveAccount,
+                      style: const TextStyle(
                         fontSize: 15,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
@@ -564,9 +575,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         );
                       },
-                      child: const Text(
-                        'Log In',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context).logInLink,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: AppColors.primary,
@@ -626,7 +637,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Joining as ${widget.selectedRole.label}',
+                  AppLocalizations.of(context)
+                      .joiningAs(widget.selectedRole.label),
                   style: const TextStyle(
                     fontSize: 15,
                     color: AppColors.forestGreen,
@@ -730,9 +742,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Upload Photo (Optional)',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context).uploadPhotoOptional,
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,

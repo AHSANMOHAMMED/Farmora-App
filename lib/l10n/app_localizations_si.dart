@@ -562,4 +562,162 @@ class AppLocalizationsSi extends AppLocalizations {
   @override
   String get verifyTransporterHint =>
       'ලබා ගත හැකි රැකියා බැලීමට ඔබේ ගිණුම සත්‍යාපනය කරන්න.';
+
+  @override
+  String get joinFarmoraAs => 'Farmora වෙත එක් වන්න';
+
+  @override
+  String get roleSelectionSubtitle =>
+      'Farmora වෙත සාදරයෙන් පිළිගනිමු. කෘෂිකාර්මික වෙළඳපොළට ඔබ සහභාගි වන ආකාරය තෝරන්න.';
+
+  @override
+  String get continueToFarmora => 'Farmora වෙත දිගටම';
+
+  @override
+  String get alreadyHaveAccount => 'දැනටමත් ගිණුමක් තිබේද? ';
+
+  @override
+  String get logInLink => 'පිවිසෙන්න';
+
+  @override
+  String get registerLink => 'ලියාපදිංචි වන්න';
+
+  @override
+  String get chooseRoleHint => 'දිගටම යාමට ඔබේ භූමිකාව තෝරන්න';
+
+  @override
+  String get iWantToSell => 'මම මගේ නිෂ්පාදන විකුණන්න කැමති';
+
+  @override
+  String get iWantToBuy => 'මම නිෂ්පාදන මිලදී ගන්න කැමති';
+
+  @override
+  String get iWantToDeliver => 'මම නිෂ්පාදන බෙදාහරින්න කැමති';
+
+  @override
+  String joiningAs(String role) {
+    return '$role ලෙස එක් වෙමි';
+  }
+
+  @override
+  String get changeRole => 'වෙනස් කරන්න';
+
+  @override
+  String get uploadPhotoOptional => 'ඡායාරූපය ඇතුළත් කරන්න (විකල්ප)';
+
+  @override
+  String get fullName => 'සම්පූර්ණ නම';
+
+  @override
+  String get districtLocation => 'දිස්ත්‍රික්කය / ස්ථානය';
+
+  @override
+  String get confirmPassword => 'මුරපදය තහවුරු කරන්න';
+
+  @override
+  String get nameHint => 'උදා. කමල් පෙරේරා';
+
+  @override
+  String get phoneHint => 'උදා. 077 123 4567';
+
+  @override
+  String get selectDistrict => 'ඔබේ දිස්ත්‍රික්කය තෝරන්න';
+
+  @override
+  String get passwordHint => 'ශක්තිමත් මුරපදයක් සාදන්න';
+
+  @override
+  String get confirmPasswordHint => 'මුරපදය නැවත ඇතුළත් කරන්න';
+
+  @override
+  String get enterYourPassword => 'ඔබේ මුරපදය ඇතුළත් කරන්න';
+
+  @override
+  String get forgotPassword => 'මුරපදය අමතක වුණාද?';
+
+  @override
+  String get signInSubtitle =>
+      'ඔබේ අස්වැන්න, ඇණවුම් සහ ප්‍රවාහනය කළමනාකරණය කිරීමට පිවිසෙන්න.';
+
+  @override
+  String get nameRequiredError => 'කරුණාකර ඔබේ සම්පූර්ණ නම ඇතුළත් කරන්න';
+
+  @override
+  String get phoneRequiredError => 'කරුණාකර ඔබේ දුරකථන අංකය ඇතුළත් කරන්න';
+
+  @override
+  String get districtRequiredError => 'කරුණාකර ඔබේ දිස්ත්‍රික්කය තෝරන්න';
+
+  @override
+  String get passwordRequiredError => 'කරුණාකර මුරපදයක් ඇතුළත් කරන්න';
+
+  @override
+  String get passwordTooShort => 'මුරපදය අකුරු 6කට වඩා වැඩි විය යුතුය';
+
+  @override
+  String get confirmPasswordRequiredError => 'කරුණාකර ඔබේ මුරපදය තහවුරු කරන්න';
+
+  @override
+  String get passwordsDoNotMatch => 'මුරපද නොගැලපේ';
+
+  @override
+  String get agreeToTerms =>
+      'මම සේවා කොන්දේසි සහ පෞද්ගලිකත්෵ ප්‍රතිපත්තියට එකඟ වෙමි';
+
+  @override
+  String get forFarmers => 'ගොවීන් සඳහා';
+
+  @override
+  String get forBuyers => 'මිලදී ගන්නන් සඳහා';
+
+  @override
+  String get forTransporters => 'ප්‍රවාහකයින් සඳහා';
+
+  @override
+  String get onboardingSlide1Title => 'ඔබේ අස්වැන්න කෙලින්ම විකුණන්න';
+
+  @override
+  String get onboardingSlide1Desc =>
+      'අතථ්‍ය අතරමැදියන් නොමැතිව මිලදී ගන්නන් සමඟ සෘජුව සම්බන්ධ වන්න. සාධාරණ මිලක් තබා වේගවත්, සහතික කළ ගෙවීම් ලබා ගන්න.';
+
+  @override
+  String get onboardingSlide1H1 => 'සෘජු අලෙවිය';
+
+  @override
+  String get onboardingSlide1H2 => 'සාධාරණ මිල';
+
+  @override
+  String get onboardingSlide1H3 => 'වේගවත් ගෙවීම';
+
+  @override
+  String get onboardingSlide2Title => 'නැවුම් නිෂ්පාදන පහසුවෙන් ලබා ගන්න';
+
+  @override
+  String get onboardingSlide2Desc =>
+      'දේශීය ගොවිබිම්වලින් කෙලින්ම ගොවිපළ නැවුම් එළවළු පැළෑටි පිරික්සන්න. විශ්වාසදායක ගුණාත්මකභාවය සහ පාරදෘශ්‍ය තොග මිලක් භුක්ති විඳින්න.';
+
+  @override
+  String get onboardingSlide2H1 => '100% ගොවිපළ නැවුම්';
+
+  @override
+  String get onboardingSlide2H2 => 'සෘජු මූලාශ්‍ර';
+
+  @override
+  String get onboardingSlide2H3 => 'පහසු ඇණවුම';
+
+  @override
+  String get onboardingSlide3Title => 'සෑම ඇණවුමකටම විශ්වාසදායක ප්‍රවාහනය';
+
+  @override
+  String get onboardingSlide3Desc =>
+      'ඔබේ මාර්ග දිගේ විශ්වාසදායක බෙදාහැරීමේ ගමන් සොයන්න. නැවුම් නිෂ්පාදන ආරක්ෂිතව ප්‍රවාහනය කර ඔබේ වාහන ආදායම උපරිම කරන්න.';
+
+  @override
+  String get onboardingSlide3H1 => 'සත්‍යාපිත භාරය';
+
+  @override
+  String get onboardingSlide3H2 => 'සහතික කළ ගමන්';
+
+  @override
+  String get onboardingSlide3H3 => 'අමතර ආදායම';
 }
