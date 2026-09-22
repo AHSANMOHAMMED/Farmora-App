@@ -43,3 +43,9 @@ node_modules/
 
 # Agent and MCP configs
 .agents/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
