@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/farmora_strings.dart';
 import '../../../models/order.dart';
+import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/delivery_location_service.dart';
+import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 
 class LogisticsTrackingScreen extends StatefulWidget {
@@ -18,6 +23,27 @@ class LogisticsTrackingScreen extends StatefulWidget {
 
 class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   final Set<int> _checkedItems = {0};
+  final FirestoreService _service = FirestoreService();
+  StreamSubscription<List<TransportJob>>? _jobSub;
+  TransportJob? _job;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.order.id.isNotEmpty) {
+      _jobSub = _service.jobByOrderStream(widget.order.id).listen((jobs) {
+        if (mounted && jobs.isNotEmpty) {
+          setState(() => _job = jobs.first);
+        }
+      }, onError: (e) => debugPrint('Tracking job stream error: $e'));
+    }
+  }
+
+  @override
+  void dispose() {
+    _jobSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +53,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
       (o) => o.id == widget.order.id,
       orElse: () => widget.order,
     );
+    final courierLive = _job?.hasCourierLocation ?? false;
+    final courierFresh =
+        DeliveryLocationService.isLocationFresh(_job?.locationUpdatedAt);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -389,6 +418,26 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                           ),
                         ],
                       ),
+                      if (courierLive) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.swap_calls_rounded,
+                                size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Live driver GPS: ${_job!.courierLat!.toStringAsFixed(4)}, ${_job!.courierLng!.toStringAsFixed(4)}',
+                                style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.onSurfaceVariant),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -447,25 +496,89 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
+                                color: courierLive && courierFresh
+                                    ? AppColors.primary
+                                    : Colors.black.withValues(alpha: 0.55),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.navigation_rounded,
-                                      size: 12, color: Colors.white),
-                                  SizedBox(width: 5),
-                                  Text('Live telemetry active',
-                                      style: TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 11,
-                                          color: Colors.white)),
+                                  Icon(
+                                    courierLive
+                                        ? Icons.my_location_rounded
+                                        : Icons.navigation_rounded,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    courierLive
+                                        ? (courierFresh
+                                            ? 'Driver location LIVE'
+                                            : 'Driver location updating…')
+                                        : 'Live telemetry active',
+                                    style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 11,
+                                        color: Colors.white),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
                         ],
                       ),
+                      // Live driver position banner
+                      if (courierLive)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: courierFresh
+                                ? const Color(0xFFE8F5E9)
+                                : AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: courierFresh
+                                  ? AppColors.primary
+                                  : const Color(0xFFE0E0E0),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                courierFresh
+                                    ? Icons.satellite_alt_rounded
+                                    : Icons.location_searching_rounded,
+                                size: 16,
+                                color: courierFresh
+                                    ? AppColors.primary
+                                    : AppColors.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  courierFresh
+                                      ? 'Driver is sharing live GPS — watch the map marker move.'
+                                      : 'Showing last known driver position.',
+                                  style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 11,
+                                      color: AppColors.onSurfaceVariant),
+                                ),
+                              ),
+                              Text(
+                                _job!.status.toUpperCase(),
+                                style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.onSurface),
+                              ),
+                            ],
+                          ),
+                        ),
                       // Waypoint details
                       Container(
                         width: double.infinity,

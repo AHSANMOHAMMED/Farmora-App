@@ -117,6 +117,37 @@ void main() {
       expect(lookup!.district, 'Jaffna');
     });
 
+    test('FarmoraState removes commodity rate and logs audit event', () {
+      final state = FarmoraState();
+      final initialCount = state.marketPrices.length;
+      state.addMarketPrice(
+        MarketPriceIndex(
+          id: 'mpi-del-1',
+          cropName: 'Test Pumpkin',
+          category: 'Vegetables',
+          district: 'Kandy',
+          minPricePerKg: 60.0,
+          maxPricePerKg: 90.0,
+          averagePricePerKg: 75.0,
+          trend: 'stable',
+          updatedAt: DateTime.now(),
+        ),
+      );
+      expect(state.marketPrices.length, initialCount + 1);
+
+      state.removeMarketPrice('mpi-del-1');
+
+      expect(state.marketPrices.length, initialCount);
+      expect(state.getMarketPriceForCrop('Test Pumpkin'), isNull);
+      // Deletion is audit-logged.
+      expect(
+        state.auditLogs.any((log) =>
+            log.actionType == 'MARKET_PRICE_DELETE' &&
+            log.targetId == 'mpi-del-1'),
+        isTrue,
+      );
+    });
+
     test('FarmoraState arbitrates dispute with refund_buyer outcome', () async {
       final state = FarmoraState();
       expect(state.orders.isNotEmpty, isTrue);
@@ -133,7 +164,8 @@ void main() {
       expect(updated.paymentStatus, 'refunded');
     });
 
-    test('FarmoraState arbitrates dispute with release_farmer outcome', () async {
+    test('FarmoraState arbitrates dispute with release_farmer outcome',
+        () async {
       final state = FarmoraState();
       expect(state.orders.isNotEmpty, isTrue);
 
@@ -161,7 +193,8 @@ void main() {
       );
 
       expect(state.notifications.length, initialNotifs + 1);
-      expect(state.notifications.first.title.contains('Severe Weather Warning'), isTrue);
+      expect(state.notifications.first.title.contains('Severe Weather Warning'),
+          isTrue);
     });
 
     test('FarmoraState moderates and deletes reviews', () async {
@@ -184,7 +217,9 @@ void main() {
       expect(state.reviews.length, countBeforeDelete - 1);
     });
 
-    test('FarmoraState executes user management actions (verify, role, suspend)', () async {
+    test(
+        'FarmoraState executes user management actions (verify, role, suspend)',
+        () async {
       final state = FarmoraState();
       expect(state.users.isNotEmpty, isTrue);
 
@@ -192,7 +227,8 @@ void main() {
       final uid = (user['uid'] ?? user['id']).toString();
 
       await state.setUserVerified(userId: uid, verified: true);
-      var updatedUser = state.users.firstWhere((u) => (u['uid'] ?? u['id']) == uid);
+      var updatedUser =
+          state.users.firstWhere((u) => (u['uid'] ?? u['id']) == uid);
       expect(updatedUser['isVerified'], isTrue);
 
       await state.updateUserRole(userId: uid, role: 'transporter');
@@ -208,7 +244,8 @@ void main() {
       final state = FarmoraState();
 
       expect(state.maintenanceMode, isFalse);
-      state.setMaintenanceMode(enabled: true, notice: 'Upgrading database servers');
+      state.setMaintenanceMode(
+          enabled: true, notice: 'Upgrading database servers');
       expect(state.maintenanceMode, isTrue);
       expect(state.maintenanceNotice, 'Upgrading database servers');
 
@@ -246,7 +283,8 @@ void main() {
       expect(restored.actorName, 'Admin Super');
       expect(restored.targetEntity, 'Order');
 
-      final copied = log.copyWith(severity: 'critical', details: 'Updated detail');
+      final copied =
+          log.copyWith(severity: 'critical', details: 'Updated detail');
       expect(copied.severity, 'critical');
       expect(copied.details, 'Updated detail');
       expect(copied.actorId, 'usr-admin-1');
@@ -282,12 +320,14 @@ void main() {
       expect(restored.bankName, 'Commercial Bank of Ceylon');
       expect(restored.netAmount, 9500.0);
 
-      final settled = payout.copyWith(status: 'settled', transactionReference: 'CEFT-999');
+      final settled =
+          payout.copyWith(status: 'settled', transactionReference: 'CEFT-999');
       expect(settled.status, 'settled');
       expect(settled.transactionReference, 'CEFT-999');
     });
 
-    test('FarmoraState manages audit logs and auto-instruments admin actions', () async {
+    test('FarmoraState manages audit logs and auto-instruments admin actions',
+        () async {
       final state = FarmoraState();
       expect(state.auditLogs.isNotEmpty, isTrue);
 
@@ -300,26 +340,32 @@ void main() {
       expect(latest.targetId, 'usr-farmer-1');
     });
 
-    test('FarmoraState manages treasury escrow settlements (approve, hold, retry)', () async {
+    test(
+        'FarmoraState manages treasury escrow settlements (approve, hold, retry)',
+        () async {
       final state = FarmoraState();
       expect(state.settlements.isNotEmpty, isTrue);
 
-      final pending = state.settlements.firstWhere((s) => s.status == 'pending');
+      final pending =
+          state.settlements.firstWhere((s) => s.status == 'pending');
       await state.approveSettlement(pending.id);
 
-      final updatedSettled = state.settlements.firstWhere((s) => s.id == pending.id);
+      final updatedSettled =
+          state.settlements.firstWhere((s) => s.id == pending.id);
       expect(updatedSettled.status, 'settled');
       expect(updatedSettled.transactionReference, isNotNull);
 
       // Hold test
       await state.holdSettlement(updatedSettled.id, 'Bank account discrepancy');
-      final updatedHeld = state.settlements.firstWhere((s) => s.id == pending.id);
+      final updatedHeld =
+          state.settlements.firstWhere((s) => s.id == pending.id);
       expect(updatedHeld.status, 'on_hold');
       expect(updatedHeld.holdReason, 'Bank account discrepancy');
 
       // Retry test
       await state.retrySettlement(updatedHeld.id);
-      final updatedRetried = state.settlements.firstWhere((s) => s.id == pending.id);
+      final updatedRetried =
+          state.settlements.firstWhere((s) => s.id == pending.id);
       expect(updatedRetried.status, 'processing');
       expect(updatedRetried.holdReason, isNull);
     });

@@ -17,6 +17,18 @@ class TransportJob {
   final int? capacityKg;
   final int? weightKg;
 
+  /// Live courier coordinates while the delivery is active.
+  /// Cleared by the backend once the job is delivered/cancelled.
+  final double? courierLat;
+  final double? courierLng;
+  final DateTime? locationUpdatedAt;
+
+  /// Optional pickup/dropoff coordinates captured at order time.
+  final double? pickupLat;
+  final double? pickupLng;
+  final double? dropoffLat;
+  final double? dropoffLng;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -35,7 +47,23 @@ class TransportJob {
     this.district,
     this.capacityKg,
     this.weightKg,
+    this.courierLat,
+    this.courierLng,
+    this.locationUpdatedAt,
+    this.pickupLat,
+    this.pickupLng,
+    this.dropoffLat,
+    this.dropoffLng,
   });
+
+  bool get hasCourierLocation =>
+      courierLat != null && courierLng != null;
+
+  bool get hasRouteCoordinates =>
+      pickupLat != null &&
+      pickupLng != null &&
+      dropoffLat != null &&
+      dropoffLng != null;
 
   static const validTransitions = {
     'requested': ['accepted'],
@@ -71,6 +99,13 @@ class TransportJob {
     String? district,
     int? capacityKg,
     int? weightKg,
+    double? courierLat,
+    double? courierLng,
+    DateTime? locationUpdatedAt,
+    double? pickupLat,
+    double? pickupLng,
+    double? dropoffLat,
+    double? dropoffLng,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -90,6 +125,13 @@ class TransportJob {
       district: district ?? this.district,
       capacityKg: capacityKg ?? this.capacityKg,
       weightKg: weightKg ?? this.weightKg,
+      courierLat: courierLat ?? this.courierLat,
+      courierLng: courierLng ?? this.courierLng,
+      locationUpdatedAt: locationUpdatedAt ?? this.locationUpdatedAt,
+      pickupLat: pickupLat ?? this.pickupLat,
+      pickupLng: pickupLng ?? this.pickupLng,
+      dropoffLat: dropoffLat ?? this.dropoffLat,
+      dropoffLng: dropoffLng ?? this.dropoffLng,
     );
   }
 
@@ -111,6 +153,8 @@ class TransportJob {
       'district': district,
       'capacityKg': capacityKg,
       'weightKg': weightKg,
+      if (courierLat != null) 'courierLat': courierLat,
+      if (courierLng != null) 'courierLng': courierLng,
     };
   }
 
@@ -138,6 +182,22 @@ class TransportJob {
       capacityKg: (data['capacityKg'] as num?)?.toInt(),
       weightKg: (data['weightKg'] as num?)?.toInt() ??
           (data['capacityKg'] as num?)?.toInt(),
+      courierLat: (data['courierLat'] as num?)?.toDouble(),
+      courierLng: (data['courierLng'] as num?)?.toDouble(),
+      locationUpdatedAt: _tryParseDate(data['locationUpdatedAt']),
+      pickupLat: (data['pickupLat'] as num?)?.toDouble(),
+      pickupLng: (data['pickupLng'] as num?)?.toDouble(),
+      dropoffLat: (data['dropoffLat'] as num?)?.toDouble(),
+      dropoffLng: (data['dropoffLng'] as num?)?.toDouble(),
     );
+  }
+
+  static DateTime? _tryParseDate(dynamic v) {
+    if (v == null) return null;
+    try {
+      return DateTime.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
   }
 }

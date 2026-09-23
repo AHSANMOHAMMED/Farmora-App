@@ -89,12 +89,17 @@ class Review {
 
   factory Review.fromMap(String id, Map<String, dynamic> data) {
     ReviewStatus statusValue = ReviewStatus.pending;
-    try {
-      statusValue = ReviewStatus.values.firstWhere(
-        (e) => e.name == data['status'],
-      );
-    } catch (e) {
-      statusValue = ReviewStatus.pending;
+    // `status` is the canonical field; fall back to legacy `moderationStatus`
+    // written by submitReview / older clients.
+    final rawStatus = (data['status'] ?? data['moderationStatus'])?.toString();
+    if (rawStatus != null) {
+      try {
+        statusValue = ReviewStatus.values.firstWhere(
+          (e) => e.name == rawStatus,
+        );
+      } catch (e) {
+        statusValue = ReviewStatus.pending;
+      }
     }
 
     return Review(
@@ -108,9 +113,10 @@ class Review {
       rating: (data['rating'] as num?)?.toInt() ?? 5,
       comment: data['comment'] ?? '',
       status: statusValue,
-      createdAt: DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String()),
-      moderatedAt: data['moderatedAt'] != null 
-          ? DateTime.parse(data['moderatedAt']) 
+      createdAt:
+          DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String()),
+      moderatedAt: data['moderatedAt'] != null
+          ? DateTime.parse(data['moderatedAt'])
           : null,
       moderationNote: data['moderationNote'] as String?,
     );

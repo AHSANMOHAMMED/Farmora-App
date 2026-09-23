@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:typed_data';
 import '../core/config/app_backend.dart';
 import '../models/product.dart';
 import '../models/order.dart';
@@ -11,6 +11,10 @@ import '../models/verification_model.dart';
 import '../models/conversation_model.dart';
 import '../models/offer.dart';
 import '../models/notification_model.dart';
+import '../models/review_model.dart';
+import '../models/audit_log_model.dart';
+import '../models/settlement_model.dart';
+import '../models/market_price_index.dart';
 import 'spark_backend.dart';
 
 // ============================================================
@@ -131,6 +135,29 @@ class FirestoreService {
       'languageCode': languageCode,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Update editable profile fields (name, district, country, photo) on the
+  /// user's Firestore document. Only non-null fields are written.
+  Future<void> updateUserProfile({
+    String? name,
+    String? district,
+    String? country,
+    String? photoUrl,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    final data = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (name != null) {
+      data['name'] = name;
+      data['displayName'] = name;
+    }
+    if (district != null) data['district'] = district;
+    if (country != null) data['country'] = country;
+    if (photoUrl != null) data['photoUrl'] = photoUrl;
+    await _db.collection('users').doc(uid).update(data);
   }
 
   // ── Products ──────────────────────────────────────────────
@@ -871,6 +898,7 @@ class FirestoreService {
   }) async {
     await _db.collection('reviews').doc(reviewId).update({
       'status': status,
+      'moderationStatus': status,
       'moderationNote': note,
       'moderatedAt': FieldValue.serverTimestamp(),
     });
@@ -883,6 +911,107 @@ class FirestoreService {
   Stream<List<Map<String, dynamic>>> reviewsStream({int limit = 100}) {
     return _db.collection('reviews').limit(limit).snapshots().map((snap) =>
         snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  /// Typed reviews stream for admin moderation. Tolerates legacy docs that
+  /// use `moderationStatus` instead of `status`.
+  Stream<List<Review>> adminReviewsStream({int limit = 100}) {
+    return _db.collection('reviews').limit(limit).snapshots().map((snap) =>
+        snap.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['status'] ??= data['moderationStatus'];
+          return Review.fromMap(doc.id, data);
+        }).toList());
+  }
+
+  // ── Admin: Audit Trail (Firestore-backed) ───────────────────
+
+  Stream<List<AuditLog>> auditLogsStream({int limit = 200}) {
+    return _db
+        .collection('audit_logs')
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => AuditLog.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  /// Append-only audit write. Failures are swallowed: audit logging must
+  /// never break the user-facing action it records.
+  Future<void> writeAuditLog(AuditLog log) async {
+    try {
+      await _db.collection('audit_logs').doc(log.id).set({
+        ...log.toMap(),
+        'serverCreatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Audit log write skipped: $e');
+    }
+  }
+
+  // ── Admin: Treasury Settlements (Firestore-backed) ──────────
+
+  Stream<List<SettlementPayout>> settlementsStream({int limit = 200}) {
+    return _db
+        .collection('settlements')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => SettlementPayout.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Future<void> createSettlement(SettlementPayout s) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    await _db.collection('settlements').doc(s.id).set({
+      ...s.toMap(),
+      if (uid != null) 'createdBy': uid,
+      'serverCreatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateSettlementStatus(
+    String settlementId, {
+    required String status,
+    String? transactionReference,
+    String? holdReason,
+    bool clearHoldReason = false,
+  }) async {
+    await _db.collection('settlements').doc(settlementId).update({
+      'status': status,
+      if (transactionReference != null)
+        'transactionReference': transactionReference,
+      if (holdReason != null) 'holdReason': holdReason,
+      if (clearHoldReason) 'holdReason': null,
+      if (status == 'settled') 'settledAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ── Admin: Market Price Index (Firestore-backed) ────────────
+
+  Stream<List<MarketPriceIndex>> marketPricesStream({int limit = 200}) {
+    return _db
+        .collection('market_prices')
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => MarketPriceIndex.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Future<void> upsertMarketPrice(MarketPriceIndex p) async {
+    await _db.collection('market_prices').doc(p.id).set({
+      ...p.toMap(),
+      'serverUpdatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> deleteMarketPrice(String priceId) async {
+    await _db.collection('market_prices').doc(priceId).delete();
   }
 
   Future<void> reviewVerificationDoc({
@@ -1057,6 +1186,53 @@ class FirestoreService {
         .map((snap) => snap.docs
             .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
             .toList());
+  }
+
+  /// Live tracking stream for one order's transport job (courier coordinates,
+  /// status transitions). Emits an empty list while no job exists yet.
+  Stream<List<TransportJob>> jobByOrderStream(String orderId) {
+    return _db
+        .collection('transport_jobs')
+        .where('orderId', isEqualTo: orderId)
+        .limit(1)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Verified transporters available for nearby discovery. Reads public
+  /// profile fields (name, district, vehicle, last known location) — never
+  /// phone numbers, which stay private per the messaging policy.
+  Stream<List<Map<String, dynamic>>> transportersStream({int limit = 100}) {
+    return _db
+        .collection('users')
+        .where('role', isEqualTo: 'transporter')
+        .where('isSuspended', isNotEqualTo: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => {'uid': doc.id, ...doc.data()})
+            .toList());
+  }
+
+  /// Persist the signed-in user's last known location on their profile.
+  /// Used for "nearby" discovery — never exposes a continuous trail.
+  Future<void> updateMyLocation({
+    required double lat,
+    required double lng,
+    String? accuracyLabel,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Authentication required.');
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw StateError('Invalid coordinates.');
+    }
+    await _db.collection('users').doc(uid).update({
+      'location': {'lat': lat, 'lng': lng},
+      'locationUpdatedAt': FieldValue.serverTimestamp(),
+      if (accuracyLabel != null) 'locationAccuracy': accuracyLabel,
+    });
   }
 
   // ── Verification Documents ────────────────────────────────

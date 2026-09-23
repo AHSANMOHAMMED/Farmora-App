@@ -144,10 +144,13 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      allow read: if resource.data.moderationStatus == 'approved' || admin()
+      allow read: if resource.data.moderationStatus == 'approved'
+        || resource.data.status == 'approved'
+        || admin()
         || (signedIn() && resource.data.reviewerId == request.auth.uid);
       allow create: if buyer()
         && request.resource.data.reviewerId == request.auth.uid;
+      // Admin moderation writes status / moderationNote / moderatedAt.
       allow update: if admin();
       allow delete: if admin();
     }
@@ -201,8 +204,26 @@ service cloud.firestore {
 
     match /audit_logs/{logId} {
       allow read: if admin();
-      allow create: if admin();
+      // Append-only: admins (or functions) may create, nobody may modify.
+      allow create: if admin()
+        && request.resource.data.actorId == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // Market price benchmarks: public read, admin-managed.
+    match /market_prices/{priceId} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Treasury payouts: recipients see their own; admins manage all.
+    match /settlements/{settlementId} {
+      allow read: if admin()
+        || (signedIn() && resource.data.recipientId == request.auth.uid);
+      allow create: if admin()
+        || (signedIn() && request.resource.data.recipientId == request.auth.uid);
+      allow update: if admin();
+      allow delete: if false;
     }
 
     match /offers/{offerId} {
