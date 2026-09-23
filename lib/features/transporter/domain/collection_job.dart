@@ -38,6 +38,25 @@ enum CollectionJobStatus {
   }
 }
 
+/// One entry in a job's status history.
+///
+/// [label] is human readable, [at] is when the step happened and [isDone]
+/// marks completed steps. Pending steps are rendered greyed out.
+enum CollectionJobTimelineStep {
+  created('Job created', null),
+  accepted('Accepted', CollectionJobStatus.accepted),
+  collected('Collected', CollectionJobStatus.collected),
+  inTransit('In Transit', CollectionJobStatus.inTransit),
+  delivered('Delivered', CollectionJobStatus.completed);
+
+  const CollectionJobTimelineStep(this.label, this.status);
+
+  final String label;
+
+  /// The job status that completes this step, or null for [created].
+  final CollectionJobStatus? status;
+}
+
 class CollectionJob {
   final String id;
   final String? producePostId;
@@ -63,6 +82,8 @@ class CollectionJob {
   final DateTime? collectedAt;
   final DateTime? inTransitAt;
   final int? deliveryFeeMinor;
+  final DateTime? acceptedAt;
+  final DateTime? cancelledAt;
 
   const CollectionJob({
     required this.id,
@@ -89,6 +110,8 @@ class CollectionJob {
     this.collectedAt,
     this.inTransitAt,
     this.deliveryFeeMinor,
+    this.acceptedAt,
+    this.cancelledAt,
   });
 
   String get quantityLabel {
@@ -106,6 +129,8 @@ class CollectionJob {
     DateTime? collectedAt,
     DateTime? inTransitAt,
     int? deliveryFeeMinor,
+    DateTime? acceptedAt,
+    DateTime? cancelledAt,
   }) {
     return CollectionJob(
       id: id,
@@ -132,6 +157,8 @@ class CollectionJob {
       collectedAt: collectedAt ?? this.collectedAt,
       inTransitAt: inTransitAt ?? this.inTransitAt,
       deliveryFeeMinor: deliveryFeeMinor ?? this.deliveryFeeMinor,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
     );
   }
 
@@ -160,6 +187,8 @@ class CollectionJob {
         'collectedAt': collectedAt?.toIso8601String(),
         'inTransitAt': inTransitAt?.toIso8601String(),
         'deliveryFeeMinor': deliveryFeeMinor,
+        'acceptedAt': acceptedAt?.toIso8601String(),
+        'cancelledAt': cancelledAt?.toIso8601String(),
       };
 
   factory CollectionJob.fromMap(Map<String, Object?> map) {
@@ -197,6 +226,31 @@ class CollectionJob {
           ? null
           : DateTime.tryParse(map['inTransitAt'].toString()),
       deliveryFeeMinor: (map['deliveryFeeMinor'] as num?)?.toInt(),
+      acceptedAt: map['acceptedAt'] == null
+          ? null
+          : DateTime.tryParse(map['acceptedAt'].toString()),
+      cancelledAt: map['cancelledAt'] == null
+          ? null
+          : DateTime.tryParse(map['cancelledAt'].toString()),
     );
+  }
+
+  /// Ordered status history with timestamps for the job timeline.
+  List<({CollectionJobTimelineStep step, DateTime? at})> get timeline {
+    DateTime? at(CollectionJobTimelineStep step) => switch (step) {
+          CollectionJobTimelineStep.created => createdAt,
+          CollectionJobTimelineStep.accepted => acceptedAt ??
+              (status == CollectionJobStatus.accepted || status.isActive
+                  ? updatedAt
+                  : null),
+          CollectionJobTimelineStep.collected => collectedAt,
+          CollectionJobTimelineStep.inTransit => inTransitAt,
+          CollectionJobTimelineStep.delivered => completedAt,
+        };
+
+    return [
+      for (final step in CollectionJobTimelineStep.values)
+        (step: step, at: at(step)),
+    ];
   }
 }

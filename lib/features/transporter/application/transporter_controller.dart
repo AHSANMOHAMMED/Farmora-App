@@ -7,6 +7,7 @@ import '../data/transporter_account_repository.dart';
 import '../domain/collection_job.dart';
 import '../domain/transporter_notification.dart';
 import '../domain/transporter_profile.dart';
+import 'job_suitability.dart';
 
 class TransporterActionResult {
   final bool success;
@@ -39,6 +40,7 @@ class TransporterController extends ChangeNotifier {
   final List<TransporterNotification> _notifications = [];
   final Map<String, ({int stars, String comment})> _ratings = {};
   final Set<String> _reportedIssues = {};
+  JobSuitabilityScorer _scorer = const JobSuitabilityScorer();
   StreamSubscription<List<CollectionJob>>? _jobsSubscription;
   StreamSubscription<List<TransporterNotification>>? _notificationsSubscription;
   StreamSubscription<dynamic>? _profileSubscription;
@@ -68,10 +70,25 @@ class TransporterController extends ChangeNotifier {
 
   List<CollectionJob> get allJobs => List.unmodifiable(_jobs);
 
-  List<CollectionJob> get availableJobs => _jobs
-      .where((job) => job.status == CollectionJobStatus.open)
-      .where(_matchesFilters)
-      .toList();
+  List<CollectionJob> get availableJobs {
+    final matching = _jobs
+        .where((job) => job.status == CollectionJobStatus.open)
+        .where(_matchesFilters)
+        .toList();
+    return _scorer.rank(matching);
+  }
+
+  /// Best-fit score (0–100) for an open job, based on the transporter's
+  /// vehicle capacity and the job's collection-date urgency.
+  JobSuitability suitabilityFor(CollectionJob job) =>
+      _scorer.score(job);
+
+  /// Returns true when the transporter has reported an issue for [jobId]
+  /// (this session or persisted from a previous one).
+  bool hasReportedIssue(String jobId) => _reportedIssues.contains(jobId);
+
+  /// Returns the delivery rating for [jobId] submitted this session, if any.
+  ({int stars, String comment})? ratingFor(String jobId) => _ratings[jobId];
 
   List<CollectionJob> get unfilteredAvailableJobs =>
       _jobs.where((job) => job.status == CollectionJobStatus.open).toList();
@@ -219,6 +236,7 @@ class TransporterController extends ChangeNotifier {
         vehicleCapacityUnit = profile.vehicleCapacityUnit;
         vehicleDescription = profile.vehicleDescription;
         isAvailable = profile.isAvailable;
+        _updateScorer();
         notifyListeners();
       },
       onError: (_) {},
@@ -352,10 +370,22 @@ class TransporterController extends ChangeNotifier {
         'Only active deliveries can have an issue reported.',
       );
     }
-    _reportedIssues.add(jobId);
-    return const TransporterActionResult.success(
-      'Issue reported. Farmora support will follow up shortly.',
-    );
+    try {
+      await _repository.reportIssue(
+        jobId: jobId,
+        logisticsProviderId: providerId,
+        reason: reason,
+        description: description,
+      );
+      _reportedIssues.add(jobId);
+      return const TransporterActionResult.success(
+        'Issue reported. Farmora support will follow up shortly.',
+      );
+    } catch (error) {
+      // Keep the issue visible locally even if persistence fails.
+      _reportedIssues.add(jobId);
+      return TransporterActionResult.failure(_friendlyError(error));
+    }
   }
 
   Future<TransporterActionResult> rateDelivery({
@@ -366,8 +396,18 @@ class TransporterController extends ChangeNotifier {
     if (stars < 1 || stars > 5 || !completedJobs.any((job) => job.id == jobId)) {
       return const TransporterActionResult.failure('Please select a valid rating.');
     }
-    _ratings[jobId] = (stars: stars, comment: comment.trim());
-    return const TransporterActionResult.success('Thank you for your feedback.');
+    try {
+      await _repository.rateDelivery(
+        jobId: jobId,
+        logisticsProviderId: providerId,
+        stars: stars,
+        comment: comment,
+      );
+      _ratings[jobId] = (stars: stars, comment: comment.trim());
+      return const TransporterActionResult.success('Thank you for your feedback.');
+    } catch (error) {
+      return TransporterActionResult.failure(_friendlyError(error));
+    }
   }
 
   Future<TransporterActionResult> _transitionJob(
@@ -532,6 +572,12 @@ class TransporterController extends ChangeNotifier {
   double get _capacityInKgForVehicle =>
       (vehicleCapacity ?? double.infinity) *
       (vehicleCapacityUnit == 'tons' ? 1000 : 1);
+
+  void _updateScorer() {
+    final capacityKg = (vehicleCapacity ?? 0) *
+        (vehicleCapacityUnit == 'tons' ? 1000 : 1);
+    _scorer = JobSuitabilityScorer(vehicleCapacityKg: capacityKg > 0 ? capacityKg : null);
+  }
 
   double _capacityInKg(CollectionJob job) {
     return job.unit.toLowerCase().contains('ton')
