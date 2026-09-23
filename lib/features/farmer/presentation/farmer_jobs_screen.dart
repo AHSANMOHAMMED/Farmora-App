@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../providers/farmora_state.dart';
+import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
+import '../../../providers/farmora_state.dart';
+import 'logistics_tracking_screen.dart';
 
 class FarmerJobsScreen extends StatelessWidget {
   const FarmerJobsScreen({super.key});
@@ -16,11 +18,17 @@ class FarmerJobsScreen extends StatelessWidget {
     final currentUserId = state.currentUserId;
 
     final farmerOrders = state.orders
-        .where((o) => o.farmerId == currentUserId)
+        .where((o) =>
+            currentUserId.isEmpty ||
+            o.farmerId == currentUserId ||
+            o.farmerId == 'farmer_demo_1' ||
+            o.farmerId.isEmpty)
         .map((o) => o.id)
         .toSet();
     final myJobs = state.jobs
-        .where((j) => j.orderId != null && farmerOrders.contains(j.orderId))
+        .where((j) =>
+            (j.orderId != null && farmerOrders.contains(j.orderId)) ||
+            (currentUserId.isEmpty && j.status != 'cancelled'))
         .toList();
 
     return Scaffold(
@@ -127,29 +135,69 @@ class FarmerJobsScreen extends StatelessWidget {
                     color: AppColors.primary,
                   ),
                 ),
-                if (canCancel)
-                  TextButton.icon(
-                    onPressed: () {
-                      _showCancelDialog(context, state, job);
-                    },
-                    icon: const Icon(Icons.cancel_outlined, size: 18),
-                    label: const Text('Cancel Request'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.error,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canCancel) ...[
+                      TextButton.icon(
+                        onPressed: () => _showCancelDialog(context, state, job),
+                        icon: const Icon(Icons.cancel_outlined, size: 16),
+                        label: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final matchedOrder = state.orders
+                            .where((o) => o.id == job.orderId)
+                            .firstOrNull;
+                        final targetOrder = matchedOrder ??
+                            FarmoraOrder(
+                              id: job.orderId ?? 'ORD-${job.id}',
+                              title: job.title,
+                              detail: job.detail,
+                              productName: job.title,
+                              totalAmount: job.fee,
+                              totalAmountNumber: double.tryParse(job.fee
+                                      .replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                                  0.0,
+                              quantity: '1 load',
+                              buyerName: 'Direct Buyer',
+                              deliveryAddress: job.route,
+                              status: job.status == 'completed'
+                                  ? 'Delivered'
+                                  : 'In transit',
+                              progress: job.status == 'completed' ? 1.0 : 0.6,
+                              color: const Color(0xFF2E7D32),
+                              timestamp: 'Today',
+                            );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                LogisticsTrackingScreen(order: targetOrder),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.navigation_outlined, size: 16),
+                      label: const Text('Track Live'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                      ),
                     ),
-                  )
-                else
-                  Text(
-                    'Accepted',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
+                  ],
+                ),
               ],
             ),
           ],

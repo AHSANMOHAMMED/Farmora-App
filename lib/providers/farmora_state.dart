@@ -402,11 +402,18 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void addProduct(Product p) {
+    final finalProduct = p.id.isEmpty
+        ? p.copyWith(id: 'prod_${DateTime.now().millisecondsSinceEpoch}')
+        : p;
+    _products.removeWhere((item) => item.id == finalProduct.id);
+    _products.insert(0, finalProduct);
+    notifyListeners();
+
     if (_currentUserId.isNotEmpty) {
-      _firestoreService.createSecureProduct(p);
-    } else {
-      _products.insert(0, p);
-      notifyListeners();
+      _firestoreService.createSecureProduct(finalProduct).catchError((e) {
+        debugPrint('Firestore createProduct note: $e');
+        return '';
+      });
     }
   }
 
@@ -627,10 +634,48 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> requestTransportForOrder(String orderId, {int? deliveryFeeMinor}) async {
-    await _firestoreService.requestTransport(
-      orderId: orderId,
-      deliveryFeeMinor: deliveryFeeMinor,
-    );
+    final feeMinor = deliveryFeeMinor ?? 35000;
+    final orderIdx = _orders.indexWhere((o) => o.id == orderId);
+    if (orderIdx != -1) {
+      final ord = _orders[orderIdx];
+      final existingJobIdx = _jobs.indexWhere((j) => j.orderId == orderId);
+      if (existingJobIdx == -1) {
+        final job = TransportJob(
+          id: 'JOB-${DateTime.now().millisecondsSinceEpoch}',
+          title:
+              'Delivery for ${ord.productName.isNotEmpty ? ord.productName : ord.title}',
+          route:
+              'Farm Gate → ${ord.deliveryAddress.isNotEmpty ? ord.deliveryAddress : "Buyer Facility"}',
+          detail: ord.quantity.isNotEmpty ? ord.quantity : 'Standard Load',
+          fee: 'LKR ${(feeMinor / 100).toStringAsFixed(0)}',
+          status: 'requested',
+          accepted: false,
+          pickup: 'Farm Gate',
+          dropoff: ord.deliveryAddress.isNotEmpty
+              ? ord.deliveryAddress
+              : 'Buyer Facility',
+          orderId: orderId,
+          farmerId: ord.farmerId.isNotEmpty
+              ? ord.farmerId
+              : (_currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1'),
+          buyerId: ord.buyerId,
+        );
+        _jobs.insert(0, job);
+      }
+      _orders[orderIdx] = ord.copyWith(
+        deliveryStatus: 'requested',
+        deliveryFeeMinor: feeMinor,
+      );
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.requestTransport(
+        orderId: orderId,
+        deliveryFeeMinor: deliveryFeeMinor,
+      );
+    } catch (e) {
+      debugPrint('Firestore requestTransport note: $e');
+    }
   }
 
   void updateTransportJob(String jobId, Map<String, dynamic> data) {
@@ -1587,8 +1632,8 @@ class FarmoraState extends ChangeNotifier {
       }
 
       // Earnings only from delivered/completed orders that are paid (LKR).
-      final paid = order.paymentStatus == 'paid' ||
-          order.paymentStatus == 'released';
+      final pStatus = order.paymentStatus.toLowerCase();
+      final paid = pStatus == 'paid' || pStatus == 'released';
       if (!order.isCompleted || !paid) continue;
 
       _totalEarnings += order.total;
@@ -2180,6 +2225,65 @@ class FarmoraState extends ChangeNotifier {
         details: 'Retried wire transfer batch dispatch.',
         severity: 'info',
       );
+    }
+  }
+
+  // ── Farmer: Payout / Bank Withdrawal ─────────────────────────
+  Future<void> requestFarmerWithdrawal({
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    String payoutMethod = 'CEFT',
+  }) async {
+    if (amount <= 0 || amount > _totalEarnings) {
+      throw ArgumentError('Invalid withdrawal amount. Available balance: LKR ${_totalEarnings.toStringAsFixed(2)}');
+    }
+    final fee = amount * (_commissionRate / 100.0);
+    final net = amount - fee;
+    final settlementId = 'STL-${DateTime.now().millisecondsSinceEpoch}';
+    final payout = SettlementPayout(
+      id: settlementId,
+      orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
+      orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      recipientId: _currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1',
+      recipientName: displayName.isNotEmpty ? displayName : 'Ahsan (Green Fields Farm)',
+      recipientRole: 'farmer',
+      bankName: bankName,
+      accountNumber: accountNumber,
+      grossAmount: amount,
+      platformFee: fee,
+      netAmount: net,
+      payoutMethod: payoutMethod,
+      status: 'pending',
+      createdAt: DateTime.now(),
+    );
+    _settlements.insert(0, payout);
+    _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
+    _transactions.insert(
+      0,
+      EarningsTransaction(
+        id: settlementId,
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        orderNumber: payout.orderNumber,
+        amount: -amount,
+        isCredit: false,
+      ),
+    );
+    notifyListeners();
+    logAuditEvent(
+      actionType: 'FARMER_WITHDRAWAL_REQUESTED',
+      targetEntity: 'Settlement',
+      targetId: settlementId,
+      details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
+      severity: 'info',
+    );
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.requestPayout(
+        amount: amount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        method: payoutMethod,
+      ).catchError((e) => debugPrint('Firestore payout request note: $e'));
     }
   }
 }

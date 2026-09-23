@@ -11,7 +11,8 @@ import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
-import '../../farmer/presentation/logistics_tracking_screen.dart';
+import '../../farmer/presentation/farmer_jobs_screen.dart';
+import '../../admin/presentation/market_price_management_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
@@ -876,7 +877,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 6. QUICK ACTIONS
   // ═══════════════════════════════════════════════════════════════
   Widget _buildQuickActions(BuildContext context, Role role) {
-    final state = context.read<FarmoraState>();
     final actions = <Map<String, dynamic>>[];
 
     if (role == Role.farmer) {
@@ -927,23 +927,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         },
         {
+          'icon': Icons.trending_up_rounded,
+          'label': 'Market Rates',
+          'color': const Color(0xFFC2185B),
+          'bg': const Color(0xFFFCE4EC),
+          'onTap': () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => const MarketPriceManagementScreen()),
+          ),
+        },
+        {
           'icon': Icons.local_shipping_outlined,
-          'label': 'Logistics',
+          'label': 'Deliveries',
           'color': const Color(0xFF00796B),
           'bg': const Color(0xFFE0F2F1),
-          'onTap': () {
-            final activeOrder = state.orders.where((o) => o.isAccepted || o.progress > 0).firstOrNull ??
-                (state.orders.isNotEmpty ? state.orders.first : null);
-            if (activeOrder != null) {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => LogisticsTrackingScreen(order: activeOrder)),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No active orders to track yet.')),
-              );
-            }
-          },
+          'onTap': () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => const FarmerJobsScreen()),
+          ),
         },
       ]);
     } else if (role == Role.buyer) {
