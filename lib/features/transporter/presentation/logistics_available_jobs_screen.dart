@@ -298,6 +298,7 @@ class _JobsBody extends StatelessWidget {
           final job = jobs[index - 1];
           return CollectionJobCard(
             job: job,
+            score: state.suitabilityFor(job),
             onViewDetails: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => CollectionJobDetailsScreen(jobId: job.id),

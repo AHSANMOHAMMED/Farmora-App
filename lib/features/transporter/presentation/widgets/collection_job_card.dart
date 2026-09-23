@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../application/job_suitability.dart';
 import '../../domain/collection_job.dart';
+import 'job_score_badge.dart';
 import 'job_status_chip.dart';
 
+/// A job card with an optional suitability [score] badge shown next to the
+/// status chip when the transporter's vehicle capacity is known.
 class CollectionJobCard extends StatelessWidget {
   final CollectionJob job;
+  final JobSuitability? score;
   final VoidCallback onViewDetails;
   final String? actionLabel;
   final IconData? actionIcon;
@@ -17,6 +22,7 @@ class CollectionJobCard extends StatelessWidget {
     super.key,
     required this.job,
     required this.onViewDetails,
+    this.score,
     this.actionLabel,
     this.actionIcon,
     this.onAction,
@@ -89,6 +95,10 @@ class CollectionJobCard extends StatelessWidget {
                   JobStatusChip(status: job.status),
                 ],
               ),
+              if (score != null) ...[
+                const SizedBox(height: 8),
+                JobScoreBadge(suitability: score!),
+              ],
               if (job.deliveryFeeMinor != null) ...[
                 const SizedBox(height: 8),
                 Text(
