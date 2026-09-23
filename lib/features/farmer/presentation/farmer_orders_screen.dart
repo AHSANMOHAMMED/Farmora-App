@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/farmora_strings.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'order_detail_screen.dart';
+import 'logistics_tracking_screen.dart';
 
 class FarmerOrdersScreen extends StatefulWidget {
   const FarmerOrdersScreen({super.key});
@@ -18,6 +20,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final strings = FarmoraStrings.of(context);
     List<FarmoraOrder> displayOrders;
     if (_selectedTab == 0) {
       displayOrders = state.pendingOrders;
@@ -42,9 +45,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Incoming Orders',
-                    style: TextStyle(
+                  Text(
+                    strings.t('incomingOrders'),
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -62,11 +65,11 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  _buildTabPill(0, 'Pending', pendingCount),
+                  _buildTabPill(0, strings.t('pending'), pendingCount),
                   const SizedBox(width: 8),
-                  _buildTabPill(1, 'Accepted', acceptedCount),
+                  _buildTabPill(1, strings.t('accepted'), acceptedCount),
                   const SizedBox(width: 8),
-                  _buildTabPill(2, 'Completed', completedCount),
+                  _buildTabPill(2, strings.t('completed'), completedCount),
                 ],
               ),
             ),
@@ -153,11 +156,19 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
   }
 
   Widget _buildOrderCard(FarmoraOrder order) {
+    final strings = FarmoraStrings.of(context);
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)),
-        );
+        // Accepted orders show live logistics tracking; pending shows acceptance detail
+        if (order.isAccepted || order.status == 'In transit') {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => LogisticsTrackingScreen(order: order)),
+          );
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -317,7 +328,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   onPressed: () {
                     context.read<FarmoraState>().completeOrder(order.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Order marked as delivered!'), backgroundColor: AppColors.primary),
+                      SnackBar(content: Text(strings.t('markDelivered')), backgroundColor: AppColors.primary),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -327,9 +338,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text(
-                    'Mark as Delivered',
-                    style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
+                  label: Text(
+                    strings.t('markDelivered'),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -347,7 +358,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         onPressed: () {
                           context.read<FarmoraState>().declineOrder(order.id);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Order ${order.orderNumber} declined'), backgroundColor: AppColors.error),
+                            SnackBar(content: Text('Order ${order.orderNumber} ${strings.t('orderDeclined')}'), backgroundColor: AppColors.error),
                           );
                         },
                         style: OutlinedButton.styleFrom(
@@ -356,9 +367,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           side: const BorderSide(color: Color(0xFFE0E0E0)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text(
-                          'Decline',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600),
+                        child: Text(
+                          strings.t('decline'),
+                          style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -368,13 +379,12 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                     flex: 2,
                     child: SizedBox(
                       height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          context.read<FarmoraState>().acceptOrder(order.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Order accepted!'), backgroundColor: AppColors.primary),
-                          );
-                        },
+                      child: ElevatedButton.icon(                          onPressed: () {
+                            context.read<FarmoraState>().acceptOrder(order.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(strings.t('orderAccepted')), backgroundColor: AppColors.primary),
+                            );
+                          },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -382,9 +392,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         icon: const Icon(Icons.check, size: 18),
-                        label: const Text(
-                          'Accept',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
+                        label: Text(
+                          strings.t('accept'),
+                          style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),

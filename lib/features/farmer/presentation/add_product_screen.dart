@@ -235,7 +235,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  const Text('\$', style: TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.onSurfaceVariant)),
+                                  const Text('LKR', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: TextField(

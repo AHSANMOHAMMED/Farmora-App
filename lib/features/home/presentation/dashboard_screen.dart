@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/farmora_strings.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
@@ -7,12 +8,9 @@ import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../farmer/presentation/add_product_screen.dart';
 import '../../farmer/presentation/farmer_orders_screen.dart';
-import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
-import '../../buyer/presentation/buyer_products_screen.dart';
-import '../../buyer/presentation/buyer_orders_screen.dart';
 
 
 class DashboardScreen extends StatefulWidget {
@@ -70,7 +68,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 32),
 
         // ── 3. FARM ACTIVITY ──
-        _buildSectionTitle('Farm Activity', subtitle: 'Your current produce'),
+        _buildSectionTitle(FarmoraStrings.of(context).t('farmActivity'),
+            subtitle: FarmoraStrings.of(context).t('currentProduce')),
         const SizedBox(height: 14),
         _buildFarmActivity(context, products, orders),
         const SizedBox(height: 32),
@@ -85,9 +84,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Recent Orders',
-              style: TextStyle(
+            Text(
+              FarmoraStrings.of(context).t('recentOrders'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.onSurface,
@@ -112,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 32),
 
         // ── 6. QUICK ACTIONS ──
-        _buildSectionTitle('Quick Actions'),
+        _buildSectionTitle(FarmoraStrings.of(context).t('quickActions')),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.farmer),
         const SizedBox(height: 32),
@@ -212,19 +211,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildGreeting(FarmoraState state) {
     final hour = DateTime.now().hour;
     String greeting;
+    final strings = FarmoraStrings.of(context);
     if (hour < 12) {
-      greeting = 'Good Morning';
+      greeting = strings.t('goodMorning');
     } else if (hour < 17) {
-      greeting = 'Good Afternoon';
+      greeting = strings.t('goodAfternoon');
     } else {
-      greeting = 'Good Evening';
+      greeting = strings.t('goodEvening');
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$greeting, Farmer 👋',
+          '$greeting, ${strings.t('farmer')} 👋',
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -233,9 +233,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          "Here's what's happening with your farm today.",
-          style: TextStyle(
+        Text(
+          strings.t('whatsHappening'),
+          style: const TextStyle(
             fontSize: 15,
             color: AppColors.onSurfaceVariant,
             height: 1.4,
@@ -255,6 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required int pendingOrders,
     required double earnings,
   }) {
+    final strings = FarmoraStrings.of(context);
     return Column(
       children: [
         // Top row: Today's Orders + Active Products
@@ -265,9 +266,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.receipt_long_rounded,
                 iconColor: const Color(0xFF2E7D32),
                 iconBg: const Color(0xFFE8F5E9),
-                label: "Today's Orders",
+                label: strings.t('todaysOrders'),
                 value: '$todayOrders',
-                trend: '+2 from yesterday',
+                trend: strings.t('fromYesterday'),
                 trendUp: true,
               ),
             ),
@@ -277,9 +278,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.eco_rounded,
                 iconColor: const Color(0xFF1565C0),
                 iconBg: const Color(0xFFE3F2FD),
-                label: 'Active Products',
+                label: strings.t('activeProducts'),
                 value: '$activeProducts',
-                trend: 'Listed for sale',
+                trend: strings.t('listedForSale'),
                 trendUp: true,
               ),
             ),
@@ -294,9 +295,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.pending_actions_rounded,
                 iconColor: const Color(0xFFE65100),
                 iconBg: const Color(0xFFFFF3E0),
-                label: 'Pending Orders',
+                label: strings.t('pendingOrders'),
                 value: '$pendingOrders',
-                trend: 'Awaiting response',
+                trend: strings.t('awaitingResponse'),
                 trendUp: false,
               ),
             ),
@@ -306,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.account_balance_wallet_rounded,
                 iconColor: const Color(0xFF006E1C),
                 iconBg: const Color(0xFFE8F5E9),
-                label: "This Month's Earnings",
+                label: strings.t('monthEarnings'),
                 value: 'LKR ${earnings.toStringAsFixed(0)}',
                 trend: '+15.2% vs last month',
                 trendUp: true,
@@ -420,7 +421,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             o.productName.toLowerCase() == product.name.toLowerCase()).length;
 
         // Determine stock status
-        final stockStatus = _getStockStatus(product);
+        final stockStatus =
+            _getStockStatus(product, FarmoraStrings.of(context));
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -545,18 +547,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  (String, Color) _getStockStatus(Product product) {
+  (String, Color) _getStockStatus(Product product, FarmoraStrings strings) {
     final qtyStr = product.quantity.toLowerCase();
     // Extract numeric value
     final numStr = qtyStr.replaceAll(RegExp(r'[^0-9.]'), '');
     final qty = double.tryParse(numStr) ?? 0;
 
     if (product.status.toLowerCase() == 'empty' || qtyStr.contains('restock')) {
-      return ('Out of Stock', const Color(0xFFE53935));
+      return (strings.t('outOfStock'), const Color(0xFFE53935));
     } else if (qty <= 5) {
-      return ('Low Stock', const Color(0xFFEF6C00));
+      return (strings.t('lowStock'), const Color(0xFFEF6C00));
     } else {
-      return ('Healthy Stock', const Color(0xFF2E7D32));
+      return (strings.t('healthyStock'), const Color(0xFF2E7D32));
     }
   }
 
@@ -843,7 +845,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       actions.addAll([
         {
           'icon': Icons.add_circle_outline_rounded,
-          'label': 'Add Produce',
+          'label': FarmoraStrings.of(context).t('addProduce'),
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -852,7 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.receipt_long_outlined,
-          'label': 'Manage Orders',
+          'label': FarmoraStrings.of(context).t('manageOrders'),
           'color': const Color(0xFFE65100),
           'bg': const Color(0xFFFFF3E0),
           'onTap': () => Navigator.of(context).push(
@@ -861,7 +863,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.payments_outlined,
-          'label': 'View Earnings',
+          'label': FarmoraStrings.of(context).t('viewEarnings'),
           'color': const Color(0xFF006E1C),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -870,7 +872,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.person_outline_rounded,
-          'label': 'Edit Farm\nProfile',
+          'label': FarmoraStrings.of(context).t('editFarmProfile'),
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(

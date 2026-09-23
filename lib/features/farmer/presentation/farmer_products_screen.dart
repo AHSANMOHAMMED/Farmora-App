@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/farmora_strings.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
@@ -47,9 +48,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'My Products',
-                    style: TextStyle(
+                  Text(
+                    FarmoraStrings.of(context).t('myProducts'),
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -85,16 +86,15 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     Expanded(
                       child: TextField(
                         onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                        decoration: const InputDecoration(
-                          hintText: 'Search my products...',
-                          hintStyle: TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.onSurfaceVariant),
+                        decoration: InputDecoration(
+                          hintText: FarmoraStrings.of(context).t('searchProducts'),
+                          hintStyle: const TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppColors.onSurfaceVariant),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 12),
                         ),
                         style: const TextStyle(fontFamily: 'Inter', fontSize: 15),
                       ),
                     ),
-                    const Icon(Icons.tune, size: 22, color: AppColors.onSurfaceVariant),
                   ],
                 ),
               ),
@@ -108,11 +108,16 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip(0, 'All Products', allProducts.length),
+                    _buildFilterChip(
+                        0,
+                        FarmoraStrings.of(context).t('allProducts'),
+                        allProducts.length),
                     const SizedBox(width: 8),
-                    _buildFilterChip(1, 'Active', activeCount),
+                    _buildFilterChip(
+                        1, FarmoraStrings.of(context).t('active'), activeCount),
                     const SizedBox(width: 8),
-                    _buildFilterChip(2, 'Out of Stock', outOfStockCount),
+                    _buildFilterChip(2,
+                        FarmoraStrings.of(context).t('outOfStockTab'), outOfStockCount),
                   ],
                 ),
               ),
