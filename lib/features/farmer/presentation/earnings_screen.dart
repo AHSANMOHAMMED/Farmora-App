@@ -212,14 +212,16 @@ class EarningsScreen extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  FractionallySizedBox(
-                                    heightFactor: bar.heightRatio.clamp(0.1, 1.0),
-                                    child: Container(
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: bar.isHighlighted ? AppColors.primary : const Color(0xFFC8E6C9),
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                                      ),
+                                  Container(
+                                    height:
+                                        100 * bar.heightRatio.clamp(0.1, 1.0),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: bar.isHighlighted
+                                          ? AppColors.primary
+                                          : const Color(0xFFC8E6C9),
+                                      borderRadius: const BorderRadius.vertical(
+                                          top: Radius.circular(4)),
                                     ),
                                   ),
                                   const SizedBox(height: 8),
