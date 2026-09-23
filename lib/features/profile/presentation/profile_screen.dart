@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import 'edit_profile_screen.dart';
 import 'language_picker.dart';
 import 'role_sheet.dart';
 import 'legal_screens.dart';
@@ -13,6 +14,8 @@ import 'help_support_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import '../../transporter/presentation/nearby_transporters_screen.dart';
+import '../../../services/user_location_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -68,6 +71,25 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  static Widget _avatarFallback(bool isFarmer) {
+    if (isFarmer) {
+      return Image.asset(
+        'assets/images/farmer_headshot.png',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.person,
+          size: 48,
+          color: AppColors.primary,
+        ),
+      );
+    }
+    return const Icon(
+      Icons.person,
+      size: 48,
+      color: AppColors.primary,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
@@ -110,21 +132,14 @@ class ProfileScreen extends StatelessWidget {
                     border: Border.all(color: AppColors.primary, width: 2),
                   ),
                   child: ClipOval(
-                    child: isFarmer
-                        ? Image.asset(
-                            'assets/images/farmer_headshot.png',
+                    child: state.photoUrl.isNotEmpty
+                        ? Image.network(
+                            state.photoUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person,
-                              size: 48,
-                              color: AppColors.primary,
-                            ),
+                            errorBuilder: (_, __, ___) =>
+                                _avatarFallback(isFarmer),
                           )
-                        : const Icon(
-                            Icons.person,
-                            size: 48,
-                            color: AppColors.primary,
-                          ),
+                        : _avatarFallback(isFarmer),
                   ),
                 ),
                 if (state.isVerified)
@@ -162,29 +177,9 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              'Location: $district, ${state.country}',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                color: AppColors.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              'District: ${state.district}',
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                color: AppColors.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              role.label,
+              district.isEmpty
+                  ? '${state.country} · ${role.label}'
+                  : '$district, ${state.country} · ${role.label}',
               style: const TextStyle(
                 fontFamily: 'Inter',
                 color: AppColors.onSurfaceVariant,
@@ -280,6 +275,22 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.edit_rounded,
+                      color: AppColors.primary),
+                  title: const Text('Edit Profile',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Update your name, photo & location'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const EditProfileScreen()),
+                  ),
+                ),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                ListTile(
                   leading: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.primary),
                   title: const Text('Account Role',
@@ -319,6 +330,29 @@ class ProfileScreen extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                  ),
+                ),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                // ── Live location sharing (opt-in) ──
+                const _LocationSharingTile(),
+                Divider(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                    height: 1,
+                    indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.near_me_rounded,
+                      color: AppColors.primary),
+                  title: const Text('Nearby Transporters',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text(
+                      'Find verified logistics providers close to you'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const NearbyTransportersScreen()),
                   ),
                 ),
                 Divider(
@@ -410,6 +444,71 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Opt-in live location sharing toggle. Reflects the current state of
+/// [UserLocationService] and starts/stops continuous location broadcast.
+class _LocationSharingTile extends StatefulWidget {
+  const _LocationSharingTile();
+
+  @override
+  State<_LocationSharingTile> createState() => _LocationSharingTileState();
+}
+
+class _LocationSharingTileState extends State<_LocationSharingTile> {
+  bool _sharing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sharing = UserLocationService.instance.isSharing;
+  }
+
+  Future<void> _toggle(bool on) async {
+    final service = UserLocationService.instance;
+    if (on) {
+      final result = await service.startSharing();
+      if (!mounted) return;
+      setState(() => _sharing = service.isSharing);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          switch (result) {
+            LocationConsentResult.granted => 'Live location sharing started.',
+            LocationConsentResult.permissionDenied =>
+              'Location permission denied. Enable it in Settings.',
+            LocationConsentResult.serviceDisabled =>
+              'Device location is turned off.',
+          },
+        ),
+        backgroundColor: result == LocationConsentResult.granted
+            ? AppColors.primary
+            : AppColors.error,
+      ));
+    } else {
+      service.stopSharing();
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      secondary: Icon(
+        _sharing ? Icons.location_on_rounded : Icons.location_off_rounded,
+        color: _sharing ? AppColors.primary : AppColors.onSurfaceVariant,
+      ),
+      title: const Text('Live location sharing',
+          style: TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(
+        _sharing
+            ? 'ON — nearby transporters and your order partners can see your last known position.'
+            : 'OFF — share your position so transporters nearby can find you.',
+        style: const TextStyle(fontSize: 12),
+      ),
+      value: _sharing,
+      onChanged: _toggle,
     );
   }
 }

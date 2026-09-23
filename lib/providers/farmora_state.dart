@@ -17,7 +17,9 @@ import '../models/market_price_index.dart';
 import '../models/review_model.dart';
 import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
+import '../services/delivery_location_service.dart';
 import '../services/firebase_service.dart' as kajana_service;
+import '../services/user_location_service.dart';
 
 class FarmoraState extends ChangeNotifier {
   // Firebase services
@@ -36,6 +38,10 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
   StreamSubscription<List<FarmoraNotification>>? _notificationsSub;
   StreamSubscription<List<FarmoraOffer>>? _offersSub;
+  StreamSubscription<List<Review>>? _reviewsSub;
+  StreamSubscription<List<AuditLog>>? _auditLogsSub;
+  StreamSubscription<List<SettlementPayout>>? _settlementsSub;
+  StreamSubscription<List<MarketPriceIndex>>? _marketPricesSub;
   StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
@@ -309,6 +315,7 @@ class FarmoraState extends ChangeNotifier {
           timestamp: 'Just now',
           buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
           farmerId: item.product.farmerId,
+          productId: item.product.id,
           subtotalMinor: (subtotal * 100).round(),
           deliveryFeeMinor: (cartDeliveryFee * 100).round(),
           totalMinor: (totalAmount * 100).round(),
@@ -367,6 +374,9 @@ class FarmoraState extends ChangeNotifier {
     disposeFirestoreSubscriptions();
     _deviceTokenSub?.cancel();
     _deviceTokenSub = null;
+    // Stop any live location broadcast — privacy requires it.
+    DeliveryLocationService.instance.stopAll();
+    UserLocationService.instance.stopSharing();
     _authService.signOut();
     notifyListeners();
   }
@@ -380,15 +390,55 @@ class FarmoraState extends ChangeNotifier {
 
   void setLanguage(String value) {
     language = value;
+    notifyListeners();
     if (_currentUserId.isNotEmpty) {
       final languageCode = switch (value) {
         'සිංහල' || 'si' => 'si',
         'தமிழ்' || 'ta' => 'ta',
         _ => 'en',
       };
-      _firestoreService.updateUserLanguage(languageCode);
+      _firestoreService
+          .updateUserLanguage(languageCode)
+          .catchError((e) => debugPrint('Firestore update language note: $e'));
     }
+  }
+
+  /// Update the signed-in user's display name and location on Firestore and
+  /// locally. Falls back to local-only updates when not authenticated.
+  Future<void> updateProfile({
+    String? name,
+    String? newDistrict,
+    String? newCountry,
+    String? photoUrl,
+  }) async {
+    if (name != null && name.trim().isNotEmpty) displayName = name.trim();
+    if (newCountry != null && newCountry.trim().isNotEmpty) {
+      country = newCountry.trim();
+    }
+    if (newDistrict != null && newDistrict.trim().isNotEmpty) {
+      district = newDistrict.trim();
+    }
+    if (photoUrl != null) this.photoUrl = photoUrl;
     notifyListeners();
+
+    if (_currentUserId.isNotEmpty) {
+      try {
+        await _firestoreService.updateUserProfile(
+          name: (name != null && name.trim().isNotEmpty) ? name.trim() : null,
+          district:
+              (newDistrict != null && newDistrict.trim().isNotEmpty)
+                  ? newDistrict.trim()
+                  : null,
+          country:
+              (newCountry != null && newCountry.trim().isNotEmpty)
+                  ? newCountry.trim()
+                  : null,
+          photoUrl: photoUrl,
+        );
+      } catch (e) {
+        debugPrint('Firestore update profile note: $e');
+      }
+    }
   }
 
   void setSearchQuery(String query) {
@@ -472,6 +522,55 @@ class FarmoraState extends ChangeNotifier {
     }
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Delivered', 1.0);
+    }
+    // Harvest-trust flow: the product video is auto-deleted after delivery.
+    _cleanupVideoForDeliveredOrder(orderId);
+  }
+
+  /// Fire-and-forget cleanup of the harvest video linked to a delivered
+  /// order. Resolves the product id from the order (or by product name when
+  /// the order predates the productId field).
+  Future<void> _cleanupVideoForDeliveredOrder(String orderId) async {
+    final orderIdx = _orders.indexWhere((o) => o.id == orderId);
+    if (orderIdx == -1 || _currentUserId.isEmpty) return;
+    final order = _orders[orderIdx];
+
+    String productId = order.productId;
+    if (productId.isEmpty && order.productName.isNotEmpty) {
+      productId = _products
+          .where((p) =>
+              p.name == order.productName &&
+              (order.farmerId.isEmpty || p.farmerId == order.farmerId))
+          .map((p) => p.id)
+          .firstOrNull ?? '';
+    }
+    if (productId.isEmpty) return;
+
+    final productIdx = _products.indexWhere((p) => p.id == productId);
+    final videoPath = productIdx != -1 ? _products[productIdx].videoPath : null;
+    final videoUrl = productIdx != -1 ? _products[productIdx].videoUrl : null;
+    if ((videoPath == null || videoPath.isEmpty) &&
+        (videoUrl == null || videoUrl.isEmpty)) {
+      return; // No video linked — nothing to clean up.
+    }
+
+    try {
+      await deliverOrderAndCleanupVideo(
+        orderId: orderId,
+        productId: productId,
+        videoStoragePath: videoPath,
+        videoDownloadUrl: videoUrl,
+      );
+      if (productIdx != -1) {
+        _products[productIdx] = _products[productIdx].copyWith(
+          videoPath: '',
+          videoUrl: '',
+          harvestStatus: HarvestStatus.delivered,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Harvest video cleanup note: $e');
     }
   }
 
@@ -984,6 +1083,56 @@ class FarmoraState extends ChangeNotifier {
       },
       onError: (e) => debugPrint('Firestore offers stream error: $e'),
     );
+
+    // ── Admin-scoped live data: reviews, audit trail, settlements, market prices ──
+    if (role == Role.admin) {
+      _reviewsSub?.cancel();
+      _reviewsSub = _firestoreService.adminReviewsStream().listen(
+        (firestoreReviews) {
+          _reviews
+            ..clear()
+            ..addAll(firestoreReviews);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore reviews stream error: $e'),
+      );
+
+      _auditLogsSub?.cancel();
+      _auditLogsSub = _firestoreService.auditLogsStream().listen(
+        (firestoreLogs) {
+          if (firestoreLogs.isEmpty) return;
+          _auditLogs
+            ..clear()
+            ..addAll(firestoreLogs);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore audit stream error: $e'),
+      );
+
+      _settlementsSub?.cancel();
+      _settlementsSub = _firestoreService.settlementsStream().listen(
+        (firestoreSettlements) {
+          if (firestoreSettlements.isEmpty) return;
+          _settlements
+            ..clear()
+            ..addAll(firestoreSettlements);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore settlements stream error: $e'),
+      );
+
+      _marketPricesSub?.cancel();
+      _marketPricesSub = _firestoreService.marketPricesStream().listen(
+        (firestorePrices) {
+          if (firestorePrices.isEmpty) return;
+          _marketPrices
+            ..clear()
+            ..addAll(firestorePrices);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore market prices stream error: $e'),
+      );
+    }
   }
 
   /// Cancel all Firestore subscriptions
@@ -995,6 +1144,10 @@ class FarmoraState extends ChangeNotifier {
     _usersSub?.cancel();
     _notificationsSub?.cancel();
     _offersSub?.cancel();
+    _reviewsSub?.cancel();
+    _auditLogsSub?.cancel();
+    _settlementsSub?.cancel();
+    _marketPricesSub?.cancel();
   }
 
   void _initDemoData() {
@@ -1695,10 +1848,30 @@ class FarmoraState extends ChangeNotifier {
       final feeMinor = (settings['defaultDeliveryFeeMinor'] as num?)?.toInt();
       if (feeMinor != null && feeMinor >= 0) {
         defaultDeliveryFeeLkr = feeMinor / 100.0;
-        notifyListeners();
       }
+      final maintenance = settings['maintenanceMode'];
+      if (maintenance is bool) {
+        _maintenanceMode = maintenance;
+      }
+      final notice = settings['maintenanceNotice'];
+      if (notice is String && notice.isNotEmpty) {
+        _maintenanceNotice = notice;
+      }
+      final feeBps = (settings['platformFeeBps'] as num?)?.toInt();
+      if (feeBps != null && feeBps >= 0) {
+        _commissionRate = feeBps / 100.0;
+      }
+      final escrowHours = (settings['escrowReleaseHours'] as num?)?.toInt();
+      if (escrowHours != null && escrowHours > 0) {
+        _escrowReleaseHours = escrowHours;
+      }
+      final minVersion = settings['minAppVersion'];
+      if (minVersion is String && minVersion.isNotEmpty) {
+        _minAppVersion = minVersion;
+      }
+      notifyListeners();
     } catch (_) {
-      // Keep last known / default fee.
+      // Keep last known / defaults.
     }
   }
 
@@ -1841,20 +2014,51 @@ class FarmoraState extends ChangeNotifier {
     final idx = _marketPrices.indexWhere((p) => p.id == id);
     if (idx != -1) {
       final existing = _marketPrices[idx];
-      _marketPrices[idx] = existing.copyWith(
+      final updated = existing.copyWith(
         minPricePerKg: minPrice,
         maxPricePerKg: maxPrice,
         averagePricePerKg: (minPrice + maxPrice) / 2,
         trend: trend,
         updatedAt: DateTime.now(),
       );
+      _marketPrices[idx] = updated;
       notifyListeners();
+      _persistToFirestore(() => _firestoreService.upsertMarketPrice(updated));
+      logAuditEvent(
+        actionType: 'MARKET_PRICE_UPDATE',
+        targetEntity: 'MarketPrice',
+        targetId: id,
+        details: 'Updated ${existing.cropName}: LKR $minPrice–$maxPrice/kg, trend $trend.',
+        severity: 'info',
+      );
     }
   }
 
   void addMarketPrice(MarketPriceIndex item) {
     _marketPrices.insert(0, item);
     notifyListeners();
+    _persistToFirestore(() => _firestoreService.upsertMarketPrice(item));
+    logAuditEvent(
+      actionType: 'MARKET_PRICE_CREATE',
+      targetEntity: 'MarketPrice',
+      targetId: item.id,
+      details: 'Added benchmark ${item.cropName} (${item.district}): LKR ${item.minPricePerKg}–${item.maxPricePerKg}/kg.',
+      severity: 'info',
+    );
+  }
+
+  /// Remove a market price benchmark locally and in Firestore.
+  void removeMarketPrice(String priceId) {
+    _marketPrices.removeWhere((p) => p.id == priceId);
+    notifyListeners();
+    _persistToFirestore(() => _firestoreService.deleteMarketPrice(priceId));
+    logAuditEvent(
+      actionType: 'MARKET_PRICE_DELETE',
+      targetEntity: 'MarketPrice',
+      targetId: priceId,
+      details: 'Removed market price benchmark.',
+      severity: 'info',
+    );
   }
 
   MarketPriceIndex? getMarketPriceForCrop(String cropName) {
@@ -2098,11 +2302,23 @@ class FarmoraState extends ChangeNotifier {
   }
 
   // ── Admin: Server Maintenance & Platform Config ───────────────
+
+  /// Best-effort Firestore persistence. Silently skips persistence when
+  /// Firebase is unavailable (demo/test mode) so local state keeps working.
+  void _persistToFirestore(Future<void> Function() action) {
+    try {
+      action().catchError((e) => debugPrint('Firestore persist skipped: $e'));
+    } catch (e) {
+      debugPrint('Firestore persist skipped: $e');
+    }
+  }
+
   void setMaintenanceMode({required bool enabled, String? notice}) {
     _maintenanceMode = enabled;
     if (notice != null && notice.trim().isNotEmpty) {
       _maintenanceNotice = notice;
     }
+    notifyListeners();
     try {
       _firestoreService.updatePlatformSettings({
         'maintenanceMode': enabled,
@@ -2111,28 +2327,72 @@ class FarmoraState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Settings sync notice: $e');
     }
+    logAuditEvent(
+      actionType: 'MAINTENANCE_TOGGLE',
+      targetEntity: 'PlatformSettings',
+      targetId: 'maintenanceMode',
+      details: 'Maintenance mode ${enabled ? 'ENABLED' : 'disabled'}. Notice: $_maintenanceNotice',
+      severity: enabled ? 'critical' : 'info',
+    );
   }
 
   void setCommissionRate(double rate) {
-    _commissionRate = rate;
+    _commissionRate = rate.clamp(0.0, 50.0);
     notifyListeners();
     try {
       _firestoreService.updatePlatformSettings({
-        'platformFeeBps': (rate * 100).toInt(),
+        'platformFeeBps': (_commissionRate * 100).toInt(),
       }).catchError((e) => debugPrint('Settings sync notice: $e'));
     } catch (e) {
       debugPrint('Settings sync notice: $e');
     }
+    logAuditEvent(
+      actionType: 'COMMISSION_UPDATE',
+      targetEntity: 'PlatformSettings',
+      targetId: 'platformFeeBps',
+      details: 'Platform commission set to ${_commissionRate.toStringAsFixed(2)}%.',
+      severity: 'warning',
+    );
   }
 
   void setEscrowReleaseHours(int hours) {
-    _escrowReleaseHours = hours;
+    _escrowReleaseHours = hours.clamp(1, 720);
     notifyListeners();
+    try {
+      _firestoreService.updatePlatformSettings({
+        'escrowReleaseHours': _escrowReleaseHours,
+      }).catchError((e) => debugPrint('Settings sync notice: $e'));
+    } catch (e) {
+      debugPrint('Settings sync notice: $e');
+    }
+    logAuditEvent(
+      actionType: 'ESCROW_WINDOW_UPDATE',
+      targetEntity: 'PlatformSettings',
+      targetId: 'escrowReleaseHours',
+      details: 'Escrow auto-release window set to $_escrowReleaseHours hours.',
+      severity: 'info',
+    );
   }
 
   void setMinAppVersion(String version) {
-    _minAppVersion = version;
+    final v = version.trim();
+    if (v.isEmpty) return;
+    _minAppVersion = v;
     notifyListeners();
+    try {
+      _firestoreService.updatePlatformSettings({
+        'minAppVersion': v,
+      }).catchError((e) => debugPrint('Settings sync notice: $e'));
+    } catch (e) {
+      debugPrint('Settings sync notice: $e');
+    }
+    logAuditEvent(
+      actionType: 'MIN_VERSION_UPDATE',
+      targetEntity: 'PlatformSettings',
+      targetId: 'minAppVersion',
+      details: 'Minimum supported app version set to $v.',
+      severity: 'warning',
+    );
   }
 
   void clearLocalCache() {
@@ -2168,6 +2428,8 @@ class FarmoraState extends ChangeNotifier {
     );
     _auditLogs.insert(0, log);
     notifyListeners();
+    // Persist append-only audit record (never breaks the triggering action).
+    _persistToFirestore(() => _firestoreService.writeAuditLog(log));
   }
 
   // ── Admin: Treasury & Bank Escrow Settlements ─────────────────
@@ -2175,17 +2437,23 @@ class FarmoraState extends ChangeNotifier {
     final idx = _settlements.indexWhere((s) => s.id == settlementId);
     if (idx != -1) {
       final s = _settlements[idx];
+      final ref = 'CEFT-TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}';
       _settlements[idx] = s.copyWith(
         status: 'settled',
         settledAt: DateTime.now(),
-        transactionReference: 'CEFT-TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+        transactionReference: ref,
       );
       notifyListeners();
+      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
+            settlementId,
+            status: 'settled',
+            transactionReference: ref,
+          ));
       logAuditEvent(
         actionType: 'SETTLEMENT_APPROVED',
         targetEntity: 'Settlement',
         targetId: settlementId,
-        details: 'Disbursed LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}.',
+        details: 'Disbursed LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}. Ref: $ref',
         severity: 'info',
       );
     }
@@ -2200,6 +2468,11 @@ class FarmoraState extends ChangeNotifier {
         holdReason: reason,
       );
       notifyListeners();
+      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
+            settlementId,
+            status: 'on_hold',
+            holdReason: reason,
+          ));
       logAuditEvent(
         actionType: 'SETTLEMENT_HOLD',
         targetEntity: 'Settlement',
@@ -2218,6 +2491,11 @@ class FarmoraState extends ChangeNotifier {
         clearHoldReason: true,
       );
       notifyListeners();
+      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
+            settlementId,
+            status: 'processing',
+            clearHoldReason: true,
+          ));
       logAuditEvent(
         actionType: 'SETTLEMENT_RETRY',
         targetEntity: 'Settlement',
@@ -2278,12 +2556,8 @@ class FarmoraState extends ChangeNotifier {
       severity: 'info',
     );
     if (_currentUserId.isNotEmpty) {
-      _firestoreService.requestPayout(
-        amount: amount,
-        bankName: bankName,
-        accountNumber: accountNumber,
-        method: payoutMethod,
-      ).catchError((e) => debugPrint('Firestore payout request note: $e'));
+      // Persist the full payout so admins see it live in Treasury.
+      _persistToFirestore(() => _firestoreService.createSettlement(payout));
     }
   }
 }

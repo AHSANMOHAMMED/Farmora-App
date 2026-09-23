@@ -30,6 +30,9 @@ class FarmoraOrder {
   final String buyerId;
   final String farmerId;
   final String transporterId;
+  /// Product linked to this order. Used to clean up the harvest video on
+  /// delivery (videos are auto-deleted once an order completes).
+  final String productId;
   final List<Map<String, dynamic>> items;
   final int subtotalMinor;
   final int deliveryFeeMinor;
@@ -66,6 +69,7 @@ class FarmoraOrder {
     this.buyerId = '',
     this.farmerId = '',
     this.transporterId = '',
+    this.productId = '',
     this.items = const [],
     this.subtotalMinor = 0,
     this.deliveryFeeMinor = 0,
@@ -134,6 +138,7 @@ class FarmoraOrder {
     String? buyerId,
     String? farmerId,
     String? transporterId,
+    String? productId,
     List<Map<String, dynamic>>? items,
     int? subtotalMinor,
     int? deliveryFeeMinor,
@@ -170,6 +175,7 @@ class FarmoraOrder {
       buyerId: buyerId ?? this.buyerId,
       farmerId: farmerId ?? this.farmerId,
       transporterId: transporterId ?? this.transporterId,
+      productId: productId ?? this.productId,
       items: items ?? this.items,
       subtotalMinor: subtotalMinor ?? this.subtotalMinor,
       deliveryFeeMinor: deliveryFeeMinor ?? this.deliveryFeeMinor,
@@ -214,6 +220,7 @@ class FarmoraOrder {
       'buyerId': buyerId,
       'farmerId': farmerId,
       'transporterId': transporterId,
+      'productId': productId,
       'items': items,
       'subtotalMinor': subtotalMinor,
       'deliveryFeeMinor': deliveryFeeMinor,
@@ -259,6 +266,7 @@ class FarmoraOrder {
       buyerId: (data['buyerId'] ?? '').toString(),
       farmerId: (data['farmerId'] ?? '').toString(),
       transporterId: (data['transporterId'] ?? '').toString(),
+      productId: (data['productId'] ?? '').toString(),
       items: (data['items'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),

@@ -47,7 +47,8 @@ class _MarketPriceManagementScreenState
         elevation: 0.5,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+            icon:
+                const Icon(Icons.add_circle_outline, color: AppColors.primary),
             tooltip: 'Add Commodity Rate',
             onPressed: () => _showAddPriceDialog(context, state),
           ),
@@ -71,7 +72,8 @@ class _MarketPriceManagementScreenState
                 CircleAvatar(
                   backgroundColor: AppColors.primary,
                   radius: 20,
-                  child: Icon(Icons.analytics_rounded, color: Colors.white, size: 20),
+                  child: Icon(Icons.analytics_rounded,
+                      color: Colors.white, size: 20),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -80,12 +82,14 @@ class _MarketPriceManagementScreenState
                     children: [
                       Text(
                         'Sri Lankan Pola Wholesale Benchmark',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       SizedBox(height: 2),
                       Text(
                         'Benchmark rates reference Dambulla, Pettah, and regional economic centers to guide buyer offers and farmer listings.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -111,12 +115,15 @@ class _MarketPriceManagementScreenState
                     backgroundColor: Colors.white,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
-                        color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.outlineVariant,
                       ),
                     ),
                   ),
@@ -137,7 +144,8 @@ class _MarketPriceManagementScreenState
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final item = filtered[index];
@@ -213,7 +221,8 @@ class _MarketPriceManagementScreenState
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: trendColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -247,10 +256,24 @@ class _MarketPriceManagementScreenState
                 _buildPriceMetric('Avg Benchmark',
                     'LKR ${item.averagePricePerKg.toStringAsFixed(0)} / kg',
                     isPrimary: true),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-                  tooltip: 'Update Rates',
-                  onPressed: () => _showEditPriceDialog(context, item, state),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 20, color: AppColors.primary),
+                      tooltip: 'Update Rates',
+                      onPressed: () =>
+                          _showEditPriceDialog(context, item, state),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          size: 20, color: AppColors.error),
+                      tooltip: 'Delete Benchmark',
+                      onPressed: () =>
+                          _confirmDeletePrice(context, item, state),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -260,11 +283,46 @@ class _MarketPriceManagementScreenState
     );
   }
 
-  Widget _buildPriceMetric(String label, String value, {bool isPrimary = false}) {
+  void _confirmDeletePrice(
+      BuildContext context, MarketPriceIndex item, FarmoraState state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete ${item.cropName}?'),
+        content: Text(
+          'This removes the ${item.district} benchmark from the marketplace. '
+          'Farmers and buyers will no longer see this reference rate.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () {
+              Navigator.pop(ctx);
+              state.removeMarketPrice(item.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Deleted ${item.cropName} benchmark')),
+              );
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceMetric(String label, String value,
+      {bool isPrimary = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         const SizedBox(height: 2),
         Text(
           value,
@@ -290,7 +348,8 @@ class _MarketPriceManagementScreenState
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Edit ${item.cropName} Benchmark'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -335,8 +394,10 @@ class _MarketPriceManagementScreenState
             ),
             FilledButton(
               onPressed: () {
-                final minVal = double.tryParse(minCtrl.text) ?? item.minPricePerKg;
-                final maxVal = double.tryParse(maxCtrl.text) ?? item.maxPricePerKg;
+                final minVal =
+                    double.tryParse(minCtrl.text) ?? item.minPricePerKg;
+                final maxVal =
+                    double.tryParse(maxCtrl.text) ?? item.maxPricePerKg;
                 state.updateMarketPrice(
                   item.id,
                   minPrice: minVal,
@@ -368,7 +429,8 @@ class _MarketPriceManagementScreenState
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Add Commodity Pola Rate'),
           content: SingleChildScrollView(
             child: Column(
@@ -399,12 +461,14 @@ class _MarketPriceManagementScreenState
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'Vegetables', child: Text('Vegetables')),
+                    DropdownMenuItem(
+                        value: 'Vegetables', child: Text('Vegetables')),
                     DropdownMenuItem(value: 'Fruits', child: Text('Fruits')),
                     DropdownMenuItem(value: 'Spices', child: Text('Spices')),
                     DropdownMenuItem(value: 'Grains', child: Text('Grains')),
                   ],
-                  onChanged: (v) => setDialogState(() => category = v ?? 'Vegetables'),
+                  onChanged: (v) =>
+                      setDialogState(() => category = v ?? 'Vegetables'),
                 ),
                 const SizedBox(height: 12),
                 Row(

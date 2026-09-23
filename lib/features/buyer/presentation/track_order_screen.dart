@@ -1,15 +1,56 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/geo.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/order.dart';
+import '../../../models/transport_job.dart';
+import '../../../services/delivery_location_service.dart';
+import '../../../services/firebase_service.dart';
+import '../../messaging/presentation/conversations_screen.dart';
 
-class TrackOrderScreen extends StatelessWidget {
+class TrackOrderScreen extends StatefulWidget {
   final FarmoraOrder order;
 
   const TrackOrderScreen({super.key, required this.order});
 
   @override
+  State<TrackOrderScreen> createState() => _TrackOrderScreenState();
+}
+
+class _TrackOrderScreenState extends State<TrackOrderScreen> {
+  final FirestoreService _service = FirestoreService();
+  StreamSubscription<List<TransportJob>>? _jobSub;
+  TransportJob? _job;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.order.id.isNotEmpty) {
+      _jobSub = _service.jobByOrderStream(widget.order.id).listen((jobs) {
+        if (mounted) setState(() => _job = jobs.isEmpty ? null : jobs.first);
+      }, onError: (e) => debugPrint('Job tracking stream error: $e'));
+    }
+  }
+
+  @override
+  void dispose() {
+    _jobSub?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
+    final courier = (_job?.hasCourierLocation ?? false)
+        ? LatLng(_job!.courierLat!, _job!.courierLng!)
+        : null;
+    final fresh = DeliveryLocationService.isLocationFresh(_job?.locationUpdatedAt);
+    final deliveryStatus = _job?.status ?? order.deliveryStatus;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -56,7 +97,8 @@ class TrackOrderScreen extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.statusPendingBg,
                           borderRadius: BorderRadius.circular(9999),
@@ -75,7 +117,9 @@ class TrackOrderScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    order.productName.isNotEmpty ? order.productName : order.title,
+                    order.productName.isNotEmpty
+                        ? order.productName
+                        : order.title,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 18,
@@ -96,11 +140,26 @@ class TrackOrderScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+
+            // ── Live courier tracking ──
+            if (courier != null) ...[
+              _LiveCourierCard(
+                courier: courier,
+                fresh: fresh,
+                jobStatus: deliveryStatus,
+              ),
+              const SizedBox(height: 16),
+            ],
+
             RouteProgressMap(
               progress: RouteProgressMap.progressForOrderStatus(order.status),
-              pickupLabel: order.productName.isNotEmpty ? order.productName : 'Farm pickup',
+              pickupLabel: order.productName.isNotEmpty
+                  ? order.productName
+                  : 'Farm pickup',
               dropoffLabel: order.deliveryAddress.split('\n').first,
-              statusLabel: '${order.status.toUpperCase()} • ${order.deliveryStatus.isNotEmpty ? order.deliveryStatus : 'in network'}',
+              statusLabel:
+                  '${order.status.toUpperCase()} • ${deliveryStatus.isNotEmpty ? deliveryStatus : 'in network'}',
+              courier: courier,
             ),
             const SizedBox(height: 24),
             const Text(
@@ -171,13 +230,26 @@ class TrackOrderScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => ConversationsScreen(orderId: order.id)),
+                ),
+                icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                label: const Text('Message farmer / transporter'),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimelineStep(String title, String subtitle, bool isActive, bool isCompleted, {bool isLast = false}) {
+  Widget _buildTimelineStep(String title, String subtitle, bool isActive,
+      bool isCompleted, {bool isLast = false}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -187,20 +259,28 @@ class TrackOrderScreen extends StatelessWidget {
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: isActive ? AppColors.primary : AppColors.surfaceContainerHigh,
+                color:
+                    isActive ? AppColors.primary : AppColors.surfaceContainerHigh,
                 shape: BoxShape.circle,
               ),
               child: isCompleted
                   ? const Icon(Icons.check, size: 14, color: Colors.white)
                   : isActive
-                      ? Center(child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)))
+                      ? Center(
+                          child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                  color: Colors.white, shape: BoxShape.circle)))
                       : null,
             ),
             if (!isLast)
               Container(
                 width: 2,
                 height: 30,
-                color: isCompleted ? AppColors.primary : AppColors.surfaceContainerHigh,
+                color: isCompleted
+                    ? AppColors.primary
+                    : AppColors.surfaceContainerHigh,
               ),
           ],
         ),
@@ -215,7 +295,9 @@ class TrackOrderScreen extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 16,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                  color: isActive
+                      ? AppColors.onSurface
+                      : AppColors.onSurfaceVariant,
                 ),
               ),
               Text(
@@ -231,6 +313,70 @@ class TrackOrderScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Live status banner shown while the transporter broadcasts their position.
+class _LiveCourierCard extends StatelessWidget {
+  final LatLng courier;
+  final bool fresh;
+  final String jobStatus;
+
+  const _LiveCourierCard({
+    required this.courier,
+    required this.fresh,
+    required this.jobStatus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: fresh ? const Color(0xFFE8F5E9) : AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: fresh ? AppColors.primary : AppColors.outlineVariant,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            fresh ? Icons.my_location_rounded : Icons.location_searching_rounded,
+            color: fresh ? AppColors.primary : AppColors.onSurfaceVariant,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fresh
+                      ? 'Courier location is LIVE'
+                      : 'Last known courier position',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                Text(
+                  'Updated ${GeoPoint(latitude: courier.latitude, longitude: courier.longitude)}'
+                  ' • Delivery: ${jobStatus.isEmpty ? 'in progress' : jobStatus}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

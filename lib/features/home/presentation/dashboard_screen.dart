@@ -20,8 +20,10 @@ import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/cart_screen.dart';
 import '../../buyer/presentation/product_detail_screen.dart';
 import '../../buyer/presentation/buyer_order_detail_screen.dart';
+import '../../transporter/presentation/active_delivery_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
+import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../admin/presentation/user_management_screen.dart';
 
@@ -946,6 +948,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 builder: (_) => const FarmerJobsScreen()),
           ),
         },
+        {
+          'icon': Icons.near_me_rounded,
+          'label': 'Nearby Transport',
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => const NearbyTransportersScreen()),
+          ),
+        },
       ]);
     } else if (role == Role.buyer) {
       actions.addAll([
@@ -985,6 +997,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             MaterialPageRoute(builder: (_) => const CartScreen()),
           ),
         },
+        {
+          'icon': Icons.near_me_rounded,
+          'label': 'Nearby Transport',
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => const NearbyTransportersScreen()),
+          ),
+        },
       ]);
     } else if (role == Role.transporter) {
       actions.addAll([
@@ -1014,6 +1036,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const TransporterEarningsScreen()),
           ),
+        },
+        {
+          'icon': Icons.my_location_rounded,
+          'label': 'Live Tracking',
+          'color': const Color(0xFF00796B),
+          'bg': const Color(0xFFE0F2F1),
+          'onTap': () {
+            final jobs = context
+                .read<FarmoraState>()
+                .jobs
+                .where((j) => j.isActive)
+                .toList();
+            if (jobs.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'No active delivery right now. Accept a job to start live tracking.'),
+              ));
+              return;
+            }
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => ActiveDeliveryScreen(job: jobs.first)),
+            );
+          },
         },
       ]);
     } else if (role == Role.admin) {
