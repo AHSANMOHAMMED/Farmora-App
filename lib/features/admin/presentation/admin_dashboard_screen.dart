@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import 'user_management_screen.dart';
-import 'logistics_management_screen.dart';
-import 'system_settings_screen.dart';
 import 'verification_review_screen.dart';
 import 'market_price_management_screen.dart';
 import 'dispute_resolution_screen.dart';
 import 'broadcast_advisory_screen.dart';
+import 'platform_analytics_screen.dart';
+import 'review_management_screen.dart';
+import 'server_maintenance_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -17,7 +18,7 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -35,24 +36,26 @@ class AdminDashboardScreen extends StatelessWidget {
             labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             tabs: [
               Tab(text: 'Overview', icon: Icon(Icons.dashboard_rounded, size: 20)),
+              Tab(text: 'Analytics', icon: Icon(Icons.insights_rounded, size: 20)),
+              Tab(text: 'Users & Access', icon: Icon(Icons.people_alt_rounded, size: 20)),
+              Tab(text: 'Reviews', icon: Icon(Icons.rate_review_rounded, size: 20)),
               Tab(text: 'Disputes & Escrow', icon: Icon(Icons.gavel_rounded, size: 20)),
               Tab(text: 'Market Rates', icon: Icon(Icons.trending_up_rounded, size: 20)),
+              Tab(text: 'Firebase & Server', icon: Icon(Icons.cloud_sync_rounded, size: 20)),
               Tab(text: 'Advisories', icon: Icon(Icons.campaign_rounded, size: 20)),
-              Tab(text: 'Users & KYC', icon: Icon(Icons.people_alt_rounded, size: 20)),
-              Tab(text: 'Fleet Logistics', icon: Icon(Icons.local_shipping_rounded, size: 20)),
-              Tab(text: 'Settings', icon: Icon(Icons.tune_rounded, size: 20)),
             ],
           ),
         ),
         body: const TabBarView(
           children: [
             _OverviewTab(),
+            PlatformAnalyticsScreen(),
+            UserManagementScreen(),
+            ReviewManagementScreen(),
             DisputeResolutionScreen(),
             MarketPriceManagementScreen(),
+            ServerMaintenanceScreen(),
             BroadcastAdvisoryScreen(),
-            UserManagementScreen(),
-            LogisticsManagementScreen(),
-            SystemSettingsScreen(),
           ],
         ),
       ),
@@ -145,6 +148,46 @@ class _OverviewTab extends StatelessWidget {
             children: [
               Expanded(
                 child: _QuickActionButton(
+                  icon: Icons.insights_rounded,
+                  label: 'Analytics',
+                  color: const Color(0xFF1B6BD8),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PlatformAnalyticsScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.rate_review_rounded,
+                  label: 'Reviews',
+                  color: Colors.amber.shade800,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReviewManagementScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.cloud_sync_rounded,
+                  label: 'Server Ops',
+                  color: Colors.teal.shade700,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionButton(
                   icon: Icons.verified_user_rounded,
                   label: 'Review KYC',
                   color: AppColors.primary,
@@ -159,7 +202,7 @@ class _OverviewTab extends StatelessWidget {
                 child: _QuickActionButton(
                   icon: Icons.trending_up_rounded,
                   label: 'Pola Rates',
-                  color: const Color(0xFF1B6BD8),
+                  color: const Color(0xFF2E7D32),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const MarketPriceManagementScreen()),

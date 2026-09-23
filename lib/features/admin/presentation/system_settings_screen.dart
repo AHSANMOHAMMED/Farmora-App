@@ -5,6 +5,9 @@ import 'market_price_management_screen.dart';
 import 'broadcast_advisory_screen.dart';
 import 'dispute_resolution_screen.dart';
 import 'verification_review_screen.dart';
+import 'platform_analytics_screen.dart';
+import 'review_management_screen.dart';
+import 'server_maintenance_screen.dart';
 
 class SystemSettingsScreen extends StatefulWidget {
   const SystemSettingsScreen({super.key});
@@ -169,6 +172,39 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.insights_rounded, color: Color(0xFF1B6BD8)),
+            title: const Text('Platform Analytics & Insights'),
+            subtitle: const Text('GMV, volume flow, regional distribution, and export reports'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PlatformAnalyticsScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.rate_review_rounded, color: Colors.amber),
+            title: const Text('Review & Feedback Moderation'),
+            subtitle: const Text('Moderate buyer and farmer ratings, audit notes, and flags'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReviewManagementScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_rounded, color: Colors.teal),
+            title: const Text('Firebase & Server Control'),
+            subtitle: const Text('Maintenance mode, service latency, version enforcement, and cache ops'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
             ),
           ),
           const Divider(),

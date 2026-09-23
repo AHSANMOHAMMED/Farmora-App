@@ -14,6 +14,7 @@ import '../models/cart_item.dart';
 import '../models/notification_model.dart';
 import '../models/offer.dart';
 import '../models/market_price_index.dart';
+import '../models/review_model.dart';
 import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
@@ -95,6 +96,16 @@ class FarmoraState extends ChangeNotifier {
   // Market Price Intelligence (Sri Lankan Pola Benchmarks)
   final List<MarketPriceIndex> _marketPrices = [];
 
+  // Reviews & Platform Moderation
+  final List<Review> _reviews = [];
+
+  // Server Maintenance & Platform Config
+  bool _maintenanceMode = false;
+  String _maintenanceNotice = 'Platform scheduled maintenance in progress. Marketplace trades will resume shortly.';
+  double _commissionRate = 5.0; // percent
+  int _escrowReleaseHours = 48;
+  String _minAppVersion = '1.0.0';
+
   // Constructor with demo data initialization
   FarmoraState() {
     _initDemoData();
@@ -108,6 +119,12 @@ class FarmoraState extends ChangeNotifier {
   List<FarmoraNotification> get notifications => List.unmodifiable(_notifications);
   List<FarmoraOffer> get offers => List.unmodifiable(_offers);
   List<MarketPriceIndex> get marketPrices => List.unmodifiable(_marketPrices);
+  List<Review> get reviews => List.unmodifiable(_reviews);
+  bool get maintenanceMode => _maintenanceMode;
+  String get maintenanceNotice => _maintenanceNotice;
+  double get commissionRate => _commissionRate;
+  int get escrowReleaseHours => _escrowReleaseHours;
+  String get minAppVersion => _minAppVersion;
   List<FarmoraOffer> get buyerOffers =>
       _offers.where((o) => _currentUserId.isEmpty || o.buyerId == _currentUserId || o.buyerId == 'buyer_demo').toList();
   List<FarmoraOffer> get farmerOffers =>
@@ -645,7 +662,18 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> setUserSuspended(String userId, bool suspended) async {
-    await _firestoreService.setUserSuspended(userId: userId, suspended: suspended);
+    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
+    if (idx != -1) {
+      final updated = Map<String, dynamic>.from(_users[idx]);
+      updated['isSuspended'] = suspended;
+      _users[idx] = updated;
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.setUserSuspended(userId: userId, suspended: suspended);
+    } catch (e) {
+      debugPrint('Firebase suspend user notice: $e');
+    }
   }
 
   Future<void> releaseEscrow(String orderId) async {
@@ -1210,6 +1238,117 @@ class FarmoraState extends ChangeNotifier {
         ),
       ]);
     }
+
+    if (_reviews.isEmpty) {
+      _reviews.addAll([
+        Review(
+          id: 'rev-1',
+          orderId: 'ord-101',
+          orderNumber: 'ORD-7821',
+          reviewerId: 'buyer_demo',
+          reviewerName: 'Pettah Wholesale Stores',
+          subjectId: 'farmer_demo_1',
+          subjectName: 'Sunil Bandara (Farmer)',
+          rating: 5,
+          comment: 'Excellent quality Nuwara Eliya mountain carrots. Well packed in standard crates with zero transport damage.',
+          status: ReviewStatus.approved,
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          moderatedAt: DateTime.now().subtract(const Duration(days: 1)),
+          moderationNote: 'Verified order and delivery inspection.',
+        ),
+        Review(
+          id: 'rev-2',
+          orderId: 'ord-102',
+          orderNumber: 'ORD-7822',
+          reviewerId: 'buyer_demo_2',
+          reviewerName: 'Kandy Green Grocers',
+          subjectId: 'farmer_demo_2',
+          subjectName: 'Kamal Perera (Farmer)',
+          rating: 4,
+          comment: 'Cinnamon bark aroma and grade are authentic Ceylon Alba. Delivered right on schedule.',
+          status: ReviewStatus.approved,
+          createdAt: DateTime.now().subtract(const Duration(days: 3)),
+          moderatedAt: DateTime.now().subtract(const Duration(days: 2)),
+        ),
+        Review(
+          id: 'rev-3',
+          orderId: 'ord-103',
+          orderNumber: 'ORD-7824',
+          reviewerId: 'buyer_demo_3',
+          reviewerName: 'Galle Fresh Mart',
+          subjectId: 'transporter_demo_1',
+          subjectName: 'Rohan Jayasinghe (Transporter)',
+          rating: 2,
+          comment: 'Tomatoes had minor bruising due to lack of thermal buffering during mid-day transit.',
+          status: ReviewStatus.pending,
+          createdAt: DateTime.now().subtract(const Duration(hours: 18)),
+        ),
+        Review(
+          id: 'rev-4',
+          orderId: 'ord-104',
+          orderNumber: 'ORD-7825',
+          reviewerId: 'buyer_demo_4',
+          reviewerName: 'Lanka Super Foods',
+          subjectId: 'farmer_demo_3',
+          subjectName: 'Unknown Seller',
+          rating: 1,
+          comment: 'Delivery delayed by 36 hours. Cabbage leaves were wilted.',
+          status: ReviewStatus.rejected,
+          createdAt: DateTime.now().subtract(const Duration(days: 4)),
+          moderatedAt: DateTime.now().subtract(const Duration(days: 3)),
+          moderationNote: 'Formal dispute arbitration opened.',
+        ),
+      ]);
+    }
+
+    if (_users.isEmpty) {
+      _users.addAll([
+        {
+          'uid': 'usr-farmer-1',
+          'id': 'usr-farmer-1',
+          'name': 'Sunil Bandara',
+          'role': 'farmer',
+          'phone': '+94 77 123 4567',
+          'email': 'sunil.bandara@farmora.lk',
+          'district': 'Nuwara Eliya',
+          'isVerified': true,
+          'isSuspended': false,
+        },
+        {
+          'uid': 'usr-buyer-1',
+          'id': 'usr-buyer-1',
+          'name': 'Pettah Wholesale Stores',
+          'role': 'buyer',
+          'phone': '+94 11 234 5678',
+          'email': 'trades@pettahwholesale.lk',
+          'district': 'Colombo',
+          'isVerified': true,
+          'isSuspended': false,
+        },
+        {
+          'uid': 'usr-trans-1',
+          'id': 'usr-trans-1',
+          'name': 'Rohan Jayasinghe',
+          'role': 'transporter',
+          'phone': '+94 71 345 6789',
+          'email': 'rohan.trans@farmora.lk',
+          'district': 'Dambulla',
+          'isVerified': false,
+          'isSuspended': false,
+        },
+        {
+          'uid': 'usr-admin-1',
+          'id': 'usr-admin-1',
+          'name': 'Platform SuperAdmin',
+          'role': 'admin',
+          'phone': '+94 11 999 8888',
+          'email': 'admin@farmora.lk',
+          'district': 'Colombo',
+          'isVerified': true,
+          'isSuspended': false,
+        },
+      ]);
+    }
   }
 
   Future<void> sendInAppNotification({
@@ -1661,6 +1800,126 @@ class FarmoraState extends ChangeNotifier {
       debugPrint('Firestore broadcast advisory error: $e');
     }
 
+    notifyListeners();
+  }
+
+  // ── Admin: Review & Feedback Moderation ───────────────────────
+  Future<void> moderateReview({
+    required String reviewId,
+    required ReviewStatus status,
+    String? note,
+  }) async {
+    final idx = _reviews.indexWhere((r) => r.id == reviewId);
+    if (idx != -1) {
+      _reviews[idx] = _reviews[idx].copyWith(
+        status: status,
+        moderatedAt: DateTime.now(),
+        moderationNote: note,
+      );
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.moderateReview(
+        reviewId: reviewId,
+        status: status.name,
+        note: note,
+      );
+    } catch (e) {
+      debugPrint('Firebase review moderation notice: $e');
+    }
+  }
+
+  Future<void> deleteReview({required String reviewId}) async {
+    _reviews.removeWhere((r) => r.id == reviewId);
+    notifyListeners();
+    try {
+      await _firestoreService.deleteReview(reviewId: reviewId);
+    } catch (e) {
+      debugPrint('Firebase delete review notice: $e');
+    }
+  }
+
+  void addReview(Review review) {
+    _reviews.insert(0, review);
+    notifyListeners();
+  }
+
+  // ── Admin: User Management Actions ────────────────────────────
+  Future<void> setUserVerified({
+    required String userId,
+    required bool verified,
+  }) async {
+    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
+    if (idx != -1) {
+      final updated = Map<String, dynamic>.from(_users[idx]);
+      updated['isVerified'] = verified;
+      _users[idx] = updated;
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.setUserVerified(userId: userId, verified: verified);
+    } catch (e) {
+      debugPrint('Firebase verify user notice: $e');
+    }
+  }
+
+  Future<void> updateUserRole({
+    required String userId,
+    required String role,
+  }) async {
+    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
+    if (idx != -1) {
+      final updated = Map<String, dynamic>.from(_users[idx]);
+      updated['role'] = role;
+      _users[idx] = updated;
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.updateUserRole(userId: userId, role: role);
+    } catch (e) {
+      debugPrint('Firebase update role notice: $e');
+    }
+  }
+
+  // ── Admin: Server Maintenance & Platform Config ───────────────
+  void setMaintenanceMode({required bool enabled, String? notice}) {
+    _maintenanceMode = enabled;
+    if (notice != null && notice.trim().isNotEmpty) {
+      _maintenanceNotice = notice;
+    }
+    try {
+      _firestoreService.updatePlatformSettings({
+        'maintenanceMode': enabled,
+        'maintenanceNotice': _maintenanceNotice,
+      }).catchError((e) => debugPrint('Settings sync notice: $e'));
+    } catch (e) {
+      debugPrint('Settings sync notice: $e');
+    }
+  }
+
+  void setCommissionRate(double rate) {
+    _commissionRate = rate;
+    notifyListeners();
+    try {
+      _firestoreService.updatePlatformSettings({
+        'platformFeeBps': (rate * 100).toInt(),
+      }).catchError((e) => debugPrint('Settings sync notice: $e'));
+    } catch (e) {
+      debugPrint('Settings sync notice: $e');
+    }
+  }
+
+  void setEscrowReleaseHours(int hours) {
+    _escrowReleaseHours = hours;
+    notifyListeners();
+  }
+
+  void setMinAppVersion(String version) {
+    _minAppVersion = version;
+    notifyListeners();
+  }
+
+  void clearLocalCache() {
     notifyListeners();
   }
 }

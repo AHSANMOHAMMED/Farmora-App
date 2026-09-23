@@ -366,6 +366,26 @@ class FirestoreService {
     });
   }
 
+  Future<void> setUserVerified({
+    required String userId,
+    required bool verified,
+  }) async {
+    await _db.collection('users').doc(userId).update({
+      'isVerified': verified,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateUserRole({
+    required String userId,
+    required String role,
+  }) async {
+    await _db.collection('users').doc(userId).update({
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> releaseEscrow({required String orderId}) async {
     if (!kUseCloudFunctions) {
       await _spark.releaseEscrow(orderId: orderId);
@@ -821,6 +841,27 @@ class FirestoreService {
       'rating': rating,
       'comment': comment,
     });
+  }
+
+  Future<void> moderateReview({
+    required String reviewId,
+    required String status,
+    String? note,
+  }) async {
+    await _db.collection('reviews').doc(reviewId).update({
+      'status': status,
+      'moderationNote': note,
+      'moderatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteReview({required String reviewId}) async {
+    await _db.collection('reviews').doc(reviewId).delete();
+  }
+
+  Stream<List<Map<String, dynamic>>> reviewsStream({int limit = 100}) {
+    return _db.collection('reviews').limit(limit).snapshots().map((snap) =>
+        snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
   }
 
   Future<void> reviewVerificationDoc({

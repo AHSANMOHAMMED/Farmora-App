@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmora/models/market_price_index.dart';
+import 'package:farmora/models/review_model.dart';
 import 'package:farmora/providers/farmora_state.dart';
 
 void main() {
@@ -159,6 +160,64 @@ void main() {
 
       expect(state.notifications.length, initialNotifs + 1);
       expect(state.notifications.first.title.contains('Severe Weather Warning'), isTrue);
+    });
+
+    test('FarmoraState moderates and deletes reviews', () async {
+      final state = FarmoraState();
+      expect(state.reviews.isNotEmpty, isTrue);
+
+      final rev = state.reviews.first;
+      await state.moderateReview(
+        reviewId: rev.id,
+        status: ReviewStatus.rejected,
+        note: 'Flagged for moderation audit',
+      );
+
+      final updated = state.reviews.firstWhere((r) => r.id == rev.id);
+      expect(updated.status, ReviewStatus.rejected);
+      expect(updated.moderationNote, 'Flagged for moderation audit');
+
+      final countBeforeDelete = state.reviews.length;
+      await state.deleteReview(reviewId: rev.id);
+      expect(state.reviews.length, countBeforeDelete - 1);
+    });
+
+    test('FarmoraState executes user management actions (verify, role, suspend)', () async {
+      final state = FarmoraState();
+      expect(state.users.isNotEmpty, isTrue);
+
+      final user = state.users.first;
+      final uid = (user['uid'] ?? user['id']).toString();
+
+      await state.setUserVerified(userId: uid, verified: true);
+      var updatedUser = state.users.firstWhere((u) => (u['uid'] ?? u['id']) == uid);
+      expect(updatedUser['isVerified'], isTrue);
+
+      await state.updateUserRole(userId: uid, role: 'transporter');
+      updatedUser = state.users.firstWhere((u) => (u['uid'] ?? u['id']) == uid);
+      expect(updatedUser['role'], 'transporter');
+
+      await state.setUserSuspended(uid, true);
+      updatedUser = state.users.firstWhere((u) => (u['uid'] ?? u['id']) == uid);
+      expect(updatedUser['isSuspended'], isTrue);
+    });
+
+    test('FarmoraState manages server maintenance and platform economics', () {
+      final state = FarmoraState();
+
+      expect(state.maintenanceMode, isFalse);
+      state.setMaintenanceMode(enabled: true, notice: 'Upgrading database servers');
+      expect(state.maintenanceMode, isTrue);
+      expect(state.maintenanceNotice, 'Upgrading database servers');
+
+      state.setCommissionRate(6.5);
+      expect(state.commissionRate, 6.5);
+
+      state.setEscrowReleaseHours(72);
+      expect(state.escrowReleaseHours, 72);
+
+      state.setMinAppVersion('1.3.0');
+      expect(state.minAppVersion, '1.3.0');
     });
   });
 }
