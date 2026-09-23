@@ -19,6 +19,12 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   CollectionReference<Map<String, dynamic>> get _jobs =>
       _firestore.collection('transport_jobs');
 
+  CollectionReference<Map<String, dynamic>> get _issues =>
+      _firestore.collection('transport_job_issues');
+
+  CollectionReference<Map<String, dynamic>> get _ratings =>
+      _firestore.collection('transport_job_ratings');
+
   @override
   Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
     final controller = StreamController<List<CollectionJob>>();
@@ -167,6 +173,87 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     });
   }
 
+  @override
+  Future<void> reportIssue({
+    required String jobId,
+    required String logisticsProviderId,
+    required String reason,
+    String description = '',
+  }) async {
+    try {
+      await _issues.doc(jobId).set({
+        'jobId': jobId,
+        'logisticsProviderId': logisticsProviderId,
+        'reason': reason,
+        'description': description.trim(),
+        'reportedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  @override
+  Future<void> rateDelivery({
+    required String jobId,
+    required String logisticsProviderId,
+    required int stars,
+    String comment = '',
+  }) async {
+    if (stars < 1 || stars > 5) {
+      throw const CollectionJobException('Please select a valid rating.');
+    }
+    try {
+      await _ratings.doc(jobId).set({
+        'jobId': jobId,
+        'logisticsProviderId': logisticsProviderId,
+        'stars': stars,
+        'comment': comment.trim(),
+        'ratedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  @override
+  Future<JobIssueReport?> getIssueReport(String jobId) async {
+    try {
+      final document = await _issues.doc(jobId).get();
+      final data = document.data();
+      if (data == null) return null;
+      return JobIssueReport(
+        jobId: jobId,
+        logisticsProviderId:
+            data['logisticsProviderId']?.toString() ?? '',
+        reason: data['reason']?.toString() ?? '',
+        description: data['description']?.toString() ?? '',
+        reportedAt: _date(data['reportedAt']) ?? DateTime.now(),
+      );
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  @override
+  Future<JobDeliveryRating?> getDeliveryRating(String jobId) async {
+    try {
+      final document = await _ratings.doc(jobId).get();
+      final data = document.data();
+      if (data == null) return null;
+      return JobDeliveryRating(
+        jobId: jobId,
+        logisticsProviderId:
+            data['logisticsProviderId']?.toString() ?? '',
+        stars: (data['stars'] as num?)?.toInt() ?? 0,
+        comment: data['comment']?.toString() ?? '',
+        ratedAt: _date(data['ratedAt']) ?? DateTime.now(),
+      );
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
   CollectionJob _fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
@@ -216,6 +303,9 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
           _date(data['completedAt']) ?? _date(data['deliveredAt']),
       collectedAt: _date(data['collectedAt']) ?? _date(data['pickedUpAt']),
       inTransitAt: _date(data['inTransitAt']),
+      acceptedAt:
+          _date(data['acceptedAt']) ?? _date(data['acceptedByTransporterAt']),
+      cancelledAt: _date(data['cancelledAt']),
       deliveryFeeMinor: _integer(data, ['deliveryFeeMinor']),
     );
   }
