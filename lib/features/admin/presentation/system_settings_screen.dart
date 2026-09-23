@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../services/firebase_service.dart';
+import '../../../core/constants/app_colors.dart';
+import 'market_price_management_screen.dart';
+import 'broadcast_advisory_screen.dart';
+import 'dispute_resolution_screen.dart';
+import 'verification_review_screen.dart';
 
 class SystemSettingsScreen extends StatefulWidget {
   const SystemSettingsScreen({super.key});
@@ -120,6 +125,50 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
               title: 'Session timeout (minutes)',
               key: 'sessionTimeoutMinutes',
               value: timeout,
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
+            title: const Text('Market Price Intelligence'),
+            subtitle: const Text('Configure Sri Lankan wholesale Pola benchmark rates'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MarketPriceManagementScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.campaign_rounded, color: Color(0xFFE65100)),
+            title: const Text('Broadcast Advisories & Weather Alerts'),
+            subtitle: const Text('Push emergency and operational notices to users'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BroadcastAdvisoryScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.gavel_rounded, color: Color(0xFF6A1B9A)),
+            title: const Text('Dispute & Escrow Arbitrator Desk'),
+            subtitle: const Text('Inspect claims and trigger escrow payouts'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DisputeResolutionScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.verified_user_rounded, color: Color(0xFF1B6BD8)),
+            title: const Text('Farmer & Transporter KYC Verification'),
+            subtitle: const Text('Review national identity, land permits, and driving licenses'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
             ),
           ),
           const Divider(),

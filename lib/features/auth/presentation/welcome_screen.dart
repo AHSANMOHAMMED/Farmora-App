@@ -57,21 +57,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ...Role.values.where((r) => r != Role.admin).map(
               (r) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  onTap: () => setState(() => selectedRole = r),
-                  leading: Icon(r.icon, color: AppColors.primary),
-                  title: Text(r.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  trailing: Icon(
-                    selectedRole == r
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: AppColors.primary,
-                  ),
-                  tileColor: selectedRole == r
+                child: Material(
+                  color: selectedRole == r
                       ? AppColors.primaryLight
                       : AppColors.surfaceContainerLowest,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    onTap: () => setState(() => selectedRole = r),
+                    leading: Icon(r.icon, color: AppColors.primary),
+                    title: Text(r.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    trailing: Icon(
+                      selectedRole == r
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),

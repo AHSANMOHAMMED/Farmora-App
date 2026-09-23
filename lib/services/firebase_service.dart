@@ -374,6 +374,46 @@ class FirestoreService {
     await _functions.httpsCallable('releaseEscrow').call({'orderId': orderId});
   }
 
+  Future<void> resolveDispute({
+    required String orderId,
+    required String resolution,
+    required String adminNotes,
+    double refundPercent = 100.0,
+  }) async {
+    if (!kUseCloudFunctions) {
+      await _db.collection('orders').doc(orderId).update({
+        'disputeStatus': 'resolved',
+        'disputeResolution': resolution,
+        'adminNotes': adminNotes,
+        'status': resolution == 'refund_buyer' ? 'cancelled' : 'completed',
+        'paymentStatus': resolution == 'refund_buyer' ? 'refunded' : 'released',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+    await _functions.httpsCallable('resolveDispute').call({
+      'orderId': orderId,
+      'resolution': resolution,
+      'adminNotes': adminNotes,
+      'refundPercent': refundPercent,
+    });
+  }
+
+  Future<void> publishAdvisory({
+    required String title,
+    required String message,
+    required String targetRole,
+    String priority = 'normal',
+  }) async {
+    await _db.collection('advisories').add({
+      'title': title,
+      'message': message,
+      'targetRole': targetRole,
+      'priority': priority,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<Map<String, dynamic>> exportUserData() async {
     if (!kUseCloudFunctions) return _spark.exportUserData();
     final result = await _functions.httpsCallable('exportUserData').call();
