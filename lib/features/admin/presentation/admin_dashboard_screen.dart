@@ -10,6 +10,9 @@ import 'broadcast_advisory_screen.dart';
 import 'platform_analytics_screen.dart';
 import 'review_management_screen.dart';
 import 'server_maintenance_screen.dart';
+import 'settlement_management_screen.dart';
+import 'logistics_management_screen.dart';
+import 'audit_log_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -18,7 +21,7 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 8,
+      length: 11,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -39,8 +42,11 @@ class AdminDashboardScreen extends StatelessWidget {
               Tab(text: 'Analytics', icon: Icon(Icons.insights_rounded, size: 20)),
               Tab(text: 'Users & Access', icon: Icon(Icons.people_alt_rounded, size: 20)),
               Tab(text: 'Reviews', icon: Icon(Icons.rate_review_rounded, size: 20)),
+              Tab(text: 'Treasury & Payouts', icon: Icon(Icons.account_balance_wallet_rounded, size: 20)),
               Tab(text: 'Disputes & Escrow', icon: Icon(Icons.gavel_rounded, size: 20)),
+              Tab(text: 'Fleet Dispatch', icon: Icon(Icons.local_shipping_rounded, size: 20)),
               Tab(text: 'Market Rates', icon: Icon(Icons.trending_up_rounded, size: 20)),
+              Tab(text: 'Audit Trail', icon: Icon(Icons.shield_rounded, size: 20)),
               Tab(text: 'Firebase & Server', icon: Icon(Icons.cloud_sync_rounded, size: 20)),
               Tab(text: 'Advisories', icon: Icon(Icons.campaign_rounded, size: 20)),
             ],
@@ -52,8 +58,11 @@ class AdminDashboardScreen extends StatelessWidget {
             PlatformAnalyticsScreen(),
             UserManagementScreen(),
             ReviewManagementScreen(),
+            SettlementManagementScreen(),
             DisputeResolutionScreen(),
+            LogisticsManagementScreen(),
             MarketPriceManagementScreen(),
+            AuditLogScreen(),
             ServerMaintenanceScreen(),
             BroadcastAdvisoryScreen(),
           ],
@@ -218,6 +227,46 @@ class _OverviewTab extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const BroadcastAdvisoryScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'Treasury Payouts',
+                  color: const Color(0xFF2E7D32),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettlementManagementScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.local_shipping_rounded,
+                  label: 'Fleet Dispatch',
+                  color: const Color(0xFF1B6BD8),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LogisticsManagementScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.shield_rounded,
+                  label: 'Audit Trail',
+                  color: const Color(0xFF5E35B1),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AuditLogScreen()),
                   ),
                 ),
               ),
