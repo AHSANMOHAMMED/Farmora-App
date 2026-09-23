@@ -1,0 +1,305 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+
+import '../domain/collection_job.dart';
+import 'collection_job_repository.dart';
+
+class FirestoreCollectionJobRepository implements CollectionJobRepository {
+  FirestoreCollectionJobRepository({
+    FirebaseFirestore? firestore,
+    FirebaseFunctions? functions,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _functions = functions ?? FirebaseFunctions.instance;
+
+  final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
+
+  CollectionReference<Map<String, dynamic>> get _jobs =>
+      _firestore.collection('transport_jobs');
+
+  @override
+  Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
+    final controller = StreamController<List<CollectionJob>>();
+    List<CollectionJob> available = const [];
+    List<CollectionJob> assigned = const [];
+    var availableReady = false;
+    var assignedReady = false;
+
+    void emit() {
+      if (!availableReady || !assignedReady || controller.isClosed) return;
+      final merged = <String, CollectionJob>{
+        for (final job in available) job.id: job,
+        for (final job in assigned) job.id: job,
+      }.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      controller.add(merged);
+    }
+
+    final availableSubscription = _jobs
+        .where('status', isEqualTo: 'requested')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        available = snapshot.docs.map(_fromDocument).toList();
+        availableReady = true;
+        emit();
+      },
+      onError: controller.addError,
+    );
+    final assignedSubscription = _jobs
+        .where('transporterId', isEqualTo: logisticsProviderId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+      (snapshot) {
+        assigned = snapshot.docs.map(_fromDocument).toList();
+        assignedReady = true;
+        emit();
+      },
+      onError: controller.addError,
+    );
+
+    controller.onCancel = () async {
+      await availableSubscription.cancel();
+      await assignedSubscription.cancel();
+    };
+    return controller.stream;
+  }
+
+  @override
+  Future<List<CollectionJob>> getJobs(String logisticsProviderId) async {
+    try {
+      final snapshots = await Future.wait([
+        _jobs
+            .where('status', isEqualTo: 'requested')
+            .orderBy('createdAt', descending: true)
+            .get(),
+        _jobs
+            .where('transporterId', isEqualTo: logisticsProviderId)
+            .orderBy('createdAt', descending: true)
+            .get(),
+      ]);
+      final merged = <String, CollectionJob>{};
+      for (final snapshot in snapshots) {
+        for (final document in snapshot.docs) {
+          merged[document.id] = _fromDocument(document);
+        }
+      }
+      return merged.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  @override
+  Future<CollectionJob> getJob(String id) async {
+    try {
+      final document = await _jobs.doc(id).get();
+      if (!document.exists) {
+        throw const CollectionJobException('Job not found.');
+      }
+      return _fromDocument(document);
+    } on CollectionJobException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  @override
+  Future<CollectionJob> acceptJob({
+    required String jobId,
+    required String logisticsProviderId,
+  }) async {
+    try {
+      await _transition(jobId, 'accepted');
+      return await getJob(jobId);
+    } on FirebaseFunctionsException catch (error) {
+      throw CollectionJobException(_functionMessage(error));
+    }
+  }
+
+  @override
+  Future<CollectionJob> updateStatus({
+    required String jobId,
+    required String logisticsProviderId,
+    required CollectionJobStatus status,
+    String? reason,
+  }) async {
+    try {
+      if (status == CollectionJobStatus.collected) {
+        await _transition(jobId, 'pickedUp');
+      } else if (status == CollectionJobStatus.inTransit) {
+        await _transition(jobId, 'inTransit');
+      } else if (status == CollectionJobStatus.completed) {
+        final snapshot = await _jobs.doc(jobId).get();
+        final currentStatus = snapshot.data()?['status']?.toString();
+        if (currentStatus == 'pickedUp') {
+          await _transition(jobId, 'inTransit');
+        }
+        await _transition(jobId, 'delivered');
+      } else if (status == CollectionJobStatus.cancelled) {
+        await _transition(jobId, 'cancelled', reason: reason);
+      } else {
+        throw CollectionJobException(
+          'Unsupported status update: ${status.label}.',
+        );
+      }
+      return await getJob(jobId);
+    } on CollectionJobException {
+      rethrow;
+    } on FirebaseFunctionsException catch (error) {
+      throw CollectionJobException(_functionMessage(error));
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> _transition(String jobId, String status, {String? reason}) async {
+    await _functions.httpsCallable('transitionTransport').call<void>({
+      'jobId': jobId,
+      'status': status,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  CollectionJob _fromDocument(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data() ?? const <String, dynamic>{};
+    final pickup = _text(data, ['pickupLocation', 'pickupAddress']);
+    final delivery = _text(data, ['deliveryLocation', 'dropoffAddress']);
+    final status = _status(data['status']?.toString());
+    final createdAt = _date(data['createdAt']) ?? DateTime.now();
+    return CollectionJob(
+      id: document.id,
+      producePostId: _nullableText(data, ['producePostId', 'productId']),
+      orderId: _nullableText(data, ['orderId']),
+      farmerId: _text(data, ['farmerId', 'createdBy']),
+      buyerId: _text(data, ['buyerId']),
+      logisticsProviderId:
+          _nullableText(data, ['logisticsProviderId', 'transporterId']),
+      produceName: _text(
+        data,
+        ['produceName', 'productName', 'title'],
+        fallback: 'Produce collection',
+      ),
+      quantity: _number(data, ['quantity', 'cargoWeightKg']),
+      unit: _text(data, ['unit'], fallback: 'kg'),
+      pickupLocation: pickup.isEmpty ? 'Pickup location not provided' : pickup,
+      deliveryLocation:
+          delivery.isEmpty ? 'Delivery location not provided' : delivery,
+      collectionDate: _date(data['collectionDate']) ??
+          _date(data['pickupTime']) ??
+          createdAt,
+      notes: _nullableText(data, ['notes', 'detail']),
+      farmerName: _text(
+        data,
+        ['farmerName', 'pickupContactName'],
+        fallback: 'Farmer details unavailable',
+      ),
+      farmerPhone: _text(data, ['farmerPhone', 'pickupContactPhone']),
+      buyerName: _text(
+        data,
+        ['buyerName', 'deliveryContactName'],
+        fallback: 'Buyer details unavailable',
+      ),
+      buyerPhone: _text(data, ['buyerPhone', 'deliveryContactPhone']),
+      status: status,
+      createdAt: createdAt,
+      updatedAt: _date(data['updatedAt']) ?? createdAt,
+      completedAt:
+          _date(data['completedAt']) ?? _date(data['deliveredAt']),
+      collectedAt: _date(data['collectedAt']) ?? _date(data['pickedUpAt']),
+      inTransitAt: _date(data['inTransitAt']),
+      deliveryFeeMinor: _integer(data, ['deliveryFeeMinor']),
+    );
+  }
+
+  CollectionJobStatus _status(String? value) {
+    return switch (value) {
+      'requested' || 'pending' || 'open' || 'OPEN' =>
+        CollectionJobStatus.open,
+      'accepted' || 'ACCEPTED' => CollectionJobStatus.accepted,
+      'pickedUp' || 'collected' || 'COLLECTED' =>
+        CollectionJobStatus.collected,
+      'inTransit' || 'in_transit' || 'IN_TRANSIT' =>
+        CollectionJobStatus.inTransit,
+      'delivered' || 'completed' || 'COMPLETED' =>
+        CollectionJobStatus.completed,
+      'cancelled' || 'CANCELLED' => CollectionJobStatus.cancelled,
+      _ => CollectionJobStatus.open,
+    };
+  }
+
+  DateTime? _date(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    return null;
+  }
+
+  String _text(
+    Map<String, dynamic> data,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    return _nullableText(data, keys) ?? fallback;
+  }
+
+  String? _nullableText(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  double _number(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is num) return value.toDouble();
+      final parsed = double.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+
+    return 0;
+  }
+
+  int? _integer(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  String _functionMessage(FirebaseFunctionsException error) {
+    return switch (error.code) {
+      'unauthenticated' => 'Please sign in again to continue.',
+      'permission-denied' => 'Your transporter account cannot update this job.',
+      'not-found' => 'This collection job no longer exists.',
+      'failed-precondition' =>
+        'This job was updated by someone else. Refresh and try again.',
+      _ => error.message ?? 'Could not update the collection job.',
+    };
+  }
+
+  String _firebaseMessage(FirebaseException error) {
+    return switch (error.code) {
+      'permission-denied' =>
+        'You do not have permission to view these collection jobs.',
+      'unavailable' => 'The database is temporarily unavailable.',
+      'failed-precondition' =>
+        'A required Firestore index is not deployed yet.',
+      _ => error.message ?? 'Could not load collection jobs.',
+    };
+  }
+}
