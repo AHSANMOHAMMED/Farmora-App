@@ -4,16 +4,63 @@ import '../../../core/constants/app_colors.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final _service = FirestoreService();
+  bool _orderUpdates = true;
+  bool _messages = true;
+  bool _promos = false;
+  bool _quietHours = false;
+
+  Future<void> _savePrefs() async {
+    try {
+      await _service.updateNotificationPreferences({
+        'orderUpdates': _orderUpdates,
+        'messages': _messages,
+        'promos': _promos,
+        'quietHours': _quietHours,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notification preferences saved.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final uid = context.read<FarmoraState>().currentUserId;
-    final service = FirestoreService();
+    final service = _service;
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: Column(
+        children: [
+          ExpansionTile(
+            title: const Text('Preferences & quiet hours'),
+            children: [
+              SwitchListTile(title: const Text('Order status updates'), value: _orderUpdates, onChanged: (v) => setState(() => _orderUpdates = v)),
+              SwitchListTile(title: const Text('New messages'), value: _messages, onChanged: (v) => setState(() => _messages = v)),
+              SwitchListTile(title: const Text('Promotions'), value: _promos, onChanged: (v) => setState(() => _promos = v)),
+              SwitchListTile(title: const Text('Quiet hours (10pm–7am)'), value: _quietHours, onChanged: (v) => setState(() => _quietHours = v)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: FilledButton(onPressed: _savePrefs, child: const Text('Save preferences')),
+              ),
+            ],
+          ),
+          Expanded(
+            child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: service.notificationsStream(uid),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -52,6 +99,9 @@ class NotificationsScreen extends StatelessWidget {
             },
           );
         },
+            ),
+          ),
+        ],
       ),
     );
   }

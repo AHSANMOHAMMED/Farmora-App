@@ -20,6 +20,24 @@ service firebase.storage {
         && request.resource.contentType.matches('(image|video)/.*');
     }
 
+    // Harvest videos: owner farmer can upload/delete, any signed-in user can view.
+    match /product_videos/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Dispute evidence photos (owner uploads, admins can review).
+    match /disputes/{userId}/{allPaths=**} {
+      allow read: if request.auth != null && (request.auth.uid == userId || admin());
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Transport providers can upload verification documents
     match /verification/{userId}/{allPaths=**} {
       allow read: if request.auth != null && (request.auth.uid == userId || admin());
