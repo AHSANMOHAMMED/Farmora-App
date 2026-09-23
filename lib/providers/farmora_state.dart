@@ -164,7 +164,7 @@ class FarmoraState extends ChangeNotifier {
 
     _orders.clear();
     _orders.addAll([
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-1',
         orderNumber: 'ORD-8924',
         title: 'Heirloom Tomatoes',
@@ -186,7 +186,7 @@ class FarmoraState extends ChangeNotifier {
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.storefront_rounded,
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-2',
         orderNumber: 'ORD-8925',
         title: 'Crisphead Lettuce',
@@ -208,7 +208,7 @@ class FarmoraState extends ChangeNotifier {
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.restaurant_rounded,
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-3',
         orderNumber: 'ORD-8928',
         title: 'Organic Carrots',
@@ -230,7 +230,7 @@ class FarmoraState extends ChangeNotifier {
         requestedDate: 'Oct 24, 2023',
         buyerIcon: Icons.storefront_rounded,
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-4',
         orderNumber: 'ORD-8892',
         title: 'Heirloom Tomatoes',
@@ -251,7 +251,7 @@ class FarmoraState extends ChangeNotifier {
         timestamp: 'Oct 23, 2024',
         requestedDate: 'Oct 23, 2024',
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-5',
         orderNumber: 'ORD-8890',
         title: 'Dinosaur Kale',
@@ -272,7 +272,7 @@ class FarmoraState extends ChangeNotifier {
         timestamp: 'Jun 22, 2024',
         requestedDate: 'Jun 22, 2024',
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-6',
         orderNumber: 'ORD-8885',
         title: 'Nantes Carrots',
@@ -293,7 +293,7 @@ class FarmoraState extends ChangeNotifier {
         timestamp: 'Jun 15, 2024',
         requestedDate: 'Jun 15, 2024',
       ),
-      const FarmoraOrder(
+      FarmoraOrder(
         id: 'ord-7',
         orderNumber: 'ORD-8881',
         title: 'Romaine Lettuce',
