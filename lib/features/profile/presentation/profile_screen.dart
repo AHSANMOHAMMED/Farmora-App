@@ -8,7 +8,6 @@ import 'language_picker.dart';
 import 'role_sheet.dart';
 import 'help_support_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
-import '../../home/presentation/home_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -190,119 +189,6 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   );
                 },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Quick Navigation Card (jump to main app sections)
-          if (isFarmer) ...[
-            Card(
-              color: AppColors.surfaceContainerLowest,
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                    child: Text(
-                      strings.t('quickActions'),
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.storefront_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: Text(strings.t('navProducts'),
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      HomeScreen.goToTab(context, 1);
-                    },
-                  ),
-                  Divider(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
-                      height: 1,
-                      indent: 56),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.shopping_basket_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: Text(strings.t('navOrders'),
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      HomeScreen.goToTab(context, 2);
-                    },
-                  ),
-                  Divider(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
-                      height: 1,
-                      indent: 56),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.payments_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: Text(strings.t('navEarnings'),
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      HomeScreen.goToTab(context, 3);
-                    },
-                  ),
-                  Divider(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
-                      height: 1,
-                      indent: 56),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.add_shopping_cart_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: Text(strings.t('addProduce'),
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      HomeScreen.goToTab(context, 1);
-                    },
-                  ),
-                ],
               ),
             ),
             const SizedBox(height: 16),
