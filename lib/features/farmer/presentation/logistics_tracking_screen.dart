@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -30,8 +31,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.order.id.isNotEmpty) {
-      _jobSub = _service.jobByOrderStream(widget.order.id).listen((jobs) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (widget.order.id.isNotEmpty && uid.isNotEmpty) {
+      _jobSub = _service.jobByOrderStream(widget.order.id, uid).listen((jobs) {
         if (mounted && jobs.isNotEmpty) {
           setState(() => _job = jobs.first);
         }
@@ -369,8 +371,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => _showCallDriverDialog(context),
-                              icon: const Icon(Icons.phone_outlined,
+                              onPressed: () =>
+                                  _showCallDriverDialog(context, order),
+                              icon: const Icon(Icons.chat_bubble_outline,
                                   size: 16),
                               label: Text(strings.t('callDriver'),
                                   style: const TextStyle(
@@ -1172,50 +1175,45 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
     });
   }
 
-  void _showCallDriverDialog(BuildContext context) {
+  /// Contact is routed through the order-scoped, E2E-encrypted chat — the
+  /// platform deliberately never exposes driver phone numbers or fabricated
+  /// contact cards.
+  void _showCallDriverDialog(BuildContext context, FarmoraOrder order) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.phone_in_talk_rounded, color: AppColors.primary),
+            Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primary),
             SizedBox(width: 8),
-            Text('Contact Driver',
+            Text('Contact Delivery Partner',
                 style: TextStyle(
                     fontFamily: 'Inter',
                     fontWeight: FontWeight.bold,
                     fontSize: 18)),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Driver: Kasun Perera (GreenRoute Express)',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            const Text('Vehicle: Tata Dimo Batta (WP NB-4821)'),
-            const SizedBox(height: 4),
-            const Text('Status: En Route to Farm Gate'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.call, color: AppColors.primary, size: 20),
-                  SizedBox(width: 10),
-                  Text('+94 77 123 4567',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: AppColors.primary)),
-                ],
-              ),
+            Text(
+              'Your driver and buyer are reachable through the order chat. '
+              'Messages are end-to-end encrypted and phone numbers stay private.',
+              style: TextStyle(
+                  fontFamily: 'Inter', fontSize: 14, height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'You will see the assigned driver details (name, vehicle, '
+              'ratings) inside the conversation once a transporter accepts '
+              'this delivery.',
+              style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.4),
             ),
           ],
         ),
@@ -1227,15 +1225,15 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Calling Driver +94 77 123 4567...'),
-                  backgroundColor: AppColors.primary,
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ConversationsScreen(orderId: order.id),
                 ),
               );
             },
-            icon: const Icon(Icons.phone, size: 16),
-            label: const Text('Call Now'),
+            icon: const Icon(Icons.chat_bubble_outline, size: 16),
+            label: const Text('Open Order Chat'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.onPrimary,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -32,10 +33,14 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   void initState() {
     super.initState();
     _liveJob = widget.job;
-    if (widget.job.orderId != null && widget.job.orderId!.isNotEmpty) {
-      _jobSub = _service.jobByOrderStream(widget.job.orderId!).listen((jobs) {
-        if (jobs.isNotEmpty && mounted) {
-          setState(() => _liveJob = jobs.first);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (widget.job.orderId != null && widget.job.orderId!.isNotEmpty && uid.isNotEmpty) {
+      // The assigned transporter always reads their own job; fall back to a
+      // direct doc subscription is unnecessary — transporterId scope suffices.
+      _jobSub = _service.jobsByTransporterStream(uid).listen((jobs) {
+        final match = jobs.where((j) => j.orderId == widget.job.orderId);
+        if (match.isNotEmpty && mounted) {
+          setState(() => _liveJob = match.first);
         }
       }, onError: (e) => debugPrint('Job stream error: $e'));
     }
@@ -272,6 +277,12 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               pickupLabel: job.pickup ?? job.route,
               dropoffLabel: job.dropoff ?? job.detail,
               statusLabel: '${job.title} • ${job.status.toUpperCase()}',
+              pickup: job.pickupLat != null && job.pickupLng != null
+                  ? LatLng(job.pickupLat!, job.pickupLng!)
+                  : null,
+              dropoff: job.dropoffLat != null && job.dropoffLng != null
+                  ? LatLng(job.dropoffLat!, job.dropoffLng!)
+                  : null,
               courier: courier,
             ),
             const SizedBox(height: 24),

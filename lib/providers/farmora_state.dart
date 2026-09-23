@@ -647,6 +647,7 @@ class FarmoraState extends ChangeNotifier {
         orderNumber: orderId,
         title: off.productName,
         productName: off.productName,
+        productId: off.productId,
         quantity: '${off.proposedQuantity} kg',
         totalAmount: 'LKR ${totalAmount.toStringAsFixed(2)}',
         totalAmountNumber: totalAmount,

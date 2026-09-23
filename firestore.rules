@@ -46,6 +46,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
             'notificationPreferences', 'country', 'district', 'location',
+            'locationUpdatedAt', 'locationAccuracy',
             'vehicleType', 'capacityKg', 'serviceDistricts', 'chatPublicKey',
             'termsAcceptedAt', 'privacyAcceptedAt', 'deviceTokens', 'phone',
             'isDeleted', 'deletedAt', 'isSuspended'
@@ -217,13 +218,54 @@ service cloud.firestore {
     }
 
     // Treasury payouts: recipients see their own; admins manage all.
+    // Client-created payouts are constrained field-by-field: self-recipient,
+    // pending status only, bounded consistent amounts — so a malicious client
+    // cannot forge a settled payout or impersonate another beneficiary.
+    // Actual disbursement happens only through the admin approval flow.
     match /settlements/{settlementId} {
       allow read: if admin()
         || (signedIn() && resource.data.recipientId == request.auth.uid);
       allow create: if admin()
-        || (signedIn() && request.resource.data.recipientId == request.auth.uid);
+        || (signedIn()
+          && request.resource.data.recipientId == request.auth.uid
+          && request.resource.data.recipientRole in ['farmer', 'transporter', 'buyer']
+          && request.resource.data.status == 'pending'
+          && request.resource.data.grossAmount is number
+          && request.resource.data.grossAmount > 0
+          && request.resource.data.grossAmount <= 10000000
+          && request.resource.data.platformFee is number
+          && request.resource.data.platformFee >= 0
+          && request.resource.data.platformFee < request.resource.data.grossAmount
+          && request.resource.data.netAmount is number
+          && request.resource.data.netAmount > 0
+          && request.resource.data.netAmount < request.resource.data.grossAmount
+          && request.resource.data.bankName is string
+          && request.resource.data.bankName.size() > 0
+          && request.resource.data.bankName.size() <= 100
+          && request.resource.data.accountNumber is string
+          && request.resource.data.accountNumber.size() >= 4
+          && request.resource.data.accountNumber.size() <= 40
+          && request.resource.data.payoutMethod in ['CEFT', 'SLIP', 'Mobile Wallet']);
       allow update: if admin();
       allow delete: if false;
+    }
+
+    // Transporter issue reports for active hauls.
+    match /transport_job_issues/{reportId} {
+      allow read: if admin()
+        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
+      allow create: if transporter()
+        && request.resource.data.logisticsProviderId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Transporter delivery ratings.
+    match /transport_job_ratings/{ratingId} {
+      allow read: if admin()
+        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
+      allow create: if transporter()
+        && request.resource.data.logisticsProviderId == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /offers/{offerId} {

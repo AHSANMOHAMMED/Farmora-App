@@ -135,13 +135,13 @@ void main() {
 
     test('6. Payout request rejects invalid amounts exceeding total balance',
         () async {
-      expect(
-        () => state.requestFarmerWithdrawal(
+      await expectLater(
+        state.requestFarmerWithdrawal(
           amount: 999999999.0,
           bankName: 'Sampath Bank',
           accountNumber: '12345678',
         ),
-        throwsArgumentError,
+        throwsA(isA<ArgumentError>()),
       );
     });
   });

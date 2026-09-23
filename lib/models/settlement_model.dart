@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class SettlementPayout {
   final String id;
   final String orderId;
@@ -69,17 +71,13 @@ class SettlementPayout {
       recipientRole: (map['recipientRole'] ?? 'farmer').toString(),
       bankName: (map['bankName'] ?? 'Commercial Bank of Ceylon').toString(),
       accountNumber: (map['accountNumber'] ?? 'XXXX-XXXX-XXXX').toString(),
-      grossAmount: (map['grossAmount'] as num?)?.toDouble() ?? 0.0,
-      platformFee: (map['platformFee'] as num?)?.toDouble() ?? 0.0,
-      netAmount: (map['netAmount'] as num?)?.toDouble() ?? 0.0,
+      grossAmount: firebaseDouble(map['grossAmount']) ?? 0.0,
+      platformFee: firebaseDouble(map['platformFee']) ?? 0.0,
+      netAmount: firebaseDouble(map['netAmount']) ?? 0.0,
       payoutMethod: (map['payoutMethod'] ?? 'CEFT').toString(),
       status: (map['status'] ?? 'pending').toString(),
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      settledAt: map['settledAt'] != null
-          ? DateTime.tryParse(map['settledAt'].toString())
-          : null,
+      createdAt: firebaseDate(map['createdAt']) ?? DateTime.now(),
+      settledAt: firebaseDate(map['settledAt']),
       transactionReference: map['transactionReference']?.toString(),
       holdReason: map['holdReason']?.toString(),
     );

@@ -271,6 +271,16 @@ class SparkBackend {
     };
     await ref.update(updates);
 
+    // Privacy: clear the live courier position on delivery and cancellation
+    // so a finished job never retains an exposed last known GPS position.
+    if (status == 'delivered' || status == 'cancelled') {
+      await ref.update({
+        'courierLat': FieldValue.delete(),
+        'courierLng': FieldValue.delete(),
+        'locationUpdatedAt': FieldValue.delete(),
+      });
+    }
+
     final orderId = job['orderId'] as String?;
     if (orderId == null) return;
     const map = {

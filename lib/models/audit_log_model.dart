@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class AuditLog {
   final String id;
   final String actorId;
@@ -52,9 +54,7 @@ class AuditLog {
       targetId: (map['targetId'] ?? '').toString(),
       details: (map['details'] ?? '').toString(),
       severity: (map['severity'] ?? 'info').toString(),
-      timestamp: map['timestamp'] != null
-          ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      timestamp: firebaseDate(map['timestamp']) ?? DateTime.now(),
       ipAddress: map['ipAddress']?.toString(),
     );
   }

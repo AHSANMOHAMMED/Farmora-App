@@ -205,6 +205,7 @@ class TransporterController extends ChangeNotifier {
         isLoading = false;
         loadError = null;
         notifyListeners();
+        _rehydrateFeedback(uid);
       },
       onError: (Object error) {
         if (generation != _bindingGeneration) return;
@@ -257,6 +258,7 @@ class TransporterController extends ChangeNotifier {
       _jobs
         ..clear()
         ..addAll(jobs);
+      await _rehydrateFeedback(providerId);
     } catch (error) {
       loadError = _friendlyError(error);
     } finally {
@@ -264,6 +266,30 @@ class TransporterController extends ChangeNotifier {
       isRefreshing = false;
       notifyListeners();
     }
+  }
+
+  /// Restores persisted issue reports and delivery ratings from the
+  /// repository so [hasReportedIssue] and [ratingFor] survive controller
+  /// restarts, matching the repository contract.
+  Future<void> _rehydrateFeedback(String uid) async {
+    if (uid.isEmpty) return;
+    for (final job in List.of(_jobs)) {
+      try {
+        if (!_reportedIssues.contains(job.id)) {
+          final report = await _repository.getIssueReport(job.id);
+          if (report != null) _reportedIssues.add(job.id);
+        }
+        if (!_ratings.containsKey(job.id)) {
+          final rating = await _repository.getDeliveryRating(job.id);
+          if (rating != null) {
+            _ratings[job.id] = (stars: rating.stars, comment: rating.comment);
+          }
+        }
+      } catch (_) {
+        // Rehydration is best-effort; missing records simply stay unset.
+      }
+    }
+    notifyListeners();
   }
 
   void updateSearch(String value) {

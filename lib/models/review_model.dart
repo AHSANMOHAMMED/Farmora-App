@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/utils/firebase_values.dart';
 
 enum ReviewStatus {
   pending,
@@ -100,9 +101,7 @@ class Review {
       } catch (e) {
         statusValue = ReviewStatus.pending;
       }
-    }
-
-    return Review(
+    }    return Review(
       id: id,
       orderId: data['orderId'] ?? '',
       orderNumber: data['orderNumber'] ?? '',
@@ -110,14 +109,11 @@ class Review {
       reviewerName: data['reviewerName'] ?? '',
       subjectId: data['subjectId'] ?? '',
       subjectName: data['subjectName'] ?? '',
-      rating: (data['rating'] as num?)?.toInt() ?? 5,
+      rating: firebaseInt(data['rating']) ?? 5,
       comment: data['comment'] ?? '',
       status: statusValue,
-      createdAt:
-          DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String()),
-      moderatedAt: data['moderatedAt'] != null
-          ? DateTime.parse(data['moderatedAt'])
-          : null,
+      createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
+      moderatedAt: firebaseDate(data['moderatedAt']),
       moderationNote: data['moderationNote'] as String?,
     );
   }

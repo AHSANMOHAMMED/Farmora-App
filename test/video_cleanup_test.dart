@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmora/models/order.dart';
 import 'package:farmora/models/product.dart';
+import 'package:farmora/providers/farmora_state.dart';
 
 void main() {
   group('Harvest video delivery cleanup flow', () {
@@ -88,7 +89,11 @@ void main() {
       expect(cleaned.hasVideo, isFalse);
       expect(cleaned.harvestStatus, HarvestStatus.delivered);
       // Trust level upgrades to High once delivered.
-      expect(cleaned.harvestStatus == HarvestStatus.delivered, isTrue);
+      expect(
+        FarmoraState().trustLevelForProduct(cleaned),
+        'High',
+        reason: 'delivered harvest status must map to High trust',
+      );
     });
   });
 }

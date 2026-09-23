@@ -404,8 +404,12 @@ export const onTransportTransition = functions.firestore
           await writeNotification(String(order.farmerId), "Delivery update", body, "logistics", after.orderId);
         }
         // Auto-delete harvest video after successful delivery (privacy).
+        // Live courier GPS is cleared on delivery AND cancellation so a
+        // cancelled job never retains an exposed last position.
         if (after.status === "delivered") {
           await cleanupProductVideoForOrder(order as Record<string, any>);
+        }
+        if (after.status === "delivered" || after.status === "cancelled") {
           await change.after.ref.update({
             courierLat: admin.firestore.FieldValue.delete(),
             courierLng: admin.firestore.FieldValue.delete(),

@@ -1189,31 +1189,65 @@ class FirestoreService {
   }
 
   /// Live tracking stream for one order's transport job (courier coordinates,
-  /// status transitions). Emits an empty list while no job exists yet.
-  Stream<List<TransportJob>> jobByOrderStream(String orderId) {
+  /// status transitions). Participant-scoped so Firestore rules can verify
+  /// access: only jobs created by, assigned to, or ordered by [uid] are
+  /// requested. Emits an empty list while no job exists yet.
+  Stream<List<TransportJob>> jobByOrderStream(String orderId, String uid) {
     return _db
         .collection('transport_jobs')
         .where('orderId', isEqualTo: orderId)
+        .where('farmerId', isEqualTo: uid)
         .limit(1)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
-            .toList());
+            .toList())
+        .handleError((e) => debugPrint('Job stream for order skipped: $e'));
   }
 
-  /// Verified transporters available for nearby discovery. Reads public
-  /// profile fields (name, district, vehicle, last known location) — never
-  /// phone numbers, which stay private per the messaging policy.
+  /// Live tracking stream for the buyer side of an order: same as
+  /// [jobByOrderStream] but scoped to the buyer instead of the farmer.
+  Stream<List<TransportJob>> jobByOrderAsBuyerStream(String orderId, String uid) {
+    return _db
+        .collection('transport_jobs')
+        .where('orderId', isEqualTo: orderId)
+        .where('buyerId', isEqualTo: uid)
+        .limit(1)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList())
+        .handleError((e) => debugPrint('Job stream for order skipped: $e'));
+  }
+
+  /// Verified transporters available for nearby discovery. Returns a public
+  /// projection only (no phone/email/address) — contact happens through
+  /// order-scoped in-app messaging, never direct details.
   Stream<List<Map<String, dynamic>>> transportersStream({int limit = 100}) {
     return _db
         .collection('users')
         .where('role', isEqualTo: 'transporter')
+        .where('isVerified', isEqualTo: true)
         .where('isSuspended', isNotEqualTo: true)
         .limit(limit)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => {'uid': doc.id, ...doc.data()})
-            .toList());
+        .map((snap) => snap.docs.map((doc) {
+              final d = doc.data();
+              return {
+                'uid': doc.id,
+                'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
+                'photoUrl': d['photoUrl'] ?? '',
+                'district': d['district'] ?? '',
+                'vehicleType': d['vehicleType'] ?? '',
+                'vehicleRegistration': d['vehicleRegistration'] ?? '',
+                'vehicleCapacity': d['vehicleCapacity'],
+                'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
+                'availabilityStatus': d['availabilityStatus'] ?? '',
+                'isVerified': d['isVerified'] == true,
+                'location': d['location'],
+                'locationUpdatedAt': d['locationUpdatedAt'],
+              };
+            }).toList());
   }
 
   /// Persist the signed-in user's last known location on their profile.

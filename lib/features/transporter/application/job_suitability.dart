@@ -72,9 +72,9 @@ class JobSuitabilityScorer {
       urgencyScore = 12;
     }
 
-    final total = (capacityScore + urgencyScore).round().clamp(0, 100);
+    final clamped = (capacityScore + urgencyScore).round().clamp(0, 100);
     return JobSuitability(
-      score: total,
+      score: clamped.toInt(),
       capacityFit: capacityFit,
       warning: warning,
     );

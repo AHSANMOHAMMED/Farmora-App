@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class TransportJob {
   final String id;
   final String title;
@@ -18,7 +20,7 @@ class TransportJob {
   final int? weightKg;
 
   /// Live courier coordinates while the delivery is active.
-  /// Cleared by the backend once the job is delivered/cancelled.
+  /// Cleared by the backend on delivery and on cancellation.
   final double? courierLat;
   final double? courierLng;
   final DateTime? locationUpdatedAt;
@@ -155,6 +157,12 @@ class TransportJob {
       'weightKg': weightKg,
       if (courierLat != null) 'courierLat': courierLat,
       if (courierLng != null) 'courierLng': courierLng,
+      if (locationUpdatedAt != null)
+        'locationUpdatedAt': locationUpdatedAt!.toIso8601String(),
+      if (pickupLat != null) 'pickupLat': pickupLat,
+      if (pickupLng != null) 'pickupLng': pickupLng,
+      if (dropoffLat != null) 'dropoffLat': dropoffLat,
+      if (dropoffLng != null) 'dropoffLng': dropoffLng,
     };
   }
 
@@ -182,22 +190,13 @@ class TransportJob {
       capacityKg: (data['capacityKg'] as num?)?.toInt(),
       weightKg: (data['weightKg'] as num?)?.toInt() ??
           (data['capacityKg'] as num?)?.toInt(),
-      courierLat: (data['courierLat'] as num?)?.toDouble(),
-      courierLng: (data['courierLng'] as num?)?.toDouble(),
-      locationUpdatedAt: _tryParseDate(data['locationUpdatedAt']),
-      pickupLat: (data['pickupLat'] as num?)?.toDouble(),
-      pickupLng: (data['pickupLng'] as num?)?.toDouble(),
-      dropoffLat: (data['dropoffLat'] as num?)?.toDouble(),
-      dropoffLng: (data['dropoffLng'] as num?)?.toDouble(),
+      courierLat: firebaseDouble(data['courierLat']),
+      courierLng: firebaseDouble(data['courierLng']),
+      locationUpdatedAt: firebaseDate(data['locationUpdatedAt']),
+      pickupLat: firebaseDouble(data['pickupLat']),
+      pickupLng: firebaseDouble(data['pickupLng']),
+      dropoffLat: firebaseDouble(data['dropoffLat']),
+      dropoffLng: firebaseDouble(data['dropoffLng']),
     );
-  }
-
-  static DateTime? _tryParseDate(dynamic v) {
-    if (v == null) return null;
-    try {
-      return DateTime.tryParse(v.toString());
-    } catch (_) {
-      return null;
-    }
   }
 }

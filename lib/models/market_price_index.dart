@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class MarketPriceIndex {
   final String id;
   final String cropName;
@@ -41,13 +43,11 @@ class MarketPriceIndex {
       cropName: map['cropName']?.toString() ?? '',
       category: map['category']?.toString() ?? 'Vegetables',
       district: map['district']?.toString() ?? 'Dambulla',
-      minPricePerKg: (map['minPricePerKg'] as num?)?.toDouble() ?? 0.0,
-      maxPricePerKg: (map['maxPricePerKg'] as num?)?.toDouble() ?? 0.0,
-      averagePricePerKg: (map['averagePricePerKg'] as num?)?.toDouble() ?? 0.0,
+      minPricePerKg: firebaseDouble(map['minPricePerKg']) ?? 0.0,
+      maxPricePerKg: firebaseDouble(map['maxPricePerKg']) ?? 0.0,
+      averagePricePerKg: firebaseDouble(map['averagePricePerKg']) ?? 0.0,
       trend: map['trend']?.toString() ?? 'stable',
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      updatedAt: firebaseDate(map['updatedAt']) ?? DateTime.now(),
     );
   }
 

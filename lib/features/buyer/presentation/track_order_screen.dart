@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -29,8 +30,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.order.id.isNotEmpty) {
-      _jobSub = _service.jobByOrderStream(widget.order.id).listen((jobs) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (widget.order.id.isNotEmpty && uid.isNotEmpty) {
+      _jobSub = _service.jobByOrderAsBuyerStream(widget.order.id, uid).listen((jobs) {
         if (mounted) setState(() => _job = jobs.isEmpty ? null : jobs.first);
       }, onError: (e) => debugPrint('Job tracking stream error: $e'));
     }
@@ -159,6 +161,12 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               dropoffLabel: order.deliveryAddress.split('\n').first,
               statusLabel:
                   '${order.status.toUpperCase()} • ${deliveryStatus.isNotEmpty ? deliveryStatus : 'in network'}',
+              pickup: _job?.pickupLat != null && _job?.pickupLng != null
+                  ? LatLng(_job!.pickupLat!, _job!.pickupLng!)
+                  : null,
+              dropoff: _job?.dropoffLat != null && _job?.dropoffLng != null
+                  ? LatLng(_job!.dropoffLat!, _job!.dropoffLng!)
+                  : null,
               courier: courier,
             ),
             const SizedBox(height: 24),

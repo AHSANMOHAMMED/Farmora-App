@@ -7,10 +7,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/geo.dart';
+import '../../../core/utils/firebase_values.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
-import '../../../services/user_location_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 
 /// Discovery screen where farmers and buyers find verified transport
@@ -88,8 +89,13 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
             const LocationSettings(accuracy: LocationAccuracy.medium),
       ).timeout(const Duration(seconds: 10));
       _myPosition = pos;
-      // Also publish my location so transporters can find me nearby.
-      await UserLocationService.instance.startSharing();
+      // One-shot local fix only — continuous sharing stays an explicit
+      // opt-in via the profile toggle. Publish a single snapshot so
+      // transporters can also see this user on their discovery list.
+      await _service.updateMyLocation(
+        lat: pos.latitude,
+        lng: pos.longitude,
+      );
       if (mounted) setState(() => _locating = false);
     } catch (e) {
       if (mounted) {
@@ -308,8 +314,8 @@ class _TransporterCard extends StatelessWidget {
     final verified = t['isVerified'] == true;
     final availability = (t['availabilityStatus'] ?? '').toString();
     final available = availability.isEmpty || availability == 'available';
-    final fresh = UserLocationService.isLocationFresh(
-      DateTime.tryParse('${t['locationUpdatedAt'] ?? ''}'),
+    final fresh = DeliveryLocationService.isLocationFresh(
+      firebaseDate(t['locationUpdatedAt']),
     );
 
     return Container(
@@ -453,23 +459,29 @@ class _TransporterCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    OutlinedButton.icon(
-                      onPressed: canChat
-                          ? () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const ConversationsScreen(),
-                                ),
-                              )
-                          : null,
-                      icon: const Icon(Icons.chat_bubble_outline, size: 14),
-                      label: const Text('Connect',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 0),
-                        minimumSize: const Size(0, 34),
+                    Tooltip(
+                      message: 'Messaging is order-scoped: open an order and '
+                          'tap Message to reach this provider directly.',
+                      child: OutlinedButton.icon(
+                        onPressed: canChat
+                            ? () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const ConversationsScreen(),
+                                  ),
+                                )
+                            : null,
+                        icon:
+                            const Icon(Icons.chat_bubble_outline, size: 14),
+                        label: const Text('Connect',
+                            style: TextStyle(
+                                fontFamily: 'Inter', fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 0),
+                          minimumSize: const Size(0, 34),
+                        ),
                       ),
                     ),
                   ],
