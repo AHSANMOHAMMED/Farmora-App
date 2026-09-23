@@ -11,6 +11,7 @@ import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
+import '../../farmer/presentation/logistics_tracking_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
@@ -875,6 +876,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 6. QUICK ACTIONS
   // ═══════════════════════════════════════════════════════════════
   Widget _buildQuickActions(BuildContext context, Role role) {
+    final state = context.read<FarmoraState>();
     final actions = <Map<String, dynamic>>[];
 
     if (role == Role.farmer) {
@@ -923,6 +925,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'onTap': () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AccountVerificationScreen()),
           ),
+        },
+        {
+          'icon': Icons.local_shipping_outlined,
+          'label': 'Logistics',
+          'color': const Color(0xFF00796B),
+          'bg': const Color(0xFFE0F2F1),
+          'onTap': () {
+            final activeOrder = state.orders.where((o) => o.isAccepted || o.progress > 0).firstOrNull ??
+                (state.orders.isNotEmpty ? state.orders.first : null);
+            if (activeOrder != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => LogisticsTrackingScreen(order: activeOrder)),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No active orders to track yet.')),
+              );
+            }
+          },
         },
       ]);
     } else if (role == Role.buyer) {

@@ -9,6 +9,7 @@ import '../../../providers/farmora_state.dart';
 import 'language_picker.dart';
 import 'role_sheet.dart';
 import 'legal_screens.dart';
+import 'help_support_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
@@ -317,7 +318,7 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SupportScreen()),
+                    MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
                   ),
                 ),
                 Divider(
