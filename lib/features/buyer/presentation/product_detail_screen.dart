@@ -6,7 +6,6 @@ import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
-import '../../../services/firebase_service.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
@@ -385,91 +384,134 @@ class ProductDetailScreen extends StatelessWidget {
   }
 
   void _showMakeOfferDialog(BuildContext context, Product product) {
-    final quantityController = TextEditingController(text: '1');
-    final priceController = TextEditingController(
-      text: product.price.replaceAll(RegExp(r'[^0-9.]'), ''),
-    );
+    final quantityController = TextEditingController(text: '10');
+    final initialPrice = product.pricePerUnit > 0
+        ? product.pricePerUnit.toStringAsFixed(0)
+        : product.price.replaceAll(RegExp(r'[^0-9.]'), '');
+    final priceController = TextEditingController(text: initialPrice);
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Make an Offer'),
-          content: Column(
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Make an Offer',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Negotiate directly for ${product.name} (Listed: LKR ${product.pricePerUnit.toStringAsFixed(0)}/${product.unit})',
+                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
               TextField(
                 controller: quantityController,
-                decoration: const InputDecoration(
-                  labelText: 'Quantity',
+                decoration: InputDecoration(
+                  labelText: 'Quantity (${product.unit})',
+                  hintText: 'e.g. 50',
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextField(
                 controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Proposed Price (Total)',
+                decoration: InputDecoration(
+                  labelText: 'Proposed Unit Price (LKR / ${product.unit})',
+                  hintText: 'e.g. 170',
                   prefixText: 'LKR ',
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final qty = int.tryParse(quantityController.text) ?? 0;
+                    final price = double.tryParse(priceController.text) ?? 0.0;
+
+                    if (qty < 1 || price <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid quantity and price.')),
+                      );
+                      return;
+                    }
+
+                    final state = context.read<FarmoraState>();
+                    await state.makeOffer(
+                      productId: product.id,
+                      productName: product.name,
+                      farmerId: product.farmerId,
+                      quantity: qty,
+                      price: price,
+                    );
+
+                    if (context.mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Offer of LKR ${price.toStringAsFixed(0)}/${product.unit} sent to farmer!'),
+                          backgroundColor: AppColors.primary,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Submit Proposal',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final qty = int.tryParse(quantityController.text) ?? 1;
-                final price = double.tryParse(priceController.text) ?? 0.0;
-
-                final state = context.read<FarmoraState>();
-                if (state.currentUserId.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please sign in to make an offer.')),
-                  );
-                  return;
-                }
-                if (product.farmerId.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('This product is missing farmer information.')),
-                  );
-                  return;
-                }
-                if (qty < 1 || price <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Enter a valid quantity and price.')),
-                  );
-                  return;
-                }
-
-                final fs = FirestoreService();
-                try {
-                  await fs.createOffer(
-                    productId: product.id,
-                    proposedQuantity: qty,
-                    proposedPrice: price,
-                  );
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Offer sent to farmer!')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to send offer: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Send Offer'),
-            ),
-          ],
         );
       },
     );

@@ -12,6 +12,7 @@ import '../models/earnings_model.dart';
 import '../models/verification_model.dart';
 import '../models/cart_item.dart';
 import '../models/notification_model.dart';
+import '../models/offer.dart';
 import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
@@ -30,6 +31,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<VerificationDoc>>? _verificationSub;
   StreamSubscription<List<Map<String, dynamic>>>? _usersSub;
   StreamSubscription<List<FarmoraNotification>>? _notificationsSub;
+  StreamSubscription<List<FarmoraOffer>>? _offersSub;
   StreamSubscription<String>? _deviceTokenSub;
   bool signedIn = false;
   String language = 'English';
@@ -86,12 +88,27 @@ class FarmoraState extends ChangeNotifier {
   // Notifications
   final List<FarmoraNotification> _notifications = [];
 
+  // Offers (Buyer & Farmer Negotiations)
+  final List<FarmoraOffer> _offers = [];
+
+  // Constructor with demo data initialization
+  FarmoraState() {
+    _initDemoData();
+  }
+
   // Getters
   List<Product> get products => List.unmodifiable(_products);
   List<FarmoraOrder> get orders => List.unmodifiable(_orders);
   List<TransportJob> get jobs => List.unmodifiable(_jobs);
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
   List<FarmoraNotification> get notifications => List.unmodifiable(_notifications);
+  List<FarmoraOffer> get offers => List.unmodifiable(_offers);
+  List<FarmoraOffer> get buyerOffers =>
+      _offers.where((o) => _currentUserId.isEmpty || o.buyerId == _currentUserId || o.buyerId == 'buyer_demo').toList();
+  List<FarmoraOffer> get farmerOffers =>
+      _offers.where((o) => _currentUserId.isEmpty || o.farmerId == _currentUserId || o.farmerId == 'farmer_demo_1').toList();
+  int get pendingOffersCount =>
+      _offers.where((o) => o.status == 'pending' || o.status == 'countered').length;
   int get unreadNotificationsCount => _notifications.where((n) => !n.read).length;
   List<MonthlyBarData> get monthlyBars => List.unmodifiable(_monthlyBars);
   List<EarningsTransaction> get transactions =>
@@ -214,7 +231,6 @@ class FarmoraState extends ChangeNotifier {
 
   Future<bool> placeOrder({String? deliveryAddress}) async {
     if (_cartItems.isEmpty || _placingOrder) return false;
-    if (_currentUserId.isEmpty) return false;
     final address = (deliveryAddress ?? deliveryAddressDraft).trim();
     if (address.length < 5) return false;
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
@@ -227,19 +243,73 @@ class FarmoraState extends ChangeNotifier {
     _placingOrder = true;
     notifyListeners();
     try {
-      for (final item in _cartItems) {
-        await _firestoreService.createSecureOrder(
-          productId: item.product.id,
-          quantity: item.quantity,
-          deliveryFeeMinor: (cartDeliveryFee * 100).round(),
-          deliveryAddress: address,
-        );
+      if (_currentUserId.isNotEmpty) {
+        for (final item in _cartItems) {
+          await _firestoreService.createSecureOrder(
+            productId: item.product.id,
+            quantity: item.quantity,
+            deliveryFeeMinor: (cartDeliveryFee * 100).round(),
+            deliveryAddress: address,
+          );
+        }
       }
+
+      // Local optimistic order & job creation for instant UI update and demo mode
+      for (final item in _cartItems) {
+        final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}';
+        final subtotal = item.product.effectivePricePerUnit * item.quantity;
+        final totalAmount = subtotal + cartDeliveryFee;
+        final newOrder = FarmoraOrder(
+          id: orderId,
+          orderNumber: orderId,
+          title: item.product.name,
+          productName: item.product.name,
+          quantity: '${item.quantity} ${item.product.unit}',
+          totalAmount: 'LKR ${totalAmount.toStringAsFixed(2)}',
+          totalAmountNumber: totalAmount,
+          buyerName: displayName.isNotEmpty ? displayName : 'Demo Buyer',
+          buyerCompany: 'Farmora Buyer Co.',
+          deliveryAddress: address,
+          detail: 'Direct order placed via Farmora Marketplace',
+          status: 'Pending',
+          progress: 0.2,
+          color: item.product.color,
+          timestamp: 'Just now',
+          buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
+          farmerId: item.product.farmerId,
+          subtotalMinor: (subtotal * 100).round(),
+          deliveryFeeMinor: (cartDeliveryFee * 100).round(),
+          totalMinor: (totalAmount * 100).round(),
+          paymentStatus: 'Payment Required',
+          escrowStatus: 'Held',
+        );
+        _orders.insert(0, newOrder);
+
+        // Also create linked TransportJob so Transporters see the delivery job!
+        final newJob = TransportJob(
+          id: 'JOB-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}',
+          orderId: orderId,
+          title: '${item.product.name} Delivery',
+          route: '${item.product.location} → $address',
+          detail: '${item.quantity} ${item.product.unit} of ${item.product.name}',
+          fee: 'LKR ${cartDeliveryFee.toStringAsFixed(2)}',
+          pickup: item.product.location,
+          dropoff: address,
+          status: 'requested',
+          buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
+          farmerId: item.product.farmerId,
+        );
+        _jobs.insert(0, newJob);
+      }
+
       _lastOrderKey = key;
       _lastOrderAt = DateTime.now();
       _cartItems.clear();
+      _recalculateStats();
       notifyListeners();
       return true;
+    } catch (_) {
+      return false;
     } finally {
       _placingOrder = false;
       notifyListeners();
@@ -343,14 +413,152 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void acceptOrder(String orderId) {
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _orders[idx] = _orders[idx].copyWith(status: 'Accepted', progress: 0.6);
+      _recalculateStats();
+      notifyListeners();
+    }
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Accepted', 0.6);
     }
   }
 
   void declineOrder(String orderId) {
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _orders[idx] = _orders[idx].copyWith(status: 'Declined', progress: 0.0);
+      _recalculateStats();
+      notifyListeners();
+    }
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Declined', 0.0);
+    }
+  }
+
+  void cancelOrder(String orderId) {
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _orders[idx] = _orders[idx].copyWith(status: 'Cancelled', progress: 0.0);
+      _recalculateStats();
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.updateOrderStatus(orderId, 'Cancelled', 0.0);
+    }
+  }
+
+  // ── Offers & Negotiation CRUD ───────────────────────────
+  Future<void> makeOffer({
+    required String productId,
+    required String productName,
+    required String farmerId,
+    required int quantity,
+    required double price,
+  }) async {
+    final newOffer = FarmoraOffer(
+      id: 'OFFER-${DateTime.now().millisecondsSinceEpoch}',
+      productId: productId,
+      productName: productName,
+      buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
+      farmerId: farmerId.isNotEmpty ? farmerId : 'farmer_demo_1',
+      proposedQuantity: quantity,
+      proposedPrice: price,
+      status: 'pending',
+      createdAt: DateTime.now(),
+    );
+    _offers.insert(0, newOffer);
+    notifyListeners();
+
+    if (_currentUserId.isNotEmpty) {
+      try {
+        await _firestoreService.createOffer(
+          productId: productId,
+          proposedQuantity: quantity,
+          proposedPrice: price,
+        );
+      } catch (e) {
+        debugPrint('Firestore createOffer error: $e');
+      }
+    }
+  }
+
+  Future<void> acceptOffer(String offerId) async {
+    final idx = _offers.indexWhere((o) => o.id == offerId);
+    if (idx != -1) {
+      final off = _offers[idx];
+      _offers[idx] = off.copyWith(status: 'accepted', updatedAt: DateTime.now());
+
+      // When offer is accepted, create confirmed order!
+      final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+      final totalAmount = off.proposedPrice * off.proposedQuantity;
+      final newOrder = FarmoraOrder(
+        id: orderId,
+        orderNumber: orderId,
+        title: off.productName,
+        productName: off.productName,
+        quantity: '${off.proposedQuantity} kg',
+        totalAmount: 'LKR ${totalAmount.toStringAsFixed(2)}',
+        totalAmountNumber: totalAmount,
+        buyerName: displayName.isNotEmpty ? displayName : 'Demo Buyer',
+        buyerCompany: 'Farmora Buyer Co.',
+        deliveryAddress: deliveryAddressDraft.isNotEmpty ? deliveryAddressDraft : 'Colombo, Sri Lanka',
+        detail: 'Contract created from accepted offer negotiation',
+        status: 'Accepted',
+        progress: 0.4,
+        color: const Color(0xFF2E7D32),
+        timestamp: 'Just now',
+        buyerId: off.buyerId,
+        farmerId: off.farmerId,
+        subtotalMinor: (totalAmount * 100).round(),
+        deliveryFeeMinor: 35000,
+        totalMinor: ((totalAmount + 350) * 100).round(),
+        paymentStatus: 'Payment Required',
+        escrowStatus: 'Held',
+      );
+      _orders.insert(0, newOrder);
+      _recalculateStats();
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.acceptOffer(offerId: offerId);
+    }
+  }
+
+  Future<void> rejectOffer(String offerId) async {
+    final idx = _offers.indexWhere((o) => o.id == offerId);
+    if (idx != -1) {
+      _offers[idx] = _offers[idx].copyWith(status: 'rejected', updatedAt: DateTime.now());
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.rejectOffer(offerId);
+    }
+  }
+
+  Future<void> counterOffer(String offerId, double counterPrice) async {
+    final idx = _offers.indexWhere((o) => o.id == offerId);
+    if (idx != -1) {
+      _offers[idx] = _offers[idx].copyWith(
+        status: 'countered',
+        proposedPrice: counterPrice,
+        updatedAt: DateTime.now(),
+      );
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.updateOfferStatus(offerId, 'countered');
+    }
+  }
+
+  Future<void> cancelOffer(String offerId) async {
+    final idx = _offers.indexWhere((o) => o.id == offerId);
+    if (idx != -1) {
+      _offers[idx] = _offers[idx].copyWith(status: 'cancelled', updatedAt: DateTime.now());
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.rejectOffer(offerId);
     }
   }
 
@@ -389,10 +597,6 @@ class FarmoraState extends ChangeNotifier {
     _firestoreService.deleteTransportJob(jobId);
     _jobs.removeWhere((j) => j.id == jobId);
     notifyListeners();
-  }
-
-  void cancelOrder(String orderId) {
-    _firestoreService.updateOrderStatus(orderId, 'cancelled', 0.0);
   }
 
   Future<void> updateOrderAddress(String orderId, String newAddress) async {
@@ -649,6 +853,17 @@ class FarmoraState extends ChangeNotifier {
       _notifications.addAll(notifs);
       notifyListeners();
     });
+
+    // Subscribe to offers stream
+    _offersSub?.cancel();
+    final offersStream = role == Role.farmer
+        ? _firestoreService.offersByFarmerStream(uid)
+        : _firestoreService.offersByBuyerStream(uid);
+    _offersSub = offersStream.listen((firestoreOffers) {
+      _offers.clear();
+      _offers.addAll(firestoreOffers);
+      notifyListeners();
+    });
   }
 
   /// Cancel all Firestore subscriptions
@@ -659,6 +874,234 @@ class FarmoraState extends ChangeNotifier {
     _verificationSub?.cancel();
     _usersSub?.cancel();
     _notificationsSub?.cancel();
+    _offersSub?.cancel();
+  }
+
+  void _initDemoData() {
+    if (_products.isEmpty) {
+      _products.addAll([
+        const Product(
+          id: 'prod-1',
+          name: 'Organic Red Tomatoes',
+          category: 'Vegetables',
+          location: 'Nuwara Eliya',
+          quantity: '150 kg',
+          unit: 'kg',
+          price: 'LKR 180 / kg',
+          pricePerUnit: 180.0,
+          emoji: '🍅',
+          color: Color(0xFFFFEBEE),
+          status: 'Active',
+          isOrganic: true,
+          description: 'Fresh highland organic ripe tomatoes harvested at peak freshness.',
+          farmerId: 'farmer_demo_1',
+        ),
+        const Product(
+          id: 'prod-2',
+          name: 'Fresh Mountain Carrots',
+          category: 'Vegetables',
+          location: 'Nuwara Eliya',
+          quantity: '300 kg',
+          unit: 'kg',
+          price: 'LKR 240 / kg',
+          pricePerUnit: 240.0,
+          emoji: '🥕',
+          color: Color(0xFFFFF3E0),
+          status: 'Active',
+          isOrganic: true,
+          description: 'Crunchy sweet farm fresh mountain carrots from Nuwara Eliya slopes.',
+          farmerId: 'farmer_demo_1',
+        ),
+        const Product(
+          id: 'prod-3',
+          name: 'Ceylon Cinnamon Sticks',
+          category: 'Spices',
+          location: 'Matale',
+          quantity: '50 kg',
+          unit: 'kg',
+          price: 'LKR 950 / kg',
+          pricePerUnit: 950.0,
+          emoji: '🪵',
+          color: Color(0xFFEFEBE9),
+          status: 'Active',
+          isOrganic: true,
+          description: 'Pure Alba-grade Ceylon cinnamon sticks with rich aroma and flavour.',
+          farmerId: 'farmer_demo_2',
+        ),
+        const Product(
+          id: 'prod-4',
+          name: 'Cavendish Bananas',
+          category: 'Fruits',
+          location: 'Embilipitiya',
+          quantity: '200 kg',
+          unit: 'kg',
+          price: 'LKR 160 / kg',
+          pricePerUnit: 160.0,
+          emoji: '🍌',
+          color: Color(0xFFFFFDE7),
+          status: 'Active',
+          isOrganic: false,
+          description: 'Naturally ripened Cavendish bananas, sweet and pesticide-free.',
+          farmerId: 'farmer_demo_3',
+        ),
+        const Product(
+          id: 'prod-5',
+          name: 'Green Chillies',
+          category: 'Vegetables',
+          location: 'Dambulla',
+          quantity: '80 kg',
+          unit: 'kg',
+          price: 'LKR 420 / kg',
+          pricePerUnit: 420.0,
+          emoji: '🌶️',
+          color: Color(0xFFE8F5E9),
+          status: 'Active',
+          isOrganic: false,
+          description: 'Spicy fresh green chillies direct from Dambulla agricultural hub.',
+          farmerId: 'farmer_demo_2',
+        ),
+      ]);
+    }
+
+    if (_orders.isEmpty) {
+      _orders.addAll([
+        FarmoraOrder(
+          id: 'ORD-1001',
+          orderNumber: 'ORD-1001',
+          title: 'Organic Red Tomatoes',
+          productName: 'Organic Red Tomatoes',
+          quantity: '25 kg',
+          totalAmount: 'LKR 4,850.00',
+          totalAmountNumber: 4850.0,
+          buyerName: 'Cargills FoodCity',
+          buyerCompany: 'Cargills Retail',
+          deliveryAddress: 'No. 40, Colombo Road, Colombo 03',
+          detail: 'Highland organic tomatoes batch A',
+          status: 'In transit',
+          progress: 0.7,
+          color: const Color(0xFFE53935),
+          timestamp: 'Today, 10:30 AM',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+          paymentStatus: 'Paid (Escrow)',
+          escrowStatus: 'Held',
+        ),
+        FarmoraOrder(
+          id: 'ORD-1002',
+          orderNumber: 'ORD-1002',
+          title: 'Fresh Mountain Carrots',
+          productName: 'Fresh Mountain Carrots',
+          quantity: '50 kg',
+          totalAmount: 'LKR 12,350.00',
+          totalAmountNumber: 12350.0,
+          buyerName: 'Keells Super',
+          buyerCompany: 'Keells Holdings',
+          deliveryAddress: 'No. 12, Kandy Road, Kadawatha',
+          detail: 'A-grade fresh mountain carrots',
+          status: 'Accepted',
+          progress: 0.4,
+          color: const Color(0xFFFB8C00),
+          timestamp: 'Yesterday',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+          paymentStatus: 'Payment Required',
+          escrowStatus: 'Pending',
+        ),
+        FarmoraOrder(
+          id: 'ORD-1003',
+          orderNumber: 'ORD-1003',
+          title: 'Ceylon Cinnamon Sticks',
+          productName: 'Ceylon Cinnamon Sticks',
+          quantity: '10 kg',
+          totalAmount: 'LKR 9,850.00',
+          totalAmountNumber: 9850.0,
+          buyerName: 'Spices Lanka Ltd',
+          buyerCompany: 'Spices Lanka',
+          deliveryAddress: 'Export Zone, Katunayake',
+          detail: 'Alba grade certified cinnamon',
+          status: 'Delivered',
+          progress: 1.0,
+          color: const Color(0xFF43A047),
+          timestamp: 'Sep 18, 2026',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_2',
+          paymentStatus: 'Released',
+          escrowStatus: 'Released',
+        ),
+      ]);
+      _recalculateStats();
+    }
+
+    if (_jobs.isEmpty) {
+      _jobs.addAll([
+        const TransportJob(
+          id: 'JOB-201',
+          orderId: 'ORD-1001',
+          title: 'Tomatoes Delivery',
+          route: 'Nuwara Eliya → Colombo 03',
+          detail: '25 kg fresh produce in crates',
+          fee: 'LKR 1,500.00',
+          status: 'inTransit',
+          accepted: true,
+          pickup: 'Nuwara Eliya',
+          dropoff: 'Colombo 03',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+        ),
+        const TransportJob(
+          id: 'JOB-202',
+          orderId: 'ORD-1002',
+          title: 'Carrots Dispatch',
+          route: 'Nuwara Eliya → Kadawatha',
+          detail: '50 kg mountain carrots',
+          fee: 'LKR 2,200.00',
+          status: 'requested',
+          accepted: false,
+          pickup: 'Nuwara Eliya',
+          dropoff: 'Kadawatha',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+        ),
+      ]);
+    }
+
+    if (_offers.isEmpty) {
+      _offers.addAll([
+        FarmoraOffer(
+          id: 'OFFER-301',
+          productId: 'prod-1',
+          productName: 'Organic Red Tomatoes',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+          proposedQuantity: 80,
+          proposedPrice: 165.0,
+          status: 'pending',
+          createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+        ),
+        FarmoraOffer(
+          id: 'OFFER-302',
+          productId: 'prod-2',
+          productName: 'Fresh Mountain Carrots',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_1',
+          proposedQuantity: 120,
+          proposedPrice: 220.0,
+          status: 'countered',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        FarmoraOffer(
+          id: 'OFFER-303',
+          productId: 'prod-3',
+          productName: 'Ceylon Cinnamon Sticks',
+          buyerId: 'buyer_demo',
+          farmerId: 'farmer_demo_2',
+          proposedQuantity: 15,
+          proposedPrice: 900.0,
+          status: 'accepted',
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+        ),
+      ]);
+    }
   }
 
   Future<void> sendInAppNotification({
