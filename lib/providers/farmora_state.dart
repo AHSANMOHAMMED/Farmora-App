@@ -15,6 +15,8 @@ import '../models/notification_model.dart';
 import '../models/offer.dart';
 import '../models/market_price_index.dart';
 import '../models/review_model.dart';
+import '../models/audit_log_model.dart';
+import '../models/settlement_model.dart';
 import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
@@ -99,6 +101,12 @@ class FarmoraState extends ChangeNotifier {
   // Reviews & Platform Moderation
   final List<Review> _reviews = [];
 
+  // Security & Compliance Audit Trail
+  final List<AuditLog> _auditLogs = [];
+
+  // Treasury & Bank Escrow Settlements
+  final List<SettlementPayout> _settlements = [];
+
   // Server Maintenance & Platform Config
   bool _maintenanceMode = false;
   String _maintenanceNotice = 'Platform scheduled maintenance in progress. Marketplace trades will resume shortly.';
@@ -120,6 +128,8 @@ class FarmoraState extends ChangeNotifier {
   List<FarmoraOffer> get offers => List.unmodifiable(_offers);
   List<MarketPriceIndex> get marketPrices => List.unmodifiable(_marketPrices);
   List<Review> get reviews => List.unmodifiable(_reviews);
+  List<AuditLog> get auditLogs => List.unmodifiable(_auditLogs);
+  List<SettlementPayout> get settlements => List.unmodifiable(_settlements);
   bool get maintenanceMode => _maintenanceMode;
   String get maintenanceNotice => _maintenanceNotice;
   double get commissionRate => _commissionRate;
@@ -1349,6 +1359,131 @@ class FarmoraState extends ChangeNotifier {
         },
       ]);
     }
+
+    if (_auditLogs.isEmpty) {
+      _auditLogs.addAll([
+        AuditLog(
+          id: 'aud-001',
+          actorId: 'usr-admin-1',
+          actorName: 'Platform SuperAdmin',
+          actorRole: 'admin',
+          actionType: 'ESCROW_RELEASE',
+          targetEntity: 'Order',
+          targetId: 'ORD-1001',
+          details: 'Escrow released upon confirmed buyer delivery confirmation. LKR 4,850.00 disbursed to farmer.',
+          severity: 'info',
+          timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
+        ),
+        AuditLog(
+          id: 'aud-002',
+          actorId: 'usr-admin-1',
+          actorName: 'Platform SuperAdmin',
+          actorRole: 'admin',
+          actionType: 'USER_VERIFY',
+          targetEntity: 'User',
+          targetId: 'usr-farmer-1',
+          details: 'NIC & Agrarian Services registration certificate verified. Granted verified producer badge.',
+          severity: 'info',
+          timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+        ),
+        AuditLog(
+          id: 'aud-003',
+          actorId: 'usr-admin-1',
+          actorName: 'Platform SuperAdmin',
+          actorRole: 'admin',
+          actionType: 'COMMISSION_UPDATE',
+          targetEntity: 'PlatformFee',
+          targetId: 'commission_rate',
+          details: 'Updated wholesale platform commission rate from 4.5% to 5.0%.',
+          severity: 'warning',
+          timestamp: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        AuditLog(
+          id: 'aud-004',
+          actorId: 'usr-admin-1',
+          actorName: 'Platform SuperAdmin',
+          actorRole: 'admin',
+          actionType: 'DISPUTE_ARBITRATION',
+          targetEntity: 'Order',
+          targetId: 'ORD-7825',
+          details: 'Arbitrated transit spoilage dispute. 50% refund issued to buyer, 50% compensation to seller.',
+          severity: 'critical',
+          timestamp: DateTime.now().subtract(const Duration(days: 2)),
+        ),
+      ]);
+    }
+
+    if (_settlements.isEmpty) {
+      _settlements.addAll([
+        SettlementPayout(
+          id: 'stl-101',
+          orderId: 'ord-1001',
+          orderNumber: 'ORD-1001',
+          recipientId: 'usr-farmer-1',
+          recipientName: 'Sunil Bandara',
+          recipientRole: 'farmer',
+          bankName: 'Bank of Ceylon (BOC)',
+          accountNumber: '7829-1092-4821',
+          grossAmount: 4850.0,
+          platformFee: 242.5,
+          netAmount: 4607.5,
+          payoutMethod: 'CEFT',
+          status: 'settled',
+          createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+          settledAt: DateTime.now().subtract(const Duration(hours: 3)),
+          transactionReference: 'BOC-CEFT-9847291',
+        ),
+        SettlementPayout(
+          id: 'stl-102',
+          orderId: 'ord-1002',
+          orderNumber: 'ORD-1002',
+          recipientId: 'farmer_demo_1',
+          recipientName: 'Sunil Bandara',
+          recipientRole: 'farmer',
+          bankName: 'Commercial Bank of Ceylon',
+          accountNumber: '8102-3948-2910',
+          grossAmount: 12500.0,
+          platformFee: 625.0,
+          netAmount: 11875.0,
+          payoutMethod: 'CEFT',
+          status: 'pending',
+          createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+        ),
+        SettlementPayout(
+          id: 'stl-103',
+          orderId: 'ord-1003',
+          orderNumber: 'ORD-1003',
+          recipientId: 'usr-trans-1',
+          recipientName: 'Rohan Jayasinghe',
+          recipientRole: 'transporter',
+          bankName: 'Hatton National Bank (HNB)',
+          accountNumber: '0092-4829-1092',
+          grossAmount: 3500.0,
+          platformFee: 175.0,
+          netAmount: 3325.0,
+          payoutMethod: 'SLIP',
+          status: 'processing',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+        ),
+        SettlementPayout(
+          id: 'stl-104',
+          orderId: 'ord-1004',
+          orderNumber: 'ORD-1004',
+          recipientId: 'farmer_demo_2',
+          recipientName: 'Matale Spice Cooperative',
+          recipientRole: 'farmer',
+          bankName: 'Sampath Bank',
+          accountNumber: '1092-5829-3829',
+          grossAmount: 24000.0,
+          platformFee: 1200.0,
+          netAmount: 22800.0,
+          payoutMethod: 'CEFT',
+          status: 'on_hold',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          holdReason: 'Recipient bank details under verification review.',
+        ),
+      ]);
+    }
   }
 
   Future<void> sendInAppNotification({
@@ -1753,6 +1888,14 @@ class FarmoraState extends ChangeNotifier {
         debugPrint('Firestore dispute resolve error: $e');
       }
 
+      logAuditEvent(
+        actionType: 'DISPUTE_ARBITRATION',
+        targetEntity: 'Order',
+        targetId: orderId,
+        details: 'Arbitrated dispute with outcome "$resolution". Notes: $adminNotes',
+        severity: 'critical',
+      );
+
       notifyListeners();
     }
   }
@@ -1827,6 +1970,13 @@ class FarmoraState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Firebase review moderation notice: $e');
     }
+    logAuditEvent(
+      actionType: 'REVIEW_MODERATION',
+      targetEntity: 'Review',
+      targetId: reviewId,
+      details: 'Review status set to ${status.name}. Note: ${note ?? "None"}',
+      severity: status == ReviewStatus.rejected ? 'warning' : 'info',
+    );
   }
 
   Future<void> deleteReview({required String reviewId}) async {
@@ -1837,6 +1987,13 @@ class FarmoraState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Firebase delete review notice: $e');
     }
+    logAuditEvent(
+      actionType: 'REVIEW_DELETE',
+      targetEntity: 'Review',
+      targetId: reviewId,
+      details: 'Permanently deleted user review.',
+      severity: 'warning',
+    );
   }
 
   void addReview(Review review) {
@@ -1861,6 +2018,13 @@ class FarmoraState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Firebase verify user notice: $e');
     }
+    logAuditEvent(
+      actionType: 'USER_VERIFY',
+      targetEntity: 'User',
+      targetId: userId,
+      details: verified ? 'Granted verified trust badge' : 'Revoked verified trust badge',
+      severity: 'info',
+    );
   }
 
   Future<void> updateUserRole({
@@ -1879,6 +2043,13 @@ class FarmoraState extends ChangeNotifier {
     } catch (e) {
       debugPrint('Firebase update role notice: $e');
     }
+    logAuditEvent(
+      actionType: 'ROLE_UPDATE',
+      targetEntity: 'User',
+      targetId: userId,
+      details: 'Role changed to "$role"',
+      severity: 'warning',
+    );
   }
 
   // ── Admin: Server Maintenance & Platform Config ───────────────
@@ -1920,6 +2091,95 @@ class FarmoraState extends ChangeNotifier {
   }
 
   void clearLocalCache() {
+    logAuditEvent(
+      actionType: 'CACHE_PURGE',
+      targetEntity: 'System',
+      targetId: 'local_cache',
+      details: 'Admin triggered local device and client cache purge.',
+      severity: 'info',
+    );
     notifyListeners();
+  }
+
+  // ── Admin: Audit Trail & Compliance ───────────────────────────
+  void logAuditEvent({
+    required String actionType,
+    required String targetEntity,
+    required String targetId,
+    required String details,
+    String severity = 'info',
+  }) {
+    final log = AuditLog(
+      id: 'aud-${DateTime.now().millisecondsSinceEpoch}',
+      actorId: _currentUserId.isNotEmpty ? _currentUserId : 'usr-admin-1',
+      actorName: 'Platform SuperAdmin',
+      actorRole: 'admin',
+      actionType: actionType,
+      targetEntity: targetEntity,
+      targetId: targetId,
+      details: details,
+      severity: severity,
+      timestamp: DateTime.now(),
+    );
+    _auditLogs.insert(0, log);
+    notifyListeners();
+  }
+
+  // ── Admin: Treasury & Bank Escrow Settlements ─────────────────
+  Future<void> approveSettlement(String settlementId) async {
+    final idx = _settlements.indexWhere((s) => s.id == settlementId);
+    if (idx != -1) {
+      final s = _settlements[idx];
+      _settlements[idx] = s.copyWith(
+        status: 'settled',
+        settledAt: DateTime.now(),
+        transactionReference: 'CEFT-TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+      );
+      notifyListeners();
+      logAuditEvent(
+        actionType: 'SETTLEMENT_APPROVED',
+        targetEntity: 'Settlement',
+        targetId: settlementId,
+        details: 'Disbursed LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}.',
+        severity: 'info',
+      );
+    }
+  }
+
+  Future<void> holdSettlement(String settlementId, String reason) async {
+    final idx = _settlements.indexWhere((s) => s.id == settlementId);
+    if (idx != -1) {
+      final s = _settlements[idx];
+      _settlements[idx] = s.copyWith(
+        status: 'on_hold',
+        holdReason: reason,
+      );
+      notifyListeners();
+      logAuditEvent(
+        actionType: 'SETTLEMENT_HOLD',
+        targetEntity: 'Settlement',
+        targetId: settlementId,
+        details: 'Placed payout on hold for ${s.recipientName}. Reason: $reason',
+        severity: 'warning',
+      );
+    }
+  }
+
+  Future<void> retrySettlement(String settlementId) async {
+    final idx = _settlements.indexWhere((s) => s.id == settlementId);
+    if (idx != -1) {
+      _settlements[idx] = _settlements[idx].copyWith(
+        status: 'processing',
+        clearHoldReason: true,
+      );
+      notifyListeners();
+      logAuditEvent(
+        actionType: 'SETTLEMENT_RETRY',
+        targetEntity: 'Settlement',
+        targetId: settlementId,
+        details: 'Retried wire transfer batch dispatch.',
+        severity: 'info',
+      );
+    }
   }
 }

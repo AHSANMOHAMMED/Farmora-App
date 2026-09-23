@@ -8,6 +8,9 @@ import 'verification_review_screen.dart';
 import 'platform_analytics_screen.dart';
 import 'review_management_screen.dart';
 import 'server_maintenance_screen.dart';
+import 'settlement_management_screen.dart';
+import 'logistics_management_screen.dart';
+import 'audit_log_screen.dart';
 
 class SystemSettingsScreen extends StatefulWidget {
   const SystemSettingsScreen({super.key});
@@ -205,6 +208,39 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF2E7D32)),
+            title: const Text('Treasury & Bank Wire Settlements'),
+            subtitle: const Text('Farmer & transporter CEFT/SLIP payouts, escrow release, and wire manifests'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettlementManagementScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF1B6BD8)),
+            title: const Text('Fleet & Supply Chain Dispatch Radar'),
+            subtitle: const Text('Real-time tracking of active hauls, transit checkpoints, and driver loads'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LogisticsManagementScreen()),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.shield_rounded, color: Color(0xFF5E35B1)),
+            title: const Text('Compliance & Security Audit Trail'),
+            subtitle: const Text('Tamper-proof event logs for admin actions, security alerts, and exports'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AuditLogScreen()),
             ),
           ),
           const Divider(),

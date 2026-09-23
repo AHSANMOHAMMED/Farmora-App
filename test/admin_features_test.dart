@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:farmora/models/market_price_index.dart';
 import 'package:farmora/models/review_model.dart';
+import 'package:farmora/models/audit_log_model.dart';
+import 'package:farmora/models/settlement_model.dart';
 import 'package:farmora/providers/farmora_state.dart';
 
 void main() {
@@ -218,6 +220,108 @@ void main() {
 
       state.setMinAppVersion('1.3.0');
       expect(state.minAppVersion, '1.3.0');
+    });
+
+    test('AuditLog Model round-trip and copyWith', () {
+      final now = DateTime.now();
+      final log = AuditLog(
+        id: 'aud-test-1',
+        actorId: 'usr-admin-1',
+        actorName: 'Admin Super',
+        actorRole: 'admin',
+        actionType: 'ESCROW_RELEASE',
+        targetEntity: 'Order',
+        targetId: 'ord-100',
+        details: 'Escrow released upon inspection',
+        severity: 'info',
+        timestamp: now,
+      );
+
+      final map = log.toMap();
+      expect(map['actionType'], 'ESCROW_RELEASE');
+      expect(map['severity'], 'info');
+
+      final restored = AuditLog.fromMap(map, 'aud-test-1');
+      expect(restored.id, 'aud-test-1');
+      expect(restored.actorName, 'Admin Super');
+      expect(restored.targetEntity, 'Order');
+
+      final copied = log.copyWith(severity: 'critical', details: 'Updated detail');
+      expect(copied.severity, 'critical');
+      expect(copied.details, 'Updated detail');
+      expect(copied.actorId, 'usr-admin-1');
+    });
+
+    test('SettlementPayout Model round-trip and copyWith', () {
+      final now = DateTime.now();
+      final payout = SettlementPayout(
+        id: 'stl-test-1',
+        orderId: 'ord-101',
+        orderNumber: 'ORD-101',
+        recipientId: 'usr-farmer-1',
+        recipientName: 'Sunil Bandara',
+        recipientRole: 'farmer',
+        bankName: 'Commercial Bank of Ceylon',
+        accountNumber: '8102-3948-2910',
+        grossAmount: 10000.0,
+        platformFee: 500.0,
+        netAmount: 9500.0,
+        payoutMethod: 'CEFT',
+        status: 'pending',
+        createdAt: now,
+      );
+
+      final map = payout.toMap();
+      expect(map['grossAmount'], 10000.0);
+      expect(map['platformFee'], 500.0);
+      expect(map['netAmount'], 9500.0);
+      expect(map['status'], 'pending');
+
+      final restored = SettlementPayout.fromMap(map, 'stl-test-1');
+      expect(restored.id, 'stl-test-1');
+      expect(restored.bankName, 'Commercial Bank of Ceylon');
+      expect(restored.netAmount, 9500.0);
+
+      final settled = payout.copyWith(status: 'settled', transactionReference: 'CEFT-999');
+      expect(settled.status, 'settled');
+      expect(settled.transactionReference, 'CEFT-999');
+    });
+
+    test('FarmoraState manages audit logs and auto-instruments admin actions', () async {
+      final state = FarmoraState();
+      expect(state.auditLogs.isNotEmpty, isTrue);
+
+      final initialLogsCount = state.auditLogs.length;
+      await state.setUserVerified(userId: 'usr-farmer-1', verified: true);
+
+      expect(state.auditLogs.length, initialLogsCount + 1);
+      final latest = state.auditLogs.first;
+      expect(latest.actionType, 'USER_VERIFY');
+      expect(latest.targetId, 'usr-farmer-1');
+    });
+
+    test('FarmoraState manages treasury escrow settlements (approve, hold, retry)', () async {
+      final state = FarmoraState();
+      expect(state.settlements.isNotEmpty, isTrue);
+
+      final pending = state.settlements.firstWhere((s) => s.status == 'pending');
+      await state.approveSettlement(pending.id);
+
+      final updatedSettled = state.settlements.firstWhere((s) => s.id == pending.id);
+      expect(updatedSettled.status, 'settled');
+      expect(updatedSettled.transactionReference, isNotNull);
+
+      // Hold test
+      await state.holdSettlement(updatedSettled.id, 'Bank account discrepancy');
+      final updatedHeld = state.settlements.firstWhere((s) => s.id == pending.id);
+      expect(updatedHeld.status, 'on_hold');
+      expect(updatedHeld.holdReason, 'Bank account discrepancy');
+
+      // Retry test
+      await state.retrySettlement(updatedHeld.id);
+      final updatedRetried = state.settlements.firstWhere((s) => s.id == pending.id);
+      expect(updatedRetried.status, 'processing');
+      expect(updatedRetried.holdReason, isNull);
     });
   });
 }
