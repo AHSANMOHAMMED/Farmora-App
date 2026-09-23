@@ -234,28 +234,27 @@ class EarningsScreen extends StatelessWidget {
                                   const SizedBox(height: 24),
                                 // Bar itself
                                 // Stitch: highlighted bar = bg-primary (not bg-primary-container)
-                                FractionallySizedBox(
-                                  heightFactor: bar.heightRatio,
-                                  child: Container(
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: bar.isHighlighted
-                                          ? AppColors.primary  // bg-primary = #006e1c
-                                          : AppColors.surfaceContainerHigh, // other bars
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(4),
-                                      ),
-                                      boxShadow: bar.isHighlighted
-                                          ? [
-                                              BoxShadow(
-                                                // Stitch: shadow-[0_4px_12px_rgba(76,175,80,0.3)]
-                                                color: const Color(0xFF4CAF50).withValues(alpha: 0.30),
-                                                blurRadius: 12,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ]
-                                          : null,
+                                Container(
+                                  height:
+                                      100 * bar.heightRatio.clamp(0.1, 1.0),
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: bar.isHighlighted
+                                        ? AppColors.primary // bg-primary = #006e1c
+                                        : AppColors.surfaceContainerHigh, // other bars
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(4),
                                     ),
+                                    boxShadow: bar.isHighlighted
+                                        ? [
+                                            BoxShadow(
+                                              // Stitch: shadow-[0_4px_12px_rgba(76,175,80,0.3)]
+                                              color: const Color(0xFF4CAF50).withValues(alpha: 0.30),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ]
+                                        : null,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
