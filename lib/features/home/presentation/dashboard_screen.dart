@@ -15,6 +15,9 @@ import '../../notifications/presentation/notifications_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
+import '../../buyer/presentation/cart_screen.dart';
+import '../../buyer/presentation/product_detail_screen.dart';
+import '../../buyer/presentation/buyer_order_detail_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
@@ -951,6 +954,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             MaterialPageRoute(builder: (_) => const BuyerOffersScreen()),
           ),
         },
+        {
+          'icon': Icons.shopping_cart_outlined,
+          'label': 'My Cart',
+          'color': const Color(0xFF006D44),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CartScreen()),
+          ),
+        },
       ]);
     } else if (role == Role.transporter) {
       actions.addAll([
@@ -1145,6 +1157,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // BUYER / TRANSPORTER / ADMIN DASHBOARDS
   // ═══════════════════════════════════════════════════════════════
   Widget _buildBuyerDashboard(BuildContext context, FarmoraState state) {
+    final products = state.products;
+    final activeOrders = [...state.pendingOrders, ...state.acceptedOrders];
+    final activeDelivery = state.orders.where((o) =>
+        o.status.toLowerCase().contains('transit') ||
+        o.status.toLowerCase() == 'accepted').firstOrNull ??
+        state.orders.firstOrNull;
+    final totalSpent = state.orders.fold<double>(0.0, (sum, o) => sum + o.total);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
       children: [
@@ -1152,37 +1172,372 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 20),
         _buildGreeting(state),
         const SizedBox(height: 28),
+
+        // 1. Spending Highlights Gradient Card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1B5E20).withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'MARKETPLACE ORDERS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${activeOrders.length} active',
+                      style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'LKR ${totalSpent.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Total order volume handled via secure escrow',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Stat Cards Row
         Row(
           children: [
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.shopping_cart_rounded, iconColor: const Color(0xFF2E7D32),
-              iconBg: const Color(0xFFE8F5E9), label: 'My Orders',
-              value: '${state.orders.length}', trend: 'Active orders', trendUp: true,
-            )),
+            Expanded(
+              child: _buildOverviewCard(
+                icon: Icons.local_shipping_rounded,
+                iconColor: const Color(0xFF1565C0),
+                iconBg: const Color(0xFFE3F2FD),
+                label: 'Active Orders',
+                value: '${activeOrders.length}',
+                trend: 'In progress',
+                trendUp: true,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.shopping_bag_rounded, iconColor: const Color(0xFF1565C0),
-              iconBg: const Color(0xFFE3F2FD), label: 'Cart Items',
-              value: '${state.cartItemCount}', trend: 'In your cart', trendUp: true,
-            )),
+            Expanded(
+              child: _buildOverviewCard(
+                icon: Icons.shopping_bag_rounded,
+                iconColor: const Color(0xFFE65100),
+                iconBg: const Color(0xFFFFF3E0),
+                label: 'In Cart',
+                value: '${state.cartItemCount}',
+                trend: 'Ready to order',
+                trendUp: state.cartItemCount > 0,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildOverviewCard(
+                icon: Icons.handshake_rounded,
+                iconColor: const Color(0xFF6A1B9A),
+                iconBg: const Color(0xFFF3E5F5),
+                label: 'Offers',
+                value: '${state.pendingOffersCount}',
+                trend: 'Negotiations',
+                trendUp: state.pendingOffersCount > 0,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 32),
+
+        // 3. Live Delivery Tracking Banner (if active delivery exists)
+        if (activeDelivery != null) ...[
+          _buildSectionTitle('Active Delivery', subtitle: 'Track your produce live'),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BuyerOrderDetailScreen(order: activeDelivery),
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: _cardDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.local_shipping_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              activeDelivery.title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'Order ${activeDelivery.orderNumber} • ${activeDelivery.deliveryAddress}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          activeDelivery.status,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: activeDelivery.progress > 0 ? activeDelivery.progress : 0.3,
+                      backgroundColor: AppColors.surfaceContainerHigh,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Stage: ${activeDelivery.status}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant),
+                      ),
+                      const Row(
+                        children: [
+                          Text('View Detail', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                          Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primary),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+
+        // 4. Quick Actions
         _buildSectionTitle('Quick Actions'),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.buyer),
         const SizedBox(height: 32),
-        _buildSectionTitle('Recent Produce'),
+
+        // 5. Featured Produce
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Featured Produce',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onSurface,
+                letterSpacing: -0.3,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
+              ),
+              child: const Text(
+                'Browse All',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 14),
-        if (state.products.isEmpty)
-          const Text('No products available right now.')
+        if (products.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: _cardDecoration(),
+            child: const Center(
+              child: Text('No produce currently listed', style: TextStyle(color: AppColors.onSurfaceVariant)),
+            ),
+          )
         else
-          ...state.products.take(4).map((p) => ListTile(
-                leading: Text(p.emoji, style: const TextStyle(fontSize: 24)),
-                title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('LKR ${p.pricePerUnit} / ${p.unit}'),
-                trailing: Text(p.quantity),
-              )),
+          ...products.take(4).map((product) {
+            return GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+              ),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: _cardDecoration(),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: product.color,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: Text(product.emoji, style: const TextStyle(fontSize: 28)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  product.name,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                              ),
+                              if (product.isOrganic)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F5E9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'ORGANIC',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${product.location} • ${product.quantity}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'LKR ${product.pricePerUnit.toStringAsFixed(0)} / ${product.unit}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  state.addToCart(product);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${product.name} added to cart!'),
+                                      duration: const Duration(seconds: 1),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.add_shopping_cart, size: 14),
+                                label: const Text('Add', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
       ],
     );
   }
