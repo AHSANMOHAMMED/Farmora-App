@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/farmora_strings.dart';
 import '../../../providers/farmora_state.dart';
 
 class EarningsScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class EarningsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final strings = FarmoraStrings.of(context);
     final currencyFormat = NumberFormat.currency(symbol: 'LKR ', decimalDigits: 2);
 
     return Scaffold(
@@ -24,9 +26,9 @@ class EarningsScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Earnings Dashboard',
-                    style: TextStyle(
+                  Text(
+                    strings.t('earningsDashboard'),
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -56,9 +58,9 @@ class EarningsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Total Earnings',
-                      style: TextStyle(
+                    Text(
+                      strings.t('totalEarnings'),
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -102,9 +104,9 @@ class EarningsScreen extends StatelessWidget {
               // ── This Month & This Week Cards ──
               Row(
                 children: [
-                  Expanded(child: _buildMetricCard('This Month', currencyFormat.format(state.thisMonth), Icons.calendar_today)),
+                  Expanded(child: _buildMetricCard(strings.t('thisMonth'), currencyFormat.format(state.thisMonth), Icons.calendar_today)),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildMetricCard('This Week', currencyFormat.format(state.thisWeek), Icons.calendar_view_week)),
+                  Expanded(child: _buildMetricCard(strings.t('thisWeek'), currencyFormat.format(state.thisWeek), Icons.calendar_view_week)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -126,13 +128,13 @@ class EarningsScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.receipt_long, size: 18, color: Color(0xFFE65100)),
-                            SizedBox(width: 6),
+                            const Icon(Icons.receipt_long, size: 18, color: Color(0xFFE65100)),
+                            const SizedBox(width: 6),
                             Text(
-                              'Pending Payments',
-                              style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface),
+                              strings.t('pendingPayments'),
+                              style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.onSurface),
                             ),
                           ],
                         ),
@@ -150,10 +152,10 @@ class EarningsScreen extends StatelessWidget {
                     ),
                     GestureDetector(
                       onTap: () {},
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Text('View All', style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                          Icon(Icons.chevron_right, color: AppColors.primary),
+                          Text(strings.t('viewAll'), style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          const Icon(Icons.chevron_right, color: AppColors.primary),
                         ],
                       ),
                     ),
@@ -179,9 +181,9 @@ class EarningsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Monthly Revenue',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                        Text(
+                          strings.t('monthlyRevenue'),
+                          style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -246,9 +248,9 @@ class EarningsScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Recent Earnings',
-                    style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                  Text(
+                    strings.t('recentEarnings'),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface),
                   ),
                   IconButton(
                     onPressed: () {},

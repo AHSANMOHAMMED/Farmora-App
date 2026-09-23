@@ -6,7 +6,6 @@ import 'models/user_role.dart';
 import 'features/auth/presentation/auth_gate.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
-import 'dart:html' as html;
 
 class FarmoraApp extends StatelessWidget {
   final bool showSplash;

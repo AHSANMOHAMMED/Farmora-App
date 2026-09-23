@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/farmora_strings.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'language_picker.dart';
 import 'role_sheet.dart';
+import 'help_support_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
+import '../../home/presentation/home_screen.dart';
+import '../../onboarding/presentation/onboarding_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -13,13 +17,68 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final strings = FarmoraStrings.of(context);
     final role = state.role;
     final isFarmer = role == Role.farmer;
+
+    // Settings screens shown in the "More Settings" sheet
+    void openMoreSettings() {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.help_outline_rounded,
+                    color: AppColors.primary),
+                title: Text(strings.t('helpSupport'),
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text('support@farmora.lk · +94 11 234 5678'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        '${strings.t('helpSupport')}: support@farmora.lk'),
+                    backgroundColor: AppColors.primary,
+                  ));
+                },
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.logout_rounded, color: AppColors.error),
+                title: Text(strings.t('signOut'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, color: AppColors.error)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.read<FarmoraState>().signOut();
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(strings.t('navProfile')),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -89,7 +148,9 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              role.label,
+              role == Role.farmer
+                  ? strings.t('farmer')
+                  : role.label,
               style: const TextStyle(
                 fontFamily: 'Inter',
                 color: AppColors.onSurfaceVariant,
@@ -116,11 +177,11 @@ class ProfileScreen extends StatelessWidget {
                   child: const Icon(Icons.verified_user_outlined,
                       color: AppColors.statusPendingText, size: 22),
                 ),
-                title: const Text(
-                  'Account Verification',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                title: Text(
+                  strings.t('accountVerification'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-                subtitle: const Text('2 documents pending review'),
+                subtitle: Text(strings.t('docsPending')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
@@ -129,6 +190,119 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Quick Navigation Card (jump to main app sections)
+          if (isFarmer) ...[
+            Card(
+              color: AppColors.surfaceContainerLowest,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                    child: Text(
+                      strings.t('quickActions'),
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.storefront_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    title: Text(strings.t('navProducts'),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      HomeScreen.goToTab(context, 1);
+                    },
+                  ),
+                  Divider(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                      height: 1,
+                      indent: 56),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.shopping_basket_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    title: Text(strings.t('navOrders'),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      HomeScreen.goToTab(context, 2);
+                    },
+                  ),
+                  Divider(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                      height: 1,
+                      indent: 56),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.payments_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    title: Text(strings.t('navEarnings'),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      HomeScreen.goToTab(context, 3);
+                    },
+                  ),
+                  Divider(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.2),
+                      height: 1,
+                      indent: 56),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add_shopping_cart_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    title: Text(strings.t('addProduce'),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      HomeScreen.goToTab(context, 1);
+                    },
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -145,9 +319,10 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.primary),
-                  title: const Text('Account Role',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Current: ${role.label}'),
+                  title: Text(strings.t('accountRole'),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle:
+                      Text('${strings.t('current')}${role.label}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalBottomSheet(
                     context: context,
@@ -161,12 +336,16 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.language_rounded,
                       color: AppColors.primary),
-                  title: const Text('Language',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text(strings.t('language'),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(state.language),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalBottomSheet(
                     context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
                     builder: (_) => const LanguagePicker(),
                   ),
                 ),
@@ -174,26 +353,50 @@ class ProfileScreen extends StatelessWidget {
                     color: AppColors.outlineVariant.withValues(alpha: 0.2),
                     height: 1,
                     indent: 56),
-                const ListTile(
-                  leading: Icon(Icons.help_outline_rounded,
-                      color: AppColors.primary),
-                  title: Text('Help & Support',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  trailing: Icon(Icons.chevron_right),
-                ),
-                Divider(
-                    color: AppColors.outlineVariant.withValues(alpha: 0.2),
-                    height: 1,
-                    indent: 56),
                 ListTile(
-                  leading:
-                      const Icon(Icons.logout_rounded, color: AppColors.error),
-                  title: const Text('Sign Out',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, color: AppColors.error)),
-                  onTap: () => context.read<FarmoraState>().signOut(),
+                  leading: const Icon(Icons.help_outline_rounded,
+                      color: AppColors.primary),
+                  title: Text(strings.t('helpSupport'),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const HelpSupportScreen()),
+                    );
+                  },
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Sign out full-width button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                context.read<FarmoraState>().signOut();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                      builder: (_) => const OnboardingScreen()),
+                  (route) => false,
+                );
+              },
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: Text(strings.t('signOut'),
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                backgroundColor: const Color(0xFFFDE8E8),
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
             ),
           ),
         ],
@@ -203,4 +406,3 @@ class ProfileScreen extends StatelessWidget {
 }
 
 /// Alias for backward compatibility
-typedef Profile = ProfileScreen;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/farmora_strings.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'dashboard_screen.dart';
@@ -22,6 +23,13 @@ import '../../admin/presentation/system_settings_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  /// Access the HomeScreen state from anywhere below it in the tree
+  /// (e.g. Profile quick actions switching tabs).
+  // ignore: unused_element
+  static void goToTab(BuildContext context, int index) {
+    context.findAncestorStateOfType<_HomeScreenState>()?.goToTab(index);
+  }
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -29,9 +37,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int tabIndex = 0;
 
+  /// Allows other widgets (e.g. Profile quick actions) to switch tabs.
+  void goToTab(int index) {
+    setState(() => tabIndex = index);
+  }
+
+  static _HomeScreenState? of(BuildContext context) {
+    return context.findAncestorStateOfType<_HomeScreenState>();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final strings = FarmoraStrings.of(context);
     final role = state.role;
 
     // Initialize Firestore sync when user is authenticated
@@ -60,27 +78,27 @@ class _HomeScreenState extends State<HomeScreen> {
         EarningsScreen(),
         ProfileScreen(),
       ];
-      navItems = const [
+      navItems = [
         _NavItem(
-            label: 'Home',
+            label: strings.t('navHome'),
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         // Stitch uses potted_plant icon for Products
         _NavItem(
-            label: 'Products',
+            label: strings.t('navProducts'),
             icon: Icons.local_florist_outlined,
             activeIcon: Icons.local_florist_rounded),
         _NavItem(
-            label: 'Orders',
+            label: strings.t('navOrders'),
             icon: Icons.shopping_basket_outlined,
             activeIcon: Icons.shopping_basket_rounded),
         // Stitch uses payments icon for Earnings
         _NavItem(
-            label: 'Earnings',
+            label: strings.t('navEarnings'),
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
         _NavItem(
-            label: 'Profile',
+            label: strings.t('navProfile'),
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];

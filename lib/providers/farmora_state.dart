@@ -50,10 +50,10 @@ class FarmoraState extends ChangeNotifier {
   final List<Map<String, dynamic>> _users = [];
 
   // Earnings Stats
-  double _totalEarnings = 4580.0;
-  double _thisMonth = 1200.0;
-  double _thisWeek = 350.0;
-  double _pendingPayments = 150.0;
+  double _totalEarnings = 458000.0;
+  double _thisMonth = 120000.0;
+  double _thisWeek = 35000.0;
+  double _pendingPayments = 15000.0;
 
   final List<MonthlyBarData> _monthlyBars = [];
   final List<EarningsTransaction> _transactions = [];
@@ -72,10 +72,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-1',
         name: 'Sweet Corn',
         category: 'Vegetables',
-        location: 'Valley Farms',
+        location: 'Kurunegala',
         quantity: '50 kg available',
         unit: 'kg',
-        price: '\$3.00 / kg',
+        price: 'LKR 3.00 / kg',
         pricePerUnit: 3.00,
         emoji: '🌽',
         imagePath: 'assets/images/heirloom_tomatoes.png',
@@ -87,10 +87,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-2',
         name: 'Heirloom Tomatoes',
         category: 'Vegetables',
-        location: 'Green Valley Farm',
+        location: 'Matale',
         quantity: '12 kg available',
         unit: 'kg',
-        price: '\$4.50 / kg',
+        price: 'LKR 4.50 / kg',
         pricePerUnit: 4.50,
         emoji: '🍅',
         imagePath: 'assets/images/heirloom_tomatoes.png',
@@ -102,10 +102,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-3',
         name: 'Organic Carrots',
         category: 'Vegetables',
-        location: 'Riverbed Acres',
+        location: 'Anuradhapura',
         quantity: '0 kg available',
         unit: 'kg',
-        price: '\$2.10 / kg',
+        price: 'LKR 2.10 / kg',
         pricePerUnit: 2.10,
         emoji: '🥕',
         imagePath: 'assets/images/nantes_carrots.png',
@@ -117,10 +117,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-4',
         name: 'Gala Apples',
         category: 'Fruits',
-        location: 'Orchard Hills',
+        location: 'Kandy',
         quantity: '120 kg available',
         unit: 'kg',
-        price: '\$1.80 / kg',
+        price: 'LKR 1.80 / kg',
         pricePerUnit: 1.80,
         emoji: '🍎',
         imagePath: 'assets/images/heirloom_tomatoes.png',
@@ -132,10 +132,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-5',
         name: 'Romaine Lettuce',
         category: 'Vegetables',
-        location: 'Sunny Ridge Field',
+        location: 'Badulla',
         quantity: '200 heads',
         unit: 'ea',
-        price: '\$1.50 / ea',
+        price: 'LKR 1.50 / ea',
         pricePerUnit: 1.50,
         emoji: '🥬',
         imagePath: 'assets/images/romaine_lettuce.png',
@@ -147,10 +147,10 @@ class FarmoraState extends ChangeNotifier {
         id: 'prod-6',
         name: 'Black Beauty Eggplant',
         category: 'Vegetables',
-        location: 'Hilltop Gardens',
+        location: 'Matara',
         quantity: 'Restocking soon',
         unit: 'kg',
-        price: '\$3.75 / kg',
+        price: 'LKR 3.75 / kg',
         pricePerUnit: 3.75,
         emoji: '🍆',
         imagePath: 'assets/images/black_beauty_eggplant.png',
@@ -169,13 +169,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Heirloom Tomatoes',
         quantity: '50 kg',
         grade: 'Grade A',
-        unitPrice: '\$2.50',
-        totalAmount: '\$125.00',
-        totalAmountNumber: 125.00,
+        unitPrice: 'LKR 450.00',
+        totalAmount: 'LKR 22,500.00',
+        totalAmountNumber: 22500.00,
         buyerName: 'Green Grocery',
         buyerCompany: 'Green Grocery Store',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '123 Market St, San Francisco, CA 94103',
+        deliveryAddress: 'No. 42, Galle Road, Colombo 03',
         detail: '50 kg',
         status: 'Pending',
         progress: 0.0,
@@ -191,13 +191,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Crisphead Lettuce',
         quantity: '20 Boxes',
         grade: 'Grade A',
-        unitPrice: '\$4.00',
-        totalAmount: '\$80.00',
-        totalAmountNumber: 80.00,
+        unitPrice: 'LKR 1,200.00',
+        totalAmount: 'LKR 24,000.00',
+        totalAmountNumber: 24000.00,
         buyerName: 'Valley Farm',
         buyerCompany: 'Valley Farm-to-Table',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '456 Farm Road, Napa, CA 94558',
+        deliveryAddress: 'No. 18, Negombo Road, Ja-Ela',
         detail: '20 Boxes',
         status: 'Pending',
         progress: 0.0,
@@ -213,13 +213,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Organic Carrots',
         quantity: '100 kg',
         grade: 'Organic',
-        unitPrice: '\$1.50',
-        totalAmount: '\$150.00',
-        totalAmountNumber: 150.00,
+        unitPrice: 'LKR 600.00',
+        totalAmount: 'LKR 60,000.00',
+        totalAmountNumber: 60000.00,
         buyerName: 'Local Co-op',
         buyerCompany: 'Local Co-op \u2606',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '789 Co-op Lane, Berkeley, CA 94704',
+        deliveryAddress: 'No. 7, Temple Road, Kandy',
         detail: 'Please ensure stems are kept long if possible.',
         status: 'Pending',
         progress: 0.0,
@@ -235,13 +235,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Heirloom Tomatoes',
         quantity: '28 kg',
         grade: 'Organic',
-        unitPrice: '\$4.50',
-        totalAmount: '\$125.00',
-        totalAmountNumber: 125.00,
+        unitPrice: 'LKR 1,150.00',
+        totalAmount: 'LKR 32,200.00',
+        totalAmountNumber: 32200.00,
         buyerName: 'Fresh Market',
         buyerCompany: 'Fresh Market Co.',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '450 West End Ave',
+        deliveryAddress: 'No. 156, Duplication Road, Colombo 04',
         detail: '28 kg',
         status: 'Accepted',
         progress: 0.65,
@@ -256,13 +256,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Dinosaur Kale',
         quantity: '42 bunches',
         grade: 'Conventional',
-        unitPrice: '\$2.00',
-        totalAmount: '\$85.50',
-        totalAmountNumber: 85.50,
+        unitPrice: 'LKR 800.00',
+        totalAmount: 'LKR 33,600.00',
+        totalAmountNumber: 33600.00,
         buyerName: 'Green Leaf',
         buyerCompany: 'Green Leaf Bistro',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '782 King Street',
+        deliveryAddress: 'No. 23, Peradeniya Road, Kandy',
         detail: '42 bunches',
         status: 'Delivered',
         progress: 1.0,
@@ -277,13 +277,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Nantes Carrots',
         quantity: '140 kg',
         grade: 'Organic',
-        unitPrice: '\$1.50',
-        totalAmount: '\$210.00',
-        totalAmountNumber: 210.00,
+        unitPrice: 'LKR 950.00',
+        totalAmount: 'LKR 133,000.00',
+        totalAmountNumber: 133000.00,
         buyerName: 'Local Fresh',
         buyerCompany: 'Local Fresh Market',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '450 West End Ave',
+        deliveryAddress: 'No. 88, Jaffna Road, Vavuniya',
         detail: '140 kg',
         status: 'Delivered',
         progress: 1.0,
@@ -298,13 +298,13 @@ class FarmoraState extends ChangeNotifier {
         productName: 'Romaine Lettuce',
         quantity: '40 heads',
         grade: 'Organic',
-        unitPrice: '\$1.62',
-        totalAmount: '\$65.00',
-        totalAmountNumber: 65.00,
+        unitPrice: 'LKR 700.00',
+        totalAmount: 'LKR 28,000.00',
+        totalAmountNumber: 28000.00,
         buyerName: 'Bistro 44',
         buyerCompany: 'Bistro 44',
         buyerAvatar: 'assets/images/buyer_sarah.png',
-        deliveryAddress: '12 Harbor Road',
+        deliveryAddress: 'No. 5, Beach Road, Galle',
         detail: '40 heads',
         status: 'Delivered',
         progress: 1.0,
@@ -316,20 +316,20 @@ class FarmoraState extends ChangeNotifier {
 
     _monthlyBars.clear();
     _monthlyBars.addAll([
-      const MonthlyBarData(month: 'Jan', amount: 800, heightRatio: 0.45, isHighlighted: false),
-      const MonthlyBarData(month: 'Feb', amount: 950, heightRatio: 0.55, isHighlighted: false),
-      const MonthlyBarData(month: 'Mar', amount: 600, heightRatio: 0.35, isHighlighted: false),
-      const MonthlyBarData(month: 'Apr', amount: 700, heightRatio: 0.40, isHighlighted: false),
-      const MonthlyBarData(month: 'May', amount: 1100, heightRatio: 0.75, isHighlighted: false),
-      const MonthlyBarData(month: 'Jun', amount: 1200, heightRatio: 0.90, isHighlighted: true),
+      const MonthlyBarData(month: 'Jan', amount: 80000, heightRatio: 0.45, isHighlighted: false),
+      const MonthlyBarData(month: 'Feb', amount: 95000, heightRatio: 0.55, isHighlighted: false),
+      const MonthlyBarData(month: 'Mar', amount: 60000, heightRatio: 0.35, isHighlighted: false),
+      const MonthlyBarData(month: 'Apr', amount: 70000, heightRatio: 0.40, isHighlighted: false),
+      const MonthlyBarData(month: 'May', amount: 110000, heightRatio: 0.75, isHighlighted: false),
+      const MonthlyBarData(month: 'Jun', amount: 120000, heightRatio: 0.90, isHighlighted: true),
     ]);
 
     _transactions.clear();
     _transactions.addAll([
-      const EarningsTransaction(id: 'tx-1', orderNumber: '#8921', date: 'June 24, 2024', amount: 240.00, status: 'Completed'),
-      const EarningsTransaction(id: 'tx-2', orderNumber: '#8918', date: 'June 22, 2024', amount: 85.50, status: 'Completed'),
-      const EarningsTransaction(id: 'tx-3', orderNumber: '#8915', date: 'June 21, 2024', amount: 150.00, status: 'Pending'),
-      const EarningsTransaction(id: 'tx-4', orderNumber: '#8890', date: 'June 15, 2024', amount: 420.00, status: 'Completed'),
+      const EarningsTransaction(id: 'tx-1', orderNumber: '#8921', date: 'June 24, 2024', amount: 24000.00, status: 'Completed'),
+      const EarningsTransaction(id: 'tx-2', orderNumber: '#8918', date: 'June 22, 2024', amount: 8550.00, status: 'Completed'),
+      const EarningsTransaction(id: 'tx-3', orderNumber: '#8915', date: 'June 21, 2024', amount: 15000.00, status: 'Pending'),
+      const EarningsTransaction(id: 'tx-4', orderNumber: '#8890', date: 'June 15, 2024', amount: 42000.00, status: 'Completed'),
     ]);
   }
 
@@ -611,9 +611,35 @@ class FarmoraState extends ChangeNotifier {
     _profileLoaded = false;
     disposeFirestoreSubscriptions();
 
-    // Load user profile and set role
+    // Load user profile and set role.
+    // Retry briefly: right after sign-in the Firestore client may still hold a
+    // stale (unauthenticated) token, which causes a spurious PERMISSION_DENIED.
+    const maxAttempts = 4;
+    Map<String, dynamic>? profile;
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        profile = await _loadUserProfile(uid);
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await Future.delayed(Duration(milliseconds: 600 * attempt));
+        }
+      }
+    }
+
+    if (lastError != null) {
+      // Profile read genuinely failed — keep session but fall back to demo data
+      // instead of signing the user out on a transient permissions race.
+      debugPrint('FarmoraState.initFromFirestore profile load failed: $lastError');
+      _profileLoaded = true;
+      notifyListeners();
+      return;
+    }
+
     try {
-      final profile = await _loadUserProfile(uid);
       if (profile == null) {
         await FirebaseAuth.instance.signOut();
         _currentUserId = '';
