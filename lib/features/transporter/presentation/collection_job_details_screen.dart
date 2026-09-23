@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'widgets/job_status_chip.dart';
+import 'widgets/job_timeline.dart';
 import 'widgets/transporter_actions.dart';
 import 'widgets/transporter_states.dart';
 
@@ -48,6 +49,11 @@ class _CollectionJobDetailsScreenState
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
           _JobHero(job: job),
+          const SizedBox(height: 14),
+          _Section(
+            title: 'Job timeline',
+            children: [JobTimeline(job: job)],
+          ),
           if (job.logisticsProviderId == state.providerId &&
               state.vehicleCapacity != null) ...[
             const SizedBox(height: 14),
@@ -166,10 +172,38 @@ class _CollectionJobDetailsScreenState
             _Section(
               title: 'Transaction feedback',
               children: [
+                if (state.ratingFor(job.id) != null) ...[
+                  Row(
+                    children: [
+                      for (var i = 0; i < state.ratingFor(job.id)!.stars; i++)
+                        const Icon(Icons.star_rounded,
+                            size: 22, color: Colors.amber),
+                      for (var i = state.ratingFor(job.id)!.stars;
+                          i < 5;
+                          i++)
+                        const Icon(Icons.star_outline_rounded,
+                            size: 22, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          state.ratingFor(job.id)!.comment.isEmpty
+                              ? 'Rated'
+                              : state.ratingFor(job.id)!.comment,
+                          style: const TextStyle(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 OutlinedButton.icon(
                   onPressed: () => _rateDelivery(context, state, job),
                   icon: const Icon(Icons.star_outline_rounded),
-                  label: const Text('Rate this transaction'),
+                  label: Text(state.ratingFor(job.id) != null
+                      ? 'Update rating'
+                      : 'Rate this transaction'),
                 ),
               ],
             ),
@@ -180,10 +214,27 @@ class _CollectionJobDetailsScreenState
             _Section(
               title: 'Delivery support',
               children: [
+                if (state.hasReportedIssue(job.id)) ...[
+                  const Row(
+                    children: [
+                      Icon(Icons.report_rounded, size: 18, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Issue reported — Farmora support is following up.',
+                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 OutlinedButton.icon(
                   onPressed: () => _reportIssue(context, state, job),
                   icon: const Icon(Icons.report_problem_outlined),
-                  label: const Text('Report an issue'),
+                  label: Text(state.hasReportedIssue(job.id)
+                      ? 'Report another issue'
+                      : 'Report an issue'),
                 ),
               ],
             ),
