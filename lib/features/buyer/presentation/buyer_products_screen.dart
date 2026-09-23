@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../core/widgets/safe_image.dart';
+import '../../../core/widgets/trust_badge.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 
@@ -162,6 +164,30 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                 ),
                 const SizedBox(height: 14),
 
+                // Sort control
+                Row(
+                  children: [
+                    const Icon(Icons.sort, size: 18, color: AppColors.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: state.sortOrder,
+                      underline: const SizedBox(),
+                      items: const [
+                        DropdownMenuItem(value: 'newest', child: Text('Newest')),
+                        DropdownMenuItem(value: 'priceAsc', child: Text('Price: low to high')),
+                        DropdownMenuItem(value: 'priceDesc', child: Text('Price: high to low')),
+                        DropdownMenuItem(value: 'name', child: Text('Name A–Z')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) state.setSortOrder(v);
+                      },
+                    ),
+                    const Spacer(),
+                    Text('${products.length} items', style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
                 // Active filter badge
                 if (state.selectedCategory != 'All')
                   Padding(
@@ -290,8 +316,8 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: product.imagePath != null && product.imagePath!.isNotEmpty
-                    ? Image.asset(
-                        product.imagePath!,
+                    ? SafeImage(
+                        path: product.imagePath!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _buildFallbackIcon(product),
                       )
@@ -336,6 +362,8 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 6),
+                  TrustBadge(trustLevel: product.trustLevel),
                   const SizedBox(height: 6),
                   Text(
                     product.price,

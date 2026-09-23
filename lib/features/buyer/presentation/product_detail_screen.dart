@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -58,8 +59,8 @@ class ProductDetailScreen extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: product.imagePath != null && product.imagePath!.isNotEmpty
-                        ? Image.asset(
-                            product.imagePath!,
+                        ? SafeImage(
+                            path: product.imagePath!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildFallbackImage(),
                           )

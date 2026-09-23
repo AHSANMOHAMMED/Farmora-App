@@ -48,12 +48,6 @@ const requireRole = async (
   return user;
 };
 
-const config = (name: string): string => {
-  const value = process.env[name];
-  if (!value) throw new functions.https.HttpsError("failed-precondition", `${name} is not configured.`);
-  return value;
-};
-
 const notifyUser = async (
   userId: string,
   title: string,
@@ -507,69 +501,63 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
     || ![order.buyerId, order.farmerId, order.transporterId].includes(recipientId)) {
     throw new functions.https.HttpsError("permission-denied", "Conversation is not authorized.");
   }
+  // Ensure the order-scoped conversation exists (created only by backend).
+  const participants = [uid, recipientId].sort();
+  const convoQuery = await db.collection("conversations")
+    .where("orderId", "==", orderId).get();
+  let conversationId = "";
+  for (const doc of convoQuery.docs) {
+    const ids = [...((doc.data().participantIds as string[]) || [])].sort();
+    if (ids.length === participants.length && ids.every((v, i) => v === participants[i])) {
+      conversationId = doc.id;
+      break;
+    }
+  }
+  if (!conversationId) {
+    const convoRef = db.collection("conversations").doc();
+    await convoRef.set({
+      orderId,
+      participantIds: participants,
+      lastMessage: "",
+      lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+      unreadCounts: { [recipientId]: 0 },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    conversationId = convoRef.id;
+  }
   const ref = db.collection("messages").doc();
   await ref.set({
     orderId,
+    conversationId,
     senderId: uid,
     receiverId: recipientId,
+    recipientId,
     ciphertext,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return { messageId: ref.id };
+  await db.collection("conversations").doc(conversationId).update({
+    lastMessage: ciphertext.slice(0, 140),
+    lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { messageId: ref.id, conversationId };
 });
 
-// PayHere checkout data is signed server-side. Card details never enter Farmora.
+// PayHere is intentionally deferred until merchant credentials are available.
 export const createPayHereCheckout = functions.https.onCall(async (data, context) => {
-  const uid = requireAuth(context);
-  await requireRole(uid, ["buyer"]);
-  const orderId = typeof data.orderId === "string" ? data.orderId : "";
-  const snapshot = await db.collection("orders").doc(orderId).get();
-  const order = snapshot.data();
-  if (!order || order.buyerId !== uid || order.paymentStatus !== "payment_required") {
-    throw new functions.https.HttpsError("failed-precondition", "Order is not payable.");
-  }
-  const merchantId = config("PAYHERE_MERCHANT_ID");
-  const currency = String(order.currency || "LKR");
-  const amount = (Number(order.totalMinor) / 100).toFixed(2);
-  const secretHash = createHash("md5").update(config("PAYHERE_MERCHANT_SECRET")).digest("hex").toUpperCase();
-  const hash = createHash("md5").update(`${merchantId}${orderId}${amount}${currency}${secretHash}`).digest("hex").toUpperCase();
-  await snapshot.ref.update({
-    paymentStatus: "checkout_started",
-    paymentProvider: "payhere",
-    paymentAttemptId: randomUUID(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  return { merchantId, orderId, amount, currency, hash, item: order.productId || "Farmora order" };
+  throw new functions.https.HttpsError(
+    'failed-precondition',
+    'PayHere payments are not yet configured. Contact the administrator to enable payment functionality.'
+  );
 });
 
+// PayHere is intentionally deferred until merchant credentials are available.
+// To enable: set PAYHERE_MERCHANT_ID / PAYHERE_MERCHANT_SECRET env vars and
+// replace this stub with signature verification (md5 of
+// merchant_id + order_id + payhere_amount + payhere_currency + status_code +
+// uppercased md5 of the merchant secret), then update the order's
+// paymentStatus/escrowStatus accordingly.
 export const payHereWebhook = functions.https.onRequest(async (request, response) => {
-  if (request.method !== "POST") {
-    response.status(405).send("Method not allowed");
-    return;
-  }
-  const body = request.body as Record<string, string>;
-  const required = ["merchant_id", "order_id", "payhere_amount", "payhere_currency", "status_code", "md5sig"];
-  if (required.some((key) => typeof body[key] !== "string")) {
-    response.status(400).send("Invalid notification");
-    return;
-  }
-  const secretHash = createHash("md5").update(config("PAYHERE_MERCHANT_SECRET")).digest("hex").toUpperCase();
-  const expected = createHash("md5").update(
-    `${body.merchant_id}${body.order_id}${body.payhere_amount}${body.payhere_currency}${body.status_code}${secretHash}`
-  ).digest("hex").toUpperCase();
-  if (expected !== String(body.md5sig).toUpperCase() || body.merchant_id !== config("PAYHERE_MERCHANT_ID")) {
-    response.status(401).send("Invalid signature");
-    return;
-  }
-  const orderRef = db.collection("orders").doc(body.order_id);
-  const status = body.status_code === "2" ? "paid" : "payment_failed";
-  await orderRef.update({
-    paymentStatus: status,
-    escrowStatus: status === "paid" ? "funded_pending_delivery" : "not_funded",
-    paymentProviderReference: body.payment_id || null,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  response.status(200).send("OK");
+  response.status(400).send('PayHere webhooks are not yet configured. Contact the administrator to enable payment functionality.');
 });
 
 export const releaseEscrow = functions.https.onCall(async (data, context) => {
@@ -720,6 +708,9 @@ export const openDispute = functions.https.onCall(async (data, context) => {
   if (!orderId || !reason || reason.length > 2000) {
     throw new functions.https.HttpsError("invalid-argument", "A dispute reason is required.");
   }
+  const evidenceUrls = Array.isArray(data.evidenceUrls)
+    ? data.evidenceUrls.filter((u: unknown) => typeof u === "string" && (u as string).length <= 2000).slice(0, 5)
+    : [];
   const orderSnapshot = await db.collection("orders").doc(orderId).get();
   const order = orderSnapshot.data();
   if (!order || ![order.buyerId, order.farmerId, order.transporterId].includes(uid)) {
@@ -731,6 +722,7 @@ export const openDispute = functions.https.onCall(async (data, context) => {
     openedBy: uid,
     reason,
     status: "open",
+    evidenceImages: evidenceUrls,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   await orderSnapshot.ref.update({ paymentStatus: "disputed", disputeId: disputeRef.id });
