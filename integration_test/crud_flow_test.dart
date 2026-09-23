@@ -28,8 +28,10 @@ void main() {
       // If we are on WelcomeScreen, grab state and sign in.
 
       // Grab FarmoraState from MaterialApp context
-      final BuildContext context = tester.element(find.byType(MaterialApp));
-      final state = Provider.of<FarmoraState>(context, listen: false);
+      final state = Provider.of<FarmoraState>(
+        tester.element(find.byType(MaterialApp)),
+        listen: false,
+      );
 
       // ==========================================
       // FARMER FLOW (Products & Jobs CRUD)
