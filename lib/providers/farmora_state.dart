@@ -424,6 +424,18 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  void completeOrder(String orderId) {
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _orders[idx] = _orders[idx].copyWith(status: 'Delivered', progress: 1.0);
+      _recalculateStats();
+      notifyListeners();
+    }
+    if (_currentUserId.isNotEmpty) {
+      _firestoreService.updateOrderStatus(orderId, 'Delivered', 1.0);
+    }
+  }
+
   void declineOrder(String orderId) {
     final idx = _orders.indexWhere((o) => o.id == orderId);
     if (idx != -1) {

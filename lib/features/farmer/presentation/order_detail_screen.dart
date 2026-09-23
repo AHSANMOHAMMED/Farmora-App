@@ -8,6 +8,7 @@ import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
+import 'logistics_tracking_screen.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -506,81 +507,117 @@ class OrderDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final feeController = TextEditingController(
-                      text: currentOrder.deliveryFeeMinor > 0
-                          ? (currentOrder.deliveryFeeMinor / 100)
-                              .toStringAsFixed(0)
-                          : '500',
-                    );
-                    final fee = await showDialog<int>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Transport fee (LKR)'),
-                        content: TextField(
-                          controller: feeController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Offered delivery fee',
-                            prefixText: 'LKR ',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LogisticsTrackingScreen(order: currentOrder),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary, width: 1.5),
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
                           ),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancel'),
+                        icon: const Icon(Icons.navigation_outlined, size: 18),
+                        label: const Text(
+                          'Track Logistics',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
-                          FilledButton(
-                            onPressed: () {
-                              final major =
-                                  int.tryParse(feeController.text.trim()) ?? 0;
-                              Navigator.pop(ctx, major * 100);
-                            },
-                            child: const Text('Request'),
-                          ),
-                        ],
+                        ),
                       ),
-                    );
-                    if (fee == null || fee < 0) return;
-                    try {
-                      await state.requestTransportForOrder(
-                        currentOrder.id,
-                        deliveryFeeMinor: fee,
-                      );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Transport requested successfully!'),
-                            backgroundColor: AppColors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final feeController = TextEditingController(
+                            text: currentOrder.deliveryFeeMinor > 0
+                                ? (currentOrder.deliveryFeeMinor / 100)
+                                    .toStringAsFixed(0)
+                                : '500',
+                          );
+                          final fee = await showDialog<int>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Transport fee (LKR)'),
+                              content: TextField(
+                                controller: feeController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Offered delivery fee',
+                                  prefixText: 'LKR ',
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    final major =
+                                        int.tryParse(feeController.text.trim()) ?? 0;
+                                    Navigator.pop(ctx, major * 100);
+                                  },
+                                  child: const Text('Request'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (fee == null || fee < 0) return;
+                          try {
+                            await state.requestTransportForOrder(
+                              currentOrder.id,
+                              deliveryFeeMinor: fee,
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Transport requested successfully!'),
+                                  backgroundColor: AppColors.primary,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Transport request failed: $e')),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
                           ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Transport request failed: $e')),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9999),
+                        ),
+                        icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                        label: const Text(
+                          'Request Transport',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.local_shipping_outlined, size: 20),
-                  label: const Text(
-                    'Request Transport',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
