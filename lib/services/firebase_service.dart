@@ -460,6 +460,27 @@ class FirestoreService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
+  Future<void> requestPayout({
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    String method = 'CEFT',
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    await _db.collection('settlements').add({
+      'recipientId': uid,
+      'recipientRole': 'farmer',
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'grossAmount': amount,
+      'netAmount': amount * 0.95,
+      'platformFee': amount * 0.05,
+      'payoutMethod': method,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> publishChatPublicKey(String publicKeyB64) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw StateError('Authentication required.');

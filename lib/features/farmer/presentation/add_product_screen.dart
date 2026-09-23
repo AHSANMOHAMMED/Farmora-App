@@ -32,8 +32,38 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   String _category = 'Vegetables';
   String _unit = 'kg';
+  String _district = 'Nuwara Eliya';
   bool _isOrganic = false;
   DateTime? _availabilityDate = DateTime.now().add(const Duration(days: 1));
+
+  static const List<String> _districts = [
+    'Nuwara Eliya',
+    'Dambulla',
+    'Kandy',
+    'Badulla',
+    'Jaffna',
+    'Anuradhapura',
+    'Matale',
+    'Kurunegala',
+    'Colombo',
+    'Gampaha',
+    'Kalutara',
+    'Galle',
+    'Matara',
+    'Hambantota',
+    'Puttalam',
+    'Polonnaruwa',
+    'Ratnapura',
+    'Kegalle',
+    'Monaragala',
+    'Batticaloa',
+    'Ampara',
+    'Trincomalee',
+    'Vavuniya',
+    'Mannar',
+    'Kilinochchi',
+    'Mullaitivu',
+  ];
 
   final List<String> _selectedImages = [];
   bool _isSubmitting = false;
@@ -53,6 +83,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _descriptionController.text = p.description;
       _category = p.category;
       _unit = p.unit;
+      if (p.location.isNotEmpty && _districts.contains(p.location)) {
+        _district = p.location;
+      }
       _isOrganic = p.isOrganic;
       _availabilityDate = p.availabilityDate;
       final existingMedia = [
@@ -63,6 +96,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (existingMedia.isNotEmpty) {
         _selectedImages.addAll(existingMedia);
       }
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final stateDistrict = context.read<FarmoraState>().district.trim();
+        if (stateDistrict.isNotEmpty && _districts.contains(stateDistrict)) {
+          setState(() => _district = stateDistrict);
+        }
+      });
     }
   }
 
@@ -140,6 +181,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
+    final state = context.read<FarmoraState>();
     final name = _nameController.text.trim();
     final quantityVal = int.tryParse(_quantityController.text.trim()) ?? 0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -157,16 +199,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final productStatus = isEdit ? widget.existingProduct!.status : 'Active';
     final media = List<String>.from(_selectedImages);
 
-    final state = context.read<FarmoraState>();
-    final location = state.district.trim();
-    if (location.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Set your district in Profile before listing produce.'),
-        ),
-      );
-      return;
-    }
+    final location = _district;
 
     final newProduct = Product(
       id: productId,
@@ -340,6 +373,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           if (val != null) setState(() => _category = val);
                         },
                       ),
+                      const SizedBox(height: 18),
+                      _buildFieldLabel('Farm District / Location'),
+                      const SizedBox(height: 6),
+                      _buildDropdown(
+                        value: _district,
+                        items: _districts,
+                        onChanged: (val) {
+                          if (val != null) setState(() => _district = val);
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Organic certified'),

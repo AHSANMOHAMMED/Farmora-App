@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/farmora_strings.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import '../../messaging/presentation/conversations_screen.dart';
 
 class LogisticsTrackingScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -339,7 +340,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {},
+                              onPressed: () => _showCallDriverDialog(context),
                               icon: const Icon(Icons.phone_outlined,
                                   size: 16),
                               label: Text(strings.t('callDriver'),
@@ -360,7 +361,15 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ConversationsScreen(orderId: order.id),
+                                  ),
+                                );
+                              },
                               icon: const Icon(Icons.chat_bubble_outline,
                                   size: 16),
                               label: Text(strings.t('message'),
@@ -707,7 +716,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     width: double.infinity,
                     height: 44,
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () =>
+                          _showEscrowDetailsSheet(context, order),
                       icon: const Icon(Icons.account_balance_rounded,
                           size: 16),
                       label: const Text('View Escrow Release Status',
@@ -1047,6 +1057,179 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
         ),
       );
     });
+  }
+
+  void _showCallDriverDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.phone_in_talk_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Contact Driver',
+                style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Driver: Kasun Perera (GreenRoute Express)',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            const Text('Vehicle: Tata Dimo Batta (WP NB-4821)'),
+            const SizedBox(height: 4),
+            const Text('Status: En Route to Farm Gate'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.call, color: AppColors.primary, size: 20),
+                  SizedBox(width: 10),
+                  Text('+94 77 123 4567',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Calling Driver +94 77 123 4567...'),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            },
+            icon: const Icon(Icons.phone, size: 16),
+            label: const Text('Call Now'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEscrowDetailsSheet(BuildContext context, FarmoraOrder order) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.security_rounded,
+                    color: AppColors.primary, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Escrow Payment Protection',
+                  style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Value Held:',
+                          style: TextStyle(color: AppColors.onSurfaceVariant)),
+                      Text(order.totalAmount,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Status:',
+                          style: TextStyle(color: AppColors.onSurfaceVariant)),
+                      Text('Secured in Escrow',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'How Escrow Release Works:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '1. Transporter picks up produce from your farm gate.\n'
+              '2. Buyer inspects and accepts delivery in Colombo.\n'
+              '3. Funds are automatically cleared to your Earnings account within 24 hours of buyer acceptance.\n'
+              '4. 100% payout guaranteed against transit damage.',
+              style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Understood'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

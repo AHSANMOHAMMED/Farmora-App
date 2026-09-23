@@ -74,7 +74,6 @@ class EarningsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Stitch: text-headline-lg-mobile font-headline-lg-mobile
                       Text(
                         currencyFormat.format(state.totalEarnings),
                         style: const TextStyle(
@@ -83,6 +82,34 @@ class EarningsScreen extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.5,
                           color: AppColors.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 38,
+                        child: ElevatedButton.icon(
+                          onPressed: () =>
+                              _showWithdrawalDialog(context, state),
+                          icon: const Icon(Icons.account_balance_rounded,
+                              size: 16),
+                          label: const Text(
+                            'Request Payout',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.onPrimaryContainer,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16),
+                          ),
                         ),
                       ),
                     ],
@@ -541,6 +568,344 @@ class EarningsScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _showWithdrawalDialog(BuildContext context, FarmoraState state) {
+    if (state.totalEarnings <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No earnings available for payout.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final amountController = TextEditingController(
+      text: state.totalEarnings.toStringAsFixed(0),
+    );
+    final accountController = TextEditingController();
+    String selectedBank = 'Bank of Ceylon (BOC)';
+    const payoutMethod = 'CEFT (Fast Transfer)';
+
+    final banks = [
+      'Bank of Ceylon (BOC)',
+      'Commercial Bank of Ceylon',
+      'Sampath Bank',
+      'Hatton National Bank (HNB)',
+      'People\'s Bank',
+      'Nations Trust Bank',
+      'eZ Cash (Dialog)',
+      'mCash (Mobitel)',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final amt = double.tryParse(amountController.text) ?? 0.0;
+          final fee = amt * (state.commissionRate / 100.0);
+          final net = (amt - fee).clamp(0.0, double.infinity);
+
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.account_balance_rounded, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text(
+                  'Request Payout',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Available Balance:',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'LKR ${state.totalEarnings.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Select Bank / Wallet',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedBank,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: banks
+                        .map((b) => DropdownMenuItem(
+                            value: b,
+                            child: Text(b,
+                                style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => selectedBank = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Account / Phone Number',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: accountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter bank account or wallet number',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Withdrawal Amount (LKR)',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      prefixText: 'LKR ',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (_) => setModalState(() {}),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildPresetChip(
+                          '25%',
+                          (state.totalEarnings * 0.25),
+                          amountController,
+                          setModalState),
+                      _buildPresetChip(
+                          '50%',
+                          (state.totalEarnings * 0.50),
+                          amountController,
+                          setModalState),
+                      _buildPresetChip(
+                          '75%',
+                          (state.totalEarnings * 0.75),
+                          amountController,
+                          setModalState),
+                      _buildPresetChip(
+                          '100%',
+                          state.totalEarnings,
+                          amountController,
+                          setModalState),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Platform Fee (${state.commissionRate}%):',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              'LKR ${fee.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Net Payout:',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'LKR ${net.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final enteredAmount =
+                      double.tryParse(amountController.text) ?? 0.0;
+                  final accountNum = accountController.text.trim();
+                  if (enteredAmount <= 0 ||
+                      enteredAmount > state.totalEarnings) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invalid payout amount'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                  if (accountNum.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter account number'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop();
+                  try {
+                    await state.requestFarmerWithdrawal(
+                      amount: enteredAmount,
+                      bankName: selectedBank,
+                      accountNumber: accountNum,
+                      payoutMethod: payoutMethod,
+                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Payout of LKR ${enteredAmount.toStringAsFixed(2)} submitted successfully!',
+                          ),
+                          backgroundColor: AppColors.primary,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error submitting payout: $e'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                ),
+                child: const Text('Confirm Payout'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPresetChip(
+    String label,
+    double value,
+    TextEditingController controller,
+    void Function(void Function()) setModalState,
+  ) {
+    return InkWell(
+      onTap: () {
+        setModalState(() {
+          controller.text = value.toStringAsFixed(0);
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }
