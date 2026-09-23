@@ -6,6 +6,9 @@ import 'l10n/app_localizations.dart';
 import 'providers/farmora_state.dart';
 import 'features/auth/presentation/auth_gate.dart';
 import 'features/splash/presentation/splash_screen.dart';
+import 'features/transporter/application/transporter_controller.dart';
+import 'features/transporter/data/firestore_collection_job_repository.dart';
+import 'features/transporter/data/firestore_transporter_account_repository.dart';
 
 class FarmoraApp extends StatelessWidget {
   final bool showSplash;
@@ -17,8 +20,16 @@ class FarmoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => FarmoraState(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FarmoraState()),
+        ChangeNotifierProvider(
+          create: (_) => TransporterController(
+            repository: FirestoreCollectionJobRepository(),
+            accountRepository: FirestoreTransporterAccountRepository(),
+          ),
+        ),
+      ],
       child: Consumer<FarmoraState>(
         builder: (context, state, _) {
           return MaterialApp(

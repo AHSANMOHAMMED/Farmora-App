@@ -942,23 +942,98 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
   await requireRole(uid, ["transporter"]);
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
+  const reason = typeof data.reason === "string" ? data.reason.trim() : "";
   const ref = db.collection("transport_jobs").doc(jobId);
   const snapshot = await ref.get();
   const job = snapshot.data();
   if (!job) throw new functions.https.HttpsError("not-found", "Transport job not found.");
+  const normalizeStatus = (value: unknown): string => {
+    switch (String(value ?? "").trim().toUpperCase().replace(/[\s-]/g, "_")) {
+      case "OPEN":
+      case "REQUESTED":
+      case "PENDING":
+        return "requested";
+      case "ACCEPTED":
+        return "accepted";
+      case "COLLECTED":
+      case "PICKEDUP":
+      case "PICKED_UP":
+        return "pickedUp";
+      case "IN_TRANSIT":
+      case "INTRANSIT":
+        return "inTransit";
+      case "COMPLETED":
+      case "DELIVERED":
+        return "delivered";
+      case "CANCELLED":
+        return "cancelled";
+      default:
+        return String(value ?? "");
+    }
+  };
+  const currentStatus = normalizeStatus(job.status);
+  const requestedStatus = normalizeStatus(nextStatus);
   const transitions: Record<string, string[]> = {
     requested: ["accepted"], accepted: ["pickedUp", "cancelled"],
     pickedUp: ["inTransit"], inTransit: ["delivered"], delivered: [], cancelled: [],
   };
   if (job.transporterId && job.transporterId !== uid
-    || !transitions[job.status]?.includes(nextStatus)) {
+    || !transitions[currentStatus]?.includes(requestedStatus)) {
     throw new functions.https.HttpsError("failed-precondition", "Invalid transport transition.");
   }
   await ref.update({
-    status: nextStatus,
+    // Keep the existing transport_jobs vocabulary stable for other clients.
+    status: requestedStatus,
     transporterId: uid,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    [`${nextStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
+    [`${requestedStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
+    ...(requestedStatus === "cancelled" && reason
+      ? { cancellationReason: reason }
+      : {}),
+  });
+  return { success: true };
+});
+
+export const updateTransporterProfile = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["transporter"]);
+
+  const displayName = typeof data.displayName === "string" ? data.displayName.trim() : "";
+  const phone = typeof data.phone === "string" ? data.phone.trim() : "";
+  const vehicleType = typeof data.vehicleType === "string" ? data.vehicleType.trim() : "";
+  const vehicleRegistration = typeof data.vehicleRegistration === "string"
+    ? data.vehicleRegistration.trim().toUpperCase()
+    : "";
+  const vehicleCapacity = data.vehicleCapacity == null ? null : Number(data.vehicleCapacity);
+  const vehicleCapacityUnit = data.vehicleCapacityUnit === "tons" ? "tons" : "kg";
+  const vehicleDescription = typeof data.vehicleDescription === "string"
+    ? data.vehicleDescription.trim()
+    : "";
+  const availabilityStatus = data.availabilityStatus === "available"
+    ? "available"
+    : data.availabilityStatus === "unavailable"
+      ? "unavailable"
+      : "";
+
+  if (displayName.length < 2 || phone.length < 7 || !vehicleType
+    || !vehicleRegistration || !availabilityStatus
+    || (vehicleCapacity != null && (!Number.isFinite(vehicleCapacity) || vehicleCapacity <= 0))) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Name, phone, vehicle details, and availability are required."
+    );
+  }
+
+  await db.collection("users").doc(uid).update({
+    displayName,
+    phone,
+    vehicleType,
+    vehicleRegistration,
+    vehicleCapacity,
+    vehicleCapacityUnit,
+    vehicleDescription,
+    availabilityStatus,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   return { success: true };
 });

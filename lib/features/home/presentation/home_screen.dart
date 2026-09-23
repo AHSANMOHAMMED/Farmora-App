@@ -12,10 +12,12 @@ import '../../farmer/presentation/farmer_orders_screen.dart';
 import '../../farmer/presentation/farmer_jobs_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
-import '../../transporter/presentation/available_jobs_screen.dart';
-import '../../transporter/presentation/transporter_dashboard_screen.dart';
-import '../../transporter/presentation/delivery_history_screen.dart';
-import '../../transporter/presentation/transporter_earnings_screen.dart';
+import '../../transporter/presentation/logistics_available_jobs_screen.dart';
+import '../../transporter/presentation/logistics_dashboard_screen.dart';
+import '../../transporter/presentation/my_jobs_screen.dart';
+import '../../transporter/presentation/transporter_notifications_screen.dart';
+import '../../transporter/presentation/transporter_profile_screen.dart';
+import '../../transporter/application/transporter_controller.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../admin/presentation/verification_review_screen.dart';
@@ -38,12 +40,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final role = state.role;
+    final transporterState = context.read<TransporterController>();
 
     // Initialize Firestore sync when user is authenticated
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null && state.currentUserId.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         state.initFromFirestore(firebaseUser.uid);
+      });
+    }
+
+    if (firebaseUser != null &&
+        role == Role.transporter &&
+        transporterState.providerId != firebaseUser.uid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) transporterState.bindProvider(firebaseUser.uid);
       });
     }
 
@@ -95,16 +106,20 @@ class _HomeScreenState extends State<HomeScreen> {
             activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.transporter) {
-      screens = const [
-        TransporterDashboardScreen(),
-        AvailableJobsScreen(),
-        DeliveryHistoryScreen(),
-        TransporterEarningsScreen(),
-        ProfileScreen(),
+      screens = [
+        LogisticsDashboardScreen(
+          onBrowseJobs: () => setState(() => tabIndex = 1),
+          onViewMyJobs: () => setState(() => tabIndex = 2),
+          onOpenNotifications: () => setState(() => tabIndex = 3),
+        ),
+        const LogisticsAvailableJobsScreen(),
+        const MyJobsScreen(),
+        const TransporterNotificationsScreen(),
+        const TransporterProfileScreen(),
       ];
       navItems = [
         _NavItem(
-            label: l10n.overview,
+            label: l10n.home,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
@@ -116,9 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
         _NavItem(
-            label: l10n.earnings,
-            icon: Icons.payments_outlined,
-            activeIcon: Icons.payments_rounded),
+            label: l10n.notifications,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
         _NavItem(
             label: l10n.profile,
             icon: Icons.person_outline_rounded,
