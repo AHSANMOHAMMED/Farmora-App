@@ -13,6 +13,7 @@ import '../models/verification_model.dart';
 import '../models/cart_item.dart';
 import '../models/notification_model.dart';
 import '../models/offer.dart';
+import '../models/market_price_index.dart';
 import '../services/firebase_service.dart' as kajana_service;
 
 class FarmoraState extends ChangeNotifier {
@@ -91,6 +92,9 @@ class FarmoraState extends ChangeNotifier {
   // Offers (Buyer & Farmer Negotiations)
   final List<FarmoraOffer> _offers = [];
 
+  // Market Price Intelligence (Sri Lankan Pola Benchmarks)
+  final List<MarketPriceIndex> _marketPrices = [];
+
   // Constructor with demo data initialization
   FarmoraState() {
     _initDemoData();
@@ -103,6 +107,7 @@ class FarmoraState extends ChangeNotifier {
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
   List<FarmoraNotification> get notifications => List.unmodifiable(_notifications);
   List<FarmoraOffer> get offers => List.unmodifiable(_offers);
+  List<MarketPriceIndex> get marketPrices => List.unmodifiable(_marketPrices);
   List<FarmoraOffer> get buyerOffers =>
       _offers.where((o) => _currentUserId.isEmpty || o.buyerId == _currentUserId || o.buyerId == 'buyer_demo').toList();
   List<FarmoraOffer> get farmerOffers =>
@@ -802,20 +807,26 @@ class FarmoraState extends ChangeNotifier {
     final productsStream = role == Role.farmer
         ? _firestoreService.productsByFarmerStream(uid)
         : _firestoreService.productsStream();
-    _productsSub = productsStream.listen((firestoreProducts) {
-      _products.clear();
-      _products.addAll(firestoreProducts);
-      notifyListeners();
-    });
+    _productsSub = productsStream.listen(
+      (firestoreProducts) {
+        _products.clear();
+        _products.addAll(firestoreProducts);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore products stream error: $e'),
+    );
 
     // Subscribe to users stream
     _usersSub?.cancel();
     if (isAdmin) {
-      _usersSub = _firestoreService.usersStream().listen((firestoreUsers) {
-        _users.clear();
-        _users.addAll(firestoreUsers);
-        notifyListeners();
-      });
+      _usersSub = _firestoreService.usersStream().listen(
+        (firestoreUsers) {
+          _users.clear();
+          _users.addAll(firestoreUsers);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore users stream error: $e'),
+      );
     }
 
     // Subscribe to orders stream
@@ -826,12 +837,15 @@ class FarmoraState extends ChangeNotifier {
       Role.buyer => _firestoreService.ordersByBuyerStream(uid),
       Role.transporter => _firestoreService.ordersByTransporterStream(uid),
     };
-    _ordersSub = ordersStream.listen((firestoreOrders) {
-      _orders.clear();
-      _orders.addAll(firestoreOrders);
-      _recalculateStats();
-      notifyListeners();
-    });
+    _ordersSub = ordersStream.listen(
+      (firestoreOrders) {
+        _orders.clear();
+        _orders.addAll(firestoreOrders);
+        _recalculateStats();
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore orders stream error: $e'),
+    );
 
     // Subscribe to transport jobs stream
     _jobsSub?.cancel();
@@ -840,42 +854,53 @@ class FarmoraState extends ChangeNotifier {
       Role.transporter => _firestoreService.jobsForTransporterStream(uid),
       _ => _firestoreService.jobsStream(),
     };
-    _jobsSub = jobsStream.listen((firestoreJobs) {
-      _jobs.clear();
-      _jobs.addAll(firestoreJobs);
-      notifyListeners();
-    });
+    _jobsSub = jobsStream.listen(
+      (firestoreJobs) {
+        _jobs.clear();
+        _jobs.addAll(firestoreJobs);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore jobs stream error: $e'),
+    );
 
     // Subscribe to verification docs (admin sees pending/all; others see own)
     _verificationSub?.cancel();
     final verificationStream = isAdmin
         ? _firestoreService.pendingVerificationDocsStream(pendingOnly: false)
         : _firestoreService.verificationDocsStream(uid);
-    _verificationSub = verificationStream.listen((firestoreDocs) {
-      _verificationDocs.clear();
-      _verificationDocs.addAll(firestoreDocs);
-      notifyListeners();
-    });
+    _verificationSub = verificationStream.listen(
+      (firestoreDocs) {
+        _verificationDocs.clear();
+        _verificationDocs.addAll(firestoreDocs);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore verification stream error: $e'),
+    );
 
     // Subscribe to notifications stream
     _notificationsSub?.cancel();
-    _notificationsSub =
-        _firestoreService.notificationsStream(uid).listen((notifs) {
-      _notifications.clear();
-      _notifications.addAll(notifs);
-      notifyListeners();
-    });
+    _notificationsSub = _firestoreService.notificationsStream(uid).listen(
+      (notifs) {
+        _notifications.clear();
+        _notifications.addAll(notifs);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore notifications stream error: $e'),
+    );
 
     // Subscribe to offers stream
     _offersSub?.cancel();
     final offersStream = role == Role.farmer
         ? _firestoreService.offersByFarmerStream(uid)
         : _firestoreService.offersByBuyerStream(uid);
-    _offersSub = offersStream.listen((firestoreOffers) {
-      _offers.clear();
-      _offers.addAll(firestoreOffers);
-      notifyListeners();
-    });
+    _offersSub = offersStream.listen(
+      (firestoreOffers) {
+        _offers.clear();
+        _offers.addAll(firestoreOffers);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore offers stream error: $e'),
+    );
   }
 
   /// Cancel all Firestore subscriptions
@@ -1114,6 +1139,77 @@ class FarmoraState extends ChangeNotifier {
         ),
       ]);
     }
+
+    if (_marketPrices.isEmpty) {
+      _marketPrices.addAll([
+        MarketPriceIndex(
+          id: 'mpi-1',
+          cropName: 'Organic Red Tomatoes',
+          category: 'Vegetables',
+          district: 'Dambulla',
+          minPricePerKg: 150.0,
+          maxPricePerKg: 200.0,
+          averagePricePerKg: 175.0,
+          trend: 'up',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 3)),
+        ),
+        MarketPriceIndex(
+          id: 'mpi-2',
+          cropName: 'Fresh Mountain Carrots',
+          category: 'Vegetables',
+          district: 'Nuwara Eliya',
+          minPricePerKg: 210.0,
+          maxPricePerKg: 260.0,
+          averagePricePerKg: 235.0,
+          trend: 'stable',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+        MarketPriceIndex(
+          id: 'mpi-3',
+          cropName: 'Ceylon Cinnamon Sticks',
+          category: 'Spices',
+          district: 'Matara',
+          minPricePerKg: 850.0,
+          maxPricePerKg: 1100.0,
+          averagePricePerKg: 950.0,
+          trend: 'up',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 5)),
+        ),
+        MarketPriceIndex(
+          id: 'mpi-4',
+          cropName: 'Green Chillies',
+          category: 'Vegetables',
+          district: 'Pettah',
+          minPricePerKg: 380.0,
+          maxPricePerKg: 460.0,
+          averagePricePerKg: 420.0,
+          trend: 'down',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
+        ),
+        MarketPriceIndex(
+          id: 'mpi-5',
+          cropName: 'Red Dambulla Onions',
+          category: 'Vegetables',
+          district: 'Dambulla',
+          minPricePerKg: 280.0,
+          maxPricePerKg: 340.0,
+          averagePricePerKg: 310.0,
+          trend: 'stable',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 4)),
+        ),
+        MarketPriceIndex(
+          id: 'mpi-6',
+          cropName: 'Cavendish / Red Banana',
+          category: 'Fruits',
+          district: 'Embilipitiya',
+          minPricePerKg: 130.0,
+          maxPricePerKg: 180.0,
+          averagePricePerKg: 155.0,
+          trend: 'up',
+          updatedAt: DateTime.now().subtract(const Duration(hours: 6)),
+        ),
+      ]);
+    }
   }
 
   Future<void> sendInAppNotification({
@@ -1123,17 +1219,25 @@ class FarmoraState extends ChangeNotifier {
     String type = 'general',
     String? referenceId,
   }) async {
-    await _firestoreService.sendInAppNotification(
-      userId: userId,
-      title: title,
-      body: body,
-      type: type,
-      referenceId: referenceId,
-    );
+    try {
+      await _firestoreService.sendInAppNotification(
+        userId: userId,
+        title: title,
+        body: body,
+        type: type,
+        referenceId: referenceId,
+      );
+    } catch (e) {
+      debugPrint('sendInAppNotification error: $e');
+    }
   }
 
   Future<void> markNotificationRead(String id) async {
-    await _firestoreService.markNotificationRead(id);
+    try {
+      await _firestoreService.markNotificationRead(id);
+    } catch (e) {
+      debugPrint('markNotificationRead error: $e');
+    }
     final idx = _notifications.indexWhere((n) => n.id == id);
     if (idx != -1) {
       _notifications[idx] = _notifications[idx].copyWith(read: true);
@@ -1406,5 +1510,157 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // ── Admin Platform & Market Management ──────────────────────────────
+  void updateMarketPrice(
+    String id, {
+    required double minPrice,
+    required double maxPrice,
+    required String trend,
+  }) {
+    final idx = _marketPrices.indexWhere((p) => p.id == id);
+    if (idx != -1) {
+      final existing = _marketPrices[idx];
+      _marketPrices[idx] = existing.copyWith(
+        minPricePerKg: minPrice,
+        maxPricePerKg: maxPrice,
+        averagePricePerKg: (minPrice + maxPrice) / 2,
+        trend: trend,
+        updatedAt: DateTime.now(),
+      );
+      notifyListeners();
+    }
+  }
+
+  void addMarketPrice(MarketPriceIndex item) {
+    _marketPrices.insert(0, item);
+    notifyListeners();
+  }
+
+  MarketPriceIndex? getMarketPriceForCrop(String cropName) {
+    final clean = cropName.toLowerCase().trim();
+    for (final p in _marketPrices) {
+      if (clean.contains(p.cropName.toLowerCase()) ||
+          p.cropName.toLowerCase().contains(clean)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  Future<void> resolveDisputeArbitration({
+    required String orderId,
+    required String resolution,
+    required String adminNotes,
+    double refundPercent = 100.0,
+  }) async {
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      final o = _orders[idx];
+      String newStatus = o.status;
+      String newPaymentStatus = o.paymentStatus;
+
+      if (resolution == 'refund_buyer') {
+        newStatus = 'cancelled';
+        newPaymentStatus = 'refunded';
+      } else if (resolution == 'release_farmer') {
+        newStatus = 'completed';
+        newPaymentStatus = 'released';
+      } else {
+        newStatus = 'completed';
+        newPaymentStatus = 'settled_split';
+      }
+
+      _orders[idx] = o.copyWith(
+        status: newStatus,
+        paymentStatus: newPaymentStatus,
+      );
+
+      _transactions.add(EarningsTransaction(
+        id: 'tx-arb-${DateTime.now().millisecondsSinceEpoch}',
+        orderNumber: o.orderNumber,
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        amount: o.total,
+      ));
+
+      if (o.buyerId.isNotEmpty) {
+        sendInAppNotification(
+          userId: o.buyerId,
+          title: 'Dispute Resolved: Order ${o.orderNumber}',
+          body: 'Admin resolved dispute: $resolution. Notes: $adminNotes',
+          type: 'order',
+          referenceId: o.id,
+        );
+      }
+      if (o.farmerId.isNotEmpty) {
+        sendInAppNotification(
+          userId: o.farmerId,
+          title: 'Dispute Settled: Order ${o.orderNumber}',
+          body: 'Admin resolved dispute: $resolution. Notes: $adminNotes',
+          type: 'order',
+          referenceId: o.id,
+        );
+      }
+
+      try {
+        await _firestoreService.resolveDispute(
+          orderId: orderId,
+          resolution: resolution,
+          adminNotes: adminNotes,
+          refundPercent: refundPercent,
+        );
+      } catch (e) {
+        debugPrint('Firestore dispute resolve error: $e');
+      }
+
+      notifyListeners();
+    }
+  }
+
+  Future<void> broadcastPlatformAdvisory({
+    required String title,
+    required String message,
+    required String targetRole,
+    String priority = 'normal',
+  }) async {
+    for (final u in _users) {
+      final uRole = (u['role'] ?? '').toString().toLowerCase();
+      final uid = (u['uid'] ?? u['id'] ?? '').toString();
+      if (uid.isNotEmpty && (targetRole == 'all' || uRole == targetRole)) {
+        sendInAppNotification(
+          userId: uid,
+          title: '📢 $title',
+          body: message,
+          type: 'general',
+        );
+      }
+    }
+
+    _notifications.insert(
+      0,
+      FarmoraNotification(
+        id: 'advisory-${DateTime.now().millisecondsSinceEpoch}',
+        userId: _currentUserId.isNotEmpty ? _currentUserId : 'admin',
+        title: '📢 $title',
+        body: message,
+        type: 'general',
+        read: false,
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    try {
+      await _firestoreService.publishAdvisory(
+        title: title,
+        message: message,
+        targetRole: targetRole,
+        priority: priority,
+      );
+    } catch (e) {
+      debugPrint('Firestore broadcast advisory error: $e');
+    }
+
+    notifyListeners();
   }
 }
