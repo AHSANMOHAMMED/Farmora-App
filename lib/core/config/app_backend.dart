@@ -1,4 +1,7 @@
-/// Spark (free) plan: Cloud Functions are unavailable.
-/// Set `--dart-define=USE_CLOUD_FUNCTIONS=true` after upgrading to Blaze.
-const bool kUseCloudFunctions =
-    bool.fromEnvironment('USE_CLOUD_FUNCTIONS', defaultValue: false);
+/// All builds default to trusted callable workflows. They require deployed
+/// Functions (or the Firebase Emulator Suite configured for local development).
+/// The direct Firestore adapter is for isolated demos only.
+const bool kUseCloudFunctions = bool.fromEnvironment(
+  'USE_CLOUD_FUNCTIONS',
+  defaultValue: true,
+);

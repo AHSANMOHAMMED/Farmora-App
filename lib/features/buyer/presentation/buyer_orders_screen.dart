@@ -146,7 +146,14 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                   const SizedBox(height: 20),
 
                   // Orders list
-                  if (displayOrders.isEmpty)
+                  if (state.isOrdersLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    )
+                  else if (displayOrders.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 60),

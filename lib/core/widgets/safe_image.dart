@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SafeImage extends StatelessWidget {
   final String path;
@@ -19,16 +20,25 @@ class SafeImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (path.isEmpty) {
-      return errorBuilder?.call(context, Exception('Empty path'), null) ?? const Icon(Icons.broken_image);
+      return errorBuilder?.call(context, Exception('Empty path'), null) ?? const Icon(Icons.broken_image, color: Colors.grey);
     }
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
+      return CachedNetworkImage(
+        imageUrl: path,
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: errorBuilder ?? (context, error, stackTrace) => const Icon(Icons.broken_image),
+        fadeInDuration: const Duration(milliseconds: 300),
+        placeholder: (context, url) => Container(
+          width: width,
+          height: height,
+          color: Colors.grey.shade200,
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        errorWidget: (context, url, error) => errorBuilder != null 
+          ? errorBuilder!(context, error, null)
+          : const Icon(Icons.broken_image, color: Colors.grey),
       );
     } else {
       return Image.asset(
@@ -36,7 +46,7 @@ class SafeImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: errorBuilder ?? (context, error, stackTrace) => const Icon(Icons.broken_image),
+        errorBuilder: errorBuilder ?? (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
       );
     }
   }

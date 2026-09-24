@@ -1,9 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+
+import '../services/chat_outbox_service.dart';
 import 'package:flutter/foundation.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import '../core/config/app_backend.dart';
 import '../models/user_role.dart';
 import '../models/product.dart';
 import '../models/order.dart';
@@ -53,6 +58,7 @@ class FarmoraState extends ChangeNotifier {
   List<String> serviceDistricts = [];
   String displayName = '';
   String photoUrl = '';
+
   /// Default cart delivery fee in LKR major units (from platform settings).
   double defaultDeliveryFeeLkr = 350.0;
   Role role = Role.farmer;
@@ -109,13 +115,17 @@ class FarmoraState extends ChangeNotifier {
 
   // Security & Compliance Audit Trail
   final List<AuditLog> _auditLogs = [];
+  bool isProductsLoading = false;
+  bool isOrdersLoading = false;
+  bool isJobsLoading = false;
 
   // Treasury & Bank Escrow Settlements
   final List<SettlementPayout> _settlements = [];
 
   // Server Maintenance & Platform Config
   bool _maintenanceMode = false;
-  String _maintenanceNotice = 'Platform scheduled maintenance in progress. Marketplace trades will resume shortly.';
+  String _maintenanceNotice =
+      'Platform scheduled maintenance in progress. Marketplace trades will resume shortly.';
   double _commissionRate = 5.0; // percent
   int _escrowReleaseHours = 48;
   String _minAppVersion = '1.0.0';
@@ -130,7 +140,8 @@ class FarmoraState extends ChangeNotifier {
   List<FarmoraOrder> get orders => List.unmodifiable(_orders);
   List<TransportJob> get jobs => List.unmodifiable(_jobs);
   List<Map<String, dynamic>> get users => List.unmodifiable(_users);
-  List<FarmoraNotification> get notifications => List.unmodifiable(_notifications);
+  List<FarmoraNotification> get notifications =>
+      List.unmodifiable(_notifications);
   List<FarmoraOffer> get offers => List.unmodifiable(_offers);
   List<MarketPriceIndex> get marketPrices => List.unmodifiable(_marketPrices);
   List<Review> get reviews => List.unmodifiable(_reviews);
@@ -141,13 +152,23 @@ class FarmoraState extends ChangeNotifier {
   double get commissionRate => _commissionRate;
   int get escrowReleaseHours => _escrowReleaseHours;
   String get minAppVersion => _minAppVersion;
-  List<FarmoraOffer> get buyerOffers =>
-      _offers.where((o) => _currentUserId.isEmpty || o.buyerId == _currentUserId || o.buyerId == 'buyer_demo').toList();
-  List<FarmoraOffer> get farmerOffers =>
-      _offers.where((o) => _currentUserId.isEmpty || o.farmerId == _currentUserId || o.farmerId == 'farmer_demo_1').toList();
-  int get pendingOffersCount =>
-      _offers.where((o) => o.status == 'pending' || o.status == 'countered').length;
-  int get unreadNotificationsCount => _notifications.where((n) => !n.read).length;
+  List<FarmoraOffer> get buyerOffers => _offers
+      .where((o) =>
+          _currentUserId.isEmpty ||
+          o.buyerId == _currentUserId ||
+          o.buyerId == 'buyer_demo')
+      .toList();
+  List<FarmoraOffer> get farmerOffers => _offers
+      .where((o) =>
+          _currentUserId.isEmpty ||
+          o.farmerId == _currentUserId ||
+          o.farmerId == 'farmer_demo_1')
+      .toList();
+  int get pendingOffersCount => _offers
+      .where((o) => o.status == 'pending' || o.status == 'countered')
+      .length;
+  int get unreadNotificationsCount =>
+      _notifications.where((n) => !n.read).length;
   List<MonthlyBarData> get monthlyBars => List.unmodifiable(_monthlyBars);
   List<EarningsTransaction> get transactions =>
       List.unmodifiable(_transactions);
@@ -183,16 +204,20 @@ class FarmoraState extends ChangeNotifier {
           p.location.toLowerCase().contains(q);
       final matchesCategory = selectedCategory == 'All' ||
           p.category.toLowerCase() == selectedCategory.toLowerCase();
-      final matchesMin = minPrice == null || p.effectivePricePerUnit >= minPrice!;
-      final matchesMax = maxPrice == null || p.effectivePricePerUnit <= maxPrice!;
+      final matchesMin =
+          minPrice == null || p.effectivePricePerUnit >= minPrice!;
+      final matchesMax =
+          maxPrice == null || p.effectivePricePerUnit <= maxPrice!;
       return matchesSearch && matchesCategory && matchesMin && matchesMax;
     }).toList();
     switch (sortOrder) {
       case 'priceAsc':
-        list.sort((a, b) => a.effectivePricePerUnit.compareTo(b.effectivePricePerUnit));
+        list.sort((a, b) =>
+            a.effectivePricePerUnit.compareTo(b.effectivePricePerUnit));
         break;
       case 'priceDesc':
-        list.sort((a, b) => b.effectivePricePerUnit.compareTo(a.effectivePricePerUnit));
+        list.sort((a, b) =>
+            b.effectivePricePerUnit.compareTo(a.effectivePricePerUnit));
         break;
       case 'name':
         list.sort((a, b) => a.name.compareTo(b.name));
@@ -219,7 +244,9 @@ class FarmoraState extends ChangeNotifier {
   int get cartItemCount =>
       _cartItems.fold(0, (sum, item) => sum + item.quantity);
   double get cartTotal => _cartItems.fold(
-      0.0, (sum, item) => sum + (item.product.effectivePricePerUnit * item.quantity));
+      0.0,
+      (sum, item) =>
+          sum + (item.product.effectivePricePerUnit * item.quantity));
 
   void addToCart(Product product, {int quantity = 1}) {
     final existingIndex =
@@ -260,9 +287,12 @@ class FarmoraState extends ChangeNotifier {
   bool get placingOrder => _placingOrder;
   String? _lastOrderKey;
   DateTime? _lastOrderAt;
+  String? _checkoutAttemptFingerprint;
+  String? _checkoutAttemptKey;
 
   double get cartSubtotal => cartTotal;
-  double get cartDeliveryFee => _cartItems.isEmpty ? 0.0 : defaultDeliveryFeeLkr;
+  double get cartDeliveryFee =>
+      _cartItems.isEmpty ? 0.0 : defaultDeliveryFeeLkr;
   double get cartGrandTotal => cartSubtotal + cartDeliveryFee;
 
   String deliveryAddressDraft = '';
@@ -272,8 +302,18 @@ class FarmoraState extends ChangeNotifier {
     final address = (deliveryAddress ?? deliveryAddressDraft).trim();
     if (address.length < 5) return false;
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
-    final key = _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
-    if (_lastOrderKey == key &&
+    final key =
+        _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
+    final fingerprint = '$key|$address';
+    if (_checkoutAttemptFingerprint != fingerprint) {
+      final random = Random.secure();
+      _checkoutAttemptFingerprint = fingerprint;
+      _checkoutAttemptKey = List.generate(
+        4,
+        (_) => random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0'),
+      ).join();
+    }
+    if (_lastOrderKey == fingerprint &&
         _lastOrderAt != null &&
         DateTime.now().difference(_lastOrderAt!).inSeconds < 30) {
       return false;
@@ -282,68 +322,80 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
     try {
       if (_currentUserId.isNotEmpty) {
-        for (final item in _cartItems) {
+        for (var itemIndex = 0; itemIndex < _cartItems.length; itemIndex++) {
+          final item = _cartItems[itemIndex];
           await _firestoreService.createSecureOrder(
             productId: item.product.id,
             quantity: item.quantity,
-            deliveryFeeMinor: (cartDeliveryFee * 100).round(),
+            deliveryFeeMinor:
+                itemIndex == 0 ? (cartDeliveryFee * 100).round() : 0,
             deliveryAddress: address,
+            idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
           );
         }
       }
 
-      // Local optimistic order & job creation for instant UI update and demo mode
-      for (final item in _cartItems) {
-        final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}';
-        final subtotal = item.product.effectivePricePerUnit * item.quantity;
-        final totalAmount = subtotal + cartDeliveryFee;
-        final newOrder = FarmoraOrder(
-          id: orderId,
-          orderNumber: orderId,
-          title: item.product.name,
-          productName: item.product.name,
-          quantity: '${item.quantity} ${item.product.unit}',
-          totalAmount: 'LKR ${totalAmount.toStringAsFixed(2)}',
-          totalAmountNumber: totalAmount,
-          buyerName: displayName.isNotEmpty ? displayName : 'Demo Buyer',
-          buyerCompany: 'Farmora Buyer Co.',
-          deliveryAddress: address,
-          detail: 'Direct order placed via Farmora Marketplace',
-          status: 'Pending',
-          progress: 0.2,
-          color: item.product.color,
-          timestamp: 'Just now',
-          buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
-          farmerId: item.product.farmerId,
-          productId: item.product.id,
-          subtotalMinor: (subtotal * 100).round(),
-          deliveryFeeMinor: (cartDeliveryFee * 100).round(),
-          totalMinor: (totalAmount * 100).round(),
-          paymentStatus: 'Payment Required',
-          escrowStatus: 'Held',
-        );
-        _orders.insert(0, newOrder);
+      // Firebase-backed orders arrive through the scoped Firestore listener.
+      // Only create local records in unauthenticated demonstration mode.
+      if (_currentUserId.isEmpty) {
+        for (var itemIndex = 0; itemIndex < _cartItems.length; itemIndex++) {
+          final item = _cartItems[itemIndex];
+          final itemDeliveryFee = itemIndex == 0 ? cartDeliveryFee : 0.0;
+          final orderId =
+              'ORD-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}';
+          final subtotal = item.product.effectivePricePerUnit * item.quantity;
+          final totalAmount = subtotal + itemDeliveryFee;
+          final newOrder = FarmoraOrder(
+            id: orderId,
+            orderNumber: orderId,
+            title: item.product.name,
+            productName: item.product.name,
+            quantity: '${item.quantity} ${item.product.unit}',
+            totalAmount: 'LKR ${totalAmount.toStringAsFixed(2)}',
+            totalAmountNumber: totalAmount,
+            buyerName: displayName.isNotEmpty ? displayName : 'Demo Buyer',
+            buyerCompany: 'Farmora Buyer Co.',
+            deliveryAddress: address,
+            detail: 'Direct order placed via Farmora Marketplace',
+            status: 'Pending',
+            progress: 0.2,
+            color: item.product.color,
+            timestamp: 'Just now',
+            buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
+            farmerId: item.product.farmerId,
+            productId: item.product.id,
+            subtotalMinor: (subtotal * 100).round(),
+            deliveryFeeMinor: (itemDeliveryFee * 100).round(),
+            totalMinor: (totalAmount * 100).round(),
+            paymentStatus: 'Payment Required',
+            escrowStatus: 'Held',
+          );
+          _orders.insert(0, newOrder);
 
-        // Also create linked TransportJob so Transporters see the delivery job!
-        final newJob = TransportJob(
-          id: 'JOB-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}',
-          orderId: orderId,
-          title: '${item.product.name} Delivery',
-          route: '${item.product.location} → $address',
-          detail: '${item.quantity} ${item.product.unit} of ${item.product.name}',
-          fee: 'LKR ${cartDeliveryFee.toStringAsFixed(2)}',
-          pickup: item.product.location,
-          dropoff: address,
-          status: 'requested',
-          buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
-          farmerId: item.product.farmerId,
-        );
-        _jobs.insert(0, newJob);
+          // Also create linked TransportJob so Transporters see the delivery job!
+          final newJob = TransportJob(
+            id: 'JOB-${DateTime.now().millisecondsSinceEpoch}-${item.product.id.hashCode.abs() % 1000}',
+            orderId: orderId,
+            title: '${item.product.name} Delivery',
+            route: '${item.product.location} → $address',
+            detail:
+                '${item.quantity} ${item.product.unit} of ${item.product.name}',
+            fee: 'LKR ${itemDeliveryFee.toStringAsFixed(2)}',
+            pickup: item.product.location,
+            dropoff: address,
+            status: 'requested',
+            buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
+            farmerId: item.product.farmerId,
+          );
+          _jobs.insert(0, newJob);
+        }
       }
 
-      _lastOrderKey = key;
+      _lastOrderKey = fingerprint;
       _lastOrderAt = DateTime.now();
       _cartItems.clear();
+      _checkoutAttemptFingerprint = null;
+      _checkoutAttemptKey = null;
       _recalculateStats();
       notifyListeners();
       return true;
@@ -367,7 +419,7 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  void signOut() {
+  Future<void> signOut() async {
     signedIn = false;
     _currentUserId = '';
     _profileLoaded = false;
@@ -376,8 +428,8 @@ class FarmoraState extends ChangeNotifier {
     _deviceTokenSub = null;
     // Stop any live location broadcast — privacy requires it.
     DeliveryLocationService.instance.stopAll();
-    UserLocationService.instance.stopSharing();
-    _authService.signOut();
+    await UserLocationService.instance.stopSharing();
+    await _authService.signOut();
     notifyListeners();
   }
 
@@ -425,14 +477,12 @@ class FarmoraState extends ChangeNotifier {
       try {
         await _firestoreService.updateUserProfile(
           name: (name != null && name.trim().isNotEmpty) ? name.trim() : null,
-          district:
-              (newDistrict != null && newDistrict.trim().isNotEmpty)
-                  ? newDistrict.trim()
-                  : null,
-          country:
-              (newCountry != null && newCountry.trim().isNotEmpty)
-                  ? newCountry.trim()
-                  : null,
+          district: (newDistrict != null && newDistrict.trim().isNotEmpty)
+              ? newDistrict.trim()
+              : null,
+          country: (newCountry != null && newCountry.trim().isNotEmpty)
+              ? newCountry.trim()
+              : null,
           photoUrl: photoUrl,
         );
       } catch (e) {
@@ -538,11 +588,12 @@ class FarmoraState extends ChangeNotifier {
     String productId = order.productId;
     if (productId.isEmpty && order.productName.isNotEmpty) {
       productId = _products
-          .where((p) =>
-              p.name == order.productName &&
-              (order.farmerId.isEmpty || p.farmerId == order.farmerId))
-          .map((p) => p.id)
-          .firstOrNull ?? '';
+              .where((p) =>
+                  p.name == order.productName &&
+                  (order.farmerId.isEmpty || p.farmerId == order.farmerId))
+              .map((p) => p.id)
+              .firstOrNull ??
+          '';
     }
     if (productId.isEmpty) return;
 
@@ -637,7 +688,8 @@ class FarmoraState extends ChangeNotifier {
     final idx = _offers.indexWhere((o) => o.id == offerId);
     if (idx != -1) {
       final off = _offers[idx];
-      _offers[idx] = off.copyWith(status: 'accepted', updatedAt: DateTime.now());
+      _offers[idx] =
+          off.copyWith(status: 'accepted', updatedAt: DateTime.now());
 
       // When offer is accepted, create confirmed order!
       final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
@@ -653,7 +705,9 @@ class FarmoraState extends ChangeNotifier {
         totalAmountNumber: totalAmount,
         buyerName: displayName.isNotEmpty ? displayName : 'Demo Buyer',
         buyerCompany: 'Farmora Buyer Co.',
-        deliveryAddress: deliveryAddressDraft.isNotEmpty ? deliveryAddressDraft : 'Colombo, Sri Lanka',
+        deliveryAddress: deliveryAddressDraft.isNotEmpty
+            ? deliveryAddressDraft
+            : 'Colombo, Sri Lanka',
         detail: 'Contract created from accepted offer negotiation',
         status: 'Accepted',
         progress: 0.4,
@@ -679,7 +733,8 @@ class FarmoraState extends ChangeNotifier {
   Future<void> rejectOffer(String offerId) async {
     final idx = _offers.indexWhere((o) => o.id == offerId);
     if (idx != -1) {
-      _offers[idx] = _offers[idx].copyWith(status: 'rejected', updatedAt: DateTime.now());
+      _offers[idx] =
+          _offers[idx].copyWith(status: 'rejected', updatedAt: DateTime.now());
       notifyListeners();
     }
     if (_currentUserId.isNotEmpty) {
@@ -698,14 +753,19 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
     }
     if (_currentUserId.isNotEmpty) {
-      await _firestoreService.updateOfferStatus(offerId, 'countered');
+      await _firestoreService.updateOfferStatus(
+        offerId,
+        'countered',
+        proposedPrice: counterPrice,
+      );
     }
   }
 
   Future<void> cancelOffer(String offerId) async {
     final idx = _offers.indexWhere((o) => o.id == offerId);
     if (idx != -1) {
-      _offers[idx] = _offers[idx].copyWith(status: 'cancelled', updatedAt: DateTime.now());
+      _offers[idx] =
+          _offers[idx].copyWith(status: 'cancelled', updatedAt: DateTime.now());
       notifyListeners();
     }
     if (_currentUserId.isNotEmpty) {
@@ -733,7 +793,8 @@ class FarmoraState extends ChangeNotifier {
     await _firestoreService.requestTransport(orderId: orderId);
   }
 
-  Future<void> requestTransportForOrder(String orderId, {int? deliveryFeeMinor}) async {
+  Future<void> requestTransportForOrder(String orderId,
+      {int? deliveryFeeMinor}) async {
     final feeMinor = deliveryFeeMinor ?? 35000;
     final orderIdx = _orders.indexWhere((o) => o.id == orderId);
     if (orderIdx != -1) {
@@ -825,7 +886,8 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.setUserSuspended(userId: userId, suspended: suspended);
+      await _firestoreService.setUserSuspended(
+          userId: userId, suspended: suspended);
     } catch (e) {
       debugPrint('Firebase suspend user notice: $e');
     }
@@ -923,6 +985,23 @@ class FarmoraState extends ChangeNotifier {
     return p.trustLevel;
   }
 
+
+  Future<void> retryOfflineMessages() async {
+    final pending = await ChatOutboxService.getPending();
+    for (final msg in pending) {
+      try {
+        await _firestoreService.sendEncryptedMessage(
+          orderId: msg.orderId,
+          recipientId: msg.recipientId,
+          ciphertext: msg.ciphertext,
+        );
+        await ChatOutboxService.remove(msg);
+      } catch (e) {
+        debugPrint('Still offline or error sending message: $e');
+      }
+    }
+  }
+
   Future<void> seedDatabase() async {
     await _firestoreService.seedDatabase();
   }
@@ -964,7 +1043,8 @@ class FarmoraState extends ChangeNotifier {
       };
       country = (profile['country'] ?? 'Sri Lanka').toString();
       district = (profile['district'] ?? '').toString();
-      displayName = (profile['name'] ?? profile['displayName'] ?? '').toString();
+      displayName =
+          (profile['name'] ?? profile['displayName'] ?? '').toString();
       photoUrl = (profile['photoUrl'] ?? '').toString();
       isVerified = profile['isVerified'] == true;
       vehicleType = (profile['vehicleType'] ?? '').toString();
@@ -973,6 +1053,7 @@ class FarmoraState extends ChangeNotifier {
           .map((e) => e.toString())
           .where((e) => e.isNotEmpty)
           .toList();
+      _clearDemoDataForSignedInUser();
       _profileLoaded = true;
       notifyListeners();
       _registerDeviceToken();
@@ -985,18 +1066,26 @@ class FarmoraState extends ChangeNotifier {
     }
     final isAdmin = role == Role.admin;
 
+    retryOfflineMessages();
     // Subscribe to products stream
     _productsSub?.cancel();
     final productsStream = role == Role.farmer
         ? _firestoreService.productsByFarmerStream(uid)
         : _firestoreService.productsStream();
+    isProductsLoading = true;
+    notifyListeners();
     _productsSub = productsStream.listen(
       (firestoreProducts) {
         _products.clear();
         _products.addAll(firestoreProducts);
+        isProductsLoading = false;
         notifyListeners();
       },
-      onError: (e) => debugPrint('Firestore products stream error: $e'),
+      onError: (e) {
+        isProductsLoading = false;
+        debugPrint('Firestore products stream error: $e');
+        notifyListeners();
+      },
     );
 
     // Subscribe to users stream
@@ -1037,13 +1126,19 @@ class FarmoraState extends ChangeNotifier {
       Role.transporter => _firestoreService.jobsForTransporterStream(uid),
       _ => _firestoreService.jobsStream(),
     };
+    isJobsLoading = true;
     _jobsSub = jobsStream.listen(
       (firestoreJobs) {
         _jobs.clear();
         _jobs.addAll(firestoreJobs);
+        isJobsLoading = false;
         notifyListeners();
       },
-      onError: (e) => debugPrint('Firestore jobs stream error: $e'),
+      onError: (e) {
+        isJobsLoading = false;
+        debugPrint('Firestore jobs stream error: $e');
+        notifyListeners();
+      },
     );
 
     // Subscribe to verification docs (admin sees pending/all; others see own)
@@ -1167,7 +1262,8 @@ class FarmoraState extends ChangeNotifier {
           color: Color(0xFFFFEBEE),
           status: 'Active',
           isOrganic: true,
-          description: 'Fresh highland organic ripe tomatoes harvested at peak freshness.',
+          description:
+              'Fresh highland organic ripe tomatoes harvested at peak freshness.',
           farmerId: 'farmer_demo_1',
         ),
         const Product(
@@ -1183,7 +1279,8 @@ class FarmoraState extends ChangeNotifier {
           color: Color(0xFFFFF3E0),
           status: 'Active',
           isOrganic: true,
-          description: 'Crunchy sweet farm fresh mountain carrots from Nuwara Eliya slopes.',
+          description:
+              'Crunchy sweet farm fresh mountain carrots from Nuwara Eliya slopes.',
           farmerId: 'farmer_demo_1',
         ),
         const Product(
@@ -1199,7 +1296,8 @@ class FarmoraState extends ChangeNotifier {
           color: Color(0xFFEFEBE9),
           status: 'Active',
           isOrganic: true,
-          description: 'Pure Alba-grade Ceylon cinnamon sticks with rich aroma and flavour.',
+          description:
+              'Pure Alba-grade Ceylon cinnamon sticks with rich aroma and flavour.',
           farmerId: 'farmer_demo_2',
         ),
         const Product(
@@ -1215,7 +1313,8 @@ class FarmoraState extends ChangeNotifier {
           color: Color(0xFFFFFDE7),
           status: 'Active',
           isOrganic: false,
-          description: 'Naturally ripened Cavendish bananas, sweet and pesticide-free.',
+          description:
+              'Naturally ripened Cavendish bananas, sweet and pesticide-free.',
           farmerId: 'farmer_demo_3',
         ),
         const Product(
@@ -1231,7 +1330,8 @@ class FarmoraState extends ChangeNotifier {
           color: Color(0xFFE8F5E9),
           status: 'Active',
           isOrganic: false,
-          description: 'Spicy fresh green chillies direct from Dambulla agricultural hub.',
+          description:
+              'Spicy fresh green chillies direct from Dambulla agricultural hub.',
           farmerId: 'farmer_demo_2',
         ),
       ]);
@@ -1459,7 +1559,8 @@ class FarmoraState extends ChangeNotifier {
           subjectId: 'farmer_demo_1',
           subjectName: 'Sunil Bandara (Farmer)',
           rating: 5,
-          comment: 'Excellent quality Nuwara Eliya mountain carrots. Well packed in standard crates with zero transport damage.',
+          comment:
+              'Excellent quality Nuwara Eliya mountain carrots. Well packed in standard crates with zero transport damage.',
           status: ReviewStatus.approved,
           createdAt: DateTime.now().subtract(const Duration(days: 2)),
           moderatedAt: DateTime.now().subtract(const Duration(days: 1)),
@@ -1474,7 +1575,8 @@ class FarmoraState extends ChangeNotifier {
           subjectId: 'farmer_demo_2',
           subjectName: 'Kamal Perera (Farmer)',
           rating: 4,
-          comment: 'Cinnamon bark aroma and grade are authentic Ceylon Alba. Delivered right on schedule.',
+          comment:
+              'Cinnamon bark aroma and grade are authentic Ceylon Alba. Delivered right on schedule.',
           status: ReviewStatus.approved,
           createdAt: DateTime.now().subtract(const Duration(days: 3)),
           moderatedAt: DateTime.now().subtract(const Duration(days: 2)),
@@ -1488,7 +1590,8 @@ class FarmoraState extends ChangeNotifier {
           subjectId: 'transporter_demo_1',
           subjectName: 'Rohan Jayasinghe (Transporter)',
           rating: 2,
-          comment: 'Tomatoes had minor bruising due to lack of thermal buffering during mid-day transit.',
+          comment:
+              'Tomatoes had minor bruising due to lack of thermal buffering during mid-day transit.',
           status: ReviewStatus.pending,
           createdAt: DateTime.now().subtract(const Duration(hours: 18)),
         ),
@@ -1569,7 +1672,8 @@ class FarmoraState extends ChangeNotifier {
           actionType: 'ESCROW_RELEASE',
           targetEntity: 'Order',
           targetId: 'ORD-1001',
-          details: 'Escrow released upon confirmed buyer delivery confirmation. LKR 4,850.00 disbursed to farmer.',
+          details:
+              'Escrow released upon confirmed buyer delivery confirmation. LKR 4,850.00 disbursed to farmer.',
           severity: 'info',
           timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
         ),
@@ -1581,7 +1685,8 @@ class FarmoraState extends ChangeNotifier {
           actionType: 'USER_VERIFY',
           targetEntity: 'User',
           targetId: 'usr-farmer-1',
-          details: 'NIC & Agrarian Services registration certificate verified. Granted verified producer badge.',
+          details:
+              'NIC & Agrarian Services registration certificate verified. Granted verified producer badge.',
           severity: 'info',
           timestamp: DateTime.now().subtract(const Duration(hours: 3)),
         ),
@@ -1593,7 +1698,8 @@ class FarmoraState extends ChangeNotifier {
           actionType: 'COMMISSION_UPDATE',
           targetEntity: 'PlatformFee',
           targetId: 'commission_rate',
-          details: 'Updated wholesale platform commission rate from 4.5% to 5.0%.',
+          details:
+              'Updated wholesale platform commission rate from 4.5% to 5.0%.',
           severity: 'warning',
           timestamp: DateTime.now().subtract(const Duration(days: 1)),
         ),
@@ -1605,7 +1711,8 @@ class FarmoraState extends ChangeNotifier {
           actionType: 'DISPUTE_ARBITRATION',
           targetEntity: 'Order',
           targetId: 'ORD-7825',
-          details: 'Arbitrated transit spoilage dispute. 50% refund issued to buyer, 50% compensation to seller.',
+          details:
+              'Arbitrated transit spoilage dispute. 50% refund issued to buyer, 50% compensation to seller.',
           severity: 'critical',
           timestamp: DateTime.now().subtract(const Duration(days: 2)),
         ),
@@ -1683,6 +1790,27 @@ class FarmoraState extends ChangeNotifier {
         ),
       ]);
     }
+  }
+
+  void _clearDemoDataForSignedInUser() {
+    _products.clear();
+    _orders.clear();
+    _jobs.clear();
+    _users.clear();
+    _verificationDocs.clear();
+    _notifications.clear();
+    _offers.clear();
+    _marketPrices.clear();
+    _reviews.clear();
+    _auditLogs.clear();
+    _settlements.clear();
+    _monthlyBars.clear();
+    _transactions.clear();
+    _totalEarnings = 0;
+    _thisMonth = 0;
+    _thisWeek = 0;
+    _pendingPayments = 0;
+    _cartItems.clear();
   }
 
   Future<void> sendInAppNotification({
@@ -1798,21 +1926,22 @@ class FarmoraState extends ChangeNotifier {
         amount: order.total,
       ));
 
-      final orderMonth = order.createdAt.millisecondsSinceEpoch > 0
-          ? order.createdAt
-          : now;
+      final orderMonth =
+          order.createdAt.millisecondsSinceEpoch > 0 ? order.createdAt : now;
       final monthStr = months[orderMonth.month - 1];
       monthlySums[monthStr] = (monthlySums[monthStr] ?? 0.0) + order.total;
       if (orderMonth.year == now.year && orderMonth.month == now.month) {
         _thisMonth += order.total;
       }
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      if (!orderMonth.isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
+      if (!orderMonth
+          .isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
         _thisWeek += order.total;
       }
     }
 
-    final maxAmount = monthlySums.values.fold<double>(0, (a, b) => a > b ? a : b);
+    final maxAmount =
+        monthlySums.values.fold<double>(0, (a, b) => a > b ? a : b);
     _monthlyBars.clear();
     monthlySums.forEach((month, amount) {
       _monthlyBars.add(MonthlyBarData(
@@ -2029,7 +2158,8 @@ class FarmoraState extends ChangeNotifier {
         actionType: 'MARKET_PRICE_UPDATE',
         targetEntity: 'MarketPrice',
         targetId: id,
-        details: 'Updated ${existing.cropName}: LKR $minPrice–$maxPrice/kg, trend $trend.',
+        details:
+            'Updated ${existing.cropName}: LKR $minPrice–$maxPrice/kg, trend $trend.',
         severity: 'info',
       );
     }
@@ -2043,7 +2173,8 @@ class FarmoraState extends ChangeNotifier {
       actionType: 'MARKET_PRICE_CREATE',
       targetEntity: 'MarketPrice',
       targetId: item.id,
-      details: 'Added benchmark ${item.cropName} (${item.district}): LKR ${item.minPricePerKg}–${item.maxPricePerKg}/kg.',
+      details:
+          'Added benchmark ${item.cropName} (${item.district}): LKR ${item.minPricePerKg}–${item.maxPricePerKg}/kg.',
       severity: 'info',
     );
   }
@@ -2079,34 +2210,50 @@ class FarmoraState extends ChangeNotifier {
     required String adminNotes,
     double refundPercent = 100.0,
   }) async {
+    if (_currentUserId.isNotEmpty) {
+      await _firestoreService.resolveDispute(
+        orderId: orderId,
+        resolution: resolution,
+        adminNotes: adminNotes,
+        refundPercent: refundPercent,
+      );
+    }
+
     final idx = _orders.indexWhere((o) => o.id == orderId);
     if (idx != -1) {
       final o = _orders[idx];
-      String newStatus = o.status;
-      String newPaymentStatus = o.paymentStatus;
-
-      if (resolution == 'refund_buyer') {
-        newStatus = 'cancelled';
-        newPaymentStatus = 'refunded';
-      } else if (resolution == 'release_farmer') {
-        newStatus = 'completed';
-        newPaymentStatus = 'released';
-      } else {
-        newStatus = 'completed';
-        newPaymentStatus = 'settled_split';
-      }
+      final newStatus =
+          resolution == 'refund_buyer' ? 'cancelled' : 'completed';
+      final newPaymentStatus = _currentUserId.isEmpty
+          ? switch (resolution) {
+              'refund_buyer' => 'refunded',
+              'release_farmer' => 'released',
+              _ => 'settled_split',
+            }
+          : switch (resolution) {
+              'refund_buyer' => 'refund_pending',
+              'release_farmer' => 'settlement_pending',
+              _ => 'split_settlement_pending',
+            };
 
       _orders[idx] = o.copyWith(
         status: newStatus,
         paymentStatus: newPaymentStatus,
       );
 
-      _transactions.add(EarningsTransaction(
-        id: 'tx-arb-${DateTime.now().millisecondsSinceEpoch}',
-        orderNumber: o.orderNumber,
-        date: DateTime.now().toIso8601String().substring(0, 10),
-        amount: o.total,
-      ));
+      final settlementShare = switch (resolution) {
+        'refund_buyer' => 0.0,
+        'split_settlement' => o.total / 2,
+        _ => o.total,
+      };
+      if (settlementShare > 0) {
+        _transactions.add(EarningsTransaction(
+          id: 'tx-arb-${DateTime.now().millisecondsSinceEpoch}',
+          orderNumber: o.orderNumber,
+          date: DateTime.now().toIso8601String().substring(0, 10),
+          amount: settlementShare,
+        ));
+      }
 
       if (o.buyerId.isNotEmpty) {
         sendInAppNotification(
@@ -2127,22 +2274,12 @@ class FarmoraState extends ChangeNotifier {
         );
       }
 
-      try {
-        await _firestoreService.resolveDispute(
-          orderId: orderId,
-          resolution: resolution,
-          adminNotes: adminNotes,
-          refundPercent: refundPercent,
-        );
-      } catch (e) {
-        debugPrint('Firestore dispute resolve error: $e');
-      }
-
       logAuditEvent(
         actionType: 'DISPUTE_ARBITRATION',
         targetEntity: 'Order',
         targetId: orderId,
-        details: 'Arbitrated dispute with outcome "$resolution". Notes: $adminNotes',
+        details:
+            'Arbitrated dispute with outcome "$resolution". Notes: $adminNotes',
         severity: 'critical',
       );
 
@@ -2264,7 +2401,8 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.setUserVerified(userId: userId, verified: verified);
+      await _firestoreService.setUserVerified(
+          userId: userId, verified: verified);
     } catch (e) {
       debugPrint('Firebase verify user notice: $e');
     }
@@ -2272,7 +2410,9 @@ class FarmoraState extends ChangeNotifier {
       actionType: 'USER_VERIFY',
       targetEntity: 'User',
       targetId: userId,
-      details: verified ? 'Granted verified trust badge' : 'Revoked verified trust badge',
+      details: verified
+          ? 'Granted verified trust badge'
+          : 'Revoked verified trust badge',
       severity: 'info',
     );
   }
@@ -2332,7 +2472,8 @@ class FarmoraState extends ChangeNotifier {
       actionType: 'MAINTENANCE_TOGGLE',
       targetEntity: 'PlatformSettings',
       targetId: 'maintenanceMode',
-      details: 'Maintenance mode ${enabled ? 'ENABLED' : 'disabled'}. Notice: $_maintenanceNotice',
+      details:
+          'Maintenance mode ${enabled ? 'ENABLED' : 'disabled'}. Notice: $_maintenanceNotice',
       severity: enabled ? 'critical' : 'info',
     );
   }
@@ -2351,7 +2492,8 @@ class FarmoraState extends ChangeNotifier {
       actionType: 'COMMISSION_UPDATE',
       targetEntity: 'PlatformSettings',
       targetId: 'platformFeeBps',
-      details: 'Platform commission set to ${_commissionRate.toStringAsFixed(2)}%.',
+      details:
+          'Platform commission set to ${_commissionRate.toStringAsFixed(2)}%.',
       severity: 'warning',
     );
   }
@@ -2434,27 +2576,37 @@ class FarmoraState extends ChangeNotifier {
   }
 
   // ── Admin: Treasury & Bank Escrow Settlements ─────────────────
-  Future<void> approveSettlement(String settlementId) async {
+  Future<void> approveSettlement(
+    String settlementId, {
+    required String transactionReference,
+  }) async {
+    final reference = transactionReference.trim();
+    if (reference.length < 4 || reference.length > 100) {
+      throw ArgumentError(
+          'Enter the actual bank or payout provider reference.');
+    }
     final idx = _settlements.indexWhere((s) => s.id == settlementId);
     if (idx != -1) {
       final s = _settlements[idx];
-      final ref = 'CEFT-TX-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}';
+      if (_currentUserId.isNotEmpty) {
+        await _firestoreService.updateSettlementStatus(
+          settlementId,
+          status: 'settled',
+          transactionReference: reference,
+        );
+      }
       _settlements[idx] = s.copyWith(
         status: 'settled',
         settledAt: DateTime.now(),
-        transactionReference: ref,
+        transactionReference: reference,
       );
       notifyListeners();
-      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
-            settlementId,
-            status: 'settled',
-            transactionReference: ref,
-          ));
       logAuditEvent(
         actionType: 'SETTLEMENT_APPROVED',
         targetEntity: 'Settlement',
         targetId: settlementId,
-        details: 'Disbursed LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}. Ref: $ref',
+        details:
+            'Recorded the completed transfer of LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}. Ref: $reference',
         severity: 'info',
       );
     }
@@ -2478,7 +2630,8 @@ class FarmoraState extends ChangeNotifier {
         actionType: 'SETTLEMENT_HOLD',
         targetEntity: 'Settlement',
         targetId: settlementId,
-        details: 'Placed payout on hold for ${s.recipientName}. Reason: $reason',
+        details:
+            'Placed payout on hold for ${s.recipientName}. Reason: $reason',
         severity: 'warning',
       );
     }
@@ -2514,51 +2667,95 @@ class FarmoraState extends ChangeNotifier {
     required String accountNumber,
     String payoutMethod = 'CEFT',
   }) async {
-    if (amount <= 0 || amount > _totalEarnings) {
-      throw ArgumentError('Invalid withdrawal amount. Available balance: LKR ${_totalEarnings.toStringAsFixed(2)}');
-    }
-    final fee = amount * (_commissionRate / 100.0);
-    final net = amount - fee;
-    final settlementId = 'STL-${DateTime.now().millisecondsSinceEpoch}';
-    final payout = SettlementPayout(
-      id: settlementId,
-      orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
-      orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      recipientId: _currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1',
-      recipientName: displayName.isNotEmpty ? displayName : 'Ahsan (Green Fields Farm)',
-      recipientRole: 'farmer',
-      bankName: bankName,
-      accountNumber: accountNumber,
-      grossAmount: amount,
-      platformFee: fee,
-      netAmount: net,
-      payoutMethod: payoutMethod,
-      status: 'pending',
-      createdAt: DateTime.now(),
-    );
-    _settlements.insert(0, payout);
-    _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
-    _transactions.insert(
-      0,
-      EarningsTransaction(
+    if (_currentUserId.isNotEmpty && kUseCloudFunctions) {
+      try {
+        final result = await FirebaseFunctions.instance.httpsCallable('requestWithdrawal').call({
+          'amount': amount,
+          'bankName': bankName,
+          'accountNumber': accountNumber,
+          'payoutMethod': payoutMethod,
+        });
+        
+        final newSettlementId = result.data['settlementId'] as String? ?? 'STL-${DateTime.now().millisecondsSinceEpoch}';
+        
+        final fee = amount * (_commissionRate / 100.0);
+        final net = amount - fee;
+        final payout = SettlementPayout(
+          id: newSettlementId,
+          orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
+          orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+          recipientId: _currentUserId,
+          recipientName: displayName.isNotEmpty ? displayName : 'Farmer',
+          recipientRole: 'farmer',
+          bankName: bankName,
+          accountNumber: accountNumber,
+          grossAmount: amount,
+          platformFee: fee,
+          netAmount: net,
+          payoutMethod: payoutMethod,
+          status: 'pending',
+          createdAt: DateTime.now(),
+        );
+        _settlements.insert(0, payout);
+        _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
+        
+        notifyListeners();
+        logAuditEvent(
+          actionType: 'FARMER_WITHDRAWAL_REQUESTED',
+          targetEntity: 'Settlement',
+          targetId: newSettlementId,
+          details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
+          severity: 'info',
+        );
+      } catch (e) {
+        throw StateError('Payout request failed: ${e.toString()}');
+      }
+    } else {
+      if (amount <= 0 || amount > _totalEarnings) {
+        throw ArgumentError('Invalid withdrawal amount. Available balance: LKR ${_totalEarnings.toStringAsFixed(2)}');
+      }
+      final fee = amount * (_commissionRate / 100.0);
+      final net = amount - fee;
+      final settlementId = 'STL-${DateTime.now().millisecondsSinceEpoch}';
+      final payout = SettlementPayout(
         id: settlementId,
-        date: DateTime.now().toIso8601String().substring(0, 10),
-        orderNumber: payout.orderNumber,
-        amount: -amount,
-        isCredit: false,
-      ),
-    );
-    notifyListeners();
-    logAuditEvent(
-      actionType: 'FARMER_WITHDRAWAL_REQUESTED',
-      targetEntity: 'Settlement',
-      targetId: settlementId,
-      details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
-      severity: 'info',
-    );
-    if (_currentUserId.isNotEmpty) {
-      // Persist the full payout so admins see it live in Treasury.
-      _persistToFirestore(() => _firestoreService.createSettlement(payout));
+        orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
+        orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        recipientId: _currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1',
+        recipientName: displayName.isNotEmpty ? displayName : 'Ahsan (Green Fields Farm)',
+        recipientRole: 'farmer',
+        bankName: bankName,
+        accountNumber: accountNumber,
+        grossAmount: amount,
+        platformFee: fee,
+        netAmount: net,
+        payoutMethod: payoutMethod,
+        status: 'pending',
+        createdAt: DateTime.now(),
+      );
+      _settlements.insert(0, payout);
+      _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
+      _transactions.insert(
+        0,
+        EarningsTransaction(
+          id: settlementId,
+          date: DateTime.now().toIso8601String().substring(0, 10),
+          orderNumber: payout.orderNumber,
+          amount: -amount,
+          isCredit: false,
+        ),
+      );
+      notifyListeners();
+      logAuditEvent(
+        actionType: 'FARMER_WITHDRAWAL_REQUESTED',
+        targetEntity: 'Settlement',
+        targetId: settlementId,
+        details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
+        severity: 'info',
+      );
+      if (_currentUserId.isNotEmpty) {
+        _persistToFirestore(() => _firestoreService.createSettlement(payout));
+      }
     }
   }
 }

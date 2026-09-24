@@ -1,16 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../providers/farmora_state.dart';
+import '../application/transporter_controller.dart';
+import '../domain/collection_job.dart';
 
 class TransporterEarningsScreen extends StatelessWidget {
   const TransporterEarningsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<FarmoraState>();
+    final controller = context.watch<TransporterController>();
     const currency = 'Rs. ';
-    final transactions = state.transactions.reversed.take(5).toList();
+    
+    final completed = controller.completedJobs;
+    double total = 0;
+    double month = 0;
+    double week = 0;
+    final now = DateTime.now();
+    
+    for (final job in completed) {
+      final amount = (job.deliveryFeeMinor ?? 0) / 100;
+      total += amount;
+      
+      final date = job.completedAt ?? job.updatedAt;
+      if (date.year == now.year && date.month == now.month) {
+        month += amount;
+      }
+      if (now.difference(date).inDays <= 7) {
+        week += amount;
+      }
+    }
+    
+    final recent = completed.reversed.take(5).toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -27,21 +48,21 @@ class TransporterEarningsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         children: [
           _EarningsHero(
-              amount: '$currency${state.totalEarnings.toStringAsFixed(2)}'),
+              amount: '$currency${total.toStringAsFixed(2)}'),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _MetricCard(
                   label: 'This month',
-                  value: '$currency${state.thisMonth.toStringAsFixed(2)}',
+                  value: '$currency${month.toStringAsFixed(2)}',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
                   label: 'This week',
-                  value: '$currency${state.thisWeek.toStringAsFixed(2)}',
+                  value: '$currency${week.toStringAsFixed(2)}',
                 ),
               ),
             ],
@@ -52,33 +73,37 @@ class TransporterEarningsScreen extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          if (transactions.isEmpty)
+          if (recent.isEmpty)
             const _EmptyState(
               icon: Icons.receipt_long_outlined,
               message: 'No earnings yet',
             )
           else
-            ...transactions.map(
-              (transaction) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(Icons.local_shipping_outlined,
-                        color: AppColors.primary),
-                  ),
-                  title: Text(transaction.orderNumber,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(transaction.date),
-                  trailing: Text(
-                    '+ $currency${transaction.amount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
+            ...recent.map(
+              (job) {
+                final amount = (job.deliveryFeeMinor ?? 0) / 100;
+                final dateStr = (job.completedAt ?? job.updatedAt).toString().split(' ')[0];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: AppColors.primaryLight,
+                      child: Icon(Icons.local_shipping_outlined,
+                          color: AppColors.primary),
+                    ),
+                    title: Text(job.produceName,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(dateStr),
+                    trailing: Text(
+                      '+ $currency${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              }
             ),
         ],
       ),

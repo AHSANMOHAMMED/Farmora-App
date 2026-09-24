@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../../../l10n/app_localizations.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -99,10 +101,9 @@ class ProfileScreen extends StatelessWidget {
     final showVerification = isFarmer || isTransporter;
 
     // Fetch current user data from state.users
-    final currentUserData = state.users
-            .where((u) => u['uid'] == state.currentUserId)
-            .firstOrNull ??
-        {};
+    final currentUserData =
+        state.users.where((u) => u['uid'] == state.currentUserId).firstOrNull ??
+            {};
     final displayName = state.displayName.isNotEmpty
         ? state.displayName
         : (currentUserData['name'] as String? ?? 'User Profile');
@@ -113,7 +114,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(AppLocalizations.of(context)!.profile),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -237,7 +238,7 @@ class ProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.chat_bubble_outline,
                         color: AppColors.primary),
-                    title: const Text('Messages',
+                    title: Text(AppLocalizations.of(context)!.messages,
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
@@ -252,7 +253,7 @@ class ProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.notifications_none_rounded,
                         color: AppColors.primary),
-                    title: const Text('Notifications',
+                    title: Text(AppLocalizations.of(context)!.notifications,
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
@@ -275,8 +276,8 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.edit_rounded,
-                      color: AppColors.primary),
+                  leading:
+                      const Icon(Icons.edit_rounded, color: AppColors.primary),
                   title: const Text('Edit Profile',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Update your name, photo & location'),
@@ -309,7 +310,7 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.language_rounded,
                       color: AppColors.primary),
-                  title: const Text('Language',
+                  title: Text(AppLocalizations.of(context)!.language,
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(state.language),
                   trailing: const Icon(Icons.chevron_right),
@@ -329,7 +330,8 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const HelpSupportScreen()),
                   ),
                 ),
                 Divider(
@@ -392,10 +394,12 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading:
                       const Icon(Icons.logout_rounded, color: AppColors.error),
-                  title: const Text('Sign Out',
+                  title: Text(AppLocalizations.of(context)!.signOut,
                       style: TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
-                  onTap: () => context.read<FarmoraState>().signOut(),
+                  onTap: () async {
+                    await context.read<FarmoraState>().signOut();
+                  },
                 ),
               ],
             ),
@@ -421,7 +425,7 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.download_outlined,
                       color: AppColors.primary),
-                  title: const Text('Export my data',
+                  title: Text(AppLocalizations.of(context)!.exportMyData,
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Download a copy of your Farmora data'),
                   onTap: () => _exportData(context),
@@ -433,7 +437,7 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.delete_forever_outlined,
                       color: AppColors.error),
-                  title: const Text('Delete account',
+                  title: Text(AppLocalizations.of(context)!.deleteAccount,
                       style: TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   subtitle: const Text('Permanently remove your account'),
@@ -487,7 +491,7 @@ class _LocationSharingTileState extends State<_LocationSharingTile> {
             : AppColors.error,
       ));
     } else {
-      service.stopSharing();
+      await service.stopSharing();
       if (mounted) setState(() => _sharing = false);
     }
   }

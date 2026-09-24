@@ -166,4 +166,6 @@ The app is ready for MVP release when a user can select a role, complete onboard
 
 ## Current repository handoff
 
-The current repository contains the local-first Flutter demonstration, `pubspec.yaml`, `lib/main.dart`, `test/farmora_test.dart`, and this specification. Use this document as the production backlog and architecture handoff.
+This specification is the target architecture and backlog, not a description of the repository's present state. The repository now contains a multi-role Flutter/Firebase application, Cloud Functions, Firestore and Storage rules, localization resources, and feature/integration tests. See `README.md` for implemented behavior and the current release checklist.
+
+The application is not yet production-ready. Remaining work includes rule emulator coverage and security review, full localization/accessibility QA, pagination and offline reliability, messaging key verification/rotation, production monitoring/backups, physical-device validation, separate Firebase environments, and payment provider/legal setup. Do not interpret the presence of a screen or function as evidence that its external Firebase project configuration is complete.

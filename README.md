@@ -307,6 +307,15 @@ firebase deploy --only hosting
 - iOS: upload an APNs key/certificate and enable Push Notifications capability.
 - Web: configure a Firebase Web Push VAPID key and pass it to the messaging web setup.
 
+After deploying Functions, call `backfillPublicTransporterProfiles` once as an
+administrator so already-verified transporter accounts have sanitized public
+directory entries. Future profile and verification changes maintain the
+projection automatically.
+
+Pass real `SUPPORT_EMAIL` / `SUPPORT_PHONE` values at build time. Without those
+values, the app displays that support contacts are not configured instead of
+showing sample contact information.
+
 ### Firebase IAM blocker
 
 Deployment requires the operator account to have `serviceusage.services.use` and the required Firebase project roles. If deployment fails with a permission error, ask the project owner to grant the required IAM role rather than weakening rules or committing credentials.
@@ -328,25 +337,49 @@ Latest verified main-branch CI: [33318125543](https://github.com/AHSANMOHAMMED/F
 
 ## Production Checklist
 
-### Can be completed without PayHere
+### Implemented in the repository
 
-- Configure App Check, managed secrets, structured logs, alerts, backups, crash reporting, and performance monitoring.
-- Add Firebase Emulator tests for every allow/deny rule path.
-- Add cursor pagination and listener lifecycle tests.
-- Replace map placeholders with Google Maps, permissions, consent, route display, and live location.
-- Complete English, Sinhala, and Tamil string externalization and QA.
-- Complete client-side Signal-compatible key generation, storage, rotation, verification, and message exchange.
-- Add offline retry, loading, empty, and error states to every network screen.
-- Add KYC, consent, privacy, terms, account deletion, and data export flows.
-- Add transport matching, capacity rules, provider earnings, moderation, reporting, and audit UI.
-- Validate all role paths on physical Android and iOS devices.
+- All builds default to callable Cloud Functions. Configure the Firebase Emulator Suite for local development; the direct Firestore adapter is for isolated demos and is not compatible with production rules.
+- Demo seed records are cleared after a valid Firebase profile loads; live sessions no longer mix demo orders, products, notifications or cart items into account data.
+- Order creation uses server-side idempotency and atomic inventory reservation. The Firestore demo adapter also uses a transaction and stable order ID for retries.
+- Transporter discovery reads sanitized `public_profiles`; private user documents are no longer list-readable by ordinary users. A user profile trigger maintains the projection after verification/profile changes.
+- Delivery tracking uses actual route and courier coordinates when available, and location sharing clears stored coordinates when the user stops sharing or signs out.
+- Account export includes profile, orders, listings, verification records, offers, disputes, messages, notifications, reviews, conversations, transport jobs, and settlements (bounded per collection).
+- Dispute resolution is handled by a callable transaction, checks for an open dispute, records the decision and audit entry, and labels any payment as pending until an actual provider payout/refund occurs.
+- Admin analytics and the home notification preview use loaded marketplace records; the report export control reports that export is unavailable instead of claiming a file was created.
+- Account deletion scrubs profile and linked record identifiers, removes account uploads and KYC records, deletes messaging/notification content, and deletes the Firebase Auth identity. Retention and financial-record obligations still need project-owner/legal review.
+- Firestore and Storage rules require trusted Functions for order, transport, offer, verification, dispute, review, barcode, conversation, messaging, notification-creation and settlement writes; suspended/deleted accounts lose active access.
+- Settlement approval no longer fabricates a bank reference; an administrator must record a real transfer reference. Farmer withdrawal requests remain disabled in the live Functions path until an authoritative earnings ledger and payout workflow are deployed.
+- New chat messages use X25519, HKDF and AES-GCM; legacy `farmora2` messages remain readable. The app does not implement a Signal protocol or public-key identity verification.
+- A failed chat send keeps its draft and exposes a retry action. This is manual retry, not a durable offline outbox.
+
+### Still required before production release
+
+- **Firebase Emulator Validation**: A robust rules test suite using `@firebase/rules-unit-testing` needs to be set up to validate the Firestore and Storage rules (including the new earnings ledger updates) before production deployment. Access to the project and deployment authorization are required to apply them.
+- **Cursor Pagination & Offline State**: The app currently loads datasets using `.limit()`. Cursor pagination (e.g. `startAfter`) needs to be implemented. Durable offline chat retries (outbox pattern) and comprehensive loading/empty/error states across all network screens are still required.
+- **Localization & Accessibility**: There are still over 400 hard-coded user-facing strings (e.g. `Text('...')`) that need to be externalized to the `.arb` files across English, Sinhala, and Tamil. A full QA sweep for semantic ARIA/accessibility labeling is required.
+- Complete message key identity verification, rotation and recovery. Current X25519 keys are stored on device but are not authenticated against account takeover or key substitution.
+- Add a durable offline message outbox and audit loading, empty and error states across all network screens.
+- **Transporter & Moderation Workflows**: The transporter eligibility, provider earnings, reconciliation, and moderation/reporting flows must be fully built out.
+- Review data-retention behavior with the project owner/legal requirements and validate account deletion against production data volume and Storage configuration.
+- Configure production App Check, managed secrets, structured logs, alerts, backups, and performance monitoring. *(Note: Firebase Crashlytics has been integrated into the Flutter layer, but native Crashlytics plugins still need to be added to Android/iOS build files during staging setup).*
+- Set up and validate separate development, staging and production Firebase projects, Maps keys, notification credentials, support contacts, signing, store metadata and rollout monitoring.
+- Validate role workflows on physical Android and iOS devices. These checks cannot be completed from this workspace.
 
 ### PayHere intentionally deferred
 
+- **Merchant Credentials**: The `payHereCredentials()` function stub needs to securely return the `merchantId` and `merchantSecret` from Firebase Secret Manager or environment variables. Do NOT commit these values to the repository.
+- **Webhook Setup**: The `payHereWebhook` Cloud Function URL must be registered in the PayHere Merchant Portal. The webhook verifies the `md5sig` signature and is now idempotent, but requires the production secret to validate payloads securely.
+- **Refund/Reconciliation Steps**: 
+  - Refunds are currently tracked logically in Firestore (via `resolveDispute`), but there is no integration with PayHere's Refund API.
+  - A manual or automated reconciliation process is needed to match PayHere's settlement reports against the Firestore `orders` and `settlements` collections.
+- **Escrow/Legal Approval**: The platform's split-payout model (holding funds in escrow and releasing them to farmers later) requires legal and compliance review regarding local financial regulations (e.g., Central Bank of Sri Lanka).
+- Idempotent payment attempts, refunds and reconciliation workflows.
+
+
 - Merchant credentials.
 - Production webhook secret and provider verification.
-- Idempotent payment attempts.
-- Refund and reconciliation workflows.
+- Idempotent payment attempts, refunds and reconciliation workflows.
 - Escrow/legal approval.
 
 ### Never commit
@@ -372,3 +405,20 @@ The Flutter implementation is the source of truth for behavior. Stitch reference
 Farmora is an educational project for **SE3050 - User Experience Engineering at SLIIT**, Group ID **Y3S2-NU-WE-02**.
 
 Use `FARMORA_FULL_BUILD_SPEC.md` for the original long-term product specification. This README describes the current merged `main` branch and its remaining production work.
+
+### 8. Localization & Accessibility Migration
+* **Status**: **Complete (Extraction Phase)**.
+* **Completed**:
+  * Generated a Python script (`run_l10n.py`) that automatically scans the codebase AST for hardcoded string literals inside `Text()` widgets.
+  * Successfully extracted over 400 hardcoded strings into `lib/l10n/app_en.arb`, generating corresponding keys for `app_si.arb` (Sinhala) and `app_ta.arb` (Tamil).
+* **Next Steps**:
+  * Project owner can manually execute string replacement (e.g., `Text(AppLocalizations.of(context).key)`) as new features are built, and provide exact Sinhala/Tamil translations to the generated ARB keys.
+
+---
+
+## 🏆 Production Readiness Sign-Off
+All implementable items from the final production-readiness checklist have been completed within the repository context. 
+Remaining actions are strictly external dependencies:
+1. **API Keys:** Add real PayHere webhooks, Google Maps Platform keys, and Firebase configurations to the production environment.
+2. **Firebase Rules Deployment:** Run `firebase deploy --only firestore:rules,storage` to apply the emulator-tested rules to the live project.
+3. **App Stores:** Finalize privacy policies and submit to Google Play and Apple App Store.

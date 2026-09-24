@@ -152,7 +152,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+            border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3), width: 2),
           ),
           child: ClipOval(
             child: state.photoUrl.isNotEmpty
@@ -189,7 +190,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.5)),
                 ),
                 child: const Icon(
                   Icons.notifications_none_rounded,
@@ -220,7 +222,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildAvatarFallback() {
     return Container(
       color: const Color(0xFFE8F5E9),
-      child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 24),
+      child:
+          const Icon(Icons.person_rounded, color: AppColors.primary, size: 24),
     );
   }
 
@@ -361,7 +364,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.payments_rounded, color: Colors.white, size: 20),
+            child: const Icon(Icons.payments_rounded,
+                color: Colors.white, size: 20),
           ),
           const SizedBox(height: 14),
           Text(
@@ -385,7 +389,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.trending_up_rounded, size: 14, color: Color(0xFF81C784)),
+              const Icon(Icons.trending_up_rounded,
+                  size: 14, color: Color(0xFF81C784)),
               const SizedBox(width: 4),
               Text(
                 'Earnings',
@@ -458,7 +463,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trend,
                   style: TextStyle(
                     fontSize: 11,
-                    color: trendUp ? AppColors.primary : AppColors.onSurfaceVariant,
+                    color: trendUp
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -474,22 +481,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ═══════════════════════════════════════════════════════════════
   // 3. FARM ACTIVITY
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildFarmActivity(BuildContext context, List<Product> products, List<FarmoraOrder> orders) {
+  Widget _buildFarmActivity(
+      BuildContext context, List<Product> products, List<FarmoraOrder> orders) {
     if (products.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: _cardDecoration(),
         child: const Center(
-          child: Text('No produce listed yet', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          child: Text('No produce listed yet',
+              style: TextStyle(color: AppColors.onSurfaceVariant)),
         ),
       );
     }
 
     return Column(
       children: products.take(4).map((product) {
-        final productOrders = orders.where((o) =>
-            o.title.toLowerCase() == product.name.toLowerCase() ||
-            o.productName.toLowerCase() == product.name.toLowerCase()).length;
+        final productOrders = orders
+            .where((o) =>
+                o.title.toLowerCase() == product.name.toLowerCase() ||
+                o.productName.toLowerCase() == product.name.toLowerCase())
+            .length;
 
         final stockStatus = _getStockStatus(product);
 
@@ -502,117 +513,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(14),
             decoration: _cardDecoration(),
             child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: stockStatus.$2.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: stockStatus.$2.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Text(product.emoji,
+                        style: const TextStyle(fontSize: 26)),
+                  ),
                 ),
-                child: Center(
-                  child: Text(product.emoji, style: const TextStyle(fontSize: 26)),
-                ),
-              ),
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onSurface,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (product.isOrganic)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Organic',
-                              style: TextStyle(
-                                fontSize: 9,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF2E7D32),
+                                color: AppColors.onSurface,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${product.quantity} · LKR ${product.pricePerUnit.toStringAsFixed(2)} / ${product.unit}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: stockStatus.$2.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: stockStatus.$2,
-                                  shape: BoxShape.circle,
-                                ),
+                          if (product.isOrganic)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                stockStatus.$1,
+                              child: const Text(
+                                'Organic',
                                 style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: stockStatus.$2,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2E7D32),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${product.quantity} · LKR ${product.pricePerUnit.toStringAsFixed(2)} / ${product.unit}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 10),
-                        if (productOrders > 0)
-                          Text(
-                            '$productOrders active order${productOrders > 1 ? 's' : ''}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: stockStatus.$2.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: stockStatus.$2,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  stockStatus.$1,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: stockStatus.$2,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 10),
+                          if (productOrders > 0)
+                            Text(
+                              '$productOrders active order${productOrders > 1 ? 's' : ''}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              const Icon(Icons.chevron_right_rounded, color: AppColors.outlineVariant, size: 22),
-            ],
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.outlineVariant, size: 22),
+              ],
+            ),
           ),
-        ),
-      );
+        );
       }).toList(),
     );
   }
@@ -646,7 +659,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 20),
-
           Text(
             'LKR ${(_showMonthlyEarnings ? state.thisMonth : state.thisWeek).toStringAsFixed(2)}',
             style: const TextStyle(
@@ -658,23 +670,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            _showMonthlyEarnings ? "This month's earnings" : "This week's earnings",
+            _showMonthlyEarnings
+                ? "This month's earnings"
+                : "This week's earnings",
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 20),
-
           SizedBox(
             height: 120,
             child: _buildMiniBarChart(state),
           ),
           const SizedBox(height: 8),
-
           Row(
             children: [
-              const Icon(Icons.trending_up_rounded, size: 16, color: AppColors.primary),
+              const Icon(Icons.trending_up_rounded,
+                  size: 16, color: AppColors.primary),
               const SizedBox(width: 4),
               Text(
                 '+15.2% vs last ${_showMonthlyEarnings ? 'month' : 'week'}',
@@ -716,10 +729,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMiniBarChart(FarmoraState state) {
     final bars = state.monthlyBars;
     if (bars.isEmpty) {
-      return const Center(child: Text('No data', style: TextStyle(color: AppColors.onSurfaceVariant)));
+      return const Center(
+          child: Text('No data',
+              style: TextStyle(color: AppColors.onSurfaceVariant)));
     }
 
-    final maxAmount = bars.map((b) => b.amount).reduce((a, b) => a > b ? a : b).toDouble();
+    final maxAmount =
+        bars.map((b) => b.amount).reduce((a, b) => a > b ? a : b).toDouble();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -748,7 +764,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   height: (heightRatio * 90).clamp(8.0, 90.0),
                   decoration: BoxDecoration(
-                    color: isHighlighted ? AppColors.primary : const Color(0xFFC8E6C9),
+                    color: isHighlighted
+                        ? AppColors.primary
+                        : const Color(0xFFC8E6C9),
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -757,8 +775,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   bar.month,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w500,
-                    color: isHighlighted ? AppColors.primary : AppColors.onSurfaceVariant,
+                    fontWeight:
+                        isHighlighted ? FontWeight.w700 : FontWeight.w500,
+                    color: isHighlighted
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -778,7 +799,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(32),
         decoration: _cardDecoration(),
         child: const Center(
-          child: Text('No recent orders', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          child: Text('No recent orders',
+              style: TextStyle(color: AppColors.onSurfaceVariant)),
         ),
       );
     }
@@ -811,7 +833,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,7 +841,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        order.title.isNotEmpty ? order.title : order.productName,
+                        order.title.isNotEmpty
+                            ? order.title
+                            : order.productName,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -830,7 +853,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: statusBg,
                         borderRadius: BorderRadius.circular(10),
@@ -858,7 +882,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      order.totalAmount.isNotEmpty ? order.totalAmount : 'LKR ${order.totalAmountNumber.toStringAsFixed(2)}',
+                      order.totalAmount.isNotEmpty
+                          ? order.totalAmount
+                          : 'LKR ${order.totalAmountNumber.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -889,8 +915,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AddProductScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const AddProductScreen()),
+              ),
         },
         {
           'icon': Icons.receipt_long_outlined,
@@ -898,8 +924,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFFE65100),
           'bg': const Color(0xFFFFF3E0),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
+              ),
         },
         {
           'icon': Icons.local_offer_outlined,
@@ -907,8 +933,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF6A1B9A),
           'bg': const Color(0xFFF3E5F5),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const FarmerOffersScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const FarmerOffersScreen()),
+              ),
         },
         {
           'icon': Icons.payments_outlined,
@@ -916,8 +942,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF006E1C),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const EarningsScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const EarningsScreen()),
+              ),
         },
         {
           'icon': Icons.person_outline_rounded,
@@ -925,8 +951,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AccountVerificationScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const AccountVerificationScreen()),
+              ),
         },
         {
           'icon': Icons.trending_up_rounded,
@@ -934,9 +961,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFFC2185B),
           'bg': const Color(0xFFFCE4EC),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (_) => const MarketPriceManagementScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const MarketPriceManagementScreen()),
+              ),
         },
         {
           'icon': Icons.local_shipping_outlined,
@@ -944,9 +971,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF00796B),
           'bg': const Color(0xFFE0F2F1),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (_) => const FarmerJobsScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const FarmerJobsScreen()),
+              ),
         },
         {
           'icon': Icons.near_me_rounded,
@@ -954,9 +980,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (_) => const NearbyTransportersScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const NearbyTransportersScreen()),
+              ),
         },
       ]);
     } else if (role == Role.buyer) {
@@ -967,8 +993,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
+              ),
         },
         {
           'icon': Icons.shopping_basket_outlined,
@@ -976,8 +1002,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFFE65100),
           'bg': const Color(0xFFFFF3E0),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()),
+              ),
         },
         {
           'icon': Icons.local_offer_outlined,
@@ -985,8 +1011,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF6A1B9A),
           'bg': const Color(0xFFF3E5F5),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BuyerOffersScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const BuyerOffersScreen()),
+              ),
         },
         {
           'icon': Icons.shopping_cart_outlined,
@@ -994,8 +1020,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF006D44),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CartScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const CartScreen()),
+              ),
         },
         {
           'icon': Icons.near_me_rounded,
@@ -1003,9 +1029,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(
-                builder: (_) => const NearbyTransportersScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const NearbyTransportersScreen()),
+              ),
         },
       ]);
     } else if (role == Role.transporter) {
@@ -1016,8 +1042,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
+              ),
         },
         {
           'icon': Icons.history_rounded,
@@ -1025,8 +1051,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DeliveryHistoryScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const DeliveryHistoryScreen()),
+              ),
         },
         {
           'icon': Icons.payments_outlined,
@@ -1034,8 +1061,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF006E1C),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const TransporterEarningsScreen()),
-          ),
+                MaterialPageRoute(
+                    builder: (_) => const TransporterEarningsScreen()),
+              ),
         },
         {
           'icon': Icons.my_location_rounded,
@@ -1070,8 +1098,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const UserManagementScreen()),
-          ),
+                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+              ),
         },
       ]);
     }
@@ -1086,7 +1114,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: GestureDetector(
               onTap: action['onTap'] as VoidCallback,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                 decoration: _cardDecoration(),
                 child: Column(
                   children: [
@@ -1128,43 +1157,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 7. NOTIFICATIONS
   // ═══════════════════════════════════════════════════════════════
   Widget _buildNotifications(BuildContext context) {
-    final notifications = [
-      const _NotificationItem(
-        icon: Icons.shopping_cart_rounded,
-        iconColor: Color(0xFF2E7D32),
-        iconBg: Color(0xFFE8F5E9),
-        title: 'New order received',
-        subtitle: 'Green Grocery Store ordered 50 kg Heirloom Tomatoes',
-        time: '2 min ago',
-      ),
-      const _NotificationItem(
-        icon: Icons.local_shipping_rounded,
-        iconColor: Color(0xFF1565C0),
-        iconBg: Color(0xFFE3F2FD),
-        title: 'Transport assigned',
-        subtitle: 'Your delivery ORD-8892 is on the way',
-        time: '15 min ago',
-      ),
-      const _NotificationItem(
-        icon: Icons.account_balance_wallet_rounded,
-        iconColor: Color(0xFF006E1C),
-        iconBg: Color(0xFFE8F5E9),
-        title: 'Payment received',
-        subtitle: 'LKR 210.00 from Local Fresh Market',
-        time: '1 hour ago',
-      ),
-      const _NotificationItem(
-        icon: Icons.check_circle_rounded,
-        iconColor: Color(0xFF2E7D32),
-        iconBg: Color(0xFFE8F5E9),
-        title: 'Order delivered',
-        subtitle: 'ORD-8881 has been delivered to Bistro 44',
-        time: '3 hours ago',
-      ),
-    ];
-
+    final notifications = [...context.watch<FarmoraState>().notifications]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (notifications.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text('No notifications yet.'),
+      );
+    }
     return Column(
-      children: notifications.map((n) => _buildNotificationTile(n)).toList(),
+      children: notifications.take(4).map((notification) {
+        final style = switch (notification.type.toLowerCase()) {
+          'order' => (Icons.shopping_cart_rounded, const Color(0xFF2E7D32)),
+          'logistics' => (
+              Icons.local_shipping_rounded,
+              const Color(0xFF1565C0)
+            ),
+          'payment' => (
+              Icons.account_balance_wallet_rounded,
+              const Color(0xFF006E1C)
+            ),
+          _ => (Icons.notifications_rounded, AppColors.primary),
+        };
+        final elapsed = DateTime.now().difference(notification.createdAt);
+        final time = elapsed.inMinutes < 1
+            ? 'Just now'
+            : elapsed.inHours < 1
+                ? '${elapsed.inMinutes} min ago'
+                : elapsed.inDays < 1
+                    ? '${elapsed.inHours} hr ago'
+                    : '${elapsed.inDays} day${elapsed.inDays == 1 ? '' : 's'} ago';
+        return _buildNotificationTile(_NotificationItem(
+          icon: style.$1,
+          iconColor: style.$2,
+          iconBg: style.$2.withValues(alpha: 0.12),
+          title: notification.title,
+          subtitle: notification.body,
+          time: time,
+        ));
+      }).toList(),
     );
   }
 
@@ -1227,11 +1258,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildBuyerDashboard(BuildContext context, FarmoraState state) {
     final products = state.products;
     final activeOrders = [...state.pendingOrders, ...state.acceptedOrders];
-    final activeDelivery = state.orders.where((o) =>
-        o.status.toLowerCase().contains('transit') ||
-        o.status.toLowerCase() == 'accepted').firstOrNull ??
+    final activeDelivery = state.orders
+            .where((o) =>
+                o.status.toLowerCase().contains('transit') ||
+                o.status.toLowerCase() == 'accepted')
+            .firstOrNull ??
         state.orders.firstOrNull;
-    final totalSpent = state.orders.fold<double>(0.0, (sum, o) => sum + o.total);
+    final totalSpent =
+        state.orders.fold<double>(0.0, (sum, o) => sum + o.total);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -1275,14 +1309,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${activeOrders.length} active',
-                      style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -1354,7 +1392,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         // 3. Live Delivery Tracking Banner (if active delivery exists)
         if (activeDelivery != null) ...[
-          _buildSectionTitle('Active Delivery', subtitle: 'Track your produce live'),
+          _buildSectionTitle('Active Delivery',
+              subtitle: 'Track your produce live'),
           const SizedBox(height: 14),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
@@ -1377,7 +1416,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.local_shipping_rounded, color: AppColors.primary, size: 24),
+                        child: const Icon(Icons.local_shipping_rounded,
+                            color: AppColors.primary, size: 24),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1405,7 +1445,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8F5E9),
                           borderRadius: BorderRadius.circular(20),
@@ -1425,9 +1466,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: activeDelivery.progress > 0 ? activeDelivery.progress : 0.3,
+                      value: activeDelivery.progress > 0
+                          ? activeDelivery.progress
+                          : 0.3,
                       backgroundColor: AppColors.surfaceContainerHigh,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary),
                       minHeight: 6,
                     ),
                   ),
@@ -1437,12 +1481,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Text(
                         'Stage: ${activeDelivery.status}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurfaceVariant),
                       ),
                       const Row(
                         children: [
-                          Text('View Detail', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                          Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primary),
+                          Text('View Detail',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary)),
+                          Icon(Icons.chevron_right_rounded,
+                              size: 16, color: AppColors.primary),
                         ],
                       ),
                     ],
@@ -1494,14 +1546,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(32),
             decoration: _cardDecoration(),
             child: const Center(
-              child: Text('No produce currently listed', style: TextStyle(color: AppColors.onSurfaceVariant)),
+              child: Text('No produce currently listed',
+                  style: TextStyle(color: AppColors.onSurfaceVariant)),
             ),
           )
         else
           ...products.take(4).map((product) {
             return GestureDetector(
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+                MaterialPageRoute(
+                    builder: (_) => ProductDetailScreen(product: product)),
               ),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -1517,7 +1571,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
-                        child: Text(product.emoji, style: const TextStyle(fontSize: 28)),
+                        child: Text(product.emoji,
+                            style: const TextStyle(fontSize: 28)),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1539,7 +1594,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               if (product.isOrganic)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE8F5E9),
                                     borderRadius: BorderRadius.circular(6),
@@ -1558,7 +1614,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(height: 4),
                           Text(
                             '${product.location} • ${product.quantity}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.onSurfaceVariant),
                           ),
                           const SizedBox(height: 6),
                           Row(
@@ -1577,7 +1635,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   state.addToCart(product);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('${product.name} added to cart!'),
+                                      content: Text(
+                                          '${product.name} added to cart!'),
                                       duration: const Duration(seconds: 1),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -1586,15 +1645,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                icon: const Icon(Icons.add_shopping_cart, size: 14),
-                                label: const Text('Add', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                icon: const Icon(Icons.add_shopping_cart,
+                                    size: 14),
+                                label: const Text('Add',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700)),
                               ),
                             ],
                           ),
@@ -1620,16 +1685,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 28),
         Row(
           children: [
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.local_shipping_rounded, iconColor: const Color(0xFF2E7D32),
-              iconBg: const Color(0xFFE8F5E9), label: 'Active Jobs',
-              value: '${state.jobs.length}', trend: 'In progress', trendUp: true,
+            Expanded(
+                child: _buildOverviewCard(
+              icon: Icons.local_shipping_rounded,
+              iconColor: const Color(0xFF2E7D32),
+              iconBg: const Color(0xFFE8F5E9),
+              label: 'Active Jobs',
+              value: '${state.jobs.length}',
+              trend: 'In progress',
+              trendUp: true,
             )),
             const SizedBox(width: 12),
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.check_circle_rounded, iconColor: const Color(0xFF006E1C),
-              iconBg: const Color(0xFFE8F5E9), label: 'Completed',
-              value: '${state.completedOrders.length}', trend: 'Total deliveries', trendUp: true,
+            Expanded(
+                child: _buildOverviewCard(
+              icon: Icons.check_circle_rounded,
+              iconColor: const Color(0xFF006E1C),
+              iconBg: const Color(0xFFE8F5E9),
+              label: 'Completed',
+              value: '${state.completedOrders.length}',
+              trend: 'Total deliveries',
+              trendUp: true,
             )),
           ],
         ),
@@ -1651,16 +1726,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 28),
         Row(
           children: [
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.people_rounded, iconColor: const Color(0xFF1565C0),
-              iconBg: const Color(0xFFE3F2FD), label: 'Total Users',
-              value: '${state.users.length}', trend: 'Registered', trendUp: true,
+            Expanded(
+                child: _buildOverviewCard(
+              icon: Icons.people_rounded,
+              iconColor: const Color(0xFF1565C0),
+              iconBg: const Color(0xFFE3F2FD),
+              label: 'Total Users',
+              value: '${state.users.length}',
+              trend: 'Registered',
+              trendUp: true,
             )),
             const SizedBox(width: 12),
-            Expanded(child: _buildOverviewCard(
-              icon: Icons.receipt_long_rounded, iconColor: const Color(0xFF2E7D32),
-              iconBg: const Color(0xFFE8F5E9), label: 'Total Orders',
-              value: '${state.orders.length}', trend: 'All time', trendUp: true,
+            Expanded(
+                child: _buildOverviewCard(
+              icon: Icons.receipt_long_rounded,
+              iconColor: const Color(0xFF2E7D32),
+              iconBg: const Color(0xFFE8F5E9),
+              label: 'Total Orders',
+              value: '${state.orders.length}',
+              trend: 'All time',
+              trendUp: true,
             )),
           ],
         ),
@@ -1718,21 +1803,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return const Color(0xFFE65100);
-      case 'accepted': case 'in transit': return const Color(0xFF2E7D32);
-      case 'delivered': case 'completed': return const Color(0xFF1B5E20);
-      case 'declined': case 'rejected': return const Color(0xFF93000A);
-      default: return AppColors.onSurfaceVariant;
+      case 'pending':
+        return const Color(0xFFE65100);
+      case 'accepted':
+      case 'in transit':
+        return const Color(0xFF2E7D32);
+      case 'delivered':
+      case 'completed':
+        return const Color(0xFF1B5E20);
+      case 'declined':
+      case 'rejected':
+        return const Color(0xFF93000A);
+      default:
+        return AppColors.onSurfaceVariant;
     }
   }
 
   Color _getStatusBg(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return const Color(0xFFFFF3E0);
-      case 'accepted': case 'in transit': return const Color(0xFFE8F5E9);
-      case 'delivered': case 'completed': return const Color(0xFFC8E6C9);
-      case 'declined': case 'rejected': return const Color(0xFFFFDAD6);
-      default: return const Color(0xFFF5F5F5);
+      case 'pending':
+        return const Color(0xFFFFF3E0);
+      case 'accepted':
+      case 'in transit':
+        return const Color(0xFFE8F5E9);
+      case 'delivered':
+      case 'completed':
+        return const Color(0xFFC8E6C9);
+      case 'declined':
+      case 'rejected':
+        return const Color(0xFFFFDAD6);
+      default:
+        return const Color(0xFFF5F5F5);
     }
   }
 

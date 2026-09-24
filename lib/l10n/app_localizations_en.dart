@@ -720,4 +720,496 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingSlide3H3 => 'Extra Income';
+
+  @override
+  String get messages => 'Messages';
+
+  @override
+  String get noNotificationsYet => 'No notifications yet.';
+
+  @override
+  String get pleaseEnterAccountNumber => 'Please enter account number';
+
+  @override
+  String get invalidPayoutAmount => 'Invalid payout amount';
+
+  @override
+  String get confirmPayout => 'Confirm Payout';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get transportRequestCancelled => 'Transport request cancelled';
+
+  @override
+  String get cancelRequest => 'Cancel Request?';
+
+  @override
+  String get trackLive => 'Track Live';
+
+  @override
+  String get reupload => 'Re-upload';
+
+  @override
+  String get transporterProfileSaved => 'Transporter profile saved.';
+
+  @override
+  String get openOrderChat => 'Open Order Chat';
+
+  @override
+  String get understood => 'Understood';
+
+  @override
+  String get organicCertified => 'Organic certified';
+
+  @override
+  String get addHarvestVideo => 'Add harvest video?';
+
+  @override
+  String get upload => 'Upload';
+
+  @override
+  String get productDescription => 'Product Description';
+
+  @override
+  String get reject => 'Reject';
+
+  @override
+  String get newTotal => 'New Total:';
+
+  @override
+  String get accept => 'Accept';
+
+  @override
+  String get rejectOffer => 'Reject Offer?';
+
+  @override
+  String get counter => 'Counter';
+
+  @override
+  String get sendCounterOffer => 'Send Counter Offer';
+
+  @override
+  String get decline => 'Decline';
+
+  @override
+  String get submitCounter => 'Submit Counter';
+
+  @override
+  String get offerRejected => 'Offer rejected';
+
+  @override
+  String get addAProduct => 'Add a product';
+
+  @override
+  String get publish => 'Publish';
+
+  @override
+  String get barcodePayloadCopied => 'Barcode payload copied';
+
+  @override
+  String get copyPayload => 'Copy payload';
+
+  @override
+  String get transportFeeLkr => 'Transport fee (LKR)';
+
+  @override
+  String get request => 'Request';
+
+  @override
+  String get orderRejected => 'Order rejected';
+
+  @override
+  String get accountCreatedSuccessfully => 'Account created successfully!';
+
+  @override
+  String get enterYourPhoneNumberFirst => 'Enter your phone number first.';
+
+  @override
+  String get verifyPhoneNumber => 'Verify phone number';
+
+  @override
+  String get resend => 'Resend';
+
+  @override
+  String get verify => 'Verify';
+
+  @override
+  String get markAsDelivered => 'Mark as Delivered';
+
+  @override
+  String get markAsInTransit => 'Mark as In Transit';
+
+  @override
+  String get markAsPickedUp => 'Mark as Picked Up';
+
+  @override
+  String get availableJobs => 'Available Jobs';
+
+  @override
+  String get allStatuses => 'All statuses';
+
+  @override
+  String get suitableForMyVehicle => 'Suitable for my vehicle';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get seeAll => 'See all';
+
+  @override
+  String get myJobs => 'My Jobs';
+
+  @override
+  String get noDeliveryHistoryFound => 'No delivery history found.';
+
+  @override
+  String get reportAnIssue => 'Report an issue';
+
+  @override
+  String get cancelJob => 'Cancel job';
+
+  @override
+  String get jobDetails => 'Job details';
+
+  @override
+  String get viewPickup => 'View pickup';
+
+  @override
+  String get rateThisTransaction => 'Rate this transaction';
+
+  @override
+  String get navigateToDelivery => 'Navigate to delivery';
+
+  @override
+  String get whyAreYouCancelling => 'Why are you cancelling?';
+
+  @override
+  String get completeDelivery => 'Complete Delivery';
+
+  @override
+  String get submit => 'Submit';
+
+  @override
+  String get call => 'Call';
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get updateNow => 'Update now';
+
+  @override
+  String get vehicleType => 'Vehicle type';
+
+  @override
+  String get kilogramsKg => 'Kilograms (kg)';
+
+  @override
+  String get maximumCapacity => 'Maximum capacity';
+
+  @override
+  String get editProfile => 'Edit profile';
+
+  @override
+  String get tons => 'Tons';
+
+  @override
+  String get registrationNumber => 'Registration number';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get markAllRead => 'Mark all read';
+
+  @override
+  String get notNow => 'Not now';
+
+  @override
+  String get verifiedOnly => 'Verified Only';
+
+  @override
+  String get suspended => 'Suspended';
+
+  @override
+  String get confirmRoleChange => 'Confirm Role Change';
+
+  @override
+  String get farmerGrowerproducer => 'Farmer (Grower/Producer)';
+
+  @override
+  String get buyerWholesalerretailer => 'Buyer (Wholesaler/Retailer)';
+
+  @override
+  String get adminPlatformOperations => 'Admin (Platform Operations)';
+
+  @override
+  String get changeUserRole => 'Change User Role';
+
+  @override
+  String get verificationDocumentRejected => 'Verification document rejected';
+
+  @override
+  String get confirmRejection => 'Confirm Rejection';
+
+  @override
+  String get grossOrder => 'Gross Order:';
+
+  @override
+  String get recordTransfer => 'Record Transfer';
+
+  @override
+  String get applyHold => 'Apply Hold';
+
+  @override
+  String get resolveHoldResume => 'Resolve Hold & Resume';
+
+  @override
+  String get placeSettlementOnHold => 'Place Settlement On Hold';
+
+  @override
+  String get recordCompletedBankTransfer => 'Record completed bank transfer';
+
+  @override
+  String get approveWire => 'Approve & Wire';
+
+  @override
+  String get holdPayout => 'Hold Payout';
+
+  @override
+  String get seedSriLankanMarketplace => 'Seed Sri Lankan marketplace';
+
+  @override
+  String get platformAnalyticsInsights => 'Platform Analytics & Insights';
+
+  @override
+  String get feeConfiguration => 'Fee Configuration';
+
+  @override
+  String get securityPolicies => 'Security Policies';
+
+  @override
+  String get firebaseServerControl => 'Firebase & Server Control';
+
+  @override
+  String get reviewFeedbackModeration => 'Review & Feedback Moderation';
+
+  @override
+  String get marketPriceIntelligence => 'Market Price Intelligence';
+
+  @override
+  String get updateNotice => 'Update Notice';
+
+  @override
+  String get maintenanceNoticeUpdated => 'Maintenance notice updated.';
+
+  @override
+  String get enforce => 'Enforce';
+
+  @override
+  String get recordDisputeDecision => 'Record Dispute Decision';
+
+  @override
+  String get splitSettlement5050 => 'Split Settlement (50% / 50%)';
+
+  @override
+  String get fullRefundToBuyer100 => 'Full Refund to Buyer (100%)';
+
+  @override
+  String get disputeDecisionRecorded => 'Dispute decision recorded.';
+
+  @override
+  String get arbitrate => 'Arbitrate';
+
+  @override
+  String get releaseToFarmer100 => 'Release to Farmer (100%)';
+
+  @override
+  String get stable => 'Stable (→)';
+
+  @override
+  String get spices => 'Spices';
+
+  @override
+  String get rising => 'Rising (↑)';
+
+  @override
+  String get addCommodityPolaRate => 'Add Commodity Pola Rate';
+
+  @override
+  String get softening => 'Softening (↓)';
+
+  @override
+  String get fruits => 'Fruits';
+
+  @override
+  String get vegetables => 'Vegetables';
+
+  @override
+  String get grains => 'Grains';
+
+  @override
+  String get addRate => 'Add Rate';
+
+  @override
+  String get release => 'Release';
+
+  @override
+  String get normalInfo => 'Normal (Info)';
+
+  @override
+  String get transportersOnly => 'Transporters Only';
+
+  @override
+  String get important => 'Important';
+
+  @override
+  String get emergencyAlert => '🚨 Emergency Alert';
+
+  @override
+  String get allUsers => 'All Users';
+
+  @override
+  String get buyersOnly => 'Buyers Only';
+
+  @override
+  String get farmersOnly => 'Farmers Only';
+
+  @override
+  String get noActiveListingsAreLoaded => 'No active listings are loaded.';
+
+  @override
+  String get auditNoteSaved => 'Audit note saved.';
+
+  @override
+  String get reviewFlaggedAndHidden => 'Review flagged and hidden.';
+
+  @override
+  String get deleteReview => 'Delete Review?';
+
+  @override
+  String get adminModerationNote => 'Admin Moderation Note';
+
+  @override
+  String get reviewPermanentlyRemoved => 'Review permanently removed.';
+
+  @override
+  String get saveNote => 'Save Note';
+
+  @override
+  String get emailFarmoraSupport => 'Email Farmora support';
+
+  @override
+  String get helpSupport => 'Help & Support';
+
+  @override
+  String get callFarmoraSupport => 'Call Farmora support';
+
+  @override
+  String get changePhoto => 'Change photo';
+
+  @override
+  String get profileUpdatedSuccessfully => 'Profile updated successfully.';
+
+  @override
+  String get orderChat => 'Order chat';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get savePreferences => 'Save Preferences';
+
+  @override
+  String get newMessagesAlerts => 'New messages & alerts';
+
+  @override
+  String get quietHours10pm7am => 'Quiet hours (10pm – 7am)';
+
+  @override
+  String get promotionsPriceUpdates => 'Promotions & price updates';
+
+  @override
+  String get orderStatusUpdates => 'Order status updates';
+
+  @override
+  String get cartCleared => 'Cart cleared';
+
+  @override
+  String get priceHighToLow => 'Price: high to low';
+
+  @override
+  String get nameAz => 'Name A–Z';
+
+  @override
+  String get newest => 'Newest';
+
+  @override
+  String get priceLowToHigh => 'Price: low to high';
+
+  @override
+  String get noKeep => 'No, Keep';
+
+  @override
+  String get yesCancel => 'Yes, Cancel';
+
+  @override
+  String get cancelOrder => 'Cancel Order?';
+
+  @override
+  String get exploreProduce => 'Explore Produce';
+
+  @override
+  String get orderCancelledSuccessfully => 'Order cancelled successfully';
+
+  @override
+  String get maximum5ImagesAllowed => 'Maximum 5 images allowed';
+
+  @override
+  String get acceptCounter => 'Accept Counter';
+
+  @override
+  String get makeAnOfferOnCrops => 'Make an Offer on Crops';
+
+  @override
+  String get verifyHarvest => 'Verify harvest';
+
+  @override
+  String get messageFarmerTransporter => 'Message farmer / transporter';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get verifyHarvestBarcode => 'Verify harvest barcode';
+
+  @override
+  String get confirmCodOnly => 'Confirm COD only';
+
+  @override
+  String get openComplaint => 'Open complaint';
+
+  @override
+  String get orderCancelled => 'Order cancelled.';
+
+  @override
+  String get addressUpdatedSuccessfully => 'Address updated successfully';
+
+  @override
+  String get codPaymentConfirmed => 'COD payment confirmed.';
+
+  @override
+  String get leaveAReview => 'Leave a review?';
+
+  @override
+  String get editDeliveryAddress => 'Edit Delivery Address';
+
+  @override
+  String get harvestAuthenticityVerified => 'Harvest authenticity verified.';
+
+  @override
+  String get reviewSubmittedSuccessfully => 'Review submitted successfully!';
 }

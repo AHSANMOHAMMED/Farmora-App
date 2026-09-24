@@ -166,7 +166,7 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                   const Text('Transporter Fee:',
                       style: TextStyle(fontSize: 14)),
                   Text(
-                    job.fee.isNotEmpty ? job.fee : 'LKR 3,500.00',
+                    job.fee.isNotEmpty ? job.fee : 'Not set',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -181,11 +181,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                       fontSize: 13,
                       color: AppColors.textSecondary)),
               const SizedBox(height: 8),
-              _buildMilestoneRow('Pickup / Farm Departure', true),
-              _buildMilestoneRow('Highland Supply Highway Checkpoint',
-                  job.status != 'requested'),
-              _buildMilestoneRow('Destination Central Pola Arrival',
-                  job.status == 'delivered' || job.status == 'completed'),
+              _buildMilestoneRow('Job requested', true),
+              _buildMilestoneRow(
+                'Pickup confirmed',
+                const {'pickedUp', 'inTransit', 'delivered'}
+                    .contains(job.status),
+              ),
+              _buildMilestoneRow('Delivery completed', job.isDelivered),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -391,9 +393,7 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                     ),
                                     const Spacer(),
                                     Text(
-                                      job.fee.isNotEmpty
-                                          ? job.fee
-                                          : 'LKR 3,500',
+                                      job.fee.isNotEmpty ? job.fee : 'Not set',
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF2E7D32),

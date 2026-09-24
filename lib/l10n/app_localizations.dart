@@ -1503,6 +1503,990 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra Income'**
   String get onboardingSlide3H3;
+
+  /// No description provided for @messages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get messages;
+
+  /// No description provided for @noNotificationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet.'**
+  String get noNotificationsYet;
+
+  /// No description provided for @pleaseEnterAccountNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter account number'**
+  String get pleaseEnterAccountNumber;
+
+  /// No description provided for @invalidPayoutAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid payout amount'**
+  String get invalidPayoutAmount;
+
+  /// No description provided for @confirmPayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Payout'**
+  String get confirmPayout;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @transportRequestCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport request cancelled'**
+  String get transportRequestCancelled;
+
+  /// No description provided for @cancelRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Request?'**
+  String get cancelRequest;
+
+  /// No description provided for @trackLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Track Live'**
+  String get trackLive;
+
+  /// No description provided for @reupload.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-upload'**
+  String get reupload;
+
+  /// No description provided for @transporterProfileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Transporter profile saved.'**
+  String get transporterProfileSaved;
+
+  /// No description provided for @openOrderChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Order Chat'**
+  String get openOrderChat;
+
+  /// No description provided for @understood.
+  ///
+  /// In en, this message translates to:
+  /// **'Understood'**
+  String get understood;
+
+  /// No description provided for @organicCertified.
+  ///
+  /// In en, this message translates to:
+  /// **'Organic certified'**
+  String get organicCertified;
+
+  /// No description provided for @addHarvestVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add harvest video?'**
+  String get addHarvestVideo;
+
+  /// No description provided for @upload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get upload;
+
+  /// No description provided for @productDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Product Description'**
+  String get productDescription;
+
+  /// No description provided for @reject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get reject;
+
+  /// No description provided for @newTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'New Total:'**
+  String get newTotal;
+
+  /// No description provided for @accept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get accept;
+
+  /// No description provided for @rejectOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject Offer?'**
+  String get rejectOffer;
+
+  /// No description provided for @counter.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter'**
+  String get counter;
+
+  /// No description provided for @sendCounterOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Counter Offer'**
+  String get sendCounterOffer;
+
+  /// No description provided for @decline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get decline;
+
+  /// No description provided for @submitCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Counter'**
+  String get submitCounter;
+
+  /// No description provided for @offerRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer rejected'**
+  String get offerRejected;
+
+  /// No description provided for @addAProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a product'**
+  String get addAProduct;
+
+  /// No description provided for @publish.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get publish;
+
+  /// No description provided for @barcodePayloadCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Barcode payload copied'**
+  String get barcodePayloadCopied;
+
+  /// No description provided for @copyPayload.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy payload'**
+  String get copyPayload;
+
+  /// No description provided for @transportFeeLkr.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport fee (LKR)'**
+  String get transportFeeLkr;
+
+  /// No description provided for @request.
+  ///
+  /// In en, this message translates to:
+  /// **'Request'**
+  String get request;
+
+  /// No description provided for @orderRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Order rejected'**
+  String get orderRejected;
+
+  /// No description provided for @accountCreatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created successfully!'**
+  String get accountCreatedSuccessfully;
+
+  /// No description provided for @enterYourPhoneNumberFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number first.'**
+  String get enterYourPhoneNumberFirst;
+
+  /// No description provided for @verifyPhoneNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify phone number'**
+  String get verifyPhoneNumber;
+
+  /// No description provided for @resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get resend;
+
+  /// No description provided for @verify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verify;
+
+  /// No description provided for @markAsDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Delivered'**
+  String get markAsDelivered;
+
+  /// No description provided for @markAsInTransit.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as In Transit'**
+  String get markAsInTransit;
+
+  /// No description provided for @markAsPickedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Picked Up'**
+  String get markAsPickedUp;
+
+  /// No description provided for @availableJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Jobs'**
+  String get availableJobs;
+
+  /// No description provided for @allStatuses.
+  ///
+  /// In en, this message translates to:
+  /// **'All statuses'**
+  String get allStatuses;
+
+  /// No description provided for @suitableForMyVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suitable for my vehicle'**
+  String get suitableForMyVehicle;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @seeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get seeAll;
+
+  /// No description provided for @myJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'My Jobs'**
+  String get myJobs;
+
+  /// No description provided for @noDeliveryHistoryFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No delivery history found.'**
+  String get noDeliveryHistoryFound;
+
+  /// No description provided for @reportAnIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get reportAnIssue;
+
+  /// No description provided for @cancelJob.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel job'**
+  String get cancelJob;
+
+  /// No description provided for @jobDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Job details'**
+  String get jobDetails;
+
+  /// No description provided for @viewPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'View pickup'**
+  String get viewPickup;
+
+  /// No description provided for @rateThisTransaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate this transaction'**
+  String get rateThisTransaction;
+
+  /// No description provided for @navigateToDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate to delivery'**
+  String get navigateToDelivery;
+
+  /// No description provided for @whyAreYouCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you cancelling?'**
+  String get whyAreYouCancelling;
+
+  /// No description provided for @completeDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Delivery'**
+  String get completeDelivery;
+
+  /// No description provided for @submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submit;
+
+  /// No description provided for @call.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
+  String get call;
+
+  /// No description provided for @chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get chat;
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update now'**
+  String get updateNow;
+
+  /// No description provided for @vehicleType.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle type'**
+  String get vehicleType;
+
+  /// No description provided for @kilogramsKg.
+  ///
+  /// In en, this message translates to:
+  /// **'Kilograms (kg)'**
+  String get kilogramsKg;
+
+  /// No description provided for @maximumCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum capacity'**
+  String get maximumCapacity;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile'**
+  String get editProfile;
+
+  /// No description provided for @tons.
+  ///
+  /// In en, this message translates to:
+  /// **'Tons'**
+  String get tons;
+
+  /// No description provided for @registrationNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration number'**
+  String get registrationNumber;
+
+  /// No description provided for @description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get description;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get markAllRead;
+
+  /// No description provided for @notNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notNow;
+
+  /// No description provided for @verifiedOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified Only'**
+  String get verifiedOnly;
+
+  /// No description provided for @suspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get suspended;
+
+  /// No description provided for @confirmRoleChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Role Change'**
+  String get confirmRoleChange;
+
+  /// No description provided for @farmerGrowerproducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer (Grower/Producer)'**
+  String get farmerGrowerproducer;
+
+  /// No description provided for @buyerWholesalerretailer.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer (Wholesaler/Retailer)'**
+  String get buyerWholesalerretailer;
+
+  /// No description provided for @adminPlatformOperations.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin (Platform Operations)'**
+  String get adminPlatformOperations;
+
+  /// No description provided for @changeUserRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Change User Role'**
+  String get changeUserRole;
+
+  /// No description provided for @verificationDocumentRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification document rejected'**
+  String get verificationDocumentRejected;
+
+  /// No description provided for @confirmRejection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Rejection'**
+  String get confirmRejection;
+
+  /// No description provided for @grossOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Gross Order:'**
+  String get grossOrder;
+
+  /// No description provided for @recordTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Transfer'**
+  String get recordTransfer;
+
+  /// No description provided for @applyHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply Hold'**
+  String get applyHold;
+
+  /// No description provided for @resolveHoldResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve Hold & Resume'**
+  String get resolveHoldResume;
+
+  /// No description provided for @placeSettlementOnHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Place Settlement On Hold'**
+  String get placeSettlementOnHold;
+
+  /// No description provided for @recordCompletedBankTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Record completed bank transfer'**
+  String get recordCompletedBankTransfer;
+
+  /// No description provided for @approveWire.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve & Wire'**
+  String get approveWire;
+
+  /// No description provided for @holdPayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold Payout'**
+  String get holdPayout;
+
+  /// No description provided for @seedSriLankanMarketplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed Sri Lankan marketplace'**
+  String get seedSriLankanMarketplace;
+
+  /// No description provided for @platformAnalyticsInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform Analytics & Insights'**
+  String get platformAnalyticsInsights;
+
+  /// No description provided for @feeConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee Configuration'**
+  String get feeConfiguration;
+
+  /// No description provided for @securityPolicies.
+  ///
+  /// In en, this message translates to:
+  /// **'Security Policies'**
+  String get securityPolicies;
+
+  /// No description provided for @firebaseServerControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Firebase & Server Control'**
+  String get firebaseServerControl;
+
+  /// No description provided for @reviewFeedbackModeration.
+  ///
+  /// In en, this message translates to:
+  /// **'Review & Feedback Moderation'**
+  String get reviewFeedbackModeration;
+
+  /// No description provided for @marketPriceIntelligence.
+  ///
+  /// In en, this message translates to:
+  /// **'Market Price Intelligence'**
+  String get marketPriceIntelligence;
+
+  /// No description provided for @updateNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Notice'**
+  String get updateNotice;
+
+  /// No description provided for @maintenanceNoticeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance notice updated.'**
+  String get maintenanceNoticeUpdated;
+
+  /// No description provided for @enforce.
+  ///
+  /// In en, this message translates to:
+  /// **'Enforce'**
+  String get enforce;
+
+  /// No description provided for @recordDisputeDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Dispute Decision'**
+  String get recordDisputeDecision;
+
+  /// No description provided for @splitSettlement5050.
+  ///
+  /// In en, this message translates to:
+  /// **'Split Settlement (50% / 50%)'**
+  String get splitSettlement5050;
+
+  /// No description provided for @fullRefundToBuyer100.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Refund to Buyer (100%)'**
+  String get fullRefundToBuyer100;
+
+  /// No description provided for @disputeDecisionRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispute decision recorded.'**
+  String get disputeDecisionRecorded;
+
+  /// No description provided for @arbitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Arbitrate'**
+  String get arbitrate;
+
+  /// No description provided for @releaseToFarmer100.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to Farmer (100%)'**
+  String get releaseToFarmer100;
+
+  /// No description provided for @stable.
+  ///
+  /// In en, this message translates to:
+  /// **'Stable (→)'**
+  String get stable;
+
+  /// No description provided for @spices.
+  ///
+  /// In en, this message translates to:
+  /// **'Spices'**
+  String get spices;
+
+  /// No description provided for @rising.
+  ///
+  /// In en, this message translates to:
+  /// **'Rising (↑)'**
+  String get rising;
+
+  /// No description provided for @addCommodityPolaRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Commodity Pola Rate'**
+  String get addCommodityPolaRate;
+
+  /// No description provided for @softening.
+  ///
+  /// In en, this message translates to:
+  /// **'Softening (↓)'**
+  String get softening;
+
+  /// No description provided for @fruits.
+  ///
+  /// In en, this message translates to:
+  /// **'Fruits'**
+  String get fruits;
+
+  /// No description provided for @vegetables.
+  ///
+  /// In en, this message translates to:
+  /// **'Vegetables'**
+  String get vegetables;
+
+  /// No description provided for @grains.
+  ///
+  /// In en, this message translates to:
+  /// **'Grains'**
+  String get grains;
+
+  /// No description provided for @addRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Rate'**
+  String get addRate;
+
+  /// No description provided for @release.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get release;
+
+  /// No description provided for @normalInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal (Info)'**
+  String get normalInfo;
+
+  /// No description provided for @transportersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Transporters Only'**
+  String get transportersOnly;
+
+  /// No description provided for @important.
+  ///
+  /// In en, this message translates to:
+  /// **'Important'**
+  String get important;
+
+  /// No description provided for @emergencyAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'🚨 Emergency Alert'**
+  String get emergencyAlert;
+
+  /// No description provided for @allUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Users'**
+  String get allUsers;
+
+  /// No description provided for @buyersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyers Only'**
+  String get buyersOnly;
+
+  /// No description provided for @farmersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmers Only'**
+  String get farmersOnly;
+
+  /// No description provided for @noActiveListingsAreLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No active listings are loaded.'**
+  String get noActiveListingsAreLoaded;
+
+  /// No description provided for @auditNoteSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit note saved.'**
+  String get auditNoteSaved;
+
+  /// No description provided for @reviewFlaggedAndHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Review flagged and hidden.'**
+  String get reviewFlaggedAndHidden;
+
+  /// No description provided for @deleteReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Review?'**
+  String get deleteReview;
+
+  /// No description provided for @adminModerationNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Moderation Note'**
+  String get adminModerationNote;
+
+  /// No description provided for @reviewPermanentlyRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Review permanently removed.'**
+  String get reviewPermanentlyRemoved;
+
+  /// No description provided for @saveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Note'**
+  String get saveNote;
+
+  /// No description provided for @emailFarmoraSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Farmora support'**
+  String get emailFarmoraSupport;
+
+  /// No description provided for @helpSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Support'**
+  String get helpSupport;
+
+  /// No description provided for @callFarmoraSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Call Farmora support'**
+  String get callFarmoraSupport;
+
+  /// No description provided for @changePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get changePhoto;
+
+  /// No description provided for @profileUpdatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile updated successfully.'**
+  String get profileUpdatedSuccessfully;
+
+  /// No description provided for @orderChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Order chat'**
+  String get orderChat;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @savePreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Preferences'**
+  String get savePreferences;
+
+  /// No description provided for @newMessagesAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'New messages & alerts'**
+  String get newMessagesAlerts;
+
+  /// No description provided for @quietHours10pm7am.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours (10pm – 7am)'**
+  String get quietHours10pm7am;
+
+  /// No description provided for @promotionsPriceUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotions & price updates'**
+  String get promotionsPriceUpdates;
+
+  /// No description provided for @orderStatusUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Order status updates'**
+  String get orderStatusUpdates;
+
+  /// No description provided for @cartCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart cleared'**
+  String get cartCleared;
+
+  /// No description provided for @priceHighToLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: high to low'**
+  String get priceHighToLow;
+
+  /// No description provided for @nameAz.
+  ///
+  /// In en, this message translates to:
+  /// **'Name A–Z'**
+  String get nameAz;
+
+  /// No description provided for @newest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get newest;
+
+  /// No description provided for @priceLowToHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: low to high'**
+  String get priceLowToHigh;
+
+  /// No description provided for @noKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'No, Keep'**
+  String get noKeep;
+
+  /// No description provided for @yesCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Cancel'**
+  String get yesCancel;
+
+  /// No description provided for @cancelOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Order?'**
+  String get cancelOrder;
+
+  /// No description provided for @exploreProduce.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore Produce'**
+  String get exploreProduce;
+
+  /// No description provided for @orderCancelledSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Order cancelled successfully'**
+  String get orderCancelledSuccessfully;
+
+  /// No description provided for @maximum5ImagesAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum 5 images allowed'**
+  String get maximum5ImagesAllowed;
+
+  /// No description provided for @acceptCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Counter'**
+  String get acceptCounter;
+
+  /// No description provided for @makeAnOfferOnCrops.
+  ///
+  /// In en, this message translates to:
+  /// **'Make an Offer on Crops'**
+  String get makeAnOfferOnCrops;
+
+  /// No description provided for @verifyHarvest.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify harvest'**
+  String get verifyHarvest;
+
+  /// No description provided for @messageFarmerTransporter.
+  ///
+  /// In en, this message translates to:
+  /// **'Message farmer / transporter'**
+  String get messageFarmerTransporter;
+
+  /// No description provided for @later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get later;
+
+  /// No description provided for @verifyHarvestBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify harvest barcode'**
+  String get verifyHarvestBarcode;
+
+  /// No description provided for @confirmCodOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm COD only'**
+  String get confirmCodOnly;
+
+  /// No description provided for @openComplaint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open complaint'**
+  String get openComplaint;
+
+  /// No description provided for @orderCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Order cancelled.'**
+  String get orderCancelled;
+
+  /// No description provided for @addressUpdatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Address updated successfully'**
+  String get addressUpdatedSuccessfully;
+
+  /// No description provided for @codPaymentConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'COD payment confirmed.'**
+  String get codPaymentConfirmed;
+
+  /// No description provided for @leaveAReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review?'**
+  String get leaveAReview;
+
+  /// No description provided for @editDeliveryAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Delivery Address'**
+  String get editDeliveryAddress;
+
+  /// No description provided for @harvestAuthenticityVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Harvest authenticity verified.'**
+  String get harvestAuthenticityVerified;
+
+  /// No description provided for @reviewSubmittedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Review submitted successfully!'**
+  String get reviewSubmittedSuccessfully;
 }
 
 class _AppLocalizationsDelegate

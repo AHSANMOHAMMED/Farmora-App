@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -118,63 +119,97 @@ class SparkBackend {
     required int quantity,
     int deliveryFeeMinor = 0,
     required String deliveryAddress,
+    required String idempotencyKey,
   }) async {
     final uid = _uid;
-    final productSnap = await _db.collection('products').doc(productId).get();
-    final product = productSnap.data();
-    if (product == null) throw StateError('Product not found.');
-    final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
-    if (quantity < 1 || quantity > available) {
-      throw StateError('Not enough stock.');
+    if (idempotencyKey.length < 16 || idempotencyKey.length > 256) {
+      throw ArgumentError('A valid idempotency key is required.');
     }
-    final priceMinor = (product['priceMinor'] as num?)?.toInt() ?? 0;
-    final subtotal = priceMinor * quantity;
-    final farmerId = product['farmerId'] as String;
+    if (quantity < 1 ||
+        deliveryFeeMinor < 0 ||
+        deliveryAddress.trim().length < 5) {
+      throw ArgumentError('Invalid order details.');
+    }
+    final encodedKey = base64Url
+        .encode(utf8.encode('$uid:$idempotencyKey'))
+        .replaceAll('=', '');
+    final orderRef = _db.collection('orders').doc('idem_$encodedKey');
+    final productRef = _db.collection('products').doc(productId);
     final buyer = await userDoc(uid);
-    final orderRef = _db.collection('orders').doc();
-    final batch = _db.batch();
-    batch.set(orderRef, {
-      'buyerId': uid,
-      'farmerId': farmerId,
-      'productId': productId,
-      'productName': product['name'] ?? '',
-      'title': '$quantity ${product['unit'] ?? 'kg'} ${product['name'] ?? ''}',
-      'quantity': '$quantity ${product['unit'] ?? 'kg'}',
-      'unit': product['unit'] ?? 'kg',
-      'items': [
-        {
-          'productId': productId,
-          'quantity': quantity,
-          'pricePerUnitMinor': priceMinor,
+    var created = false;
+    String? farmerId;
+    String? productName;
+    await _db.runTransaction((transaction) async {
+      final prior = await transaction.get(orderRef);
+      if (prior.exists) {
+        final old = prior.data()!;
+        if (old['buyerId'] != uid ||
+            old['productId'] != productId ||
+            old['requestedQuantity'] != quantity ||
+            old['deliveryFeeMinor'] != deliveryFeeMinor ||
+            old['deliveryAddress'] != deliveryAddress.trim()) {
+          throw StateError(
+              'Idempotency key was already used for another order.');
         }
-      ],
-      'subtotalMinor': subtotal,
-      'deliveryFeeMinor': deliveryFeeMinor,
-      'totalMinor': subtotal + deliveryFeeMinor,
-      'currency': 'LKR',
-      'deliveryAddress': deliveryAddress,
-      'pickupAddress': product['location'] ?? '',
-      'location': product['location'] ?? '',
-      'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
-      'farmerName': product['farmerName'] ?? '',
-      'status': 'pending',
-      'paymentStatus': 'payment_required',
-      'escrowStatus': 'not_funded',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+        farmerId = old['farmerId'] as String?;
+        productName = old['productName'] as String?;
+        return;
+      }
+      final productSnap = await transaction.get(productRef);
+      final product = productSnap.data();
+      if (product == null) throw StateError('Product not found.');
+      final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
+      if (quantity > available) throw StateError('Not enough stock.');
+      final priceMinor = (product['priceMinor'] as num?)?.toInt() ?? 0;
+      final subtotal = priceMinor * quantity;
+      farmerId = product['farmerId'] as String?;
+      productName = product['name'] as String? ?? '';
+      transaction.set(orderRef, {
+        'buyerId': uid,
+        'farmerId': farmerId,
+        'productId': productId,
+        'productName': productName,
+        'title': '$quantity ${product['unit'] ?? 'kg'} $productName',
+        'quantity': '$quantity ${product['unit'] ?? 'kg'}',
+        'requestedQuantity': quantity,
+        'unit': product['unit'] ?? 'kg',
+        'items': [
+          {
+            'productId': productId,
+            'quantity': quantity,
+            'pricePerUnitMinor': priceMinor,
+          }
+        ],
+        'subtotalMinor': subtotal,
+        'deliveryFeeMinor': deliveryFeeMinor,
+        'totalMinor': subtotal + deliveryFeeMinor,
+        'currency': 'LKR',
+        'deliveryAddress': deliveryAddress.trim(),
+        'pickupAddress': product['location'] ?? '',
+        'location': product['location'] ?? '',
+        'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
+        'farmerName': product['farmerName'] ?? '',
+        'status': 'pending',
+        'paymentStatus': 'payment_required',
+        'escrowStatus': 'not_funded',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      transaction.update(productRef, {
+        'quantityAvailable': available - quantity,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      created = true;
     });
-    batch.update(productSnap.reference, {
-      'quantityAvailable': available - quantity,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    await batch.commit();
-    await _notify(
-      farmerId,
-      'New order',
-      'A buyer ordered ${product['name'] ?? 'your produce'}.',
-      'order',
-      orderRef.id,
-    );
+    if (created && farmerId != null) {
+      await _notify(
+        farmerId!,
+        'New order',
+        'A buyer ordered ${productName ?? 'your produce'}.',
+        'order',
+        orderRef.id,
+      );
+    }
     return orderRef.id;
   }
 
@@ -222,7 +257,8 @@ class SparkBackend {
     final existing = await _db
         .collection('transport_jobs')
         .where('orderId', isEqualTo: orderId)
-        .where('status', whereIn: ['requested', 'accepted', 'pickedUp', 'inTransit'])
+        .where('status',
+            whereIn: ['requested', 'accepted', 'pickedUp', 'inTransit'])
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty) return;
@@ -230,8 +266,10 @@ class SparkBackend {
     final fee = deliveryFeeMinor ??
         (order['deliveryFeeMinor'] as num?)?.toInt() ??
         35000;
-    final productName = (order['productName'] ?? order['title'] ?? 'Produce').toString();
-    final pickup = (order['pickupAddress'] ?? order['location'] ?? 'Farm').toString();
+    final productName =
+        (order['productName'] ?? order['title'] ?? 'Produce').toString();
+    final pickup =
+        (order['pickupAddress'] ?? order['location'] ?? 'Farm').toString();
     final dropoff = (order['deliveryAddress'] ?? 'Buyer').toString();
     await _db.collection('transport_jobs').add({
       'orderId': orderId,
@@ -469,12 +507,46 @@ class SparkBackend {
     final uid = _uid;
     final snap = await _db.collection('offers').doc(offerId).get();
     final offer = snap.data();
-    if (offer == null || offer['farmerId'] != uid) {
-      throw StateError('Offer not found.');
+    if (offer == null || !['pending', 'countered'].contains(offer['status'])) {
+      throw StateError('Offer cannot be changed.');
     }
+    final actor = await userDoc(uid);
+    final status = actor['role'] == 'farmer' && offer['farmerId'] == uid
+        ? 'rejected'
+        : actor['role'] == 'buyer' && offer['buyerId'] == uid
+            ? 'cancelled'
+            : null;
+    if (status == null) throw StateError('Offer participant required.');
     await snap.reference.update({
-      'status': 'rejected',
+      'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> counterOffer({
+    required String offerId,
+    required double proposedPrice,
+  }) async {
+    final uid = _uid;
+    final priceMinor = (proposedPrice * 100).round();
+    if (priceMinor < 1) {
+      throw ArgumentError('A valid counter price is required.');
+    }
+    final ref = _db.collection('offers').doc(offerId);
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      final offer = snapshot.data();
+      if (offer == null ||
+          offer['farmerId'] != uid ||
+          !['pending', 'countered'].contains(offer['status'])) {
+        throw StateError('Offer cannot be countered.');
+      }
+      transaction.update(ref, {
+        'status': 'countered',
+        'proposedPriceMinor': priceMinor,
+        'proposedPrice': priceMinor / 100,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
@@ -499,7 +571,8 @@ class SparkBackend {
     required String documentId,
     required String status,
   }) async {
-    final snap = await _db.collection('verification_docs').doc(documentId).get();
+    final snap =
+        await _db.collection('verification_docs').doc(documentId).get();
     final doc = snap.data();
     if (doc == null) throw StateError('Document not found.');
     await snap.reference.update({
@@ -533,6 +606,86 @@ class SparkBackend {
       'releasedBy': _uid,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> resolveDispute({
+    required String orderId,
+    required String resolution,
+    required String adminNotes,
+  }) async {
+    final uid = _uid;
+    final profile = await userDoc(uid);
+    if (profile['role'] != 'admin') {
+      throw StateError('Administrator access required.');
+    }
+    final refundPercent = switch (resolution) {
+      'refund_buyer' => 100,
+      'release_farmer' => 0,
+      'split_settlement' => 50,
+      _ => -1,
+    };
+    if (refundPercent < 0 || adminNotes.trim().isEmpty) {
+      throw ArgumentError('A valid decision and audit note are required.');
+    }
+    final orderRef = _db.collection('orders').doc(orderId);
+    final orderSnapshot = await orderRef.get();
+    final order = orderSnapshot.data();
+    if (order == null || order['paymentStatus'] != 'disputed') {
+      throw StateError('Order has no open dispute.');
+    }
+    final disputeId = order['disputeId'] as String?;
+    if (disputeId == null) throw StateError('Dispute record is missing.');
+    final disputeRef = _db.collection('disputes').doc(disputeId);
+    final disputeSnapshot = await disputeRef.get();
+    final dispute = disputeSnapshot.data();
+    if (dispute == null || dispute['status'] != 'open') {
+      throw StateError('Dispute is already closed.');
+    }
+    final totalMinor = (order['totalMinor'] as num?)?.toInt();
+    if (totalMinor == null || totalMinor < 0) {
+      throw StateError('Order total is invalid.');
+    }
+    final refundMinor = (totalMinor * refundPercent / 100).round();
+    final settlementMinor = totalMinor - refundMinor;
+    final paymentStatus = refundPercent == 100
+        ? 'refund_pending'
+        : refundPercent == 0
+            ? 'settlement_pending'
+            : 'split_settlement_pending';
+    final batch = _db.batch();
+    batch.update(orderRef, {
+      'status': resolution == 'refund_buyer' ? 'cancelled' : 'completed',
+      'disputeStatus': 'resolved',
+      'disputeResolution': resolution,
+      'disputeAdminNotes': adminNotes.trim(),
+      'disputeResolvedBy': uid,
+      'disputeResolvedAt': FieldValue.serverTimestamp(),
+      'refundPercent': refundPercent,
+      'refundMinor': refundMinor,
+      'settlementMinor': settlementMinor,
+      'paymentStatus': paymentStatus,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.update(disputeRef, {
+      'status': 'resolved',
+      'resolution': resolution,
+      'adminNotes': adminNotes.trim(),
+      'resolvedBy': uid,
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'refundPercent': refundPercent,
+      'refundMinor': refundMinor,
+      'settlementMinor': settlementMinor,
+    });
+    batch.set(_db.collection('audit_logs').doc(), {
+      'action': 'dispute_resolved',
+      'orderId': orderId,
+      'disputeId': disputeId,
+      'resolution': resolution,
+      'refundPercent': refundPercent,
+      'actorId': uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
   }
 
   Future<Map<String, dynamic>> exportUserData() async {
@@ -626,9 +779,8 @@ class SparkBackend {
       'createdAt': FieldValue.serverTimestamp(),
     });
     await _db.collection('conversations').doc(conversationId).update({
-      'lastMessage': ciphertext.length > 140
-          ? ciphertext.substring(0, 140)
-          : ciphertext,
+      'lastMessage':
+          ciphertext.length > 140 ? ciphertext.substring(0, 140) : ciphertext,
       'lastMessageAt': FieldValue.serverTimestamp(),
     });
     await _notify(
@@ -735,8 +887,11 @@ class SparkBackend {
   /// Seeds Sri Lankan marketplace data onto existing role accounts (admin).
   Future<Map<String, dynamic>> seedDatabase() async {
     Future<String?> findRole(String role) async {
-      final snap =
-          await _db.collection('users').where('role', isEqualTo: role).limit(5).get();
+      final snap = await _db
+          .collection('users')
+          .where('role', isEqualTo: role)
+          .limit(5)
+          .get();
       final docs = snap.docs.where((d) {
         final u = d.data();
         return u['isSuspended'] != true && u['isDeleted'] != true;
@@ -760,15 +915,33 @@ class SparkBackend {
 
     final farmer = await userDoc(farmerId);
     final buyer = await userDoc(buyerId);
-    final farmerName = (farmer['name'] ?? farmer['displayName'] ?? 'Farmer').toString();
-    final buyerName = (buyer['name'] ?? buyer['displayName'] ?? 'Buyer').toString();
+    final farmerName =
+        (farmer['name'] ?? farmer['displayName'] ?? 'Farmer').toString();
+    final buyerName =
+        (buyer['name'] ?? buyer['displayName'] ?? 'Buyer').toString();
 
     final products = [
-      ('Nuwara Eliya Carrots', 'Vegetables', 'Nuwara Eliya', 'kg', 35000, 80, true),
+      (
+        'Nuwara Eliya Carrots',
+        'Vegetables',
+        'Nuwara Eliya',
+        'kg',
+        35000,
+        80,
+        true
+      ),
       ('Dambulla Tomatoes', 'Vegetables', 'Matale', 'kg', 28000, 120, false),
       ('Jaffna Red Onions', 'Vegetables', 'Jaffna', 'kg', 42000, 60, false),
       ('Ceylon Cinnamon', 'Spices', 'Kandy', 'kg', 450000, 15, true),
-      ('King Coconut (Thambili)', 'Fruits', 'Kurunegala', 'pcs', 12000, 200, true),
+      (
+        'King Coconut (Thambili)',
+        'Fruits',
+        'Kurunegala',
+        'pcs',
+        12000,
+        200,
+        true
+      ),
       ('Kolikuttu Banana', 'Fruits', 'Hambantota', 'kg', 25000, 90, false),
       ('Keeri Samba Rice', 'Grains', 'Polonnaruwa', 'kg', 32000, 500, false),
       ('Gotukola Bundle', 'Herbs', 'Gampaha', 'pcs', 8000, 150, true),
@@ -882,14 +1055,17 @@ class SparkBackend {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    batch.set(_db.collection('settings').doc('platform'), {
-      'currency': 'LKR',
-      'defaultDeliveryFeeMinor': 35000,
-      'platformFeeBps': 250,
-      'sessionTimeoutMinutes': 60,
-      'country': 'Sri Lanka',
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    batch.set(
+        _db.collection('settings').doc('platform'),
+        {
+          'currency': 'LKR',
+          'defaultDeliveryFeeMinor': 35000,
+          'platformFeeBps': 250,
+          'sessionTimeoutMinutes': 60,
+          'country': 'Sri Lanka',
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true));
 
     await batch.commit();
     return {

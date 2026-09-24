@@ -182,7 +182,8 @@ class TransporterProfileScreen extends StatelessWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    context.read<FarmoraState>().signOut();
+    await context.read<FarmoraState>().signOut();
+    if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       (_) => false,

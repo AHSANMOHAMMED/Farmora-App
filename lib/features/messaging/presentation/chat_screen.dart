@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../services/chat_outbox_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/conversation_model.dart';
 import '../../../services/chat_crypto.dart';
@@ -48,7 +49,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _recipientOf(FarmoraConversation c) {
     return c.participantIds.firstWhere((id) => id != _uid,
-        orElse: () => c.participantIds.isNotEmpty ? c.participantIds.first : '');
+        orElse: () =>
+            c.participantIds.isNotEmpty ? c.participantIds.first : '');
   }
 
   Future<void> _send() async {
@@ -62,20 +64,40 @@ class _ChatScreenState extends State<ChatScreen> {
       final peerKey = _peerPublicKey ??
           await _service.fetchChatPublicKey(_recipientOf(widget.conversation));
       if (peerKey == null || peerKey.isEmpty) {
-        throw StateError('Recipient has no chat key yet. Ask them to open chat once.');
+        throw StateError(
+            'Recipient has no chat key yet. Ask them to open chat once.');
       }
-      final ciphertext = await ChatCrypto.instance.encrypt(
-        plaintext: text,
-        peerPublicKeyB64: peerKey,
-      );
-      await _service.sendEncryptedMessage(
-        orderId: widget.conversation.orderId,
-        recipientId: _recipientOf(widget.conversation),
-        ciphertext: ciphertext,
-      );
-      _controller.clear();
+      String? ciphertext;
+      try {
+        ciphertext = await ChatCrypto.instance.encrypt(
+          plaintext: text,
+          peerPublicKeyB64: peerKey,
+        );
+        await _service.sendEncryptedMessage(
+          orderId: widget.conversation.orderId,
+          recipientId: _recipientOf(widget.conversation),
+          ciphertext: ciphertext,
+        );
+        _controller.clear();
+      } catch (e) {
+        if (ciphertext != null) {
+          await ChatOutboxService.enqueue(PendingMessage(
+            orderId: widget.conversation.orderId,
+            recipientId: _recipientOf(widget.conversation),
+            ciphertext: ciphertext,
+          ));
+          _controller.clear();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Saved offline. Will retry automatically.')),
+            );
+          }
+        } else {
+          setState(() => _error = 'Could not encrypt message. Check keys.');
+        }
+      }
     } catch (e) {
-      setState(() => _error = 'Could not send. Check connection and retry. ($e)');
+      setState(() => _error = 'Key error: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -85,9 +107,14 @@ class _ChatScreenState extends State<ChatScreen> {
     final peerKey = _peerPublicKey;
     if (peerKey == null || peerKey.isEmpty) {
       if (body.startsWith('farmora1:')) {
-        return body.substring('farmora1:'.length).replaceAll(RegExp(r'\.+$'), '');
+        return body
+            .substring('farmora1:'.length)
+            .replaceAll(RegExp(r'\.+$'), '');
       }
-      if (body.startsWith(ChatCrypto.ciphertextPrefix)) return '[encrypted]';
+      if (body.startsWith(ChatCrypto.currentCiphertextPrefix) ||
+          body.startsWith(ChatCrypto.ciphertextPrefix)) {
+        return '[encrypted]';
+      }
       return body;
     }
     try {
@@ -104,19 +131,28 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Order chat'), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+          title: const Text('Order chat'),
+          backgroundColor: Colors.transparent,
+          elevation: 0),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder<List<FarmoraMessage>>(
-              stream: _service.messagesStream(widget.conversation.id),
+              stream: _service.messagesStream(
+                widget.conversation.id,
+                orderId: widget.conversation.orderId,
+                uid: FirebaseAuth.instance.currentUser?.uid ?? '',
+              ),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final msgs = snap.data ?? const <FarmoraMessage>[];
                 if (msgs.isEmpty) {
-                  return const Center(child: Text('Say hello — messages are order-scoped and E2E encrypted.'));
+                  return const Center(
+                      child: Text(
+                          'Say hello — messages are order-scoped and encrypted for the recipient.'));
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -125,13 +161,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     final m = msgs[i];
                     final mine = m.senderId == _uid;
                     return Align(
-                      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                          mine ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.75),
                         decoration: BoxDecoration(
-                          color: mine ? AppColors.primary : AppColors.surfaceContainerLowest,
+                          color: mine
+                              ? AppColors.primary
+                              : AppColors.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: FutureBuilder<String>(
@@ -139,7 +180,10 @@ class _ChatScreenState extends State<ChatScreen> {
                           builder: (context, dec) {
                             return Text(
                               dec.data ?? '…',
-                              style: TextStyle(color: mine ? Colors.white : AppColors.onSurface),
+                              style: TextStyle(
+                                  color: mine
+                                      ? Colors.white
+                                      : AppColors.onSurface),
                             );
                           },
                         ),
@@ -152,8 +196,21 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(_error!,
+                        style: const TextStyle(
+                            color: AppColors.error, fontSize: 12)),
+                  ),
+                  TextButton.icon(
+                    onPressed: _sending ? null : _send,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
           SafeArea(
             child: Padding(
@@ -168,7 +225,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Type a message…',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                       onSubmitted: (_) => _send(),
                     ),
@@ -180,7 +238,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: IconButton.filled(
                       onPressed: _sending ? null : _send,
                       icon: _sending
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.send),
                     ),
                   ),

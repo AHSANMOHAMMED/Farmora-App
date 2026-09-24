@@ -62,7 +62,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                     backgroundColor: AppColors.surfaceContainerLow,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
                     ),
                   ),
                 );
@@ -78,7 +79,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       children: [
                         Icon(Icons.gavel_rounded,
                             size: 48,
-                            color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.5)),
                         const SizedBox(height: 12),
                         Text(
                           'No $_selectedFilter disputes.',
@@ -182,7 +184,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
             const SizedBox(height: 4),
             Text(
               'Dispute Reference: ${order.disputeId}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             Container(
@@ -206,7 +209,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                   SizedBox(height: 4),
                   Text(
                     'Produce quality damaged upon delivery or missing quantity mismatch.',
-                    style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style:
+                        TextStyle(fontSize: 13, color: AppColors.textPrimary),
                   ),
                 ],
               ),
@@ -217,7 +221,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               children: [
                 Text(
                   'Escrow Status: ${order.paymentStatus}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
                 ),
                 if (!isResolved)
                   FilledButton.icon(
@@ -227,7 +232,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       backgroundColor: AppColors.primary,
                       visualDensity: VisualDensity.compact,
                     ),
-                    onPressed: () => _showArbitrationModal(context, order, state),
+                    onPressed: () =>
+                        _showArbitrationModal(context, order, state),
                   )
                 else
                   const Row(
@@ -294,7 +300,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               const SizedBox(height: 8),
               Text(
                 'Order: ${order.orderNumber} · Amount: ${order.displayTotal}',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -304,24 +311,28 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               const SizedBox(height: 8),
               RadioGroup<String>(
                 groupValue: resolution,
-                onChanged: (v) => setModalState(() => resolution = v ?? 'refund_buyer'),
+                onChanged: (v) =>
+                    setModalState(() => resolution = v ?? 'refund_buyer'),
                 child: const Column(
                   children: [
                     RadioListTile<String>(
                       title: Text('Full Refund to Buyer (100%)'),
-                      subtitle: Text('Return locked escrow to buyer. Cancel order.'),
+                      subtitle:
+                          Text('Return locked escrow to buyer. Cancel order.'),
                       value: 'refund_buyer',
                       activeColor: AppColors.primary,
                     ),
                     RadioListTile<String>(
                       title: Text('Release to Farmer (100%)'),
-                      subtitle: Text('Dismiss dispute. Payout full funds to farmer.'),
+                      subtitle:
+                          Text('Dismiss dispute. Payout full funds to farmer.'),
                       value: 'release_farmer',
                       activeColor: AppColors.primary,
                     ),
                     RadioListTile<String>(
                       title: Text('Split Settlement (50% / 50%)'),
-                      subtitle: Text('Partial refund to buyer, remainder to farmer.'),
+                      subtitle:
+                          Text('Partial refund to buyer, remainder to farmer.'),
                       value: 'split_settlement',
                       activeColor: AppColors.primary,
                     ),
@@ -342,23 +353,43 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    Navigator.pop(ctx);
-                    await state.resolveDisputeArbitration(
-                      orderId: order.id,
-                      resolution: resolution,
-                      adminNotes: notesCtrl.text.trim(),
-                    );
-                    if (context.mounted) {
+                    if (notesCtrl.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Dispute successfully arbitrated!')),
+                        const SnackBar(
+                          content: Text(
+                              'Add audit notes before resolving this dispute.'),
+                        ),
                       );
+                      return;
+                    }
+                    Navigator.pop(ctx);
+                    try {
+                      await state.resolveDisputeArbitration(
+                        orderId: order.id,
+                        resolution: resolution,
+                        adminNotes: notesCtrl.text.trim(),
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Dispute decision recorded.')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Could not resolve the dispute. Try again.')),
+                        );
+                      }
                     }
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Execute Decision & Payout Escrow'),
+                  child: const Text('Record Dispute Decision'),
                 ),
               ),
             ],

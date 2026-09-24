@@ -107,10 +107,16 @@ class UserLocationService {
     }
   }
 
-  void stopSharing() {
+  Future<void> stopSharing() async {
     _positionSub?.cancel();
     _positionSub = null;
     _sharing = false;
+    _lastPosition = null;
+    try {
+      await FirestoreService().clearMyLocation();
+    } catch (e) {
+      debugPrint('Could not clear shared user location: $e');
+    }
   }
 
   /// True when the stored profile location was refreshed recently enough

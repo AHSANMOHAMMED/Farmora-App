@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/farmora_strings.dart';
@@ -10,6 +11,7 @@ import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/widgets/route_progress_map.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 
 class LogisticsTrackingScreen extends StatefulWidget {
@@ -26,7 +28,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   final Set<int> _checkedItems = {0};
   final FirestoreService _service = FirestoreService();
   StreamSubscription<List<TransportJob>>? _jobSub;
+  StreamSubscription<Map<String, dynamic>?>? _transporterSub;
   TransportJob? _job;
+  Map<String, dynamic>? _transporter;
 
   @override
   void initState() {
@@ -35,15 +39,31 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
     if (widget.order.id.isNotEmpty && uid.isNotEmpty) {
       _jobSub = _service.jobByOrderStream(widget.order.id, uid).listen((jobs) {
         if (mounted && jobs.isNotEmpty) {
-          setState(() => _job = jobs.first);
+          final job = jobs.first;
+          setState(() => _job = job);
+          _watchTransporter(job.transporterId);
         }
       }, onError: (e) => debugPrint('Tracking job stream error: $e'));
     }
   }
 
+  void _watchTransporter(String? transporterId) {
+    _transporterSub?.cancel();
+    if (transporterId == null || transporterId.isEmpty) {
+      if (mounted) setState(() => _transporter = null);
+      return;
+    }
+    _transporterSub = _service
+        .transporterPublicProfileStream(transporterId)
+        .listen((profile) {
+      if (mounted) setState(() => _transporter = profile);
+    }, onError: (e) => debugPrint('Transporter profile stream error: $e'));
+  }
+
   @override
   void dispose() {
     _jobSub?.cancel();
+    _transporterSub?.cancel();
     super.dispose();
   }
 
@@ -58,6 +78,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
     final courierLive = _job?.hasCourierLocation ?? false;
     final courierFresh =
         DeliveryLocationService.isLocationFresh(_job?.locationUpdatedAt);
+    final vehicleDetails = [
+      _transporter?['vehicleType'],
+      _transporter?['vehicleRegistration'],
+    ].whereType<String>().where((value) => value.isNotEmpty).join(' • ');
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -84,8 +108,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
               height: 36,
               decoration: const BoxDecoration(
                   color: AppColors.primary, shape: BoxShape.circle),
-              child:
-                  const Icon(Icons.person, color: Colors.white, size: 20),
+              child: const Icon(Icons.person, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -107,8 +130,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(color: const Color(0xFFE5E7EB)),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
                         child: Row(
                           children: [
@@ -117,8 +139,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'Order #${order.orderNumber}',
@@ -129,7 +150,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                         color: AppColors.onSurface),
                                   ),
                                   Text(
-                                    '${order.productName.isNotEmpty ? order.productName : order.title} (${order.quantity.isNotEmpty ? order.quantity : '28 kg'})',
+                                    '${order.productName.isNotEmpty ? order.productName : order.title} (${order.quantity.isNotEmpty ? order.quantity : '—'})',
                                     style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 11,
@@ -158,7 +179,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                           const Icon(Icons.circle,
                               size: 8, color: Color(0xFF2E7D32)),
                           const SizedBox(width: 6),
-                          Text(strings.t('pickupToday'),
+                          Text(
+                              _job?.status == 'requested'
+                                  ? 'Pickup requested'
+                                  : (_job?.status ?? order.status),
                               style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 12,
@@ -192,7 +216,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'FULFILLMENT DISPATCH',
+                              'DELIVERY STATUS',
                               style: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 11,
@@ -211,7 +235,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(strings.t('driverEnRoute'),
+                      Text(_job == null ? order.status : _job!.status,
                           style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 14,
@@ -265,54 +289,65 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     children: [
                       Row(
                         children: [
-                          ClipOval(
-                            child: Image.asset(
-                              'assets/images/driver_john.png',
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 48,
-                                height: 48,
-                                color: AppColors.surfaceContainerLow,
-                                child: const Icon(Icons.person,
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: AppColors.surfaceContainerLow,
+                            backgroundImage:
+                                (_transporter?['photoUrl'] as String?)
+                                            ?.isNotEmpty ==
+                                        true
+                                    ? NetworkImage(
+                                        _transporter!['photoUrl'] as String)
+                                    : null,
+                            child: (_transporter?['photoUrl'] as String?)
+                                        ?.isNotEmpty ==
+                                    true
+                                ? null
+                                : const Icon(Icons.person,
                                     color: AppColors.primary),
-                              ),
-                            ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
-                                    Text('John Davis',
-                                        style: TextStyle(
-                                            fontFamily: 'Inter',
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.onSurface)),
-                                    SizedBox(width: 6),
-                                    Icon(Icons.star_rounded,
-                                        size: 14, color: Color(0xFFF9A825)),
-                                    Text('4.9',
-                                        style: TextStyle(
-                                            fontFamily: 'Inter',
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.onSurface)),
+                                    Flexible(
+                                      child: Text(
+                                          _transporter?['displayName']
+                                                  as String? ??
+                                              'Transport provider',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.onSurface)),
+                                    ),
+                                    if (_transporter?['isVerified'] ==
+                                        true) ...[
+                                      const SizedBox(width: 5),
+                                      const Icon(Icons.verified_rounded,
+                                          size: 15, color: AppColors.primary),
+                                    ],
                                   ],
                                 ),
-                                Text('GreenRoute Logistics',
-                                    style: TextStyle(
+                                Text(
+                                    _job?.transporterId == null
+                                        ? 'Awaiting transporter acceptance'
+                                        : 'Assigned transporter',
+                                    style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 12,
                                         color: Color(0xFF2E7D32),
                                         fontWeight: FontWeight.w600)),
-                                Text('White Ford Transit (Lic: 7XF-902)',
-                                    style: TextStyle(
+                                Text(
+                                    vehicleDetails.isEmpty
+                                        ? 'Vehicle details unavailable'
+                                        : vehicleDetails,
+                                    style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 11,
                                         color: AppColors.onSurfaceVariant)),
@@ -336,8 +371,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(strings.t('estimatedArrival'),
                                     style: const TextStyle(
@@ -345,6 +379,14 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.onSurface)),
+                                const Text(
+                                  'ETA unavailable',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -356,8 +398,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                   .withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('On\nSchedule',
-                                style: TextStyle(
+                            child: Text(_job?.status ?? order.status,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -382,11 +426,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                       fontWeight: FontWeight.w600)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.onSurface,
-                                side: const BorderSide(
-                                    color: Color(0xFFE0E0E0)),
+                                side:
+                                    const BorderSide(color: Color(0xFFE0E0E0)),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(10)),
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ),
@@ -411,11 +454,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                       fontWeight: FontWeight.w600)),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.onSurface,
-                                side: const BorderSide(
-                                    color: Color(0xFFE0E0E0)),
+                                side:
+                                    const BorderSide(color: Color(0xFFE0E0E0)),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(10)),
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ),
@@ -457,8 +499,11 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                               fontWeight: FontWeight.w700,
                               color: AppColors.onSurface)),
                     ),
-                    const Text('29.6 km total',
-                        style: TextStyle(
+                    Text(
+                        _job?.hasRouteCoordinates == true
+                            ? 'GPS route'
+                            : 'Route preview',
+                        style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             color: AppColors.onSurfaceVariant)),
@@ -477,20 +522,26 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Map area (static placeholder)
+                      // Show the real route when coordinates and a Maps key
+                      // are configured; otherwise show the neutral progress view.
                       Stack(
                         children: [
-                          Container(
-                            height: 150,
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFD6E4F0),
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(14)),
+                          RouteProgressMap(
+                            progress: RouteProgressMap.progressForJobStatus(
+                              _job?.status ?? 'requested',
                             ),
-                            child: CustomPaint(
-                              painter: _RoutePainter(),
-                            ),
+                            pickupLabel: _job?.pickup ?? 'Farm pickup',
+                            dropoffLabel: _job?.dropoff ?? 'Delivery point',
+                            statusLabel: _job?.status ?? order.status,
+                            pickup: _job?.hasRouteCoordinates == true
+                                ? LatLng(_job!.pickupLat!, _job!.pickupLng!)
+                                : null,
+                            dropoff: _job?.hasRouteCoordinates == true
+                                ? LatLng(_job!.dropoffLat!, _job!.dropoffLng!)
+                                : null,
+                            courier: courierLive
+                                ? LatLng(_job!.courierLat!, _job!.courierLng!)
+                                : null,
                           ),
                           Positioned(
                             left: 12,
@@ -507,7 +558,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                               child: Row(
                                 children: [
                                   Icon(
-                                    courierLive
+                                    courierLive && courierFresh
                                         ? Icons.my_location_rounded
                                         : Icons.navigation_rounded,
                                     size: 12,
@@ -519,7 +570,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                         ? (courierFresh
                                             ? 'Driver location LIVE'
                                             : 'Driver location updating…')
-                                        : 'Live telemetry active',
+                                        : 'Route progress',
                                     style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 11,
@@ -596,8 +647,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                             _buildWaypoint(
                               icon: Icons.storefront_rounded,
                               label: strings.t('pickupOrigin'),
-                              name: 'Sunny Valley Farm',
-                              detail: 'Gate B, Loading Dock · Kurunegala',
+                              name: state.displayName.isEmpty
+                                  ? 'Farm pickup'
+                                  : state.displayName,
+                              detail: _job?.pickup ?? order.detail,
                               iconBg: const Color(0xFFE8F5E9),
                               iconColor: AppColors.primary,
                             ),
@@ -605,7 +658,11 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                             _buildWaypoint(
                               icon: Icons.location_on_rounded,
                               label: strings.t('deliveryDestination'),
-                              name: order.buyerCompany,
+                              name: order.buyerCompany.isNotEmpty
+                                  ? order.buyerCompany
+                                  : order.buyerName.isNotEmpty
+                                      ? order.buyerName
+                                      : 'Buyer',
                               detail: order.deliveryAddress,
                               iconBg: const Color(0xFFFDE8E8),
                               iconColor: AppColors.error,
@@ -618,38 +675,22 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Row(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Icon(Icons.sticky_note_2_outlined,
+                                  const Icon(Icons.sticky_note_2_outlined,
                                       size: 14,
                                       color: AppColors.onSurfaceVariant),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Buyer Special Note:',
-                                            style: TextStyle(
-                                                fontFamily: 'Inter',
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color:
-                                                    AppColors.onSurface)),
-                                        SizedBox(height: 2),
-                                        Text(
-                                            '"Deliver to back alley loading dock. Call shop manager upon arrival."',
-                                            style: TextStyle(
-                                                fontFamily: 'Inter',
-                                                fontSize: 11,
-                                                fontStyle:
-                                                    FontStyle.italic,
-                                                color: AppColors
-                                                    .onSurfaceVariant,
-                                                height: 1.35)),
-                                      ],
+                                    child: Text(
+                                      order.detail.isNotEmpty
+                                          ? order.detail
+                                          : 'No delivery instructions provided.',
+                                      style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 11,
+                                          color: AppColors.onSurfaceVariant,
+                                          height: 1.35),
                                     ),
                                   ),
                                 ],
@@ -674,8 +715,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                               fontWeight: FontWeight.w700,
                               color: AppColors.onSurface)),
                     ),
-                    const Text('Stage 3 of 6',
-                        style: TextStyle(
+                    Text((_job?.status ?? order.status).toUpperCase(),
+                        style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -683,7 +724,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                _buildLifecycle(),
+                _buildLifecycle(order.status),
                 const SizedBox(height: 20),
 
                 // ── Pickup Checklist ──
@@ -704,7 +745,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         color: AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('${_checkedItems.length}/3 ${strings.t('done')}',
+                      child: Text(
+                          '${_checkedItems.length}/3 ${strings.t('done')}',
                           style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
@@ -745,8 +787,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         decoration: BoxDecoration(
                             color: AppColors.surface,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFFE0E0E0))),
+                            border: Border.all(color: const Color(0xFFE0E0E0))),
                         child: const Icon(Icons.verified_user_outlined,
                             size: 16, color: AppColors.onSurface),
                       ),
@@ -755,16 +796,15 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(strings.t('escrowProtected'),
-                                style: const TextStyle(
+                            const Text('Payment status',
+                                style: TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.onSurface)),
                             const SizedBox(height: 3),
-                            const Text(
-                                "The buyer's deposit is securely held. Payout clears automatically upon delivery confirmation.",
-                                style: TextStyle(
+                            Text(order.paymentStatus.replaceAll('_', ' '),
+                                style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 11,
                                     color: AppColors.onSurfaceVariant,
@@ -818,8 +858,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.local_shipping_rounded,
-                          size: 18),
+                      icon: const Icon(Icons.local_shipping_rounded, size: 18),
                       label: Text(strings.t('confirmHanded'),
                           style: const TextStyle(
                               fontFamily: 'Inter',
@@ -832,10 +871,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     width: double.infinity,
                     height: 44,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _showEscrowDetailsSheet(context, order),
-                      icon: const Icon(Icons.account_balance_rounded,
-                          size: 16),
+                      onPressed: () => _showEscrowDetailsSheet(context, order),
+                      icon: const Icon(Icons.account_balance_rounded, size: 16),
                       label: const Text('View Escrow Release Status',
                           style: TextStyle(
                               fontFamily: 'Inter',
@@ -873,8 +910,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
         Container(
           width: 32,
           height: 32,
-          decoration:
-              BoxDecoration(color: iconBg, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
           child: Icon(icon, size: 15, color: iconColor),
         ),
         const SizedBox(width: 12),
@@ -908,57 +944,46 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
     );
   }
 
-  Widget _buildLifecycle() {
-    final steps = [
-      (
-        title: 'Order Received',
-        subtitle: 'Payment escrow secured (LKR 38,500)',
-        time: '07:30 AM',
-        done: true,
-        active: false,
-        locked: false,
-      ),
-      (
-        title: 'Order Accepted',
-        subtitle: 'Accepted by Sunny Valley Farm',
-        time: '07:45 AM',
-        done: true,
-        active: false,
-        locked: false,
-      ),
-      (
-        title: 'Logistics Assigned',
-        subtitle: 'GreenRoute Logistics · Driver John D.',
-        time: '',
-        done: false,
-        active: true,
-        locked: false,
-      ),
-      (
-        title: 'Items Picked Up from Farm',
-        subtitle: 'Driver arrives at collection Gate B',
-        time: '',
-        done: false,
-        active: false,
-        locked: false,
-      ),
-      (
-        title: 'Out for Delivery',
-        subtitle: 'En route to Fresh Market Co. dock',
-        time: '',
-        done: false,
-        active: false,
-        locked: false,
-      ),
-      (
-        title: 'Delivered & Payout Released',
-        subtitle: 'LKR 38,500 credited to Farmora Wallet',
-        time: '',
-        done: false,
-        active: false,
-        locked: true,
-      ),
+  Widget _buildLifecycle(String orderStatus) {
+    final normalized = (_job?.status ?? orderStatus)
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '');
+    final stage = switch (normalized) {
+      'requested' || 'pending' => 0,
+      'accepted' || 'confirmed' || 'assigned' => 1,
+      'pickedup' => 2,
+      'intransit' => 3,
+      'delivered' || 'completed' => 4,
+      _ => -1,
+    };
+    const titles = [
+      'Transport requested',
+      'Transport accepted',
+      'Produce picked up',
+      'Delivery in transit',
+      'Delivery completed',
     ];
+    const descriptions = [
+      'A transport provider can accept this delivery.',
+      'The provider has accepted the delivery request.',
+      'The provider has recorded pickup.',
+      'The provider has started the delivery route.',
+      'The provider has marked the order delivered.',
+    ];
+    final steps = List.generate(titles.length, (index) {
+      final done = normalized == 'delivered' || normalized == 'completed'
+          ? index <= 4
+          : stage > index;
+      return (
+        title: titles[index],
+        subtitle: descriptions[index],
+        time: '',
+        done: done,
+        active: stage == index,
+        locked: false,
+      );
+    });
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -980,8 +1005,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
           Widget dot;
           if (s.done) {
             dotColor = AppColors.primary;
-            dot = const Icon(Icons.check_rounded,
-                size: 12, color: Colors.white);
+            dot =
+                const Icon(Icons.check_rounded, size: 12, color: Colors.white);
           } else if (s.active) {
             dotColor = AppColors.primary;
             dot = Container(
@@ -1047,8 +1072,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD8EFC9),
-                                  borderRadius:
-                                      BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Text('Active',
                                     style: TextStyle(
@@ -1087,21 +1111,14 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   }
 
   List<Widget> _buildChecklist() {
+    final providerName = _transporter?['displayName'] as String?;
     final items = [
+      (title: 'Pack the produce for pickup',),
+      (title: 'Review the order and delivery instructions',),
       (
-        title: 'Harvest packed into 2×14kg crates',
-        hasPrint: false,
-        trailingIcon: Icons.check_circle_outline_rounded,
-      ),
-      (
-        title: 'Attach Farmora Waybill #WB-8492',
-        hasPrint: true,
-        trailingIcon: Icons.receipt_long_outlined,
-      ),
-      (
-        title: 'Hand off produce to driver John D.',
-        hasPrint: false,
-        trailingIcon: Icons.inventory_2_outlined,
+        title: providerName == null
+            ? 'Hand off produce to the assigned transport provider'
+            : 'Hand off produce to $providerName',
       ),
     ];
 
@@ -1133,9 +1150,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     color: checked ? AppColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(
-                      color: checked
-                          ? AppColors.primary
-                          : const Color(0xFFCCCCCC),
+                      color:
+                          checked ? AppColors.primary : const Color(0xFFCCCCCC),
                       width: 1.5,
                     ),
                   ),
@@ -1155,18 +1171,10 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                       color: checked
                           ? AppColors.onSurfaceVariant
                           : AppColors.onSurface,
-                      decoration:
-                          checked ? TextDecoration.lineThrough : null,
+                      decoration: checked ? TextDecoration.lineThrough : null,
                     ),
                   ),
                 ),
-                if (item.hasPrint)
-                  const Text('Print',
-                      style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary))
               ],
             ),
           ),
@@ -1199,10 +1207,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your driver and buyer are reachable through the order chat. '
-              'Messages are end-to-end encrypted and phone numbers stay private.',
-              style: TextStyle(
-                  fontFamily: 'Inter', fontSize: 14, height: 1.4),
+              'Your delivery partner and buyer are reachable through the order chat. '
+              'Messages are encrypted for the recipient and phone numbers stay private.',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 14, height: 1.4),
             ),
             SizedBox(height: 12),
             Text(
@@ -1282,7 +1289,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total Value Held:',
+                      const Text('Order total:',
                           style: TextStyle(color: AppColors.onSurfaceVariant)),
                       Text(order.totalAmount,
                           style: const TextStyle(
@@ -1292,15 +1299,17 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Status:',
+                      const Text('Payment status:',
                           style: TextStyle(color: AppColors.onSurfaceVariant)),
-                      Text('Secured in Escrow',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2E7D32))),
+                      Text(
+                        order.paymentStatus.replaceAll('_', ' '),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurface),
+                      ),
                     ],
                   ),
                 ],
@@ -1308,19 +1317,16 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'How Escrow Release Works:',
+              'Settlement information',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
             const Text(
-              '1. Transporter picks up produce from your farm gate.\n'
-              '2. Buyer inspects and accepts delivery in Colombo.\n'
-              '3. Funds are automatically cleared to your Earnings account within 24 hours of buyer acceptance.\n'
-              '4. 100% payout guaranteed against transit damage.',
+              'This screen shows the payment state recorded for this order. '
+              'Settlement timing and dispute outcomes depend on the configured '
+              'payment provider and platform policy.',
               style: TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: AppColors.onSurfaceVariant),
+                  fontSize: 13, height: 1.4, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -1342,79 +1348,4 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
       ),
     );
   }
-}
-
-class _RoutePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Water backdrop
-    final waterPaint = Paint()..color = const Color(0xFFA8C8E0);
-    canvas.drawRect(Offset.zero & size, waterPaint);
-
-    // Land masses
-    final landPaint = Paint()..color = const Color(0xFFE8EDE3);
-    final landPath = Path()
-      ..moveTo(0, size.height * 0.3)
-      ..quadraticBezierTo(size.width * 0.3, size.height * 0.15,
-          size.width * 0.55, size.height * 0.35)
-      ..quadraticBezierTo(size.width * 0.75, size.height * 0.5,
-          size.width, size.height * 0.45)
-      ..lineTo(size.width, 0)
-      ..lineTo(0, 0)
-      ..close();
-    canvas.drawPath(landPath, landPaint);
-
-    final land2 = Path()
-      ..moveTo(0, size.height * 0.75)
-      ..quadraticBezierTo(size.width * 0.4, size.height * 0.6,
-          size.width * 0.8, size.height * 0.8)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(land2, landPaint);
-
-    // Route line
-    final routePaint = Paint()
-      ..color = AppColors.primary
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final route = Path()
-      ..moveTo(size.width * 0.15, size.height * 0.8)
-      ..quadraticBezierTo(size.width * 0.35, size.height * 0.5,
-          size.width * 0.5, size.height * 0.55)
-      ..quadraticBezierTo(size.width * 0.7, size.height * 0.6,
-          size.width * 0.85, size.height * 0.25);
-    canvas.drawPath(route, routePaint);
-
-    // Pickup marker
-    final startPaint = Paint()..color = AppColors.primary;
-    canvas.drawCircle(Offset(size.width * 0.15, size.height * 0.8), 6,
-        startPaint);
-    canvas.drawCircle(Offset(size.width * 0.15, size.height * 0.8), 6,
-        Paint()..color = Colors.white..strokeWidth = 2..style = PaintingStyle.stroke);
-
-    // Destination marker
-    final endPaint = Paint()..color = AppColors.error;
-    canvas.drawCircle(
-        Offset(size.width * 0.85, size.height * 0.25), 6, endPaint);
-
-    // City label
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: 'Colombo',
-        style: TextStyle(
-            color: Color(0xFF5A6B5D),
-            fontSize: 11,
-            fontWeight: FontWeight.w600),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-        canvas, Offset(size.width * 0.38, size.height * 0.42));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

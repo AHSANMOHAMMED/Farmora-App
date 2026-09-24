@@ -38,6 +38,9 @@ class TermsOfServiceScreen extends StatelessWidget {
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
+  static const _supportEmail = String.fromEnvironment('SUPPORT_EMAIL');
+  static const _supportPhone = String.fromEnvironment('SUPPORT_PHONE');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,10 +48,31 @@ class SupportScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Help & Support'), backgroundColor: Colors.transparent, elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          ListTile(leading: Icon(Icons.email_outlined), title: Text('support@farmora.app'), subtitle: Text('Replies within 2 business days')),
-          ListTile(leading: Icon(Icons.phone_outlined), title: Text('+94 11 234 5678'), subtitle: Text('Mon–Fri, 9am–5pm (Asia/Colombo)')),
-          ListTile(leading: Icon(Icons.delete_outline), title: Text('Request data export or deletion'), subtitle: Text('Mention your registered phone number')),
+        children: [
+          if (_supportEmail.isNotEmpty)
+            const ListTile(
+              leading: Icon(Icons.email_outlined),
+              title: Text(_supportEmail),
+              subtitle: Text('Email Farmora support'),
+            ),
+          if (_supportPhone.isNotEmpty)
+            const ListTile(
+              leading: Icon(Icons.phone_outlined),
+              title: Text(_supportPhone),
+              subtitle: Text('Call Farmora support'),
+            ),
+          if (_supportEmail.isEmpty && _supportPhone.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.support_agent_outlined),
+              title: Text('Support contact is not configured'),
+              subtitle: Text(
+                  'Use the account data controls below or contact your Farmora administrator.'),
+            ),
+          const ListTile(
+            leading: Icon(Icons.delete_outline),
+            title: Text('Request data export or deletion'),
+            subtitle: Text('Use the privacy controls in your profile.'),
+          ),
         ],
       ),
     );

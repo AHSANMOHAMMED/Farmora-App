@@ -106,7 +106,14 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   const SizedBox(height: 20),
 
                   // 2. Orders List
-                  if (displayOrders.isEmpty)
+                  if (state.isOrdersLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    )
+                  else if (displayOrders.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 60),
