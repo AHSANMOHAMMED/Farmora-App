@@ -13,14 +13,17 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // For testing bypass or offline mode
     final state = Provider.of<FarmoraState>(context);
     if (state.signedIn) {
       return const HomeScreen();
     }
 
     if (Firebase.apps.isEmpty) {
-      return const WelcomeScreen();
+      return const Scaffold(
+        body: Center(
+            child: Text(
+                'Farmora could not connect to Firebase. Please restart the app.')),
+      );
     }
 
     return StreamBuilder<User?>(

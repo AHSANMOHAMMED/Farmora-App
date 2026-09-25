@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class FarmoraOffer {
   final String id;
   final String productId;
@@ -80,12 +82,8 @@ class FarmoraOffer {
       proposedQuantity: (data['proposedQuantity'] as num?)?.toInt() ?? 0,
       proposedPrice: proposedPrice,
       status: data['status'] ?? 'pending',
-      createdAt: data['createdAt'] != null
-          ? DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      updatedAt: data['updatedAt'] != null
-          ? DateTime.tryParse(data['updatedAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
+      updatedAt: firebaseDate(data['updatedAt']) ?? DateTime.now(),
     );
   }
 }

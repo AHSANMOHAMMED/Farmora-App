@@ -25,6 +25,7 @@ import '../../admin/presentation/user_management_screen.dart';
 import '../../admin/presentation/logistics_management_screen.dart';
 import '../../admin/presentation/system_settings_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
+import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -69,10 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
     List<_NavItem> navItems;
 
     final l10n = AppLocalizations.of(context);
-    final isUnverified = role != Role.admin && !state.isVerified;
 
+    final isUnverified = role != Role.admin && !state.isVerified;
     if (isUnverified) {
-      // Gated state: User must be verified by admin before full dashboard access
       screens = [
         const AwaitingVerificationView(),
         role == Role.transporter
@@ -196,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         DashboardScreen(),
         BuyerProductsScreen(),
         BuyerOffersScreen(),
+        BuyerMarketScreen(),
         BuyerOrdersScreen(),
         ProfileScreen(),
       ];
@@ -212,6 +213,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: l10n.myOffers,
             icon: Icons.local_offer_outlined,
             activeIcon: Icons.local_offer_rounded),
+        const _NavItem(
+            label: 'Requests',
+            icon: Icons.campaign_outlined,
+            activeIcon: Icons.campaign_rounded),
         _NavItem(
             label: l10n.orders,
             icon: Icons.receipt_long_outlined,
@@ -224,7 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final safeTabIndex = tabIndex >= screens.length ? 0 : tabIndex;
-
     return Scaffold(
       body: IndexedStack(
         index: safeTabIndex,

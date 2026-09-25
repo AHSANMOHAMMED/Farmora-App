@@ -173,12 +173,24 @@ class FirestoreService {
 
   /// Update a product
   Future<void> updateProduct(String id, Map<String, dynamic> data) async {
-    await _db.collection('products').doc(id).update(data);
+    if (!kUseCloudFunctions) {
+      throw StateError('Product updates require the trusted backend.');
+    }
+    final result = await _functions.httpsCallable('updateProduct').call({
+      'productId': id,
+      ...data,
+    });
+    if (result.data is Map && result.data['success'] != true) {
+      throw StateError('Product update failed.');
+    }
   }
 
   /// Delete a product
   Future<void> deleteProduct(String id) async {
-    await _db.collection('products').doc(id).delete();
+    if (!kUseCloudFunctions) {
+      throw StateError('Product deletion requires the trusted backend.');
+    }
+    await _functions.httpsCallable('deleteProduct').call({'productId': id});
   }
 
   /// Real-time stream of all products
@@ -241,6 +253,7 @@ class FirestoreService {
   Future<String> acceptOffer({
     required String offerId,
     int deliveryFeeMinor = 50000,
+    String? deliveryAddress,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.acceptOffer(
@@ -251,8 +264,19 @@ class FirestoreService {
     final result = await _functions.httpsCallable('acceptOffer').call({
       'offerId': offerId,
       'deliveryFeeMinor': deliveryFeeMinor,
+      if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
     });
     return result.data['orderId'] as String;
+  }
+
+  Future<void> counterOffer({
+    required String offerId,
+    required double counterPrice,
+  }) async {
+    await _functions.httpsCallable('counterOffer').call({
+      'offerId': offerId,
+      'counterPrice': counterPrice,
+    });
   }
 
   Future<void> rejectOffer(String offerId) async {
@@ -1227,6 +1251,19 @@ class FirestoreService {
             .toList());
   }
 
+  Stream<List<TransportJob>> jobsByFarmerStream(String farmerId,
+      {int limit = 50}) {
+    return _db
+        .collection('transport_jobs')
+        .where('farmerId', isEqualTo: farmerId)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
   /// Live tracking stream for one order's transport job (courier coordinates,
   /// status transitions). Participant-scoped so Firestore rules can verify
   /// access: only jobs created by, assigned to, or ordered by [uid] are
@@ -1422,16 +1459,5 @@ class FirestoreService {
                 'description': data['description'] ?? data['storagePath'] ?? '',
               });
             }).toList());
-  }
-
-  // ── Database Seeding ──────────────────────────────────────
-
-  /// Seeds demo products/orders/jobs (Spark: admin Firestore writes).
-  Future<void> seedDatabase() async {
-    if (!kUseCloudFunctions) {
-      await _spark.seedDatabase();
-      return;
-    }
-    await _functions.httpsCallable('seedDatabase').call();
   }
 }

@@ -12,33 +12,11 @@ class CartScreen extends StatelessWidget {
     var transporters = await FirestoreService().getAvailableTransporters();
     if (!context.mounted) return null;
     if (transporters.isEmpty) {
-      // Fallback network transporters so order placement & transport workflows are never blocked
-      transporters = [
-        {
-          'uid': 'transporter_lanka_express',
-          'displayName': 'Lanka Agro Express',
-          'district': 'Colombo / Western Province',
-          'vehicleType': 'Refrigerated Truck (Cold Chain)',
-          'vehicleCapacity': 1500,
-          'photoUrl': '',
-        },
-        {
-          'uid': 'transporter_kandy_logistics',
-          'displayName': 'Hill Country Transport',
-          'district': 'Kandy / Central Province',
-          'vehicleType': 'Covered Lorry',
-          'vehicleCapacity': 2500,
-          'photoUrl': '',
-        },
-        {
-          'uid': 'transporter_quick_agri',
-          'displayName': 'Quick Agri Dispatch',
-          'district': 'Islandwide',
-          'vehicleType': 'Pickup Van',
-          'vehicleCapacity': 800,
-          'photoUrl': '',
-        },
-      ];
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No available transporters are registered yet.')),
+      );
+      return null;
     }
     return showDialog<String>(
       context: context,
@@ -226,7 +204,8 @@ class CartScreen extends StatelessWidget {
                                         errorBuilder: (_, __, ___) => Center(
                                             child: Text(
                                           item.product.emoji.length > 2
-                                              ? item.product.emoji.characters.first
+                                              ? item.product.emoji.characters
+                                                  .first
                                               : item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
                                         )),
@@ -234,7 +213,8 @@ class CartScreen extends StatelessWidget {
                                     : Center(
                                         child: Text(
                                           item.product.emoji.length > 2
-                                              ? item.product.emoji.characters.first
+                                              ? item.product.emoji.characters
+                                                  .first
                                               : item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
                                         ),

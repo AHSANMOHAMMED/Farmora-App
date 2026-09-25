@@ -6,7 +6,6 @@ import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
-import 'cart_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {

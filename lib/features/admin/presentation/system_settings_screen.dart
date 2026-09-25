@@ -135,24 +135,30 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
+            leading:
+                const Icon(Icons.trending_up_rounded, color: AppColors.primary),
             title: const Text('Market Price Intelligence'),
-            subtitle: const Text('Configure Sri Lankan wholesale Pola benchmark rates'),
+            subtitle: const Text(
+                'Configure Sri Lankan wholesale Pola benchmark rates'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const MarketPriceManagementScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const MarketPriceManagementScreen()),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.campaign_rounded, color: Color(0xFFE65100)),
+            leading:
+                const Icon(Icons.campaign_rounded, color: Color(0xFFE65100)),
             title: const Text('Broadcast Advisories & Weather Alerts'),
-            subtitle: const Text('Push emergency and operational notices to users'),
+            subtitle:
+                const Text('Push emergency and operational notices to users'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const BroadcastAdvisoryScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const BroadcastAdvisoryScreen()),
             ),
           ),
           const Divider(),
@@ -163,36 +169,44 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const DisputeResolutionScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const DisputeResolutionScreen()),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.verified_user_rounded, color: Color(0xFF1B6BD8)),
+            leading: const Icon(Icons.verified_user_rounded,
+                color: Color(0xFF1B6BD8)),
             title: const Text('Farmer & Transporter KYC Verification'),
-            subtitle: const Text('Review national identity, land permits, and driving licenses'),
+            subtitle: const Text(
+                'Review national identity, land permits, and driving licenses'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const VerificationReviewScreen()),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.insights_rounded, color: Color(0xFF1B6BD8)),
+            leading:
+                const Icon(Icons.insights_rounded, color: Color(0xFF1B6BD8)),
             title: const Text('Platform Analytics & Insights'),
-            subtitle: const Text('GMV, volume flow, regional distribution, and export reports'),
+            subtitle: const Text(
+                'GMV, volume flow, regional distribution, and export reports'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const PlatformAnalyticsScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const PlatformAnalyticsScreen()),
             ),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.rate_review_rounded, color: Colors.amber),
             title: const Text('Review & Feedback Moderation'),
-            subtitle: const Text('Moderate buyer and farmer ratings, audit notes, and flags'),
+            subtitle: const Text(
+                'Moderate buyer and farmer ratings, audit notes, and flags'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -203,77 +217,54 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           ListTile(
             leading: const Icon(Icons.cloud_sync_rounded, color: Colors.teal),
             title: const Text('Firebase & Server Control'),
-            subtitle: const Text('Maintenance mode, service latency, version enforcement, and cache ops'),
+            subtitle: const Text(
+                'Maintenance mode, service latency, version enforcement, and cache ops'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const ServerMaintenanceScreen()),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF2E7D32)),
+            leading: const Icon(Icons.account_balance_wallet_rounded,
+                color: Color(0xFF2E7D32)),
             title: const Text('Treasury & Bank Wire Settlements'),
-            subtitle: const Text('Farmer & transporter CEFT/SLIP payouts, escrow release, and wire manifests'),
+            subtitle: const Text(
+                'Farmer & transporter CEFT/SLIP payouts, escrow release, and wire manifests'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SettlementManagementScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const SettlementManagementScreen()),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF1B6BD8)),
+            leading: const Icon(Icons.local_shipping_rounded,
+                color: Color(0xFF1B6BD8)),
             title: const Text('Fleet & Supply Chain Dispatch Radar'),
-            subtitle: const Text('Real-time tracking of active hauls, transit checkpoints, and driver loads'),
+            subtitle: const Text(
+                'Real-time tracking of active hauls, transit checkpoints, and driver loads'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const LogisticsManagementScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const LogisticsManagementScreen()),
             ),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.shield_rounded, color: Color(0xFF5E35B1)),
             title: const Text('Compliance & Security Audit Trail'),
-            subtitle: const Text('Tamper-proof event logs for admin actions, security alerts, and exports'),
+            subtitle: const Text(
+                'Tamper-proof event logs for admin actions, security alerts, and exports'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AuditLogScreen()),
             ),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('Seed Sri Lankan marketplace'),
-            subtitle: const Text(
-              'Requires registered farmer + buyer. Attaches real LKR produce, '
-              'orders and jobs to those accounts.',
-            ),
-            trailing: const Icon(Icons.add_box),
-            onTap: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Seeding Sri Lankan marketplace…')),
-              );
-              try {
-                await FirestoreService().seedDatabase();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Seeded. Sign in as farmer/buyer/transporter to see data.',
-                      ),
-                    ),
-                  );
-                }
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Seed failed: $error')),
-                  );
-                }
-              }
-            },
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/utils/firebase_values.dart';
 
 class FarmoraOrder {
   final String id;
@@ -30,6 +31,7 @@ class FarmoraOrder {
   final String buyerId;
   final String farmerId;
   final String transporterId;
+
   /// Product linked to this order. Used to clean up the harvest video on
   /// delivery (videos are auto-deleted once an order completes).
   final String productId;
@@ -90,7 +92,8 @@ class FarmoraOrder {
     'in transit',
   };
 
-  String get _norm => status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+  String get _norm =>
+      status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
 
   bool get isPending => _norm == 'pending';
   bool get isAccepted => activeStatuses.contains(_norm);
@@ -98,8 +101,7 @@ class FarmoraOrder {
   bool get isDeclined =>
       status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
 
-  double get total =>
-      totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
+  double get total => totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
 
   String get displayTotal {
     if (totalMinor > 0) {
@@ -109,7 +111,8 @@ class FarmoraOrder {
   }
 
   bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'released';
-  bool get isDisputed => disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
+  bool get isDisputed =>
+      disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
   bool get canReview => isCompleted && !isDisputed;
 
   FarmoraOrder copyWith({
@@ -278,10 +281,8 @@ class FarmoraOrder {
       escrowStatus: (data['escrowStatus'] ?? 'not_funded').toString(),
       deliveryStatus: (data['deliveryStatus'] ?? '').toString(),
       disputeId: data['disputeId'] as String?,
-      createdAt: data['createdAt'] != null
-          ? DateTime.tryParse(data['createdAt'].toString()) ??
-              DateTime.fromMillisecondsSinceEpoch(0)
-          : DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt: firebaseDate(data['createdAt']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }

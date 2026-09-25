@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../models/user_role.dart';
-import '../../../models/verification_model.dart';
-import '../../../providers/farmora_state.dart';
-import '../../farmer/presentation/account_verification_screen.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../models/user_role.dart';
+import '../../../../models/verification_model.dart';
+import '../../../../providers/farmora_state.dart';
+import '../../../farmer/presentation/account_verification_screen.dart';
 
 /// Professional, full-featured Awaiting Verification screen shown to
 /// Farmers, Buyers, and Logistics Providers whose profiles are pending verification.
@@ -75,10 +75,10 @@ class AwaitingVerificationView extends StatelessWidget {
               const SizedBox(height: 20),
 
               // ── Title & Role Subtitle ──
-              Text(
+              const Text(
                 'Verification Under Review',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: AppColors.forestGreen,
@@ -304,14 +304,14 @@ class AwaitingVerificationView extends StatelessWidget {
                     color: AppColors.outlineVariant.withValues(alpha: 0.5),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.shield_outlined,
                       size: 20,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Verification typically takes 1-2 business hours. Once Platform Admin verifies your profile, your trading dashboard and marketplace features will activate automatically.',

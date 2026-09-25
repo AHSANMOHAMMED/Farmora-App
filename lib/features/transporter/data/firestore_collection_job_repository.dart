@@ -29,11 +29,49 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   @override
   Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
-    return _jobs
-        .where('transporterId', isEqualTo: logisticsProviderId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(_fromDocument).toList());
+    late final StreamController<List<CollectionJob>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? availableSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? assignedSub;
+    final available = <String, CollectionJob>{};
+    final assigned = <String, CollectionJob>{};
+    void emit() {
+      final merged = {...available, ...assigned}.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      controller.add(List.unmodifiable(merged));
+    }
+
+    controller = StreamController<List<CollectionJob>>(
+      onListen: () {
+        availableSub = _jobs
+            .where('status', isEqualTo: 'requested')
+            .where('transporterId', isNull: true)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          available
+            ..clear()
+            ..addEntries(snapshot.docs.map((doc) =>
+                MapEntry(doc.id, _fromDocument(doc))));
+          emit();
+        }, onError: controller.addError);
+        assignedSub = _jobs
+            .where('transporterId', isEqualTo: logisticsProviderId)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          assigned
+            ..clear()
+            ..addEntries(snapshot.docs.map((doc) =>
+                MapEntry(doc.id, _fromDocument(doc))));
+          emit();
+        }, onError: controller.addError);
+      },
+      onCancel: () async {
+        await availableSub?.cancel();
+        await assignedSub?.cancel();
+      },
+    );
+    return controller.stream;
   }
 
   @override
@@ -42,6 +80,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       final snapshots = await Future.wait([
         _jobs
             .where('status', isEqualTo: 'requested')
+            .where('transporterId', isNull: true)
             .orderBy('createdAt', descending: true)
             .get(),
         _jobs
@@ -59,9 +98,6 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } on FirebaseException catch (error) {
       throw CollectionJobException(_firebaseMessage(error));
-    } catch (_) {
-      // Offline / uninitialized fallback (e.g. widget tests)
-      return const [];
     }
   }
 

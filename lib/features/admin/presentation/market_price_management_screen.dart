@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/market_price_index.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../models/user_role.dart';
 
 class MarketPriceManagementScreen extends StatefulWidget {
   const MarketPriceManagementScreen({super.key});
@@ -45,14 +46,14 @@ class _MarketPriceManagementScreenState
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
         elevation: 0.5,
-        actions: [
+        actions: state.role == Role.admin ? [
           IconButton(
             icon:
                 const Icon(Icons.add_circle_outline, color: AppColors.primary),
             tooltip: 'Add Commodity Rate',
             onPressed: () => _showAddPriceDialog(context, state),
           ),
-        ],
+        ] : [],
       ),
       body: Column(
         children: [
@@ -211,7 +212,7 @@ class _MarketPriceManagementScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${item.district} Economic Center · ${item.category}',
+                        '${item.marketName.isEmpty ? item.district : item.marketName} · ${item.district} · ${item.category}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -252,11 +253,11 @@ class _MarketPriceManagementScreenState
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildPriceMetric('Wholesale Range',
-                    'LKR ${item.minPricePerKg.toStringAsFixed(0)} - ${item.maxPricePerKg.toStringAsFixed(0)} / kg'),
+                    'LKR ${item.minPricePerKg.toStringAsFixed(2)} - ${item.maxPricePerKg.toStringAsFixed(2)} / ${item.unit}'),
                 _buildPriceMetric('Avg Benchmark',
-                    'LKR ${item.averagePricePerKg.toStringAsFixed(0)} / kg',
+                    'LKR ${item.averagePricePerKg.toStringAsFixed(2)} / ${item.unit}',
                     isPrimary: true),
-                Row(
+                if (state.role == Role.admin) Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(

@@ -7,13 +7,15 @@ before(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: "farmora-demo",
     firestore: {
-      rules: fs.readFileSync("firestore.rules", "utf8"),
+      host: "127.0.0.1",
+      port: 8085,
+      rules: fs.readFileSync("../firestore.rules", "utf8"),
     }
   });
 });
 
 after(async () => {
-  await testEnv.cleanup();
+  if (testEnv) await testEnv.cleanup();
 });
 
 beforeEach(async () => {
@@ -21,6 +23,22 @@ beforeEach(async () => {
 });
 
 describe("Users Collection Rules", () => {
+  it("allows normal role signup and denies self-assigned admin role", async () => {
+    const farmerDb = testEnv.authenticatedContext('farmer').firestore();
+    const adminDb = testEnv.authenticatedContext('attacker').firestore();
+
+    await assertSucceeds(farmerDb.collection('users').doc('farmer').set({
+      id: 'farmer',
+      role: 'farmer',
+      isVerified: false
+    }));
+    await assertFails(adminDb.collection('users').doc('attacker').set({
+      id: 'attacker',
+      role: 'admin',
+      isVerified: false
+    }));
+  });
+
   it("should deny user from updating their availableBalance", async () => {
     const unauthedDb = testEnv.unauthenticatedContext().firestore();
     const aliceDb = testEnv.authenticatedContext('alice', { email: 'alice@example.com' }).firestore();

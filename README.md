@@ -240,6 +240,31 @@ flutter pub get
 flutter run
 ```
 
+### Local Firebase emulator
+
+Start the local services from one terminal:
+
+```bash
+npm --prefix functions run build
+firebase emulators:start --config firebase.emulators.json --project farmingapp-24b34
+```
+
+Seed isolated buyer, farmer, logistics, and admin accounts from another terminal:
+
+```bash
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIRESTORE_EMULATOR_HOST=127.0.0.1:8085 GCLOUD_PROJECT=farmingapp-24b34 node functions/scripts/seed-emulator-roles.js
+```
+
+Run the Chrome app against those emulators:
+
+```bash
+flutter run -d chrome --dart-define=USE_FIREBASE_EMULATORS=true
+```
+
+The seed script prints its generated local test password. Emulator mode is opt-in and does not change the normal Firebase connection.
+
+Production admin accounts must be provisioned through a trusted Admin SDK process. Public signup cannot assign the admin role; set the Firestore role to `admin` and mark the profile verified (or grant the Auth `admin` custom claim).
+
 Run the standard checks:
 
 ```bash
