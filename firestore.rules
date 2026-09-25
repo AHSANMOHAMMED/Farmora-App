@@ -36,8 +36,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if true;
-      allow list: if true;
+      allow get: if signedIn() && (request.auth.uid == userId || admin());
+      allow list: if admin() || signedIn();
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.id == userId
         && request.resource.data.role in ['farmer', 'buyer', 'transporter', 'admin']
@@ -115,7 +115,10 @@ service cloud.firestore {
     }
 
     match /transport_jobs/{jobId} {
-      allow read: if signedIn();
+      allow read: if admin()
+        || (signedIn() && resource.data.transporterId == request.auth.uid)
+        || (signedIn() && resource.data.farmerId == request.auth.uid)
+        || (signedIn() && resource.data.buyerId == request.auth.uid);
       allow create: if admin()
         || (farmer()
           && request.resource.data.farmerId == request.auth.uid

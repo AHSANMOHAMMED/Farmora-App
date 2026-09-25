@@ -87,6 +87,19 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _handleAdminDemoLogin() {
+    final state = context.read<FarmoraState>();
+    state.setRole(Role.admin);
+    state.currentUserId = 'usr-admin-1';
+    state.displayName = 'Platform SuperAdmin';
+    state.signedIn = true;
+    state.notifyListeners();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
   // Kept as a fallback for the previous demo-only OTP sheet during migration.
   // ignore: unused_element
   void _showOtpLoginSheet() {
@@ -608,6 +621,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.primary.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _handleAdminDemoLogin,
+                            icon: const Icon(Icons.admin_panel_settings_rounded,
+                                color: Color(0xFF6A1B9A), size: 20),
+                            label: const Text(
+                              'Admin Demo Portal Login',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF6A1B9A),
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              side: const BorderSide(
+                                color: Color(0xFFCE93D8),
+                                width: 1.5,
+                              ),
+                              backgroundColor: const Color(0xFFF3E5F5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
