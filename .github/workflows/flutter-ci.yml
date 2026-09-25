@@ -31,7 +31,9 @@ jobs:
           channel: stable
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub upgrade firebase_core_web
 
       - name: Analyze code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
