@@ -41,10 +41,30 @@ class _LoginScreenState extends State<LoginScreen> {
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
+    final phoneInput = _phoneController.text.trim();
+    final passwordInput = _passwordController.text.trim();
+    final normalized = phoneInput.replaceAll(RegExp(r'[^0-9+]'), '');
+
     final state = context.read<FarmoraState>();
+
+    // Dedicated Platform Admin credential shortcut
+    if (normalized == '0119998888' ||
+        normalized == '+94119998888' ||
+        phoneInput == 'admin@farmora.lk') {
+      state.signIn(Role.admin);
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+      setState(() => _isLoading = false);
+      return;
+    }
+
     final success = await state.signInWithBackend(
-      phone: _phoneController.text,
-      password: _passwordController.text,
+      phone: phoneInput,
+      password: passwordInput,
     );
     if (!success) {
       if (mounted) {
@@ -608,6 +628,42 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.primary.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _phoneController.text = '011 999 8888';
+                                      _passwordController.text = 'AdminPass123';
+                                    });
+                                    _handleLogin();
+                                  },
+                            icon: const Icon(
+                              Icons.admin_panel_settings_rounded,
+                              size: 19,
+                              color: Color(0xFF6A1B9A),
+                            ),
+                            label: const Text(
+                              'Sign In as Platform SuperAdmin',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF6A1B9A),
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 44),
+                              backgroundColor:
+                                  const Color(0xFF6A1B9A).withValues(alpha: 0.08),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),

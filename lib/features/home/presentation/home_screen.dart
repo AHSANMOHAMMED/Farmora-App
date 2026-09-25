@@ -25,6 +25,7 @@ import '../../admin/presentation/user_management_screen.dart';
 import '../../admin/presentation/logistics_management_screen.dart';
 import '../../admin/presentation/system_settings_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
+import 'widgets/awaiting_verification_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,8 +69,29 @@ class _HomeScreenState extends State<HomeScreen> {
     List<_NavItem> navItems;
 
     final l10n = AppLocalizations.of(context);
+    final isUnverified = role != Role.admin && !state.isVerified;
 
-    if (role == Role.farmer) {
+    if (isUnverified) {
+      // Gated state: User must be verified by admin before full dashboard access
+      screens = [
+        const AwaitingVerificationView(),
+        role == Role.transporter
+            ? const TransporterProfileScreen()
+            : const ProfileScreen(),
+      ];
+      navItems = [
+        const _NavItem(
+          label: 'Verification',
+          icon: Icons.hourglass_top_outlined,
+          activeIcon: Icons.hourglass_top_rounded,
+        ),
+        _NavItem(
+          label: l10n.profile,
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+        ),
+      ];
+    } else if (role == Role.farmer) {
       // Stitch bottom nav: Home, Products, Orders, Earnings, Profile
       screens = const [
         DashboardScreen(),
@@ -201,9 +223,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
 
+    final safeTabIndex = tabIndex >= screens.length ? 0 : tabIndex;
+
     return Scaffold(
       body: IndexedStack(
-        index: tabIndex,
+        index: safeTabIndex,
         children: screens,
       ),
       // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
@@ -224,12 +248,12 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
           indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-          selectedIndex: tabIndex,
+          selectedIndex: safeTabIndex,
           onDestinationSelected: (i) => setState(() => tabIndex = i),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           destinations: navItems.asMap().entries.map(
             (e) {
-              final isSelected = tabIndex == e.key;
+              final isSelected = safeTabIndex == e.key;
               final item = e.value;
               return NavigationDestination(
                 icon: Icon(
