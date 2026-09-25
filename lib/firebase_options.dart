@@ -48,14 +48,17 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions ios = macos;
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBbyW98LURPAlM5jcT_bdETj-3Xq2Yw5Kg',
-    appId: '1:33678627494:web:11924c52ff26413d549a67',
-    messagingSenderId: '33678627494',
-    projectId: 'farmingapp-24b34',
-    storageBucket: 'farmingapp-24b34.firebasestorage.app',
+    apiKey: 'AIzaSyDhe--bzhfT9O3eD4HWUTIXXVBsjZSKi8I',
+    appId: '1:83367323369:ios:0449923b8e488ce9a83278',
+    messagingSenderId: '83367323369',
+    projectId: 'farmora-1da5a',
+    storageBucket: 'farmora-1da5a.firebasestorage.app',
+    iosClientId: '83367323369-nccqd050c644g08dmh4uf1okp9bd3s7c.apps.googleusercontent.com',
+    iosBundleId: 'com.example.farmora',
   );
 
   static const FirebaseOptions windows = android;
 
   static const FirebaseOptions linux = android;
+  
 }

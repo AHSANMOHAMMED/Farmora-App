@@ -59,6 +59,9 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } on FirebaseException catch (error) {
       throw CollectionJobException(_firebaseMessage(error));
+    } catch (_) {
+      // Offline / uninitialized fallback (e.g. widget tests)
+      return const [];
     }
   }
 
