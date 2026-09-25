@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/config/app_backend.dart';
+import '../../../services/firebase_service.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
 
@@ -27,52 +29,11 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   @override
   Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
-    final controller = StreamController<List<CollectionJob>>();
-    List<CollectionJob> available = const [];
-    List<CollectionJob> assigned = const [];
-    var availableReady = false;
-    var assignedReady = false;
-
-    void emit() {
-      if (!availableReady || !assignedReady || controller.isClosed) return;
-      final merged = <String, CollectionJob>{
-        for (final job in available) job.id: job,
-        for (final job in assigned) job.id: job,
-      }.values.toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      controller.add(merged);
-    }
-
-    final availableSubscription = _jobs
-        .where('status', isEqualTo: 'requested')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        available = snapshot.docs.map(_fromDocument).toList();
-        availableReady = true;
-        emit();
-      },
-      onError: controller.addError,
-    );
-    final assignedSubscription = _jobs
+    return _jobs
         .where('transporterId', isEqualTo: logisticsProviderId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .listen(
-      (snapshot) {
-        assigned = snapshot.docs.map(_fromDocument).toList();
-        assignedReady = true;
-        emit();
-      },
-      onError: controller.addError,
-    );
-
-    controller.onCancel = () async {
-      await availableSubscription.cancel();
-      await assignedSubscription.cancel();
-    };
-    return controller.stream;
+        .map((snapshot) => snapshot.docs.map(_fromDocument).toList());
   }
 
   @override
@@ -165,7 +126,12 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     }
   }
 
-  Future<void> _transition(String jobId, String status, {String? reason}) async {
+  Future<void> _transition(String jobId, String status,
+      {String? reason}) async {
+    if (!kUseCloudFunctions) {
+      await FirestoreService().transitionTransport(jobId, status);
+      return;
+    }
     await _functions.httpsCallable('transitionTransport').call<void>({
       'jobId': jobId,
       'status': status,
@@ -224,8 +190,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       if (data == null) return null;
       return JobIssueReport(
         jobId: jobId,
-        logisticsProviderId:
-            data['logisticsProviderId']?.toString() ?? '',
+        logisticsProviderId: data['logisticsProviderId']?.toString() ?? '',
         reason: data['reason']?.toString() ?? '',
         description: data['description']?.toString() ?? '',
         reportedAt: _date(data['reportedAt']) ?? DateTime.now(),
@@ -243,8 +208,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       if (data == null) return null;
       return JobDeliveryRating(
         jobId: jobId,
-        logisticsProviderId:
-            data['logisticsProviderId']?.toString() ?? '',
+        logisticsProviderId: data['logisticsProviderId']?.toString() ?? '',
         stars: (data['stars'] as num?)?.toInt() ?? 0,
         comment: data['comment']?.toString() ?? '',
         ratedAt: _date(data['ratedAt']) ?? DateTime.now(),
@@ -299,8 +263,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       status: status,
       createdAt: createdAt,
       updatedAt: _date(data['updatedAt']) ?? createdAt,
-      completedAt:
-          _date(data['completedAt']) ?? _date(data['deliveredAt']),
+      completedAt: _date(data['completedAt']) ?? _date(data['deliveredAt']),
       collectedAt: _date(data['collectedAt']) ?? _date(data['pickedUpAt']),
       inTransitAt: _date(data['inTransitAt']),
       acceptedAt:
@@ -312,14 +275,16 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   CollectionJobStatus _status(String? value) {
     return switch (value) {
-      'requested' || 'pending' || 'open' || 'OPEN' =>
-        CollectionJobStatus.open,
+      'requested' || 'pending' || 'open' || 'OPEN' => CollectionJobStatus.open,
       'accepted' || 'ACCEPTED' => CollectionJobStatus.accepted,
-      'pickedUp' || 'collected' || 'COLLECTED' =>
-        CollectionJobStatus.collected,
-      'inTransit' || 'in_transit' || 'IN_TRANSIT' =>
+      'pickedUp' || 'collected' || 'COLLECTED' => CollectionJobStatus.collected,
+      'inTransit' ||
+      'in_transit' ||
+      'IN_TRANSIT' =>
         CollectionJobStatus.inTransit,
-      'delivered' || 'completed' || 'COMPLETED' =>
+      'delivered' ||
+      'completed' ||
+      'COMPLETED' =>
         CollectionJobStatus.completed,
       'cancelled' || 'CANCELLED' => CollectionJobStatus.cancelled,
       _ => CollectionJobStatus.open,

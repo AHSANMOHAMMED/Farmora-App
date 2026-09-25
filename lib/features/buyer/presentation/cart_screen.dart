@@ -3,9 +3,68 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/firebase_service.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
+
+  Future<String?> _chooseTransporter(BuildContext context) async {
+    final transporters = await FirestoreService().getAvailableTransporters();
+    if (!context.mounted) return null;
+    if (transporters.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No verified transporters are available right now.'),
+        ),
+      );
+      return null;
+    }
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose a transporter'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: transporters.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final transporter = transporters[index];
+              final name =
+                  (transporter['displayName'] ?? 'Transporter').toString();
+              final district = (transporter['district'] ?? '').toString();
+              final vehicle = (transporter['vehicleType'] ?? '').toString();
+              final capacity = transporter['vehicleCapacity'];
+              final details = [
+                if (district.isNotEmpty) district,
+                if (vehicle.isNotEmpty) vehicle,
+                if (capacity != null) '$capacity kg capacity',
+              ].join(' • ');
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage:
+                      (transporter['photoUrl'] ?? '').toString().isNotEmpty
+                          ? NetworkImage(transporter['photoUrl'].toString())
+                          : null,
+                  child: (transporter['photoUrl'] ?? '').toString().isEmpty
+                      ? const Icon(Icons.local_shipping_outlined)
+                      : null,
+                ),
+                title: Text(name),
+                subtitle: Text(
+                  details.isEmpty ? 'Verified transporter' : details,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(dialogContext)
+                    .pop(transporter['uid'].toString()),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +202,8 @@ class CartScreen extends StatelessWidget {
                                     ? SafeImage(
                                         path: item.product.primaryImage!,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Center(child: Text(
+                                        errorBuilder: (_, __, ___) => Center(
+                                            child: Text(
                                           item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
                                         )),
@@ -219,7 +279,8 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                     child: Text(
                                       '${item.quantity}',
                                       style: const TextStyle(
@@ -272,16 +333,29 @@ class CartScreen extends StatelessWidget {
                       _buildFeeRow('Subtotal (${state.cartItemCount} items)',
                           'LKR ${state.cartSubtotal.toStringAsFixed(2)}'),
                       const SizedBox(height: 4),
-                      _buildFeeRow('Delivery fee', 'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
+                      _buildFeeRow('Delivery fee',
+                          'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Payment', style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+                          const Text('Payment',
+                              style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 14,
+                                  color: AppColors.onSurfaceVariant)),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.statusPendingBg, borderRadius: BorderRadius.circular(9999)),
-                            child: const Text('COD after delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: AppColors.statusPendingBg,
+                                borderRadius: BorderRadius.circular(9999)),
+                            child: const Text('COD after delivery',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.statusPendingText)),
                           ),
                         ],
                       ),
@@ -289,10 +363,18 @@ class CartScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700)),
+                          const Text('Total',
+                              style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)),
                           Text(
                             'LKR ${state.cartGrandTotal.toStringAsFixed(2)}',
-                            style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -308,8 +390,12 @@ class CartScreen extends StatelessWidget {
                         maxLines: 2,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Server verifies price, stock and totals. Pay COD after delivery (or PayHere when configured).',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
+                      const Text(
+                          'Server verifies price, stock and totals. Pay COD after delivery (or PayHere when configured).',
+                          style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -318,22 +404,34 @@ class CartScreen extends StatelessWidget {
                           onPressed: state.placingOrder
                               ? null
                               : () async {
-                                  final address = state.deliveryAddressDraft.trim();
+                                  final address =
+                                      state.deliveryAddressDraft.trim();
                                   if (address.length < 5) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Enter a delivery address to place the order.'),
+                                        content: Text(
+                                            'Enter a delivery address to place the order.'),
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
                                     return;
                                   }
-                                  final ok = await state.placeOrder(deliveryAddress: address);
+                                  final transporterId =
+                                      await _chooseTransporter(context);
+                                  if (transporterId == null) return;
+                                  final ok = await state.placeOrder(
+                                    deliveryAddress: address,
+                                    transporterId: transporterId,
+                                  );
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok ? 'Order placed successfully!' : 'Could not place order. Check address or try again.'),
-                                      backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
+                                      content: Text(ok
+                                          ? 'Request sent. Order will confirm after transporter accepts.'
+                                          : 'Could not place order. Check address or try again.'),
+                                      backgroundColor: ok
+                                          ? AppColors.primary
+                                          : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -349,10 +447,17 @@ class CartScreen extends StatelessWidget {
                             elevation: 2,
                           ),
                           icon: context.watch<FarmoraState>().placingOrder
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.check_circle_outline, size: 20),
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_outline,
+                                  size: 20),
                           label: Text(
-                            context.watch<FarmoraState>().placingOrder ? 'Placing…' : 'Place Order',
+                            context.watch<FarmoraState>().placingOrder
+                                ? 'Placing…'
+                                : 'Place Order',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 16,
@@ -373,8 +478,16 @@ class CartScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
-        Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(label,
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant)),
+        Text(value,
+            style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w600)),
       ],
     );
   }
