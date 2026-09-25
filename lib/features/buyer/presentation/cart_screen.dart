@@ -198,9 +198,9 @@ class CartScreen extends StatelessWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: item.product.primaryImage != null && item.product.primaryImage!.isNotEmpty
+                                child: item.product.imagePath != null
                                     ? SafeImage(
-                                        path: item.product.primaryImage!,
+                                        path: item.product.imagePath!,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => Center(
                                             child: Text(
@@ -208,11 +208,9 @@ class CartScreen extends StatelessWidget {
                                           style: const TextStyle(fontSize: 32),
                                         )),
                                       )
-                                    : Center(
-                                        child: Text(
-                                          item.product.emoji,
-                                          style: const TextStyle(fontSize: 32),
-                                        ),
+                                    : Text(
+                                        item.product.emoji,
+                                        style: const TextStyle(fontSize: 32),
                                       ),
                               ),
                             ),

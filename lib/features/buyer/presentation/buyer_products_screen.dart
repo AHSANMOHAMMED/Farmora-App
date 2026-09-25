@@ -322,9 +322,9 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: product.primaryImage != null && product.primaryImage!.isNotEmpty
+                child: product.imagePath != null && product.imagePath!.isNotEmpty
                     ? SafeImage(
-                        path: product.primaryImage!,
+                        path: product.imagePath!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _buildFallbackIcon(product),
                       )

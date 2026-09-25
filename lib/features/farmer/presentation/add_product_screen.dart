@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -152,19 +153,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
       for (final file in files.take(remaining)) {
         final bytes = await file.readAsBytes();
         final contentType = file.mimeType ?? 'image/jpeg';
-        final url = await _firestore.uploadProductImage(
-          bytes: bytes,
-          fileName: file.name,
-          contentType: contentType,
-        );
-        urls.add(url);
+        try {
+          final url = await _firestore.uploadProductImage(
+            bytes: bytes,
+            fileName: file.name,
+            contentType: contentType,
+          );
+          urls.add(url);
+        } catch (storageError) {
+          // If Firebase Storage is uninitialized or fails (HTTP 400),
+          // fallback to base64 data URI so user's image is preserved.
+          final base64String = base64Encode(bytes);
+          final dataUrl = 'data:$contentType;base64,$base64String';
+          urls.add(dataUrl);
+        }
       }
       if (!mounted) return;
       setState(() => _selectedImages.addAll(urls));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image upload failed: $e')),
+          SnackBar(content: Text('Image selection issue: $e')),
         );
       }
     } finally {

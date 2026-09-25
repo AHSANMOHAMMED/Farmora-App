@@ -7,30 +7,15 @@ import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
-class ProductDetailScreen extends StatefulWidget {
+class ProductDetailScreen extends StatelessWidget {
   final Product product;
 
   const ProductDetailScreen({super.key, required this.product});
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
-}
-
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  late String? _selectedImage;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedImage = widget.product.primaryImage;
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final product = widget.product;
     final isInCart = state.cartItems.any((c) => c.product.id == product.id);
-    final displayedImage = _selectedImage ?? product.primaryImage;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -65,7 +50,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product Main Image
+                // Product Image
                 Container(
                   width: double.infinity,
                   height: 240,
@@ -75,56 +60,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: displayedImage != null && displayedImage.isNotEmpty
+                    child: product.imagePath != null && product.imagePath!.isNotEmpty
                         ? SafeImage(
-                            path: displayedImage,
+                            path: product.imagePath!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildFallbackImage(),
                           )
                         : _buildFallbackImage(),
                   ),
                 ),
-                if (product.allImages.length > 1) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 60,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: product.allImages.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, idx) {
-                        final imgUrl = product.allImages[idx];
-                        final isSelected = displayedImage == imgUrl;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedImage = imgUrl),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : Colors.black12,
-                                width: isSelected ? 2.5 : 1,
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: SafeImage(
-                                path: imgUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: Colors.grey.shade100,
-                                  child: const Icon(Icons.image, size: 24, color: Colors.grey),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
                 if (product.videoUrl != null && product.videoUrl!.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   HarvestVideoPlayer(videoUrl: product.videoUrl!),
@@ -403,10 +347,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFallbackImage() {
     return Container(
-      color: widget.product.color,
+      color: product.color,
       child: Center(
         child: Text(
-          widget.product.emoji,
+          product.emoji,
           style: const TextStyle(fontSize: 80),
         ),
       ),

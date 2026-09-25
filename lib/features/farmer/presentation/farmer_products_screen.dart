@@ -253,9 +253,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child:
-                      product.primaryImage != null && product.primaryImage!.isNotEmpty
+                      product.imagePath != null && product.imagePath!.isNotEmpty
                           ? SafeImage(
-                              path: product.primaryImage!,
+                              path: product.imagePath!,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
                                   _buildFallbackThumbnail(product),

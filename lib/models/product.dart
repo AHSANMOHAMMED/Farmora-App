@@ -94,9 +94,6 @@ class Product {
     if (imagePath != null && imagePath!.isNotEmpty) merged.insert(0, imagePath!);
     return merged.toSet().toList();
   }
-  String? get primaryImage => (imagePath != null && imagePath!.isNotEmpty)
-      ? imagePath
-      : (allImages.isNotEmpty ? allImages.first : null);
 
   Product copyWith({
     String? id,
@@ -249,9 +246,7 @@ class Product {
       pricePerUnit: priceMinor > 0 ? priceMinor / 100.0 : legacyPrice,
       emoji: data['emoji'] ?? '🌱',
       color: Color(data['color'] as int? ?? 0xFFE8F5E9),
-      imagePath: (data['imagePath'] as String?)?.isNotEmpty == true
-          ? (data['imagePath'] as String)
-          : (mergedImages.isNotEmpty ? mergedImages.first : null),
+      imagePath: data['imagePath'] as String?,
       status: data['status'] ?? 'Active',
       isOrganic: data['isOrganic'] ?? true,
       description: data['description'] ?? '',
