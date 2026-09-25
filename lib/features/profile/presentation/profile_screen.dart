@@ -111,10 +111,12 @@ class ProfileScreen extends StatelessWidget {
         ? state.district
         : (currentUserData['district'] as String? ?? '');
 
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.profile),
+        title: Text(l10n?.profile ?? 'Profile'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -238,8 +240,8 @@ class ProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.chat_bubble_outline,
                         color: AppColors.primary),
-                    title: Text(AppLocalizations.of(context)!.messages,
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(l10n?.messages ?? 'Messages',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -253,8 +255,8 @@ class ProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.notifications_none_rounded,
                         color: AppColors.primary),
-                    title: Text(AppLocalizations.of(context)!.notifications,
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(l10n?.notifications ?? 'Notifications',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -310,8 +312,8 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.language_rounded,
                       color: AppColors.primary),
-                  title: Text(AppLocalizations.of(context)!.language,
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text(l10n?.language ?? 'Language',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(state.language),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => showModalBottomSheet(
@@ -394,8 +396,8 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading:
                       const Icon(Icons.logout_rounded, color: AppColors.error),
-                  title: Text(AppLocalizations.of(context)!.signOut,
-                      style: TextStyle(
+                  title: Text(l10n?.signOut ?? 'Sign out',
+                      style: const TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   onTap: () async {
                     context.read<FarmoraState>().signOut();
@@ -425,8 +427,8 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.download_outlined,
                       color: AppColors.primary),
-                  title: Text(AppLocalizations.of(context)!.exportMyData,
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text(l10n?.exportMyData ?? 'Export my data',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Download a copy of your Farmora data'),
                   onTap: () => _exportData(context),
                 ),
@@ -437,8 +439,8 @@ class ProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.delete_forever_outlined,
                       color: AppColors.error),
-                  title: Text(AppLocalizations.of(context)!.deleteAccount,
-                      style: TextStyle(
+                  title: Text(l10n?.deleteAccount ?? 'Delete account',
+                      style: const TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   subtitle: const Text('Permanently remove your account'),
                   onTap: () => _deleteAccount(context),

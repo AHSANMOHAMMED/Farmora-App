@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -21,6 +22,23 @@ class SafeImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (path.isEmpty) {
       return errorBuilder?.call(context, Exception('Empty path'), null) ?? const Icon(Icons.broken_image, color: Colors.grey);
+    }
+
+    if (path.startsWith('data:image')) {
+      try {
+        final commaIdx = path.indexOf(',');
+        final base64Str = commaIdx != -1 ? path.substring(commaIdx + 1) : path;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: fit,
+          width: width,
+          height: height,
+          errorBuilder: errorBuilder ?? (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+        );
+      } catch (e, st) {
+        return errorBuilder?.call(context, e, st) ?? const Icon(Icons.broken_image, color: Colors.grey);
+      }
     }
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
