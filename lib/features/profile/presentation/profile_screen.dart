@@ -111,7 +111,7 @@ class ProfileScreen extends StatelessWidget {
         ? state.district
         : (currentUserData['district'] as String? ?? '');
 
-    final l10n = AppLocalizations.of(context);
+    final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
 
     return Scaffold(
       backgroundColor: AppColors.surface,

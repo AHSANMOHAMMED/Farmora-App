@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../home/presentation/home_screen.dart';
@@ -12,10 +13,14 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // For testing bypass
+    // For testing bypass or offline mode
     final state = Provider.of<FarmoraState>(context);
     if (state.signedIn) {
       return const HomeScreen();
+    }
+
+    if (Firebase.apps.isEmpty) {
+      return const WelcomeScreen();
     }
 
     return StreamBuilder<User?>(

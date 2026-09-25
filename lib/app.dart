@@ -9,6 +9,7 @@ import 'features/splash/presentation/splash_screen.dart';
 import 'features/transporter/application/transporter_controller.dart';
 import 'features/transporter/data/firestore_collection_job_repository.dart';
 import 'features/transporter/data/firestore_transporter_account_repository.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class FarmoraApp extends StatelessWidget {
@@ -46,7 +47,8 @@ class FarmoraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             navigatorObservers: [
-              FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+              if (Firebase.apps.isNotEmpty)
+                FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
             ],
             home: showSplash ? const SplashScreen() : const AuthGate(),
           );
