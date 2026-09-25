@@ -246,7 +246,7 @@ class Product {
       pricePerUnit: priceMinor > 0 ? priceMinor / 100.0 : legacyPrice,
       emoji: data['emoji'] ?? '🌱',
       color: Color(data['color'] as int? ?? 0xFFE8F5E9),
-      imagePath: data['imagePath'] as String?,
+      imagePath: (data['imagePath'] as String?) ?? (mergedImages.isNotEmpty ? mergedImages.first : null),
       status: data['status'] ?? 'Active',
       isOrganic: data['isOrganic'] ?? true,
       description: data['description'] ?? '',

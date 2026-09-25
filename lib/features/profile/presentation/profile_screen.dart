@@ -18,6 +18,7 @@ import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../../services/user_location_service.dart';
+import '../../auth/presentation/auth_gate.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -400,7 +401,13 @@ class ProfileScreen extends StatelessWidget {
                       style: const TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   onTap: () async {
-                    context.read<FarmoraState>().signOut();
+                    await context.read<FarmoraState>().signOut();
+                    if (context.mounted) {
+                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const AuthGate()),
+                        (route) => false,
+                      );
+                    }
                   },
                 ),
               ],

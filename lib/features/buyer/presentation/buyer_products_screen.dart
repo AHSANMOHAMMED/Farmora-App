@@ -430,11 +430,12 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   }
 
   Widget _buildFallbackIcon(Product product) {
+    final emojiText = product.emoji.length > 2 ? product.emoji.characters.first : product.emoji;
     return Container(
       color: product.color,
       child: Center(
         child: Text(
-          product.emoji,
+          emojiText,
           style: const TextStyle(fontSize: 36),
         ),
       ),

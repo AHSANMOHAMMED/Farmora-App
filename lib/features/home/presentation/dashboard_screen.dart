@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/safe_image.dart';
 import '../../../models/user_role.dart';
 import '../../../models/product.dart';
 import '../../../models/order.dart';
@@ -521,9 +522,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: stockStatus.$2.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Center(
-                    child: Text(product.emoji,
-                        style: const TextStyle(fontSize: 26)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: product.imagePath != null && product.imagePath!.isNotEmpty
+                        ? SafeImage(
+                            path: product.imagePath!,
+                            fit: BoxFit.cover,
+                            width: 56,
+                            height: 56,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                product.emoji.length > 2 ? product.emoji.characters.first : product.emoji,
+                                style: const TextStyle(fontSize: 26),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              product.emoji.length > 2 ? product.emoji.characters.first : product.emoji,
+                              style: const TextStyle(fontSize: 26),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1570,9 +1589,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: product.color,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Center(
-                        child: Text(product.emoji,
-                            style: const TextStyle(fontSize: 28)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: product.imagePath != null && product.imagePath!.isNotEmpty
+                            ? SafeImage(
+                                path: product.imagePath!,
+                                fit: BoxFit.cover,
+                                width: 58,
+                                height: 58,
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Text(
+                                    product.emoji.length > 2 ? product.emoji.characters.first : product.emoji,
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Text(
+                                  product.emoji.length > 2 ? product.emoji.characters.first : product.emoji,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 14),
