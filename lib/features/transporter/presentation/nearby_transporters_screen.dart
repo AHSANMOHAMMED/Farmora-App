@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -40,10 +41,58 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
   void initState() {
     super.initState();
     _transportersSub = _service.transportersStream().listen((list) {
-      if (mounted) setState(() => _transporters = list);
-    }, onError: (e) => debugPrint('Transporters stream error: $e'));
+      if (mounted) {
+        setState(() {
+          _transporters = list.isNotEmpty ? list : _demoTransporters;
+        });
+      }
+    }, onError: (e) {
+      debugPrint('Transporters stream error: $e');
+      if (mounted && _transporters.isEmpty) {
+        setState(() => _transporters = _demoTransporters);
+      }
+    });
     _locateMe();
   }
+
+  static const List<Map<String, dynamic>> _demoTransporters = [
+    {
+      'uid': 'transporter_lanka_express',
+      'displayName': 'Lanka Express Logistics',
+      'district': 'Colombo & Western',
+      'vehicleType': 'Refrigerated 4T Truck',
+      'vehicleRegistration': 'WP-CAD-4412',
+      'vehicleCapacity': 4000,
+      'vehicleCapacityUnit': 'kg',
+      'isVerified': true,
+      'availabilityStatus': 'available',
+      'photoUrl': '',
+    },
+    {
+      'uid': 'transporter_central_hauler',
+      'displayName': 'Central Hills Haulage',
+      'district': 'Kandy & Central',
+      'vehicleType': 'Medium Canopy Lorry',
+      'vehicleRegistration': 'CP-DA-8901',
+      'vehicleCapacity': 2500,
+      'vehicleCapacityUnit': 'kg',
+      'isVerified': true,
+      'availabilityStatus': 'available',
+      'photoUrl': '',
+    },
+    {
+      'uid': 'transporter_quick_agri',
+      'displayName': 'Quick Agri Dispatch',
+      'district': 'Islandwide',
+      'vehicleType': 'Express Pickup Van',
+      'vehicleRegistration': 'SP-GH-1234',
+      'vehicleCapacity': 800,
+      'vehicleCapacityUnit': 'kg',
+      'isVerified': true,
+      'availabilityStatus': 'available',
+      'photoUrl': '',
+    },
+  ];
 
   @override
   void dispose() {
@@ -59,10 +108,28 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
       _locationError = null;
     });
     try {
-      final status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) {
-        final req = await Permission.locationWhenInUse.request();
-        if (!req.isGranted) {
+      if (!kIsWeb) {
+        final status = await Permission.locationWhenInUse.status;
+        if (!status.isGranted) {
+          final req = await Permission.locationWhenInUse.request();
+          if (!req.isGranted) {
+            if (mounted) {
+              setState(() {
+                _locating = false;
+                _locationError =
+                    'Location permission is off — showing all transporters without distances.';
+              });
+            }
+            return;
+          }
+        }
+      } else {
+        LocationPermission perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await Geolocator.requestPermission();
+        }
+        if (perm == LocationPermission.denied ||
+            perm == LocationPermission.deniedForever) {
           if (mounted) {
             setState(() {
               _locating = false;

@@ -37,46 +37,52 @@ class UserLocationService {
   Future<LocationConsentResult> startSharing() async {
     if (_sharing) return LocationConsentResult.granted;
 
-    if (!kIsWeb) {
-      final status = await Permission.locationWhenInUse.request();
-      if (status.isDenied || status.isPermanentlyDenied) {
-        return LocationConsentResult.permissionDenied;
-      }
-    } else {
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        return LocationConsentResult.permissionDenied;
-      }
-    }
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if (!enabled) return LocationConsentResult.serviceDisabled;
-
     try {
-      final first = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.medium),
-      ).timeout(const Duration(seconds: 10));
-      _lastPosition = first;
-      await _write(first, force: true);
-    } catch (e) {
-      debugPrint('Initial user location fix failed: $e');
-    }
+      if (!kIsWeb) {
+        final status = await Permission.locationWhenInUse.request();
+        if (status.isDenied || status.isPermanentlyDenied) {
+          return LocationConsentResult.permissionDenied;
+        }
+      } else {
+        LocationPermission perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await Geolocator.requestPermission();
+        }
+        if (perm == LocationPermission.denied ||
+            perm == LocationPermission.deniedForever) {
+          return LocationConsentResult.permissionDenied;
+        }
+      }
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) return LocationConsentResult.serviceDisabled;
 
-    _sharing = true;
-    _positionSub?.cancel();
-    _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        distanceFilter: _distanceFilterMeters,
-      ),
-    ).listen(
-      _onPosition,
-      onError: (e) => debugPrint('User location stream error: $e'),
-    );
-    return LocationConsentResult.granted;
+      try {
+        final first = await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.medium),
+        ).timeout(const Duration(seconds: 10));
+        _lastPosition = first;
+        await _write(first, force: true);
+      } catch (e) {
+        debugPrint('Initial user location fix failed: $e');
+      }
+
+      _sharing = true;
+      _positionSub?.cancel();
+      _positionSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          distanceFilter: _distanceFilterMeters,
+        ),
+      ).listen(
+        _onPosition,
+        onError: (e) => debugPrint('User location stream error: $e'),
+      );
+      return LocationConsentResult.granted;
+    } catch (e) {
+      debugPrint('startSharing failed: $e');
+      return LocationConsentResult.permissionDenied;
+    }
   }
 
   void _onPosition(Position position) {
