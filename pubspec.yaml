@@ -43,6 +43,7 @@ dependencies:
   logger: ^2.8.0
   cached_network_image: ^4.0.2
   fl_chart: ^1.2.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:
@@ -58,5 +59,22 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    - assets/fonts/
-    - assets/translations/
+    # Font licence (the TTFs themselves are bundled through `fonts:` below).
+    - assets/fonts/OFL.txt
+
+  # Noto Sans Tamil / Sinhala (SIL OFL 1.1, see assets/fonts/OFL.txt) are the
+  # fallback fonts for Tamil and Sinhala text; required on web, where the
+  # browser does not supply them.
+  fonts:
+    - family: NotoSansTamil
+      fonts:
+        - asset: assets/fonts/NotoSansTamil-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansTamil-Bold.ttf
+          weight: 700
+    - family: NotoSansSinhala
+      fonts:
+        - asset: assets/fonts/NotoSansSinhala-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansSinhala-Bold.ttf
+          weight: 700

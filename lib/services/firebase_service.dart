@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../core/config/app_backend.dart';
+import '../core/localization/l10n.dart';
 import '../core/utils/app_errors.dart';
 import '../core/utils/image_upload.dart';
 import '../models/product.dart';
@@ -17,6 +18,7 @@ import '../models/review_model.dart';
 import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
 import '../models/market_price_index.dart';
+import 'service_errors.dart';
 import 'spark_backend.dart';
 
 /// A file stored in Firebase Storage.
@@ -139,7 +141,7 @@ class FirestoreService {
 
   Future<void> updateUserLanguage(String languageCode) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     await _db.collection('users').doc(uid).update({
       'languageCode': languageCode,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -153,9 +155,12 @@ class FirestoreService {
     String? district,
     String? country,
     String? photoUrl,
+    String? farmName,
+    String? farmSize,
+    List<String>? mainCrops,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     final data = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -166,6 +171,9 @@ class FirestoreService {
     if (district != null) data['district'] = district;
     if (country != null) data['country'] = country;
     if (photoUrl != null) data['photoUrl'] = photoUrl;
+    if (farmName != null) data['farmName'] = farmName;
+    if (farmSize != null) data['farmSize'] = farmSize;
+    if (mainCrops != null) data['mainCrops'] = mainCrops;
     await _db.collection('users').doc(uid).update(data);
   }
 
@@ -284,7 +292,7 @@ class FirestoreService {
     }
     if (status == 'countered') {
       if (proposedPrice == null || proposedPrice <= 0) {
-        throw ArgumentError('A valid counter price is required.');
+        throw UserArgumentError(L10n.current.svcCounterPriceRequired);
       }
       if (!kUseCloudFunctions) {
         await _spark.counterOffer(offerId: id, proposedPrice: proposedPrice);
@@ -540,7 +548,7 @@ class FirestoreService {
 
   Future<void> publishChatPublicKey(String publicKeyB64) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     await _db.collection('chat_public_keys').doc(uid).set({
       'publicKey': publicKeyB64,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -559,7 +567,7 @@ class FirestoreService {
     List<String>? serviceDistricts,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     final updates = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -677,9 +685,9 @@ class FirestoreService {
     required String contentType,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (bytes.length > 5 * 1024 * 1024) {
-      throw StateError('File must be smaller than 5 MB.');
+      throw UserStateError(L10n.current.svcFileTooLarge);
     }
     final path =
         'verification/$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
@@ -694,9 +702,9 @@ class FirestoreService {
     required String contentType,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (bytes.length > 5 * 1024 * 1024) {
-      throw StateError('Profile photo must be smaller than 5 MB.');
+      throw UserStateError(L10n.current.svcProfilePhotoTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final ref = _storage.ref('users/$uid/profile_$safeName');
@@ -723,7 +731,7 @@ class FirestoreService {
 
   String get _requireUid {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw const AppException('Please sign in again.');
+    if (uid == null) throw AppException(L10n.current.errorSignInAgain);
     return uid;
   }
 
@@ -733,7 +741,7 @@ class FirestoreService {
     void Function(double progress)? onProgress,
   }) async {
     if (image.bytes.length > kMaxImageBytes) {
-      throw const AppException('Image is too large. The limit is 5 MB.');
+      throw AppException(L10n.current.svcImageTooLarge);
     }
     final ref = _storage.ref(path);
     final task = ref.putData(
@@ -981,9 +989,9 @@ class FirestoreService {
     String contentType = 'video/mp4',
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (bytes.length > 100 * 1024 * 1024) {
-      throw StateError('Video must be smaller than 100 MB.');
+      throw UserStateError(L10n.current.svcVideoTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final path =
@@ -1044,7 +1052,7 @@ class FirestoreService {
     required String district,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     await _db.collection('users').doc(uid).update({
       'country': country,
       'district': district,
@@ -1214,7 +1222,7 @@ class FirestoreService {
 
   Future<void> updateNotificationPreferences(Map<String, dynamic> prefs) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     await _db.collection('users').doc(uid).update({
       'notificationPreferences': prefs,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -1247,9 +1255,9 @@ class FirestoreService {
     required String contentType,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (bytes.length > 5 * 1024 * 1024) {
-      throw StateError('Evidence photo must be smaller than 5 MB.');
+      throw UserStateError(L10n.current.svcEvidenceTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final path =
@@ -1438,7 +1446,7 @@ class FirestoreService {
     String? accuracyLabel,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       throw StateError('Invalid coordinates.');
     }

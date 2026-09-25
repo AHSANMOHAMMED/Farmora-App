@@ -70,4 +70,53 @@ describe("Users Collection Rules", () => {
       displayName: 'Alice New'
     }));
   });
+
+  async function seedFarmer() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().collection('users').doc('alice').set({
+        id: 'alice',
+        authUid: 'alice',
+        role: 'farmer',
+        isVerified: false,
+        isSuspended: false,
+        name: 'Alice',
+        displayName: 'Alice',
+        phone: '12345',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    });
+  }
+
+  it("should allow a user to update their own farm details", async () => {
+    await seedFarmer();
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    await assertSucceeds(aliceDb.collection('users').doc('alice').update({
+      farmName: 'Green Valley Farm',
+      farmSize: '2 acres',
+      mainCrops: ['Carrot', 'Leeks'],
+    }));
+  });
+
+  it("should deny invalid farm details", async () => {
+    await seedFarmer();
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(aliceDb.collection('users').doc('alice').update({
+      farmName: 'x'.repeat(81),
+    }));
+    await assertFails(aliceDb.collection('users').doc('alice').update({
+      mainCrops: 'Carrot',
+    }));
+    await assertFails(aliceDb.collection('users').doc('alice').update({
+      mainCrops: Array.from({ length: 11 }, (_, i) => `Crop ${i}`),
+    }));
+  });
+
+  it("should deny editing another user's farm details", async () => {
+    await seedFarmer();
+    const bobDb = testEnv.authenticatedContext('bob').firestore();
+    await assertFails(bobDb.collection('users').doc('alice').update({
+      farmName: 'Stolen Farm',
+    }));
+  });
 });

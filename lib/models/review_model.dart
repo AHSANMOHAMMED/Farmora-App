@@ -1,3 +1,4 @@
+import '../core/localization/l10n.dart';
 import 'package:flutter/material.dart';
 import '../core/utils/firebase_values.dart';
 
@@ -121,11 +122,11 @@ class Review {
   String getStatusDisplayName() {
     switch (status) {
       case ReviewStatus.pending:
-        return 'Pending';
+        return L10n.current.statusPending;
       case ReviewStatus.approved:
-        return 'Approved';
+        return L10n.current.statusApproved;
       case ReviewStatus.rejected:
-        return 'Rejected';
+        return L10n.current.statusRejected;
     }
   }
 
@@ -153,17 +154,17 @@ class Review {
   String getRatingText() {
     switch (rating) {
       case 5:
-        return 'Excellent';
+        return L10n.current.ratingExcellent;
       case 4:
-        return 'Good';
+        return L10n.current.ratingGood;
       case 3:
-        return 'Average';
+        return L10n.current.ratingAverage;
       case 2:
-        return 'Poor';
+        return L10n.current.ratingPoor;
       case 1:
-        return 'Terrible';
+        return L10n.current.ratingTerrible;
       default:
-        return 'No rating';
+        return L10n.current.ratingNone;
     }
   }
 }

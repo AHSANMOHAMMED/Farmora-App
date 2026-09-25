@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../core/localization/l10n.dart';
 import '../models/bank_details.dart';
 import '../models/order.dart';
+import 'service_errors.dart';
 
 /// Farmer-direct payments (Cash on Delivery / Bank Deposit).
 ///
@@ -20,7 +22,7 @@ class PaymentService {
   String get _uid {
     final uid = _currentUid?.call() ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
-      throw StateError('Authentication required.');
+      throw UserStateError(L10n.current.errorSignInAgain);
     }
     return uid;
   }
@@ -41,7 +43,7 @@ class PaymentService {
 
   Future<void> saveBankDetails(BankDetails details) async {
     if (!details.isComplete) {
-      throw ArgumentError('All bank fields are required.');
+      throw UserArgumentError(L10n.current.svcBankFieldsRequired);
     }
     await _bankRef(_uid).set({
       ...details.toMap(),
@@ -68,13 +70,13 @@ class PaymentService {
     final order = await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final data = snap.data();
-      if (data == null) throw StateError('Order not found.');
+      if (data == null) throw UserStateError(L10n.current.svcOrderNotFound);
       final order = FarmoraOrder.fromMap(snap.id, data);
-      if (order.buyerId != uid) throw StateError('Not allowed.');
+      if (order.buyerId != uid) throw UserStateError(L10n.current.errorNoPermission);
       if (!order.canSubmitProof) {
-        throw StateError(order.isBankDeposit
-            ? 'This order no longer needs a payment receipt.'
-            : 'Receipts are only needed for bank deposit orders.');
+        throw UserStateError(order.isBankDeposit
+            ? L10n.current.svcReceiptNotNeeded
+            : L10n.current.svcReceiptBankOnly);
       }
       tx.update(ref, {
         'paymentStatus': 'proof_submitted',
@@ -104,10 +106,10 @@ class PaymentService {
       orderId,
       check: (order) {
         if (order.isBankDeposit) {
-          throw StateError('This order is paid by bank deposit.');
+          throw UserStateError(L10n.current.svcPaidByBank);
         }
         if (!order.canMarkCashReceived) {
-          throw StateError('Cash can be marked received after delivery.');
+          throw UserStateError(L10n.current.svcCashAfterDelivery);
         }
       },
       update: {'paymentStatus': 'paid', 'paidAt': FieldValue.serverTimestamp()},
@@ -123,7 +125,7 @@ class PaymentService {
       orderId,
       check: (order) {
         if (!order.canReviewProof) {
-          throw StateError('No payment receipt is waiting for review.');
+          throw UserStateError(L10n.current.svcNoReceiptWaiting);
         }
       },
       update: {
@@ -140,13 +142,13 @@ class PaymentService {
   Future<void> rejectBankPayment(String orderId, String reason) {
     final trimmed = reason.trim();
     if (trimmed.length < 3) {
-      throw ArgumentError('Please give the buyer a reason.');
+      throw UserArgumentError(L10n.current.svcRejectReasonRequired);
     }
     return _farmerTransition(
       orderId,
       check: (order) {
         if (!order.canReviewProof) {
-          throw StateError('No payment receipt is waiting for review.');
+          throw UserStateError(L10n.current.svcNoReceiptWaiting);
         }
       },
       update: {'paymentStatus': 'rejected', 'rejectionReason': trimmed},
@@ -167,9 +169,9 @@ class PaymentService {
     final order = await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final data = snap.data();
-      if (data == null) throw StateError('Order not found.');
+      if (data == null) throw UserStateError(L10n.current.svcOrderNotFound);
       final order = FarmoraOrder.fromMap(snap.id, data);
-      if (order.farmerId != uid) throw StateError('Not allowed.');
+      if (order.farmerId != uid) throw UserStateError(L10n.current.errorNoPermission);
       check(order);
       tx.update(ref, {
         ...update,

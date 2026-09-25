@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'dashboard_screen.dart';
@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Widget> screens;
     List<_NavItem> navItems;
 
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10n;
 
     if (role == Role.farmer) {
       // Stitch bottom nav: Home, Products, Orders, Earnings, Profile
@@ -81,27 +81,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       navItems = [
         _NavItem(
-            label: l10n.home,
+            label: l10n.homeNavHome,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
-            label: l10n.myProducts,
+            label: l10n.homeNavProducts,
             icon: Icons.local_florist_outlined,
             activeIcon: Icons.local_florist_rounded),
         _NavItem(
-            label: l10n.orders,
+            label: l10n.homeNavOrders,
             icon: Icons.shopping_basket_outlined,
             activeIcon: Icons.shopping_basket_rounded),
         _NavItem(
-            label: l10n.deliveries,
+            label: l10n.homeNavDeliveries,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
         _NavItem(
-            label: l10n.earnings,
+            label: l10n.homeNavEarnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
         _NavItem(
-            label: l10n.profile,
+            label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];
@@ -119,23 +119,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       navItems = [
         _NavItem(
-            label: l10n.home,
+            label: l10n.homeNavHome,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
-            label: l10n.jobs,
+            label: l10n.homeNavJobs,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
         _NavItem(
-            label: l10n.orders,
+            label: l10n.homeNavOrders,
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
         _NavItem(
-            label: l10n.notifications,
+            label: l10n.homeNavAlerts,
             icon: Icons.notifications_none_rounded,
             activeIcon: Icons.notifications_rounded),
         _NavItem(
-            label: l10n.profile,
+            label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];
@@ -149,23 +149,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       navItems = [
         _NavItem(
-            label: l10n.dashboard,
+            label: l10n.homeNavDashboard,
             icon: Icons.dashboard_outlined,
             activeIcon: Icons.dashboard_rounded),
         _NavItem(
-            label: l10n.verification,
+            label: l10n.homeNavVerify,
             icon: Icons.verified_user_outlined,
             activeIcon: Icons.verified_user_rounded),
         _NavItem(
-            label: l10n.users,
+            label: l10n.homeNavUsers,
             icon: Icons.people_outline_rounded,
             activeIcon: Icons.people_rounded),
         _NavItem(
-            label: l10n.logistics,
+            label: l10n.homeNavLogistics,
             icon: Icons.local_shipping_outlined,
             activeIcon: Icons.local_shipping_rounded),
         _NavItem(
-            label: l10n.settings,
+            label: l10n.homeNavSettings,
             icon: Icons.settings_outlined,
             activeIcon: Icons.settings_rounded),
       ];
@@ -179,23 +179,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       navItems = [
         _NavItem(
-            label: l10n.home,
+            label: l10n.homeNavHome,
             icon: Icons.home_outlined,
             activeIcon: Icons.home_rounded),
         _NavItem(
-            label: l10n.myProducts,
+            label: l10n.homeNavProducts,
             icon: Icons.local_florist_outlined,
             activeIcon: Icons.local_florist_rounded),
         _NavItem(
-            label: l10n.myOffers,
+            label: l10n.homeNavOffers,
             icon: Icons.local_offer_outlined,
             activeIcon: Icons.local_offer_rounded),
         _NavItem(
-            label: l10n.orders,
+            label: l10n.homeNavOrders,
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long_rounded),
         _NavItem(
-            label: l10n.profile,
+            label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,
             activeIcon: Icons.person_rounded),
       ];
@@ -227,6 +227,19 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedIndex: tabIndex,
           onDestinationSelected: (i) => setState(() => tabIndex = i),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          // Small labels so Tamil/Sinhala fit six tabs on a 360px phone.
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => TextStyle(
+              fontSize: 11,
+              height: 1.1,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primary
+                  : AppColors.onSurfaceVariant,
+            ),
+          ),
           destinations: navItems.asMap().entries.map(
             (e) {
               final isSelected = tabIndex == e.key;
@@ -239,6 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : AppColors.onSurfaceVariant,
                 ),
                 label: item.label,
+                tooltip: item.label,
               );
             },
           ).toList(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../constants/app_colors.dart';
+import '../localization/l10n.dart';
 
 /// Plays a remote harvest video URL with play/pause controls.
 class HarvestVideoPlayer extends StatefulWidget {
@@ -19,7 +20,7 @@ class HarvestVideoPlayer extends StatefulWidget {
 
 class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
   VideoPlayerController? _controller;
-  String? _error;
+  bool _error = false;
   bool _initializing = true;
 
   @override
@@ -40,7 +41,7 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
   Future<void> _init() async {
     setState(() {
       _initializing = true;
-      _error = null;
+      _error = false;
     });
     try {
       final controller =
@@ -58,7 +59,7 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load harvest video.';
+          _error = true;
           _initializing = false;
         });
       }
@@ -73,7 +74,7 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (_error != null) {
+    if (_error) {
       return Container(
         height: widget.height,
         alignment: Alignment.center,
@@ -81,7 +82,9 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
           color: AppColors.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(_error!, style: const TextStyle(color: AppColors.onSurfaceVariant)),
+        child: Text(context.l10n.widgetVideoLoadFailed,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.onSurfaceVariant)),
       );
     }
     if (_initializing || _controller == null || !_controller!.value.isInitialized) {
@@ -114,6 +117,9 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
                 color: Colors.black54,
                 shape: const CircleBorder(),
                 child: IconButton(
+                  tooltip: c.value.isPlaying
+                      ? context.l10n.widgetPauseVideo
+                      : context.l10n.widgetPlayVideo,
                   icon: Icon(
                     c.value.isPlaying ? Icons.pause : Icons.play_arrow,
                     color: Colors.white,
@@ -126,13 +132,14 @@ class _HarvestVideoPlayerState extends State<HarvestVideoPlayer> {
                 ),
               ),
             ),
-            const Positioned(
+            Positioned(
               top: 8,
               left: 8,
               child: Chip(
-                label: Text('Harvest video', style: TextStyle(fontSize: 11)),
+                label: Text(context.l10n.widgetHarvestVideo,
+                    style: const TextStyle(fontSize: 11)),
                 backgroundColor: Colors.black54,
-                labelStyle: TextStyle(color: Colors.white),
+                labelStyle: const TextStyle(color: Colors.white),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
               ),

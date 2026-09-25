@@ -1,0 +1,13 @@
+{"keys": {
+ "svcDocNationalId": {"en": "National ID card (NIC)", "ta": "தேசிய அடையாள அட்டை (NIC)", "si": "ජාතික හැඳුනුම්පත (NIC)"},
+ "svcDocLandOwnership": {"en": "Land ownership document", "ta": "நில உரிமை ஆவணம்", "si": "ඉඩම් අයිතිය පිළිබඳ ලේඛනය"},
+ "svcDocFarmPhoto": {"en": "Farm photo", "ta": "பண்ணைப் புகைப்படம்", "si": "ගොවිපොළ ඡායාරූපය"},
+ "svcDocBankProof": {"en": "Bank passbook or statement", "ta": "வங்கிப் புத்தகம் அல்லது அறிக்கை", "si": "බැංකු පොත හෝ ප්‍රකාශය", "uncertain": true},
+ "svcDocDrivingLicence": {"en": "Driving licence", "ta": "சாரதி அனுமதிப்பத்திரம்", "si": "රියදුරු බලපත්‍රය"},
+ "svcDocVehicleRegistration": {"en": "Vehicle registration", "ta": "வாகனப் பதிவு", "si": "වාහන ලියාපදිංචිය"},
+ "svcDocVehicleInsurance": {"en": "Vehicle insurance", "ta": "வாகனக் காப்புறுதி", "si": "වාහන රක්ෂණය"},
+ "svcDocFarmerRegistration": {"en": "Farmer registration certificate", "ta": "விவசாயி பதிவுச் சான்றிதழ்", "si": "ගොවි ලියාපදිංචි සහතිකය", "uncertain": true},
+ "svcDocBusinessRegistration": {"en": "Business registration", "ta": "வணிகப் பதிவு", "si": "ව්‍යාපාර ලියාපදිංචිය"},
+ "svcDocGeneric": {"en": "Document", "ta": "ஆவணம்", "si": "ලේඛනය"},
+ "svcDocUploadedForReview": {"en": "Uploaded for manual review", "ta": "கைமுறை பரிசீலனைக்காகப் பதிவேற்றப்பட்டது", "si": "අතින් සමාලෝචනය සඳහා උඩුගත කළා", "uncertain": true}
+}}

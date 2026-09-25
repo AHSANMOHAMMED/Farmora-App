@@ -1,0 +1,22 @@
+{"keys": {
+"farmerOffersTitle": {"en": "Buyer Offers", "ta": "வாங்குபவர் சலுகைகள்", "si": "ගැනුම්කරුවන්ගේ පිරිනැමීම්"},
+"farmerOffersPendingCount": {"en": "{count} Pending", "ta": "{count} நிலுவையில்", "si": "{count}ක් පොරොත්තුවෙන්", "placeholders": {"count": {"type": "int"}}},
+"farmerOffersFilterLabel": {"en": "{label} ({count})", "ta": "{label} ({count})", "si": "{label} ({count})", "placeholders": {"label": {"type": "String"}, "count": {"type": "int"}}},
+"farmerOffersEmpty": {"en": "No offers matching this filter", "ta": "இந்த வடிகட்டலுக்குப் பொருந்தும் சலுகைகள் இல்லை", "si": "මෙම පෙරහනට ගැළපෙන පිරිනැමීම් නැත"},
+"farmerOffersProduceOffer": {"en": "Produce Order Offer", "ta": "விளைபொருள் ஆர்டர் சலுகை", "si": "නිෂ්පාදන ඇණවුම් පිරිනැමීම"},
+"farmerOffersBuyerLine": {"en": "Buyer: {buyer}", "ta": "வாங்குபவர்: {buyer}", "si": "ගැනුම්කරු: {buyer}", "placeholders": {"buyer": {"type": "String"}}},
+"farmerOffersVerifiedBuyer": {"en": "Verified Buyer", "ta": "சரிபார்க்கப்பட்ட வாங்குபவர்", "si": "තහවුරු කළ ගැනුම්කරු"},
+"farmerQuantityKg": {"en": "{quantity} kg", "ta": "{quantity} கிலோ", "si": "කිලෝ {quantity}", "placeholders": {"quantity": {"type": "String"}}},
+"farmerPricePerKgValue": {"en": "{price} /kg", "ta": "{price} /கிலோ", "si": "කිලෝවකට {price}", "placeholders": {"price": {"type": "String"}}},
+"farmerOffersOfferPrice": {"en": "Offer Price", "ta": "சலுகை விலை", "si": "පිරිනැමූ මිල"},
+"farmerOffersTotalValue": {"en": "Total Value", "ta": "மொத்த மதிப்பு", "si": "මුළු වටිනාකම"},
+"farmerOffersAccepted": {"en": "Offer accepted! New order created in Orders.", "ta": "சலுகை ஏற்கப்பட்டது! ஆர்டர்கள் பகுதியில் புதிய ஆர்டர் உருவாக்கப்பட்டது.", "si": "පිරිනැමීම පිළිගත්තා! ඇණවුම් කොටසේ නව ඇණවුමක් සෑදුණා."},
+"farmerOffersRejectConfirm": {"en": "Are you sure you want to decline this offer for {quantity} kg of {product}?", "ta": "{product} {quantity} கிலோவுக்கான இந்த சலுகையை நிராகரிக்க விரும்புகிறீர்களா?", "si": "{product} කිලෝ {quantity} සඳහා වූ මෙම පිරිනැමීම ප්‍රතික්ෂේප කිරීමට ඔබට විශ්වාසද?", "placeholders": {"quantity": {"type": "String"}, "product": {"type": "String"}}},
+"farmerOffersProductLine": {"en": "Product: {product}", "ta": "தயாரிப்பு: {product}", "si": "නිෂ්පාදනය: {product}", "placeholders": {"product": {"type": "String"}}},
+"farmerOffersQuantityLine": {"en": "Quantity: {quantity} kg", "ta": "அளவு: {quantity} கிலோ", "si": "ප්‍රමාණය: කිලෝ {quantity}", "placeholders": {"quantity": {"type": "String"}}},
+"farmerOffersBuyerOfferLine": {"en": "Buyer Offer: {price} /kg", "ta": "வாங்குபவர் சலுகை: {price} /கிலோ", "si": "ගැනුම්කරුගේ පිරිනැමීම: කිලෝවකට {price}", "placeholders": {"price": {"type": "String"}}},
+"farmerOffersCounterPriceLabel": {"en": "Your Counter Price (LKR / kg)", "ta": "உங்கள் எதிர் விலை (LKR / கிலோ)", "si": "ඔබේ ප්‍රති මිල (LKR / කිලෝ)", "uncertain": true},
+"farmerOffersInvalidCounterPrice": {"en": "Please enter a valid counter price", "ta": "சரியான எதிர் விலையை உள்ளிடவும்", "si": "වලංගු ප්‍රති මිලක් ඇතුළත් කරන්න", "uncertain": true},
+"farmerOffersCounterSent": {"en": "Counter offer sent: {price} /kg", "ta": "எதிர் சலுகை அனுப்பப்பட்டது: {price} /கிலோ", "si": "ප්‍රති පිරිනැමීම යැව්වා: කිලෝවකට {price}", "placeholders": {"price": {"type": "String"}}, "uncertain": true},
+"farmerOffersCounterFailed": {"en": "Could not send counter offer. {reason}", "ta": "எதிர் சலுகையை அனுப்ப முடியவில்லை. {reason}", "si": "ප්‍රති පිරිනැමීම යැවිය නොහැකි විය. {reason}", "placeholders": {"reason": {"type": "String"}}}
+}}

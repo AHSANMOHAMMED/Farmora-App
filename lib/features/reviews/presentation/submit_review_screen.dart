@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/order.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class SubmitReviewScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -28,6 +31,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -37,9 +41,9 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Write a Review',
-          style: TextStyle(
+        title: Text(
+          l.writeReview,
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
@@ -67,6 +71,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
   }
 
   Widget _buildOrderInfo() {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -76,18 +81,18 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Order Information',
-            style: TextStyle(
+          Text(
+            l.buyerOrderInformation,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.onSurface,
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(Icons.receipt_long, 'Order #', widget.order.orderNumber),
-          _buildInfoRow(Icons.attach_money, 'Total', 'Rs. ${widget.order.total.toStringAsFixed(2)}'),
-          _buildInfoRow(Icons.calendar_today, 'Date', _formatDate(widget.order.createdAt)),
+          _buildInfoRow(Icons.receipt_long, l.buyerOrderNumberLabel, widget.order.orderNumber),
+          _buildInfoRow(Icons.attach_money, l.commonTotal, AppFormat.lkr(widget.order.total, decimals: 2)),
+          _buildInfoRow(Icons.calendar_today, l.buyerDate, _formatDate(widget.order.createdAt)),
         ],
       ),
     );
@@ -125,12 +130,14 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
   }
 
   Widget _buildRatingSection() {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          'How was your experience?',
-          style: TextStyle(
+        Text(
+          l.reviewHowWasExperience,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
@@ -138,7 +145,8 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          _getRatingText(_rating),
+          _getRatingText(l, _rating),
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -150,6 +158,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(5, (index) {
             return IconButton(
+              tooltip: l.buyerStarsCount(index + 1),
               icon: Icon(
                 index < _rating ? Icons.star : Icons.star_border,
                 color: Colors.amber,
@@ -162,9 +171,9 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
           }),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Tap to rate',
-          style: TextStyle(
+        Text(
+          l.reviewTapToRate,
+          style: const TextStyle(
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           ),
@@ -174,21 +183,22 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
   }
 
   Widget _buildCommentSection() {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Additional Comments (Optional)',
-          style: TextStyle(
+        Text(
+          l.reviewCommentsTitle,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Share more details about your experience',
-          style: TextStyle(
+        Text(
+          l.reviewCommentsHelp,
+          style: const TextStyle(
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           ),
@@ -200,12 +210,12 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
           maxLength: 2000,
           validator: (value) {
             if (value != null && value.trim().length > 2000) {
-              return 'Comment must be less than 2000 characters';
+              return l.reviewCommentTooLong(2000);
             }
             return null;
           },
           decoration: InputDecoration(
-            hintText: 'What did you like or dislike?',
+            hintText: l.reviewCommentHint,
             filled: true,
             fillColor: AppColors.surfaceContainerHighest,
             border: OutlineInputBorder(
@@ -223,6 +233,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
   }
 
   Widget _buildGuidelines() {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -233,25 +244,27 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Review Guidelines',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.onSurface,
+              const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.reviewGuidelinesTitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _buildGuidelineItem('Be honest and specific'),
-          _buildGuidelineItem('Focus on the product and service'),
-          _buildGuidelineItem('Avoid offensive language'),
-          _buildGuidelineItem('Reviews are subject to moderation'),
+          _buildGuidelineItem(l.reviewGuidelineHonest),
+          _buildGuidelineItem(l.reviewGuidelineFocus),
+          _buildGuidelineItem(l.reviewGuidelineLanguage),
+          _buildGuidelineItem(l.reviewGuidelineModeration),
         ],
       ),
     );
@@ -302,9 +315,9 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
                 color: Colors.white,
               ),
             )
-          : const Text(
-              'Submit Review',
-              style: TextStyle(
+          : Text(
+              context.l10n.submitReview,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -326,9 +339,9 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             backgroundColor: AppColors.primary,
-            content: Text('Review submitted successfully!'),
+            content: Text(context.l10n.reviewSubmittedSuccessfully),
           ),
         );
         Navigator.of(context).pop();
@@ -338,7 +351,8 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.error,
-            content: Text('Failed to submit review: $error'),
+            content: Text(context.l10n.reviewSubmitFailed(
+                userMessage(error, action: 'submit review'))),
           ),
         );
       }
@@ -349,25 +363,25 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
     }
   }
 
-  String _getRatingText(int rating) {
+  String _getRatingText(AppLocalizations l, int rating) {
     switch (rating) {
       case 5:
-        return 'Excellent';
+        return l.ratingExcellent;
       case 4:
-        return 'Good';
+        return l.ratingGood;
       case 3:
-        return 'Average';
+        return l.ratingAverage;
       case 2:
-        return 'Poor';
+        return l.ratingPoor;
       case 1:
-        return 'Terrible';
+        return l.ratingTerrible;
       default:
-        return 'No rating';
+        return l.ratingNone;
     }
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Unknown';
-    return '${date.day}/${date.month}/${date.year}';
+    if (date == null) return context.l10n.commonUnknown;
+    return AppFormat.date(date);
   }
 }

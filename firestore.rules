@@ -44,6 +44,13 @@ service cloud.firestore {
           && request.resource.data.location.lng <= 180
           && request.resource.data.locationUpdatedAt == request.time);
     }
+    // Farm details a farmer edits on their own profile.
+    function validFarmDetailsUpdate() {
+      let d = request.resource.data;
+      return (!('farmName' in d) || (d.farmName is string && d.farmName.size() <= 80))
+        && (!('farmSize' in d) || (d.farmSize is string && d.farmSize.size() <= 40))
+        && (!('mainCrops' in d) || (d.mainCrops is list && d.mainCrops.size() <= 10));
+    }
     function orderDoc(orderId) {
       return get(/databases/$(database)/documents/orders/$(orderId)).data;
     }
@@ -178,8 +185,10 @@ service cloud.firestore {
         || (signedIn() && request.auth.uid == userId
           && request.resource.data.role == resource.data.role
           && validLocationShareUpdate()
+          && validFarmDetailsUpdate()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
+            'farmName', 'farmSize', 'mainCrops',
             'notificationPreferences', 'country', 'district', 'location',
             'locationUpdatedAt', 'locationAccuracy',
             'vehicleType', 'vehicleRegistration', 'vehicleCapacity',

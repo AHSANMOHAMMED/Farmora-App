@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/async_state_view.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../models/notification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
@@ -16,8 +18,9 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _service = FirestoreService();
-  String _selectedFilter =
-      'All'; // 'All', 'Unread', 'Orders', 'Offers', 'Logistics'
+  // Internal filter ids (not shown): 'All', 'Unread', 'Orders', 'Offers',
+  // 'Logistics'. Labels come from [_filterLabel].
+  String _selectedFilter = 'All';
   bool _orderUpdates = true;
   bool _messages = true;
   bool _promos = false;
@@ -33,13 +36,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification preferences saved.')),
+          SnackBar(content: Text(context.l10n.notifPrefsSaved)),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save: $e')),
+          SnackBar(
+            content: Text(userMessage(e,
+                action: 'save notification preferences', stack: st)),
+          ),
         );
       }
     }
@@ -56,6 +62,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
+            final l = ctx.l10n;
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
@@ -70,16 +77,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Notification Preferences',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
+                      Expanded(
+                        child: Text(
+                          l.notifPreferencesTooltip,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
                         ),
                       ),
                       IconButton(
+                        tooltip: l.commonClose,
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.of(ctx).pop(),
                       ),
@@ -88,7 +98,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   const SizedBox(height: 12),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Order status updates'),
+                    title: Text(l.notifPrefOrderUpdates),
                     value: _orderUpdates,
                     onChanged: (v) {
                       setState(() => _orderUpdates = v);
@@ -97,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('New messages & alerts'),
+                    title: Text(l.notifPrefMessages),
                     value: _messages,
                     onChanged: (v) {
                       setState(() => _messages = v);
@@ -106,7 +116,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Promotions & price updates'),
+                    title: Text(l.promotionsPriceUpdates),
                     value: _promos,
                     onChanged: (v) {
                       setState(() => _promos = v);
@@ -115,7 +125,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Quiet hours (10pm – 7am)'),
+                    title: Text(l.quietHours10pm7am),
                     value: _quietHours,
                     onChanged: (v) {
                       setState(() => _quietHours = v);
@@ -138,7 +148,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Save Preferences'),
+                      child: Text(l.savePreferences),
                     ),
                   ),
                 ],
@@ -154,6 +164,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final uid = state.currentUserId;
+    final l = context.l10n;
 
     // Use state.notifications if available, or fallback to direct Firestore Stream
     return Scaffold(
@@ -165,9 +176,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Notifications',
-          style: TextStyle(
+        title: Text(
+          l.notifications,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -176,19 +189,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Preferences',
+            tooltip: l.notifPreferencesTooltip,
             icon: const Icon(Icons.tune_rounded, color: AppColors.onSurface),
             onPressed: _showPreferencesSheet,
           ),
           IconButton(
-            tooltip: 'Mark all as read',
+            tooltip: l.markAllRead,
             icon: const Icon(Icons.done_all_rounded, color: AppColors.primary),
             onPressed: () async {
               await state.markAllNotificationsRead();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('All notifications marked as read')),
+                  SnackBar(content: Text(context.l10n.notifAllMarkedRead)),
                 );
               }
             },
@@ -219,13 +231,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ? StreamBuilder<List<FarmoraNotification>>(
                     stream: _service.notificationsStream(uid),
                     builder: (context, snapshot) {
-                      final l10n = AppLocalizations.of(context);
                       return AsyncStateView(
                         isLoading: !snapshot.hasData && !snapshot.hasError,
                         error: snapshot.hasError ? snapshot.error : null,
                         isEmpty: snapshot.hasData &&
                             _filterNotifications(snapshot.data!).isEmpty,
-                        emptyMessage: l10n.emptyState,
+                        emptyMessage: _emptyMessage(l),
                         onRetry: () => setState(() {}),
                         child: _buildListView(
                           _filterNotifications(snapshot.data ?? const []),
@@ -236,12 +247,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   )
                 : Builder(
                     builder: (context) {
-                      final l10n = AppLocalizations.of(context);
                       final notifs = _filterNotifications(state.notifications);
                       return AsyncStateView(
                         isLoading: false,
                         isEmpty: notifs.isEmpty,
-                        emptyMessage: l10n.emptyState,
+                        emptyMessage: _emptyMessage(l),
                         child: _buildListView(notifs, state),
                       );
                     },
@@ -262,21 +272,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'Offers':
         return list.where((n) => n.type.toLowerCase() == 'offer').toList();
       case 'Logistics':
-        return list.where((n) => n.type.toLowerCase() == 'logistics').toList();
+        return list
+            .where((n) =>
+                const {'logistics', 'transport'}.contains(n.type.toLowerCase()))
+            .toList();
       default:
         return list;
     }
   }
 
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
+  String _emptyMessage(AppLocalizations l) =>
+      _selectedFilter == 'All' ? l.noNotificationsYet : l.notifEmptyFiltered;
+
+  String _filterLabel(String filter) {
+    final l = context.l10n;
+    return switch (filter) {
+      'Unread' => l.notifFilterUnread,
+      'Orders' => l.orders,
+      'Offers' => l.homeNavOffers,
+      'Logistics' => l.homeNavLogistics,
+      _ => l.commonAll,
+    };
+  }
+
+  Widget _buildFilterChip(String filter) {
+    final isSelected = _selectedFilter == filter;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
-        label: Text(label),
+        label: Text(_filterLabel(filter)),
         selected: isSelected,
         onSelected: (selected) {
-          if (selected) setState(() => _selectedFilter = label);
+          if (selected) setState(() => _selectedFilter = filter);
         },
         selectedColor: AppColors.primary,
         backgroundColor: AppColors.surfaceContainerLow,
@@ -325,6 +352,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         bgColor = const Color(0xFFE7F7EE);
         break;
       case 'logistics':
+      case 'transport':
         icon = Icons.local_shipping_rounded;
         iconColor = const Color(0xFFD97706);
         bgColor = const Color(0xFFFEF3C7);
@@ -386,6 +414,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Expanded(
                         child: Text(
                           notif.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 15,
@@ -419,7 +449,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatTime(notif.createdAt),
+                    AppFormat.relative(notif.createdAt),
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -434,21 +464,5 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) {
-      return 'Just now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays}d ago';
-    } else {
-      return '${dt.day}/${dt.month}/${dt.year}';
-    }
   }
 }

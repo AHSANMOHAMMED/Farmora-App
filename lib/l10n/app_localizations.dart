@@ -2524,12 +2524,6 @@ abstract class AppLocalizations {
   /// **'Tap to change photo'**
   String get profileChangePhotoHint;
 
-  /// No description provided for @profilePhotoUploading.
-  ///
-  /// In en, this message translates to:
-  /// **'Uploading photo…'**
-  String get profilePhotoUploading;
-
   /// No description provided for @profilePhotoUpdated.
   ///
   /// In en, this message translates to:
@@ -2553,12 +2547,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Completed orders'**
   String get profileStatCompletedOrders;
-
-  /// No description provided for @profileStatRating.
-  ///
-  /// In en, this message translates to:
-  /// **'Rating'**
-  String get profileStatRating;
 
   /// No description provided for @profileReviewCount.
   ///
@@ -11183,138 +11171,6 @@ abstract class AppLocalizations {
   /// **'Image is too large. The limit is 5 MB.'**
   String get svcImageTooLarge;
 
-  /// No description provided for @svcAuthRoleInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Your account role is invalid.'**
-  String get svcAuthRoleInvalid;
-
-  /// No description provided for @svcAuthPhoneRegistered.
-  ///
-  /// In en, this message translates to:
-  /// **'This mobile number is already registered.'**
-  String get svcAuthPhoneRegistered;
-
-  /// No description provided for @svcAuthPhoneRegisteredOther.
-  ///
-  /// In en, this message translates to:
-  /// **'This mobile number is already registered to another account.'**
-  String get svcAuthPhoneRegisteredOther;
-
-  /// No description provided for @svcAuthProfileSaveFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not save your profile.'**
-  String get svcAuthProfileSaveFailed;
-
-  /// No description provided for @svcAuthProfileNotFound.
-  ///
-  /// In en, this message translates to:
-  /// **'User profile was not found.'**
-  String get svcAuthProfileNotFound;
-
-  /// No description provided for @svcAuthNoGoogleProfile.
-  ///
-  /// In en, this message translates to:
-  /// **'No Farmora profile found. Register with Google first.'**
-  String get svcAuthNoGoogleProfile;
-
-  /// No description provided for @svcAuthNoPhoneProfile.
-  ///
-  /// In en, this message translates to:
-  /// **'No Farmora profile found. Register this phone number first.'**
-  String get svcAuthNoPhoneProfile;
-
-  /// No description provided for @svcAuthEnterValidMobile.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid mobile number first.'**
-  String get svcAuthEnterValidMobile;
-
-  /// No description provided for @svcAuthPhoneExample.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid phone number, for example +94771234567.'**
-  String get svcAuthPhoneExample;
-
-  /// No description provided for @svcAuthEnterOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the 6-digit verification code.'**
-  String get svcAuthEnterOtp;
-
-  /// No description provided for @svcAuthRequestOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'Request a new OTP first.'**
-  String get svcAuthRequestOtp;
-
-  /// No description provided for @svcAuthAccountExists.
-  ///
-  /// In en, this message translates to:
-  /// **'An account already exists for this phone number.'**
-  String get svcAuthAccountExists;
-
-  /// No description provided for @svcAuthWeakPassword.
-  ///
-  /// In en, this message translates to:
-  /// **'Password must contain at least 6 characters.'**
-  String get svcAuthWeakPassword;
-
-  /// No description provided for @svcAuthWrongCredentials.
-  ///
-  /// In en, this message translates to:
-  /// **'Phone number or password is incorrect.'**
-  String get svcAuthWrongCredentials;
-
-  /// No description provided for @svcAuthNetwork.
-  ///
-  /// In en, this message translates to:
-  /// **'Network error. Check your internet connection.'**
-  String get svcAuthNetwork;
-
-  /// No description provided for @svcAuthProviderDisabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Enable this sign-in provider in Firebase Authentication.'**
-  String get svcAuthProviderDisabled;
-
-  /// No description provided for @svcAuthInvalidPhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid phone number with country code.'**
-  String get svcAuthInvalidPhone;
-
-  /// No description provided for @svcAuthWrongOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'The OTP is incorrect. Please try again.'**
-  String get svcAuthWrongOtp;
-
-  /// No description provided for @svcAuthOtpExpired.
-  ///
-  /// In en, this message translates to:
-  /// **'The OTP expired. Request a new code.'**
-  String get svcAuthOtpExpired;
-
-  /// No description provided for @svcAuthSmsQuota.
-  ///
-  /// In en, this message translates to:
-  /// **'SMS quota exceeded. Use a Firebase test phone number.'**
-  String get svcAuthSmsQuota;
-
-  /// No description provided for @svcAuthGoogleCancelled.
-  ///
-  /// In en, this message translates to:
-  /// **'Google sign-in was cancelled.'**
-  String get svcAuthGoogleCancelled;
-
-  /// No description provided for @svcAuthFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Authentication failed.'**
-  String get svcAuthFailed;
-
   /// No description provided for @svcSeedNeedsUsers.
   ///
   /// In en, this message translates to:
@@ -11416,12 +11272,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Farm pickup'**
   String get farmerTrackFarmPickup;
-
-  /// No description provided for @farmerTrackDeliveryPoint.
-  ///
-  /// In en, this message translates to:
-  /// **'Delivery point'**
-  String get farmerTrackDeliveryPoint;
 
   /// No description provided for @farmerTrackDriverLive.
   ///
@@ -11836,6 +11686,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select File'**
   String get farmerVerificationSelectFile;
+
+  /// No description provided for @stateSettlementReferenceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the actual bank or payout provider reference.'**
+  String get stateSettlementReferenceRequired;
+
+  /// No description provided for @stateInvalidWithdrawalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid withdrawal amount. Available balance: {balance}'**
+  String stateInvalidWithdrawalAmount(String balance);
+
+  /// No description provided for @authLanguageButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Change language'**
+  String get authLanguageButton;
 }
 
 class _AppLocalizationsDelegate

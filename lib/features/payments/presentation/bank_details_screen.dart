@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/bank_details.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -41,7 +43,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   }
 
   String? _required(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'Required' : null;
+      (v == null || v.trim().isEmpty) ? context.l10n.commonRequired : null;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -54,15 +56,16 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             accountNumber: _account.text,
           ));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Bank details saved. Buyers can now pay by bank deposit.'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(context.l10n.bankSaved),
         backgroundColor: AppColors.primary,
       ));
       Navigator.of(context).pop();
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Could not save bank details: $e'),
+        content: Text(context.l10n.bankSaveFailed(
+            userMessage(e, action: 'save bank details', stack: st))),
         backgroundColor: AppColors.error,
       ));
     } finally {
@@ -72,10 +75,11 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Bank Details'),
+        title: Text(l.bankDetailsTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -84,11 +88,9 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            const Text(
-              'Buyers who choose Bank Deposit will see these details and '
-              'upload their deposit slip in the order chat. Money goes '
-              'directly to your account.',
-              style: TextStyle(
+            Text(
+              l.bankIntro,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant,
@@ -98,10 +100,10 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             TextFormField(
               controller: _bank,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Bank name',
-                hintText: 'e.g. Bank of Ceylon',
-                prefixIcon: Icon(Icons.account_balance_outlined),
+              decoration: InputDecoration(
+                labelText: l.bankNameLabel,
+                hintText: l.bankNameHint,
+                prefixIcon: const Icon(Icons.account_balance_outlined),
               ),
               validator: _required,
             ),
@@ -109,10 +111,10 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             TextFormField(
               controller: _branch,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Branch',
-                hintText: 'e.g. Nuwara Eliya',
-                prefixIcon: Icon(Icons.location_city_outlined),
+              decoration: InputDecoration(
+                labelText: l.bankBranchLabel,
+                hintText: l.bankBranchHint,
+                prefixIcon: const Icon(Icons.location_city_outlined),
               ),
               validator: _required,
             ),
@@ -120,9 +122,9 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             TextFormField(
               controller: _holder,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Account holder name',
-                prefixIcon: Icon(Icons.person_outline),
+              decoration: InputDecoration(
+                labelText: l.bankHolderLabel,
+                prefixIcon: const Icon(Icons.person_outline),
               ),
               validator: _required,
             ),
@@ -130,14 +132,14 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
             TextFormField(
               controller: _account,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Account number',
-                prefixIcon: Icon(Icons.numbers),
+              decoration: InputDecoration(
+                labelText: l.bankAccountNumberLabel,
+                prefixIcon: const Icon(Icons.numbers),
               ),
               validator: (v) => _required(v) ??
                   (BankDetails.isValidAccountNumber(v!)
                       ? null
-                      : 'Enter 6–18 digits'),
+                      : l.bankAccountDigits),
             ),
             const SizedBox(height: 28),
             FilledButton(
@@ -155,7 +157,7 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Save bank details'),
+                  : Text(l.bankSaveButton),
             ),
           ],
         ),

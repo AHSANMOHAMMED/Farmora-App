@@ -1,0 +1,7 @@
+{
+  "keys": {
+    "stateSettlementReferenceRequired": {"en": "Enter the actual bank or payout provider reference.", "ta": "உண்மையான வங்கி அல்லது பணம் செலுத்தும் சேவையின் குறிப்பு எண்ணை உள்ளிடவும்.", "si": "සැබෑ බැංකු හෝ ගෙවීම් සේවා යොමු අංකය ඇතුළත් කරන්න.", "uncertain": true},
+    "stateInvalidWithdrawalAmount": {"en": "Invalid withdrawal amount. Available balance: {balance}", "ta": "தவறான பணம் எடுக்கும் தொகை. கிடைக்கும் இருப்பு: {balance}", "si": "වලංගු නොවන මුදල් ආපසු ගැනීමේ ප්‍රමාණයක්. ලබා ගත හැකි ශේෂය: {balance}", "placeholders": {"balance": {"type": "String"}}},
+    "authLanguageButton": {"en": "Change language", "ta": "மொழியை மாற்று", "si": "භාෂාව වෙනස් කරන්න"}
+  }
+}

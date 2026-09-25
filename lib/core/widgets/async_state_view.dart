@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../constants/app_colors.dart';
+import '../utils/app_errors.dart';
 
 /// Shared loading / error / empty / content pattern for list screens.
 class AsyncStateView extends StatelessWidget {
@@ -64,7 +65,7 @@ class AsyncStateView extends StatelessWidget {
               const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 16),
               Text(
-                '${l10n.error}', 
+                l10n.error,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: AppColors.error,
                 ),
@@ -72,7 +73,7 @@ class AsyncStateView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                error.toString(), 
+                describeError(error!),
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

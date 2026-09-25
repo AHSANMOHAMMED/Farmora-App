@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -24,11 +25,15 @@ import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
 import '../services/delivery_location_service.dart';
 import '../services/firebase_service.dart' as kajana_service;
+import '../services/service_errors.dart';
 import '../services/user_location_service.dart';
 import '../models/bank_details.dart';
 import '../services/payment_service.dart';
 import '../services/earnings_calculator.dart';
 import '../core/utils/app_errors.dart';
+import '../core/localization/app_format.dart';
+import '../core/localization/l10n.dart';
+import '../core/localization/language_prefs.dart';
 import '../core/utils/image_upload.dart';
 import '../models/conversation_model.dart';
 import 'package:intl/intl.dart';
@@ -58,7 +63,25 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<String>? _deviceTokenSub;
   StreamSubscription<BankDetails>? _bankDetailsSub;
   bool signedIn = false;
-  String language = 'English';
+
+  String _language = AppLanguage.english.nativeName;
+  int _languageVersion = 0;
+
+  /// Chosen language as its native name: 'English', 'தமிழ்' or 'සිංහල'.
+  /// Setting it (a code or a name) switches the whole app at once: it keeps
+  /// [L10n.current] in step and notifies the MaterialApp. It does not save
+  /// the choice — use [setLanguage] for a user choice.
+  String get language => _language;
+  set language(String value) {
+    _language = AppLanguage.from(value).nativeName;
+    _languageVersion++;
+    L10n.updateLocale(locale);
+    notifyListeners();
+  }
+
+  /// 'en', 'ta' or 'si' — the value stored on the device and the profile.
+  String get languageCode => AppLanguage.from(_language).code;
+
   String country = 'Sri Lanka';
   String district = '';
   bool isVerified = false;
@@ -67,20 +90,20 @@ class FarmoraState extends ChangeNotifier {
   List<String> serviceDistricts = [];
   String displayName = '';
   String photoUrl = '';
+  String phone = '';
+  String farmName = '';
+  String farmSize = '';
+  List<String> mainCrops = [];
+
+  /// When the account was created (users/{uid}.createdAt); null if unknown.
+  DateTime? memberSince;
 
   /// Default cart delivery fee in LKR major units (from platform settings).
   double defaultDeliveryFeeLkr = 350.0;
   Role role = Role.farmer;
 
-  /// Locale driven by [language] preference (English / සිංහල / தமிழ் / en|si|ta).
-  Locale get locale {
-    final code = switch (language) {
-      'සිංහල' || 'si' => 'si',
-      'தமிழ்' || 'ta' => 'ta',
-      _ => 'en',
-    };
-    return Locale(code);
-  }
+  /// Locale driven by [language].
+  Locale get locale => Locale(languageCode);
 
   // Search & Filter State
   String searchQuery = '';
@@ -144,9 +167,21 @@ class FarmoraState extends ChangeNotifier {
   BankDetails get myBankDetails => _myBankDetails;
   bool get hasBankDetails => _myBankDetails.isComplete;
 
-  // Constructor with demo data initialization
-  FarmoraState() {
+  /// [initialLanguageCode] is the language saved on the device (loaded
+  /// before runApp) so the first frame is already in that language.
+  FarmoraState({String? initialLanguageCode}) {
+    _language = AppLanguage.from(initialLanguageCode).nativeName;
+    L10n.updateLocale(locale);
     _initDemoData();
+  }
+
+  /// Applies the language saved on the device, unless the language was
+  /// changed in the meantime (user choice or profile load).
+  Future<void> restoreSavedLanguage() async {
+    final version = _languageVersion;
+    final code = await LanguagePrefs.load();
+    if (code == null || version != _languageVersion) return;
+    if (code != languageCode) language = code;
   }
 
   // Getters
@@ -431,12 +466,29 @@ class FarmoraState extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _lastOrderError = e is StateError ? e.message : e.toString();
+      _lastOrderError = _orderErrorMessage(e);
       return false;
     } finally {
       _placingOrder = false;
       notifyListeners();
     }
+  }
+
+  /// Localized reason for a failed checkout. Spark-mode errors already carry
+  /// a localized message ([AppException]); the createOrder Cloud Function
+  /// returns English text, so its known cases are mapped here.
+  String _orderErrorMessage(Object e) {
+    // userMessage also logs/reports the technical error.
+    final generic = userMessage(e, action: 'place the order');
+    if (e is FirebaseFunctionsException) {
+      final l = L10n.current;
+      final msg = (e.message ?? '').toLowerCase();
+      if (msg.contains('product is unavailable') || msg.contains('stock')) {
+        return l.svcProductNotFound;
+      }
+      if (msg.contains('bank deposit')) return l.svcFarmerNoBankDeposit;
+    }
+    return generic;
   }
 
   // Actions
@@ -474,55 +526,83 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setLanguage(String value) {
+  /// The user picked a language: the app switches immediately and the
+  /// choice is saved on the device. When signed in it is also saved on the
+  /// profile; that write is awaited and rethrows on failure so the caller
+  /// can tell the user (the app stays in the new language either way).
+  Future<void> setLanguage(String value) async {
     language = value;
-    notifyListeners();
-    if (_currentUserId.isNotEmpty) {
-      final languageCode = switch (value) {
-        'සිංහල' || 'si' => 'si',
-        'தமிழ்' || 'ta' => 'ta',
-        _ => 'en',
-      };
-      _firestoreService
-          .updateUserLanguage(languageCode)
-          .catchError((e) => debugPrint('Firestore update language note: $e'));
+    final code = languageCode;
+    await LanguagePrefs.save(code);
+    final writer = debugProfileLanguageWriter;
+    if (writer != null) {
+      await writer(code);
+    } else if (_currentUserId.isNotEmpty) {
+      await _firestoreService.updateUserLanguage(code);
     }
   }
 
-  /// Update the signed-in user's display name and location on Firestore and
-  /// locally. Falls back to local-only updates when not authenticated.
+  /// Tests only: stands in for a signed-in user's profile write in
+  /// [setLanguage] (e.g. to simulate a failure).
+  @visibleForTesting
+  Future<void> Function(String code)? debugProfileLanguageWriter;
+
+  /// Profile language wins over the device choice; a profile without one
+  /// gets the device choice.
+  Future<void> _syncLanguageWithProfile(Map<String, dynamic> profile) async {
+    final raw = (profile['languageCode'] ?? profile['language'])?.toString();
+    if (AppLanguage.isKnown(raw)) {
+      language = raw!;
+      await LanguagePrefs.save(languageCode);
+      return;
+    }
+    try {
+      await _firestoreService.updateUserLanguage(languageCode);
+    } catch (e) {
+      debugPrint('Saving language on the profile failed: $e');
+    }
+  }
+
+  /// Update the signed-in user's profile on Firestore, then locally.
+  /// Falls back to local-only updates when not authenticated. Throws if the
+  /// Firestore write fails so the caller can show an error.
   Future<void> updateProfile({
     String? name,
     String? newDistrict,
     String? newCountry,
     String? photoUrl,
+    String? farmName,
+    String? farmSize,
+    List<String>? mainCrops,
   }) async {
-    if (name != null && name.trim().isNotEmpty) displayName = name.trim();
-    if (newCountry != null && newCountry.trim().isNotEmpty) {
-      country = newCountry.trim();
-    }
-    if (newDistrict != null && newDistrict.trim().isNotEmpty) {
-      district = newDistrict.trim();
-    }
-    if (photoUrl != null) this.photoUrl = photoUrl;
-    notifyListeners();
+    String? clean(String? v) =>
+        (v != null && v.trim().isNotEmpty) ? v.trim() : null;
+    final cleanName = clean(name);
+    final cleanDistrict = clean(newDistrict);
+    final cleanCountry = clean(newCountry);
+    final cleanCrops =
+        mainCrops?.map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
 
     if (_currentUserId.isNotEmpty) {
-      try {
-        await _firestoreService.updateUserProfile(
-          name: (name != null && name.trim().isNotEmpty) ? name.trim() : null,
-          district: (newDistrict != null && newDistrict.trim().isNotEmpty)
-              ? newDistrict.trim()
-              : null,
-          country: (newCountry != null && newCountry.trim().isNotEmpty)
-              ? newCountry.trim()
-              : null,
-          photoUrl: photoUrl,
-        );
-      } catch (e) {
-        debugPrint('Firestore update profile note: $e');
-      }
+      await _firestoreService.updateUserProfile(
+        name: cleanName,
+        district: cleanDistrict,
+        country: cleanCountry,
+        photoUrl: photoUrl,
+        farmName: farmName?.trim(),
+        farmSize: farmSize?.trim(),
+        mainCrops: cleanCrops,
+      );
     }
+
+    if (cleanName != null) displayName = cleanName;
+    if (cleanCountry != null) country = cleanCountry;
+    if (cleanDistrict != null) district = cleanDistrict;
+    if (photoUrl != null) this.photoUrl = photoUrl;
+    if (farmName != null) this.farmName = farmName.trim();
+    if (farmSize != null) this.farmSize = farmSize.trim();
+    if (cleanCrops != null) this.mainCrops = cleanCrops;
+    notifyListeners();
   }
 
   void setSearchQuery(String query) {
@@ -761,10 +841,10 @@ class FarmoraState extends ChangeNotifier {
     void Function(double progress)? onProgress,
   }) async {
     if (!order.canSubmitProof) {
-      throw StateError('This order does not need a payment receipt.');
+      throw UserStateError(L10n.current.stateReceiptNotNeeded);
     }
     if (_currentUserId.isEmpty) {
-      throw StateError('Please sign in to upload a payment receipt.');
+      throw UserStateError(L10n.current.stateSignInToUploadReceipt);
     }
     final slip = await uploadPaymentSlip(
       orderId: order.id,
@@ -807,7 +887,7 @@ class FarmoraState extends ChangeNotifier {
     }
     final idx = _orders.indexWhere((o) => o.id == orderId);
     if (idx == -1 || !allowed(_orders[idx])) {
-      throw StateError('This payment action is not available.');
+      throw UserStateError(L10n.current.statePaymentActionUnavailable);
     }
     _orders[idx] = local(_orders[idx]);
     _recalculateStats();
@@ -1150,7 +1230,6 @@ class FarmoraState extends ChangeNotifier {
     return p.trustLevel;
   }
 
-
   Future<void> retryOfflineMessages() async {
     final pending = await ChatOutboxService.getPending();
     for (final msg in pending) {
@@ -1198,26 +1277,8 @@ class FarmoraState extends ChangeNotifier {
         return;
       }
       role = accountRole;
-      final rawLang =
-          (profile['languageCode'] ?? profile['language'] ?? 'en').toString();
-      language = switch (rawLang) {
-        'si' || 'සිංහල' => 'සිංහල',
-        'ta' || 'தமிழ்' => 'தமிழ்',
-        'en' || 'English' => 'English',
-        _ => rawLang,
-      };
-      country = (profile['country'] ?? 'Sri Lanka').toString();
-      district = (profile['district'] ?? '').toString();
-      displayName =
-          (profile['name'] ?? profile['displayName'] ?? '').toString();
-      photoUrl = (profile['photoUrl'] ?? '').toString();
-      isVerified = profile['isVerified'] == true;
-      vehicleType = (profile['vehicleType'] ?? '').toString();
-      capacityKg = (profile['capacityKg'] as num?)?.toInt() ?? 0;
-      serviceDistricts = (profile['serviceDistricts'] as List? ?? [])
-          .map((e) => e.toString())
-          .where((e) => e.isNotEmpty)
-          .toList();
+      await _syncLanguageWithProfile(profile);
+      _applyProfileFields(profile);
       _clearDemoDataForSignedInUser();
       _profileLoaded = true;
       notifyListeners();
@@ -1455,7 +1516,8 @@ class FarmoraState extends ChangeNotifier {
       demo('ORD-0986', 'Butternut Pumpkin', 5300, PaymentMethod.bankDeposit,
           'proof_submitted', 2, null),
       demo('ORD-0991', 'Green Beans', 6400, PaymentMethod.cod, 'paid', 5, 3),
-      demo('ORD-0978', 'Leeks', 8750, PaymentMethod.bankDeposit, 'paid', 35, 32),
+      demo(
+          'ORD-0978', 'Leeks', 8750, PaymentMethod.bankDeposit, 'paid', 35, 32),
       demo('ORD-0965', 'Potatoes', 15200, PaymentMethod.cod, 'paid', 70, 66),
       demo('ORD-0952', 'Red Onions', 11800, PaymentMethod.bankDeposit, 'paid',
           100, 97),
@@ -2134,7 +2196,8 @@ class FarmoraState extends ChangeNotifier {
       }));
 
     final bars = calc.monthly(months: 6);
-    final maxAmount = bars.fold<double>(0, (m, b) => b.amount > m ? b.amount : m);
+    final maxAmount =
+        bars.fold<double>(0, (m, b) => b.amount > m ? b.amount : m);
     _monthlyBars
       ..clear()
       ..addAll(bars.map((b) => MonthlyBarData(
@@ -2216,6 +2279,62 @@ class FarmoraState extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> _loadUserProfile(String uid) async {
     return await _authService.loadUserProfile(uid);
+  }
+
+  /// Copies the editable/display fields of a users/{uid} document into state.
+  void _applyProfileFields(Map<String, dynamic> profile) {
+    country = (profile['country'] ?? 'Sri Lanka').toString();
+    district = (profile['district'] ?? '').toString();
+    displayName = (profile['name'] ?? profile['displayName'] ?? '').toString();
+    photoUrl = (profile['photoUrl'] ?? '').toString();
+    phone = (profile['phone'] ?? '').toString();
+    isVerified = profile['isVerified'] == true;
+    vehicleType = (profile['vehicleType'] ?? '').toString();
+    capacityKg = (profile['capacityKg'] as num?)?.toInt() ?? 0;
+    serviceDistricts = (profile['serviceDistricts'] as List? ?? [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    farmName = (profile['farmName'] ?? '').toString();
+    farmSize = (profile['farmSize'] ?? '').toString();
+    mainCrops = (profile['mainCrops'] as List? ?? [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final created = profile['createdAt'];
+    memberSince = switch (created) {
+      Timestamp t => t.toDate(),
+      DateTime d => d,
+      String s => DateTime.tryParse(s),
+      _ => memberSince,
+    };
+  }
+
+  /// Re-reads the signed-in user's profile (pull-to-refresh). Throws when the
+  /// profile cannot be loaded so the caller can show an error.
+  Future<void> refreshProfile() async {
+    if (_currentUserId.isEmpty) return;
+    final profile = await _loadUserProfile(_currentUserId);
+    if (profile == null) {
+      throw AppException(L10n.current.stateProfileNotFound);
+    }
+    await _syncLanguageWithProfile(profile);
+    _applyProfileFields(profile);
+    notifyListeners();
+  }
+
+  /// Uploads a new profile photo (users/{uid}/…) and updates the profile.
+  Future<void> changeProfilePhoto(PickedImage image) async {
+    if (_currentUserId.isEmpty) {
+      throw AppException(L10n.current.stateSignInToChangePhoto);
+    }
+    final url = await _firestoreService.uploadProfilePhoto(
+      bytes: image.bytes,
+      fileName: image.name,
+      contentType: image.contentType,
+    );
+    photoUrl = url;
+    notifyListeners();
   }
 
   // ── Suka auth methods ────────────────────────────────
@@ -2464,11 +2583,22 @@ class FarmoraState extends ChangeNotifier {
         ));
       }
 
+      // Stored notification text cannot carry parameters (see firestore.rules
+      // for notifications), so it is written in the admin's app language.
+      final l = L10n.current;
+      final resolutionLabel = switch (resolution) {
+        'refund_buyer' => l.stateResolutionRefundBuyer,
+        'release_farmer' => l.stateResolutionReleaseFarmer,
+        'split_settlement' => l.stateResolutionSplit,
+        _ => resolution,
+      };
+      final disputeBody =
+          l.stateDisputeResolvedBody(resolutionLabel, adminNotes);
       if (o.buyerId.isNotEmpty) {
         sendInAppNotification(
           userId: o.buyerId,
-          title: 'Dispute Resolved: Order ${o.orderNumber}',
-          body: 'Admin resolved dispute: $resolution. Notes: $adminNotes',
+          title: l.stateDisputeResolvedTitle(o.orderNumber),
+          body: disputeBody,
           type: 'order',
           referenceId: o.id,
         );
@@ -2476,8 +2606,8 @@ class FarmoraState extends ChangeNotifier {
       if (o.farmerId.isNotEmpty) {
         sendInAppNotification(
           userId: o.farmerId,
-          title: 'Dispute Settled: Order ${o.orderNumber}',
-          body: 'Admin resolved dispute: $resolution. Notes: $adminNotes',
+          title: l.stateDisputeSettledTitle(o.orderNumber),
+          body: disputeBody,
           type: 'order',
           referenceId: o.id,
         );
@@ -2791,8 +2921,7 @@ class FarmoraState extends ChangeNotifier {
   }) async {
     final reference = transactionReference.trim();
     if (reference.length < 4 || reference.length > 100) {
-      throw ArgumentError(
-          'Enter the actual bank or payout provider reference.');
+      throw UserArgumentError(L10n.current.stateSettlementReferenceRequired);
     }
     final idx = _settlements.indexWhere((s) => s.id == settlementId);
     if (idx != -1) {
@@ -2878,21 +3007,25 @@ class FarmoraState extends ChangeNotifier {
   }) async {
     if (_currentUserId.isNotEmpty && kUseCloudFunctions) {
       try {
-        final result = await FirebaseFunctions.instance.httpsCallable('requestWithdrawal').call({
+        final result = await FirebaseFunctions.instance
+            .httpsCallable('requestWithdrawal')
+            .call({
           'amount': amount,
           'bankName': bankName,
           'accountNumber': accountNumber,
           'payoutMethod': payoutMethod,
         });
-        
-        final newSettlementId = result.data['settlementId'] as String? ?? 'STL-${DateTime.now().millisecondsSinceEpoch}';
-        
+
+        final newSettlementId = result.data['settlementId'] as String? ??
+            'STL-${DateTime.now().millisecondsSinceEpoch}';
+
         final fee = amount * (_commissionRate / 100.0);
         final net = amount - fee;
         final payout = SettlementPayout(
           id: newSettlementId,
           orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
-          orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+          orderNumber:
+              'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           recipientId: _currentUserId,
           recipientName: displayName.isNotEmpty ? displayName : 'Farmer',
           recipientRole: 'farmer',
@@ -2907,21 +3040,23 @@ class FarmoraState extends ChangeNotifier {
         );
         _settlements.insert(0, payout);
         _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
-        
+
         notifyListeners();
         logAuditEvent(
           actionType: 'FARMER_WITHDRAWAL_REQUESTED',
           targetEntity: 'Settlement',
           targetId: newSettlementId,
-          details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
+          details:
+              'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
           severity: 'info',
         );
       } catch (e) {
-        throw StateError('Payout request failed: ${e.toString()}');
+        throw UserStateError(L10n.current.stateWithdrawalFailed);
       }
     } else {
       if (amount <= 0 || amount > _totalEarnings) {
-        throw ArgumentError('Invalid withdrawal amount. Available balance: LKR ${_totalEarnings.toStringAsFixed(2)}');
+        throw UserArgumentError(L10n.current.stateInvalidWithdrawalAmount(
+            AppFormat.lkr(_totalEarnings, decimals: 2)));
       }
       final fee = amount * (_commissionRate / 100.0);
       final net = amount - fee;
@@ -2929,9 +3064,12 @@ class FarmoraState extends ChangeNotifier {
       final payout = SettlementPayout(
         id: settlementId,
         orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
-        orderNumber: 'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        recipientId: _currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1',
-        recipientName: displayName.isNotEmpty ? displayName : 'Ahsan (Green Fields Farm)',
+        orderNumber:
+            'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        recipientId:
+            _currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1',
+        recipientName:
+            displayName.isNotEmpty ? displayName : 'Ahsan (Green Fields Farm)',
         recipientRole: 'farmer',
         bankName: bankName,
         accountNumber: accountNumber,
@@ -2959,7 +3097,8 @@ class FarmoraState extends ChangeNotifier {
         actionType: 'FARMER_WITHDRAWAL_REQUESTED',
         targetEntity: 'Settlement',
         targetId: settlementId,
-        details: 'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
+        details:
+            'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
         severity: 'info',
       );
       if (_currentUserId.isNotEmpty) {

@@ -4,13 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../constants/app_colors.dart';
+import '../localization/l10n.dart' as loc;
 
 /// Delivery-route visualization. Uses Google Maps when
 /// `--dart-define=GOOGLE_MAPS_API_KEY=...` is set; otherwise a progress widget.
 class RouteProgressMap extends StatelessWidget {
   final double progress;
-  final String pickupLabel;
-  final String dropoffLabel;
+  final String? pickupLabel;
+  final String? dropoffLabel;
+
+  /// Raw status (e.g. `in_transit`) or display text; known statuses are
+  /// shown translated.
   final String statusLabel;
   final LatLng? pickup;
   final LatLng? dropoff;
@@ -19,8 +23,8 @@ class RouteProgressMap extends StatelessWidget {
   const RouteProgressMap({
     super.key,
     required this.progress,
-    this.pickupLabel = 'Farm pickup',
-    this.dropoffLabel = 'Delivery point',
+    this.pickupLabel,
+    this.dropoffLabel,
     this.statusLabel = '',
     this.pickup,
     this.dropoff,
@@ -73,22 +77,29 @@ class RouteProgressMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = loc.L10nContext(context).l10n;
+    final pickupText = pickupLabel ?? l.widgetFarmPickup;
+    final dropoffText = dropoffLabel ?? l.widgetDeliveryPoint;
+    final statusText =
+        statusLabel.isEmpty ? '' : loc.statusLabel(statusLabel, l);
     if (mapsEnabled && pickup != null && dropoff != null) {
       return _MapsRouteView(
         progress: progress.clamp(0.0, 1.0),
         pickup: pickup!,
         dropoff: dropoff!,
         courier: courier,
-        pickupLabel: pickupLabel,
-        dropoffLabel: dropoffLabel,
-        statusLabel: statusLabel,
+        pickupLabel: pickupText,
+        dropoffLabel: dropoffText,
+        statusLabel: statusText.isEmpty ? l.widgetCourier : statusText,
       );
     }
     return _ProgressFallback(
       progress: progress.clamp(0.0, 1.0),
-      pickupLabel: pickupLabel,
-      dropoffLabel: dropoffLabel,
-      statusLabel: statusLabel,
+      pickupLabel: pickupText,
+      dropoffLabel: dropoffText,
+      statusLabel: statusText.isEmpty
+          ? l.widgetEnRoute((progress.clamp(0.0, 1.0) * 100).round())
+          : statusText,
     );
   }
 }
@@ -133,7 +144,7 @@ class _MapsRouteView extends StatelessWidget {
           markers: {
             Marker(markerId: const MarkerId('pickup'), position: pickup, infoWindow: InfoWindow(title: pickupLabel)),
             Marker(markerId: const MarkerId('dropoff'), position: dropoff, infoWindow: InfoWindow(title: dropoffLabel)),
-            Marker(markerId: const MarkerId('courier'), position: courierPos, infoWindow: InfoWindow(title: statusLabel.isEmpty ? 'Courier' : statusLabel)),
+            Marker(markerId: const MarkerId('courier'), position: courierPos, infoWindow: InfoWindow(title: statusLabel)),
           },
           polylines: {
             Polyline(
@@ -185,7 +196,7 @@ class _ProgressFallback extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  statusLabel.isEmpty ? '${(p * 100).round()}% en route' : statusLabel,
+                  statusLabel,
                   style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onSurface),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

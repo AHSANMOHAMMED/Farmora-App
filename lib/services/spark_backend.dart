@@ -4,9 +4,11 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../core/localization/l10n.dart';
 import '../models/bank_details.dart';
 import '../models/order.dart' show PaymentMethod;
 import '../models/product.dart';
+import 'service_errors.dart';
 
 /// Firestore-only backend for Firebase Spark (no Cloud Functions).
 class SparkBackend {
@@ -15,7 +17,7 @@ class SparkBackend {
 
   String get _uid {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     return uid;
   }
 
@@ -168,9 +170,9 @@ class SparkBackend {
       }
       final productSnap = await transaction.get(productRef);
       final product = productSnap.data();
-      if (product == null) throw StateError('Product not found.');
+      if (product == null) throw UserStateError(L10n.current.svcProductNotFound);
       final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
-      if (quantity > available) throw StateError('Not enough stock.');
+      if (quantity > available) throw UserStateError(L10n.current.svcNotEnoughStock);
       final priceMinor = (product['priceMinor'] as num?)?.toInt() ?? 0;
       final subtotal = priceMinor * quantity;
       farmerId = product['farmerId'] as String?;
@@ -185,7 +187,7 @@ class SparkBackend {
             .get(_db.collection('bank_details').doc(farmerId));
         bankSnapshot = BankDetails.fromMap(bankSnap.data());
         if (!bankSnapshot.isComplete) {
-          throw StateError('This farmer does not accept bank deposits yet.');
+          throw UserStateError(L10n.current.svcFarmerNoBankDeposit);
         }
       }
       transaction.set(orderRef, {
@@ -244,9 +246,9 @@ class SparkBackend {
     final ref = _db.collection('orders').doc(orderId);
     final snap = await ref.get();
     final order = snap.data();
-    if (order == null) throw StateError('Order not found.');
+    if (order == null) throw UserStateError(L10n.current.svcOrderNotFound);
     if (order['farmerId'] != uid && order['buyerId'] != uid) {
-      throw StateError('Not allowed.');
+      throw UserStateError(L10n.current.errorNoPermission);
     }
     await ref.update({
       'status': status,
@@ -278,7 +280,7 @@ class SparkBackend {
     final orderSnap = await _db.collection('orders').doc(orderId).get();
     final order = orderSnap.data();
     if (order == null || order['farmerId'] != uid) {
-      throw StateError('Order not found.');
+      throw UserStateError(L10n.current.svcOrderNotFound);
     }
     // Scoped to this farmer so firestore.rules can authorise the query.
     final existing = await _db
@@ -327,7 +329,7 @@ class SparkBackend {
     final ref = _db.collection('transport_jobs').doc(jobId);
     final snap = await ref.get();
     final job = snap.data();
-    if (job == null) throw StateError('Job not found.');
+    if (job == null) throw UserStateError(L10n.current.svcJobNotFound);
     final updates = <String, dynamic>{
       'status': status,
       'transporterId': uid,
@@ -390,10 +392,10 @@ class SparkBackend {
     final snap = await _db.collection('orders').doc(orderId).get();
     final order = snap.data();
     if (order == null || order['buyerId'] != uid) {
-      throw StateError('Order not found.');
+      throw UserStateError(L10n.current.svcOrderNotFound);
     }
     if (order['status'] != 'pending') {
-      throw StateError('Address can only change while pending.');
+      throw UserStateError(L10n.current.svcAddressLocked);
     }
     await snap.reference.update({
       'deliveryAddress': deliveryAddress,
@@ -408,9 +410,9 @@ class SparkBackend {
     final uid = _uid;
     final snap = await _db.collection('orders').doc(orderId).get();
     final order = snap.data();
-    if (order == null) throw StateError('Order not found.');
+    if (order == null) throw UserStateError(L10n.current.svcOrderNotFound);
     // Only the farmer who received the money can confirm it.
-    if (order['farmerId'] != uid) throw StateError('Not allowed.');
+    if (order['farmerId'] != uid) throw UserStateError(L10n.current.errorNoPermission);
     await snap.reference.update({
       'paymentStatus': 'paid',
       'paidAt': FieldValue.serverTimestamp(),
@@ -437,7 +439,7 @@ class SparkBackend {
     final uid = _uid;
     final productSnap = await _db.collection('products').doc(productId).get();
     final product = productSnap.data();
-    if (product == null) throw StateError('Product not found.');
+    if (product == null) throw UserStateError(L10n.current.svcProductNotFound);
     final ref = _db.collection('offers').doc();
     await ref.set({
       'productId': productId,
@@ -462,19 +464,19 @@ class SparkBackend {
     final offerSnap = await _db.collection('offers').doc(offerId).get();
     final offer = offerSnap.data();
     if (offer == null || offer['farmerId'] != uid) {
-      throw StateError('Offer not found.');
+      throw UserStateError(L10n.current.svcOfferNotFound);
     }
-    if (offer['status'] != 'pending') throw StateError('Offer not pending.');
+    if (offer['status'] != 'pending') throw UserStateError(L10n.current.svcOfferNotPending);
 
     final productId = offer['productId'] as String;
     final quantity = (offer['proposedQuantity'] as num).toInt();
     final buyerId = offer['buyerId'] as String;
     final productSnap = await _db.collection('products').doc(productId).get();
     final product = productSnap.data();
-    if (product == null) throw StateError('Product not found.');
+    if (product == null) throw UserStateError(L10n.current.svcProductNotFound);
     final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
     if (quantity < 1 || quantity > available) {
-      throw StateError('Not enough stock.');
+      throw UserStateError(L10n.current.svcNotEnoughStock);
     }
     final priceMinor = (offer['proposedPriceMinor'] as num?)?.toInt() ??
         (((offer['proposedPrice'] as num?)?.toDouble() ?? 0) * 100).round();
@@ -536,7 +538,7 @@ class SparkBackend {
     final snap = await _db.collection('offers').doc(offerId).get();
     final offer = snap.data();
     if (offer == null || !['pending', 'countered'].contains(offer['status'])) {
-      throw StateError('Offer cannot be changed.');
+      throw UserStateError(L10n.current.svcOfferCannotChange);
     }
     final actor = await userDoc(uid);
     final status = actor['role'] == 'farmer' && offer['farmerId'] == uid
@@ -558,7 +560,7 @@ class SparkBackend {
     final uid = _uid;
     final priceMinor = (proposedPrice * 100).round();
     if (priceMinor < 1) {
-      throw ArgumentError('A valid counter price is required.');
+      throw UserArgumentError(L10n.current.svcCounterPriceRequired);
     }
     final ref = _db.collection('offers').doc(offerId);
     await _db.runTransaction((transaction) async {
@@ -567,7 +569,7 @@ class SparkBackend {
       if (offer == null ||
           offer['farmerId'] != uid ||
           !['pending', 'countered'].contains(offer['status'])) {
-        throw StateError('Offer cannot be countered.');
+        throw UserStateError(L10n.current.svcOfferCannotCounter);
       }
       transaction.update(ref, {
         'status': 'countered',
@@ -602,7 +604,7 @@ class SparkBackend {
     final snap =
         await _db.collection('verification_docs').doc(documentId).get();
     final doc = snap.data();
-    if (doc == null) throw StateError('Document not found.');
+    if (doc == null) throw UserStateError(L10n.current.errorNotFound);
     await snap.reference.update({
       'status': status,
       'reviewedAt': FieldValue.serverTimestamp(),
@@ -644,7 +646,7 @@ class SparkBackend {
     final uid = _uid;
     final profile = await userDoc(uid);
     if (profile['role'] != 'admin') {
-      throw StateError('Administrator access required.');
+      throw UserStateError(L10n.current.errorNoPermission);
     }
     final refundPercent = switch (resolution) {
       'refund_buyer' => 100,
@@ -659,7 +661,7 @@ class SparkBackend {
     final orderSnapshot = await orderRef.get();
     final order = orderSnapshot.data();
     if (order == null || order['paymentStatus'] != 'disputed') {
-      throw StateError('Order has no open dispute.');
+      throw UserStateError(L10n.current.svcDisputeNotOpen);
     }
     final disputeId = order['disputeId'] as String?;
     if (disputeId == null) throw StateError('Dispute record is missing.');
@@ -667,7 +669,7 @@ class SparkBackend {
     final disputeSnapshot = await disputeRef.get();
     final dispute = disputeSnapshot.data();
     if (dispute == null || dispute['status'] != 'open') {
-      throw StateError('Dispute is already closed.');
+      throw UserStateError(L10n.current.svcDisputeClosed);
     }
     final totalMinor = (order['totalMinor'] as num?)?.toInt();
     if (totalMinor == null || totalMinor < 0) {
@@ -778,7 +780,7 @@ class SparkBackend {
   }) async {
     final uid = _uid;
     if (peerId.isEmpty || peerId == uid) {
-      throw StateError('There is no one to chat with on this order yet.');
+      throw UserStateError(L10n.current.svcNoChatPeer);
     }
     final ref = _db
         .collection('conversations')
@@ -875,7 +877,7 @@ class SparkBackend {
     final orderSnap = await _db.collection('orders').doc(orderId).get();
     final order = orderSnap.data();
     if (order == null || order['farmerId'] != uid) {
-      throw StateError('Order not found.');
+      throw UserStateError(L10n.current.svcOrderNotFound);
     }
     final barcodeId = _db.collection('barcodes').doc().id;
     final signature = _simpleSig('$barcodeId|$orderId|$uid');
@@ -899,13 +901,13 @@ class SparkBackend {
     final snap = await _db.collection('barcodes').doc(barcodeId).get();
     final barcode = snap.data();
     if (barcode == null || barcode['signature'] != signature) {
-      throw StateError('Invalid barcode.');
+      throw UserStateError(L10n.current.barcodeInvalid);
     }
     final orderSnap =
         await _db.collection('orders').doc(barcode['orderId'] as String).get();
     final order = orderSnap.data();
     if (order == null || order['buyerId'] != uid) {
-      throw StateError('Barcode not for this buyer.');
+      throw UserStateError(L10n.current.svcBarcodeWrongBuyer);
     }
     await snap.reference.update({
       'status': 'verified',
@@ -925,7 +927,7 @@ class SparkBackend {
     final orderSnap = await _db.collection('orders').doc(orderId).get();
     final order = orderSnap.data();
     if (order == null || order['buyerId'] != uid) {
-      throw StateError('Order not found.');
+      throw UserStateError(L10n.current.svcOrderNotFound);
     }
     await _db.collection('reviews').doc('${orderId}_$uid').set({
       'orderId': orderId,
@@ -985,9 +987,7 @@ class SparkBackend {
     final buyerId = await findRole('buyer');
     final transporterId = await findRole('transporter');
     if (farmerId == null || buyerId == null) {
-      throw StateError(
-        'Register a farmer and buyer first, then seed again.',
-      );
+      throw UserStateError(L10n.current.svcSeedNeedsUsers);
     }
 
     final farmer = await userDoc(farmerId);

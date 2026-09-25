@@ -1256,9 +1256,6 @@ class AppLocalizationsTa extends AppLocalizations {
   String get profileChangePhotoHint => 'புகைப்படத்தை மாற்ற தொடவும்';
 
   @override
-  String get profilePhotoUploading => 'புகைப்படம் பதிவேற்றப்படுகிறது…';
-
-  @override
   String get profilePhotoUpdated => 'சுயவிவரப் புகைப்படம் புதுப்பிக்கப்பட்டது.';
 
   @override
@@ -1270,9 +1267,6 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get profileStatCompletedOrders => 'முடிந்த ஆர்டர்கள்';
-
-  @override
-  String get profileStatRating => 'மதிப்பீடு';
 
   @override
   String profileReviewCount(int count) {
@@ -6492,86 +6486,6 @@ class AppLocalizationsTa extends AppLocalizations {
   String get svcImageTooLarge => 'படம் மிகப் பெரியது. வரம்பு 5 MB.';
 
   @override
-  String get svcAuthRoleInvalid => 'உங்கள் கணக்கின் பங்கு செல்லுபடியற்றது.';
-
-  @override
-  String get svcAuthPhoneRegistered =>
-      'இந்த மொபைல் எண் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது.';
-
-  @override
-  String get svcAuthPhoneRegisteredOther =>
-      'இந்த மொபைல் எண் ஏற்கனவே வேறொரு கணக்கில் பதிவு செய்யப்பட்டுள்ளது.';
-
-  @override
-  String get svcAuthProfileSaveFailed =>
-      'உங்கள் சுயவிவரத்தைச் சேமிக்க முடியவில்லை.';
-
-  @override
-  String get svcAuthProfileNotFound => 'பயனர் சுயவிவரம் கிடைக்கவில்லை.';
-
-  @override
-  String get svcAuthNoGoogleProfile =>
-      'Farmora சுயவிவரம் எதுவும் இல்லை. முதலில் Google மூலம் பதிவு செய்யுங்கள்.';
-
-  @override
-  String get svcAuthNoPhoneProfile =>
-      'Farmora சுயவிவரம் எதுவும் இல்லை. முதலில் இந்தத் தொலைபேசி எண்ணைப் பதிவு செய்யுங்கள்.';
-
-  @override
-  String get svcAuthEnterValidMobile =>
-      'முதலில் சரியான மொபைல் எண்ணை உள்ளிடவும்.';
-
-  @override
-  String get svcAuthPhoneExample =>
-      'சரியான தொலைபேசி எண்ணை உள்ளிடவும், உதாரணமாக +94771234567.';
-
-  @override
-  String get svcAuthEnterOtp => '6 இலக்க சரிபார்ப்புக் குறியீட்டை உள்ளிடவும்.';
-
-  @override
-  String get svcAuthRequestOtp => 'முதலில் புதிய OTP ஐக் கோருங்கள்.';
-
-  @override
-  String get svcAuthAccountExists =>
-      'இந்தத் தொலைபேசி எண்ணுக்கு ஏற்கனவே ஒரு கணக்கு உள்ளது.';
-
-  @override
-  String get svcAuthWeakPassword =>
-      'கடவுச்சொல்லில் குறைந்தது 6 எழுத்துகள் இருக்க வேண்டும்.';
-
-  @override
-  String get svcAuthWrongCredentials => 'தொலைபேசி எண் அல்லது கடவுச்சொல் தவறு.';
-
-  @override
-  String get svcAuthNetwork =>
-      'நெட்வொர்க் பிழை. உங்கள் இணைய இணைப்பைச் சரிபாருங்கள்.';
-
-  @override
-  String get svcAuthProviderDisabled =>
-      'இந்த உள்நுழைவு முறை இப்போது இயக்கப்படவில்லை.';
-
-  @override
-  String get svcAuthInvalidPhone =>
-      'நாட்டுக் குறியீட்டுடன் சரியான தொலைபேசி எண்ணை உள்ளிடவும்.';
-
-  @override
-  String get svcAuthWrongOtp => 'OTP தவறு. மீண்டும் முயற்சிக்கவும்.';
-
-  @override
-  String get svcAuthOtpExpired =>
-      'OTP காலாவதியாகிவிட்டது. புதிய குறியீட்டைக் கோருங்கள்.';
-
-  @override
-  String get svcAuthSmsQuota =>
-      'SMS வரம்பு மீறப்பட்டது. பின்னர் மீண்டும் முயற்சிக்கவும்.';
-
-  @override
-  String get svcAuthGoogleCancelled => 'Google உள்நுழைவு ரத்து செய்யப்பட்டது.';
-
-  @override
-  String get svcAuthFailed => 'உள்நுழைவு தோல்வியடைந்தது.';
-
-  @override
   String get svcSeedNeedsUsers =>
       'முதலில் ஒரு விவசாயி மற்றும் வாங்குபவரைப் பதிவு செய்து, பின்னர் மீண்டும் மாதிரித் தரவைச் சேர்க்கவும்.';
 
@@ -6628,9 +6542,6 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get farmerTrackFarmPickup => 'பண்ணையில் எடுப்பு';
-
-  @override
-  String get farmerTrackDeliveryPoint => 'டெலிவரி இடம்';
 
   @override
   String get farmerTrackDriverLive => 'ஓட்டுநர் இருப்பிடம் நேரலை';
@@ -6872,4 +6783,16 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get farmerVerificationSelectFile => 'கோப்பைத் தெரிவு செய்யவும்';
+
+  @override
+  String get stateSettlementReferenceRequired =>
+      'உண்மையான வங்கி அல்லது பணம் செலுத்தும் சேவையின் குறிப்பு எண்ணை உள்ளிடவும்.';
+
+  @override
+  String stateInvalidWithdrawalAmount(String balance) {
+    return 'தவறான பணம் எடுக்கும் தொகை. கிடைக்கும் இருப்பு: $balance';
+  }
+
+  @override
+  String get authLanguageButton => 'மொழியை மாற்று';
 }

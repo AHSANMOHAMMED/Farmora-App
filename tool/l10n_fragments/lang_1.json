@@ -1,0 +1,14 @@
+{"keys": {
+  "stateReceiptNotNeeded": {"en": "This order does not need a payment receipt.", "ta": "இந்த ஆர்டருக்குக் கட்டண ரசீது தேவையில்லை.", "si": "මෙම ඇණවුමට ගෙවීම් රිසිට්පතක් අවශ්‍ය නැහැ."},
+  "stateSignInToUploadReceipt": {"en": "Please sign in to upload a payment receipt.", "ta": "கட்டண ரசீதைப் பதிவேற்ற உள்நுழையவும்.", "si": "ගෙවීම් රිසිට්පත උඩුගත කරන්න කරුණාකර පුරනය වන්න."},
+  "statePaymentActionUnavailable": {"en": "This payment action is not available.", "ta": "இந்தக் கட்டணச் செயல் இப்போது கிடைக்கவில்லை.", "si": "මෙම ගෙවීම් ක්‍රියාව දැන් කරන්න බැහැ."},
+  "stateProfileNotFound": {"en": "Your profile could not be found.", "ta": "உங்கள் சுயவிவரத்தைக் கண்டுபிடிக்க முடியவில்லை.", "si": "ඔබේ පැතිකඩ සොයාගන්න බැරි වුණා."},
+  "stateSignInToChangePhoto": {"en": "Sign in to change your photo.", "ta": "உங்கள் படத்தை மாற்ற உள்நுழையவும்.", "si": "ඔබේ ඡායාරූපය වෙනස් කරන්න පුරනය වන්න."},
+  "stateWithdrawalFailed": {"en": "Your payout request could not be sent. Please try again.", "ta": "உங்கள் பணம் பெறும் கோரிக்கையை அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.", "si": "ඔබේ මුදල් ලබාගැනීමේ ඉල්ලීම යවන්න බැරි වුණා. නැවත උත්සාහ කරන්න.", "uncertain": true},
+  "stateDisputeResolvedTitle": {"en": "Dispute resolved: order {orderNumber}", "ta": "முறைப்பாடு தீர்க்கப்பட்டது: ஆர்டர் {orderNumber}", "si": "පැමිණිල්ල විසඳුණා: ඇණවුම {orderNumber}", "placeholders": {"orderNumber": {"type": "String"}}},
+  "stateDisputeSettledTitle": {"en": "Dispute settled: order {orderNumber}", "ta": "முறைப்பாடு முடிக்கப்பட்டது: ஆர்டர் {orderNumber}", "si": "පැමිණිල්ල සමථයට පත් වුණා: ඇණවුම {orderNumber}", "placeholders": {"orderNumber": {"type": "String"}}, "uncertain": true},
+  "stateDisputeResolvedBody": {"en": "The admin resolved the dispute: {resolution}. Notes: {notes}", "ta": "நிர்வாகி முறைப்பாட்டைத் தீர்த்தார்: {resolution}. குறிப்புகள்: {notes}", "si": "පරිපාලක පැමිණිල්ල විසඳුවා: {resolution}. සටහන්: {notes}", "placeholders": {"resolution": {"type": "String"}, "notes": {"type": "String"}}},
+  "stateResolutionRefundBuyer": {"en": "Refund to the buyer", "ta": "வாங்குபவருக்குப் பணம் திருப்பித் தரப்படும்", "si": "ගැනුම්කරුට මුදල් ආපසු දෙනවා"},
+  "stateResolutionReleaseFarmer": {"en": "Payment released to the farmer", "ta": "விவசாயிக்குக் கட்டணம் வழங்கப்படும்", "si": "ගොවියාට ගෙවීම නිදහස් කරනවා"},
+  "stateResolutionSplit": {"en": "Amount split between buyer and farmer", "ta": "தொகை வாங்குபவருக்கும் விவசாயிக்கும் பிரிக்கப்படும்", "si": "මුදල ගැනුම්කරු සහ ගොවියා අතර බෙදනවා"}
+}}

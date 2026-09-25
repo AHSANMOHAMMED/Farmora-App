@@ -6,16 +6,22 @@ import 'package:farmora/features/transporter/data/mock_collection_job_repository
 import 'package:farmora/features/transporter/domain/collection_job.dart';
 import 'package:farmora/features/transporter/presentation/collection_job_details_screen.dart';
 
+import '../helpers/l10n_test_app.dart';
+
 void main() {
   Future<void> pumpDetails(
     WidgetTester tester,
     TransporterController controller,
-    String jobId,
-  ) async {
+    String jobId, {
+    Locale locale = const Locale('en'),
+  }) async {
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: controller,
-        child: MaterialApp(home: CollectionJobDetailsScreen(jobId: jobId)),
+        child: localizedTestApp(
+          CollectionJobDetailsScreen(jobId: jobId),
+          locale: locale,
+        ),
       ),
     );
     // Advance past the mock repository's simulated network delay; no frames
@@ -75,4 +81,21 @@ void main() {
     expect(find.text('Delivered'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final code in ['ta', 'si']) {
+    testWidgets('job details lay out without overflow in $code at 360px',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final controller = TransporterController(
+        repository: MockCollectionJobRepository(),
+        providerId: 'demo-transporter',
+      );
+      for (final id in ['101', '090']) {
+        await pumpDetails(tester, controller, id, locale: Locale(code));
+        expect(tester.takeException(), isNull);
+      }
+      expect(find.text('Job timeline'), findsNothing);
+    });
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'order_payment_card.dart' show paymentMethodIcon;
@@ -45,9 +46,9 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Payment method',
-              style: TextStyle(
+            Text(
+              context.l10n.payMethodTitle,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant,
@@ -60,7 +61,7 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
                   child: _option(
                     state,
                     method: PaymentMethod.cod,
-                    title: 'Cash on Delivery',
+                    title: context.l10n.payMethodCod,
                     enabled: true,
                   ),
                 ),
@@ -69,18 +70,18 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
                   child: _option(
                     state,
                     method: PaymentMethod.bankDeposit,
-                    title: 'Bank Deposit',
+                    title: context.l10n.payMethodBankDeposit,
                     enabled: bankOk,
                   ),
                 ),
               ],
             ),
             if (!checking && !bankOk)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Bank deposit is unavailable: a farmer in your cart has not added bank details.',
-                  style: TextStyle(
+                  context.l10n.payBankUnavailable,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,
                     color: AppColors.onSurfaceVariant,
@@ -88,11 +89,11 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
                 ),
               ),
             if (state.paymentMethodDraft == PaymentMethod.bankDeposit)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  "You'll see the farmer's bank details on the order. Upload the deposit slip in the order chat.",
-                  style: TextStyle(
+                  context.l10n.payBankDepositHint,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,
                     color: AppColors.onSurfaceVariant,
@@ -137,6 +138,8 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
             Expanded(
               child: Text(
                 title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 13,

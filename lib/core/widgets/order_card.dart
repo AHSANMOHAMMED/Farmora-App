@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../localization/l10n.dart';
+
 class OrderCard extends StatelessWidget {
   final String title;
   final String detail;
@@ -38,11 +40,16 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    statusLabel(status, context.l10n),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

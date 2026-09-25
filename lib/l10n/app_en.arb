@@ -418,12 +418,10 @@
     }
   },
   "profileChangePhotoHint": "Tap to change photo",
-  "profilePhotoUploading": "Uploading photo…",
   "profilePhotoUpdated": "Profile photo updated.",
   "profilePhotoFailed": "Could not update your photo. Please try again.",
   "profileStatProducts": "Products listed",
   "profileStatCompletedOrders": "Completed orders",
-  "profileStatRating": "Rating",
   "profileReviewCount": "{count, plural, =1{1 review} other{{count} reviews}}",
   "@profileReviewCount": {
     "placeholders": {
@@ -3538,28 +3536,6 @@
   "svcVideoTooLarge": "Video must be smaller than 100 MB.",
   "svcEvidenceTooLarge": "Evidence photo must be smaller than 5 MB.",
   "svcImageTooLarge": "Image is too large. The limit is 5 MB.",
-  "svcAuthRoleInvalid": "Your account role is invalid.",
-  "svcAuthPhoneRegistered": "This mobile number is already registered.",
-  "svcAuthPhoneRegisteredOther": "This mobile number is already registered to another account.",
-  "svcAuthProfileSaveFailed": "Could not save your profile.",
-  "svcAuthProfileNotFound": "User profile was not found.",
-  "svcAuthNoGoogleProfile": "No Farmora profile found. Register with Google first.",
-  "svcAuthNoPhoneProfile": "No Farmora profile found. Register this phone number first.",
-  "svcAuthEnterValidMobile": "Enter a valid mobile number first.",
-  "svcAuthPhoneExample": "Enter a valid phone number, for example +94771234567.",
-  "svcAuthEnterOtp": "Enter the 6-digit verification code.",
-  "svcAuthRequestOtp": "Request a new OTP first.",
-  "svcAuthAccountExists": "An account already exists for this phone number.",
-  "svcAuthWeakPassword": "Password must contain at least 6 characters.",
-  "svcAuthWrongCredentials": "Phone number or password is incorrect.",
-  "svcAuthNetwork": "Network error. Check your internet connection.",
-  "svcAuthProviderDisabled": "Enable this sign-in provider in Firebase Authentication.",
-  "svcAuthInvalidPhone": "Enter a valid phone number with country code.",
-  "svcAuthWrongOtp": "The OTP is incorrect. Please try again.",
-  "svcAuthOtpExpired": "The OTP expired. Request a new code.",
-  "svcAuthSmsQuota": "SMS quota exceeded. Use a Firebase test phone number.",
-  "svcAuthGoogleCancelled": "Google sign-in was cancelled.",
-  "svcAuthFailed": "Authentication failed.",
   "svcSeedNeedsUsers": "Register a farmer and buyer first, then seed again.",
   "farmerTrackOrderHash": "Order #{number}",
   "@farmerTrackOrderHash": {
@@ -3594,7 +3570,6 @@
   "farmerTrackGpsRoute": "GPS route",
   "farmerTrackRoutePreview": "Route preview",
   "farmerTrackFarmPickup": "Farm pickup",
-  "farmerTrackDeliveryPoint": "Delivery point",
   "farmerTrackDriverLive": "Driver location LIVE",
   "farmerTrackDriverUpdating": "Driver location updating…",
   "farmerTrackRouteProgress": "Route progress",
@@ -3694,5 +3669,15 @@
   "farmerVerificationBack": "Back",
   "farmerVerificationUploaded": "Uploaded",
   "farmerVerificationNewPhoto": "Uploaded new clear vehicle photo!",
-  "farmerVerificationSelectFile": "Select File"
+  "farmerVerificationSelectFile": "Select File",
+  "stateSettlementReferenceRequired": "Enter the actual bank or payout provider reference.",
+  "stateInvalidWithdrawalAmount": "Invalid withdrawal amount. Available balance: {balance}",
+  "@stateInvalidWithdrawalAmount": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "authLanguageButton": "Change language"
 }

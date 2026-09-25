@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../localization/l10n.dart';
 
 class JobCard extends StatelessWidget {
   final String title;
@@ -129,7 +130,9 @@ class JobCard extends StatelessWidget {
               ),
               icon: Icon(accepted ? Icons.check_circle_outline : Icons.local_shipping_outlined, size: 20),
               label: Text(
-                accepted ? 'Job Accepted' : 'Accept Job',
+                accepted ? context.l10n.jobAccepted : context.l10n.acceptJob,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontWeight: FontWeight.w600,

@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/localization/language_prefs.dart';
 import '../../../core/widgets/farmora_logo.dart';
+import '../../onboarding/presentation/language_selection_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 
 /// Clean and modern splash screen for the Farmora mobile application.
@@ -17,7 +20,9 @@ class SplashScreen extends StatefulWidget {
   /// Optional callback invoked when initialization/animation is complete.
   final VoidCallback? onInitializationComplete;
 
-  /// Whether to automatically navigate to [OnboardingScreen] upon completion.
+  /// Whether to automatically navigate on completion: to the
+  /// [LanguageSelectionScreen] on first launch (no saved language), then
+  /// [OnboardingScreen].
   final bool autoNavigate;
 
   /// Whether to use the raster image asset instead of vector custom paint.
@@ -96,27 +101,34 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  void _handleCompletion() {
-    if (!mounted) return;
+  bool _completed = false;
+
+  Future<void> _handleCompletion() async {
+    if (!mounted || _completed) return;
 
     if (widget.onInitializationComplete != null) {
+      _completed = true;
       widget.onInitializationComplete!();
     } else if (widget.autoNavigate) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-        ),
-      );
+      _completed = true;
+      final savedLanguage = await LanguagePrefs.load();
+      if (!mounted) return;
+      final Widget next = savedLanguage == null
+          ? LanguageSelectionScreen(
+              onSelected: (context) => Navigator.of(context)
+                  .pushReplacement(_fadeRoute(const OnboardingScreen())),
+            )
+          : const OnboardingScreen();
+      Navigator.of(context).pushReplacement(_fadeRoute(next));
     }
   }
+
+  static Route<void> _fadeRoute(Widget page) => PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(opacity: animation, child: child),
+      );
 
   @override
   void dispose() {
@@ -128,6 +140,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final l = context.l10n;
 
     return Scaffold(
       body: GestureDetector(
@@ -217,10 +230,10 @@ class _SplashScreenState extends State<SplashScreen>
                                       opacity: _taglineFadeAnimation,
                                       child: Column(
                                         children: [
-                                          const Text(
-                                            'Connecting Farmers, Buyers & Transport',
+                                          Text(
+                                            l.splashTagline,
                                             textAlign: TextAlign.center,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
                                               letterSpacing: 0.15,
@@ -231,7 +244,7 @@ class _SplashScreenState extends State<SplashScreen>
                                           const SizedBox(height: 16),
 
                                           // Minimal agricultural pillar chips
-                                          _buildPillRow(),
+                                          _buildPillRow(l),
                                         ],
                                       ),
                                     ),
@@ -248,7 +261,7 @@ class _SplashScreenState extends State<SplashScreen>
                       // Bottom: Subtle Loading Indicator & Status
                       FadeTransition(
                         opacity: _loadingFadeAnimation,
-                        child: _buildBottomLoader(),
+                        child: _buildBottomLoader(l),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -280,19 +293,20 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   /// Minimal agricultural category pill indicators
-  Widget _buildPillRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+  /// Wraps onto a second line when the labels are long (Tamil / Sinhala).
+  Widget _buildPillRow(AppLocalizations l) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        _buildPill(icon: Icons.eco_outlined, label: 'Farmers'),
-        const SizedBox(width: 8),
+        _buildPill(icon: Icons.eco_outlined, label: l.splashFarmers),
         _buildDotSeparator(),
-        const SizedBox(width: 8),
-        _buildPill(icon: Icons.storefront_outlined, label: 'Buyers'),
-        const SizedBox(width: 8),
+        _buildPill(icon: Icons.storefront_outlined, label: l.splashBuyers),
         _buildDotSeparator(),
-        const SizedBox(width: 8),
-        _buildPill(icon: Icons.local_shipping_outlined, label: 'Transport'),
+        _buildPill(
+            icon: Icons.local_shipping_outlined, label: l.splashTransport),
       ],
     );
   }
@@ -342,7 +356,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   /// Modern, subtle loading bar and version status
-  Widget _buildBottomLoader() {
+  Widget _buildBottomLoader(AppLocalizations l) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -376,13 +390,17 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
             const SizedBox(width: 6),
-            const Text(
-              'Connecting agricultural network…',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textMuted,
-                letterSpacing: 0.2,
+            Flexible(
+              child: Text(
+                l.splashLoading,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],

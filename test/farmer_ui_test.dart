@@ -4,7 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:farmora/l10n/app_localizations.dart';
 import 'package:farmora/models/user_role.dart';
 import 'package:farmora/models/product.dart';
 import 'package:farmora/providers/farmora_state.dart';
@@ -13,6 +12,11 @@ import 'package:farmora/features/farmer/presentation/farmer_orders_screen.dart';
 import 'package:farmora/features/farmer/presentation/earnings_screen.dart';
 import 'package:farmora/features/farmer/presentation/farmer_jobs_screen.dart';
 import 'package:farmora/features/home/presentation/dashboard_screen.dart';
+import 'package:farmora/features/farmer/presentation/farmer_offers_screen.dart';
+import 'package:farmora/features/farmer/presentation/add_product_screen.dart';
+import 'package:farmora/core/localization/l10n.dart';
+
+import 'helpers/l10n_test_app.dart';
 
 // ---------------------------------------------------------------------------
 // Shared test helpers
@@ -721,6 +725,57 @@ void main() {
       await tester.pump();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+  // ===========================================================================
+  // Tamil / Sinhala — farmer screens switch language and fit at 360px
+  // ===========================================================================
+
+  group('Farmer screens in Tamil and Sinhala', () {
+    final screens = <String, Widget Function()>{
+      'EarningsScreen': () => const EarningsScreen(),
+      'FarmerOrdersScreen': () => const FarmerOrdersScreen(),
+      'FarmerProductsScreen': () => const FarmerProductsScreen(),
+      'FarmerJobsScreen': () => const FarmerJobsScreen(),
+      'FarmerOffersScreen': () => const FarmerOffersScreen(),
+      'AddProductScreen': () => const AddProductScreen(),
+    };
+    for (final locale in const [Locale('ta'), Locale('si')]) {
+      for (final entry in screens.entries) {
+        testWidgets('${entry.key} renders in ${locale.languageCode} at 360px',
+            (tester) async {
+          tester.view.devicePixelRatio = 1.0;
+          tester.view.physicalSize = const Size(360, 800);
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+            L10n.updateLocale(const Locale('en'));
+          });
+          final state = _farmerState();
+          await tester.pumpWidget(ChangeNotifierProvider<FarmoraState>.value(
+            value: state,
+            child: localizedTestApp(entry.value(), locale: locale),
+          ));
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
+    testWidgets('EarningsScreen shows translated labels in Tamil',
+        (tester) async {
+      _setViewport(tester);
+      addTearDown(() => L10n.updateLocale(const Locale('en')));
+      final state = _farmerState();
+      await tester.pumpWidget(ChangeNotifierProvider<FarmoraState>.value(
+        value: state,
+        child: localizedTestApp(const EarningsScreen(),
+            locale: const Locale('ta')),
+      ));
+      await tester.pump();
+      final ta = lookupAppLocalizations(const Locale('ta'));
+      expect(find.text(ta.farmerEarningsThisMonth), findsOneWidget);
+      expect(find.text('This Month'), findsNothing);
     });
   });
 }

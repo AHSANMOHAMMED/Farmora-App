@@ -1234,9 +1234,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileChangePhotoHint => 'Tap to change photo';
 
   @override
-  String get profilePhotoUploading => 'Uploading photo…';
-
-  @override
   String get profilePhotoUpdated => 'Profile photo updated.';
 
   @override
@@ -1248,9 +1245,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileStatCompletedOrders => 'Completed orders';
-
-  @override
-  String get profileStatRating => 'Rating';
 
   @override
   String profileReviewCount(int count) {
@@ -6399,83 +6393,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get svcImageTooLarge => 'Image is too large. The limit is 5 MB.';
 
   @override
-  String get svcAuthRoleInvalid => 'Your account role is invalid.';
-
-  @override
-  String get svcAuthPhoneRegistered =>
-      'This mobile number is already registered.';
-
-  @override
-  String get svcAuthPhoneRegisteredOther =>
-      'This mobile number is already registered to another account.';
-
-  @override
-  String get svcAuthProfileSaveFailed => 'Could not save your profile.';
-
-  @override
-  String get svcAuthProfileNotFound => 'User profile was not found.';
-
-  @override
-  String get svcAuthNoGoogleProfile =>
-      'No Farmora profile found. Register with Google first.';
-
-  @override
-  String get svcAuthNoPhoneProfile =>
-      'No Farmora profile found. Register this phone number first.';
-
-  @override
-  String get svcAuthEnterValidMobile => 'Enter a valid mobile number first.';
-
-  @override
-  String get svcAuthPhoneExample =>
-      'Enter a valid phone number, for example +94771234567.';
-
-  @override
-  String get svcAuthEnterOtp => 'Enter the 6-digit verification code.';
-
-  @override
-  String get svcAuthRequestOtp => 'Request a new OTP first.';
-
-  @override
-  String get svcAuthAccountExists =>
-      'An account already exists for this phone number.';
-
-  @override
-  String get svcAuthWeakPassword =>
-      'Password must contain at least 6 characters.';
-
-  @override
-  String get svcAuthWrongCredentials =>
-      'Phone number or password is incorrect.';
-
-  @override
-  String get svcAuthNetwork => 'Network error. Check your internet connection.';
-
-  @override
-  String get svcAuthProviderDisabled =>
-      'Enable this sign-in provider in Firebase Authentication.';
-
-  @override
-  String get svcAuthInvalidPhone =>
-      'Enter a valid phone number with country code.';
-
-  @override
-  String get svcAuthWrongOtp => 'The OTP is incorrect. Please try again.';
-
-  @override
-  String get svcAuthOtpExpired => 'The OTP expired. Request a new code.';
-
-  @override
-  String get svcAuthSmsQuota =>
-      'SMS quota exceeded. Use a Firebase test phone number.';
-
-  @override
-  String get svcAuthGoogleCancelled => 'Google sign-in was cancelled.';
-
-  @override
-  String get svcAuthFailed => 'Authentication failed.';
-
-  @override
   String get svcSeedNeedsUsers =>
       'Register a farmer and buyer first, then seed again.';
 
@@ -6532,9 +6449,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get farmerTrackFarmPickup => 'Farm pickup';
-
-  @override
-  String get farmerTrackDeliveryPoint => 'Delivery point';
 
   @override
   String get farmerTrackDriverLive => 'Driver location LIVE';
@@ -6766,4 +6680,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get farmerVerificationSelectFile => 'Select File';
+
+  @override
+  String get stateSettlementReferenceRequired =>
+      'Enter the actual bank or payout provider reference.';
+
+  @override
+  String stateInvalidWithdrawalAmount(String balance) {
+    return 'Invalid withdrawal amount. Available balance: $balance';
+  }
+
+  @override
+  String get authLanguageButton => 'Change language';
 }

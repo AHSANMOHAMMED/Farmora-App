@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/user_role.dart';
 import '../../../models/product.dart';
 import '../../../models/order.dart';
@@ -26,6 +29,7 @@ import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../admin/presentation/user_management_screen.dart';
+import '../../auth/presentation/auth_l10n.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -82,13 +86,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 32),
 
         // ── 3. FARM ACTIVITY ──
-        _buildSectionTitle('Farm Activity', subtitle: 'Your current produce'),
+        _buildSectionTitle(context.l10n.dashboardFarmActivity,
+            subtitle: context.l10n.dashboardYourProduce),
         const SizedBox(height: 14),
         _buildFarmActivity(context, products, orders),
         const SizedBox(height: 32),
 
         // ── 4. EARNINGS OVERVIEW ──
-        _buildSectionTitle('Earnings Overview'),
+        _buildSectionTitle(context.l10n.dashboardEarningsOverview),
         const SizedBox(height: 14),
         _buildEarningsOverview(context, state),
         const SizedBox(height: 32),
@@ -97,22 +102,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Recent Orders',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.onSurface,
-                letterSpacing: -0.3,
+            Expanded(
+              child: Text(
+                context.l10n.dashboardRecentOrders,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onSurface,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
               ),
-              child: const Text(
-                'View All',
-                style: TextStyle(
+              child: Text(
+                context.l10n.commonViewAll,
+                style: const TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -126,13 +136,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 32),
 
         // ── 6. QUICK ACTIONS ──
-        _buildSectionTitle('Quick Actions'),
+        _buildSectionTitle(context.l10n.dashboardQuickActions),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.farmer),
         const SizedBox(height: 32),
 
         // ── 7. NOTIFICATIONS ──
-        _buildSectionTitle('Recent Notifications'),
+        _buildSectionTitle(context.l10n.dashboardRecentNotifications),
         const SizedBox(height: 14),
         _buildNotifications(context),
         const SizedBox(height: 20),
@@ -180,23 +190,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Notification bell
         Stack(
           children: [
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              ),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+            Semantics(
+              button: true,
+              label: context.l10n.notifications,
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen()),
                 ),
-                child: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: AppColors.onSurface,
-                  size: 22,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: AppColors.onSurface,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
@@ -231,25 +247,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // GREETING
   // ═══════════════════════════════════════════════════════════════
   Widget _buildGreeting(FarmoraState state) {
+    final l10n = context.l10n;
     final hour = DateTime.now().hour;
-    String greeting;
+    final name =
+        state.displayName.isNotEmpty ? state.displayName : state.role.label;
+    final String greeting;
     if (hour < 12) {
-      greeting = 'Good Morning';
+      greeting = l10n.dashboardGoodMorning(name);
     } else if (hour < 17) {
-      greeting = 'Good Afternoon';
+      greeting = l10n.dashboardGoodAfternoon(name);
     } else {
-      greeting = 'Good Evening';
+      greeting = l10n.dashboardGoodEvening(name);
     }
-
-    final name = state.displayName.isNotEmpty
-        ? state.displayName
-        : (state.role == Role.farmer ? 'Farmer' : state.role.label);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$greeting, $name 👋',
+          greeting,
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -260,8 +275,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 6),
         Text(
           state.district.isNotEmpty
-              ? "Here's what's happening in ${state.district} today."
-              : "Here's what's happening with your farm today.",
+              ? l10n.dashboardHappeningInDistrict(
+                  districtLabel(state.district, l10n))
+              : l10n.dashboardHappeningOnFarm,
           style: const TextStyle(
             fontSize: 15,
             color: AppColors.onSurfaceVariant,
@@ -292,9 +308,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.receipt_long_rounded,
                 iconColor: const Color(0xFF2E7D32),
                 iconBg: const Color(0xFFE8F5E9),
-                label: "Today's Orders",
-                value: '$todayOrders',
-                trend: '+2 from yesterday',
+                label: context.l10n.dashboardTodaysOrders,
+                value: AppFormat.number(todayOrders),
+                trend: context.l10n.dashboardTrendFromYesterday(2),
                 trendUp: true,
               ),
             ),
@@ -304,9 +320,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.eco_rounded,
                 iconColor: const Color(0xFF1565C0),
                 iconBg: const Color(0xFFE3F2FD),
-                label: 'Active Products',
-                value: '$activeProducts',
-                trend: 'Listed for sale',
+                label: context.l10n.dashboardActiveProducts,
+                value: AppFormat.number(activeProducts),
+                trend: context.l10n.dashboardListedForSale,
                 trendUp: true,
               ),
             ),
@@ -321,9 +337,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.pending_actions_rounded,
                 iconColor: const Color(0xFFE65100),
                 iconBg: const Color(0xFFFFF3E0),
-                label: 'Pending Orders',
-                value: '$pendingOrders',
-                trend: 'Awaiting response',
+                label: context.l10n.dashboardPendingOrders,
+                value: AppFormat.number(pendingOrders),
+                trend: context.l10n.dashboardAwaitingResponse,
                 trendUp: false,
               ),
             ),
@@ -369,7 +385,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'LKR ${earnings.toStringAsFixed(0)}',
+            AppFormat.lkr(earnings),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -379,7 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'This Month',
+            context.l10n.dashboardThisMonth,
             style: TextStyle(
               fontSize: 13,
               color: Colors.white.withValues(alpha: 0.85),
@@ -392,12 +410,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Icon(Icons.trending_up_rounded,
                   size: 14, color: Color(0xFF81C784)),
               const SizedBox(width: 4),
-              Text(
-                'Earnings',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  context.l10n.earnings,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -433,6 +455,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 14),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -487,9 +511,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: _cardDecoration(),
-        child: const Center(
-          child: Text('No produce listed yet',
-              style: TextStyle(color: AppColors.onSurfaceVariant)),
+        child: Center(
+          child: Text(context.l10n.dashboardNoProduceYet,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.onSurfaceVariant)),
         ),
       );
     }
@@ -552,9 +577,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: const Color(0xFFE8F5E9),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'Organic',
-                                style: TextStyle(
+                              child: Text(
+                                context.l10n.dashboardOrganic,
+                                style: const TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF2E7D32),
@@ -565,7 +590,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${product.quantity} · LKR ${product.pricePerUnit.toStringAsFixed(2)} / ${product.unit}',
+                        '${product.quantity} · ${AppFormat.lkr(product.pricePerUnit, decimals: 2)} / ${_unitLabel(product.unit)}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.onSurfaceVariant,
@@ -575,41 +600,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: stockStatus.$2.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: stockStatus.$2,
-                                    shape: BoxShape.circle,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: stockStatus.$2.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: stockStatus.$2,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  stockStatus.$1,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: stockStatus.$2,
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      stockStatus.$1,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: stockStatus.$2,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
                           if (productOrders > 0)
                             Flexible(
                               child: Text(
-                                '$productOrders active order${productOrders > 1 ? 's' : ''}',
+                                context.l10n
+                                    .dashboardActiveOrdersCount(productOrders),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -636,9 +668,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   (String, Color) _getStockStatus(Product product) {
     if (product.isEmpty) {
-      return ('Out of Stock', const Color(0xFFB71C1C));
+      return (context.l10n.statusOutOfStock, const Color(0xFFB71C1C));
     }
-    return ('In Stock', const Color(0xFF2E7D32));
+    return (context.l10n.dashboardInStock, const Color(0xFF2E7D32));
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -651,20 +683,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _buildToggleChip('Monthly', _showMonthlyEarnings, () {
+              _buildToggleChip(
+                  context.l10n.dashboardMonthly, _showMonthlyEarnings, () {
                 setState(() => _showMonthlyEarnings = true);
               }),
-              const SizedBox(width: 8),
-              _buildToggleChip('Weekly', !_showMonthlyEarnings, () {
+              _buildToggleChip(
+                  context.l10n.dashboardWeekly, !_showMonthlyEarnings, () {
                 setState(() => _showMonthlyEarnings = false);
               }),
             ],
           ),
           const SizedBox(height: 20),
           Text(
-            'LKR ${(_showMonthlyEarnings ? state.thisMonth : state.thisWeek).toStringAsFixed(2)}',
+            AppFormat.lkr(
+                _showMonthlyEarnings ? state.thisMonth : state.thisWeek,
+                decimals: 2),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
@@ -675,8 +714,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 4),
           Text(
             _showMonthlyEarnings
-                ? "This month's earnings"
-                : "This week's earnings",
+                ? context.l10n.dashboardThisMonthEarnings
+                : context.l10n.dashboardThisWeekEarnings,
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.onSurfaceVariant,
@@ -693,12 +732,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Icon(Icons.trending_up_rounded,
                   size: 16, color: AppColors.primary),
               const SizedBox(width: 4),
-              Text(
-                '+15.2% vs last ${_showMonthlyEarnings ? 'month' : 'week'}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  _showMonthlyEarnings
+                      ? context.l10n.dashboardVsLastMonth('+15.2%')
+                      : context.l10n.dashboardVsLastWeek('+15.2%'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -733,9 +778,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMiniBarChart(FarmoraState state) {
     final bars = state.monthlyBars;
     if (bars.isEmpty) {
-      return const Center(
-          child: Text('No data',
-              style: TextStyle(color: AppColors.onSurfaceVariant)));
+      return Center(
+          child: Text(context.l10n.dashboardNoData,
+              style: const TextStyle(color: AppColors.onSurfaceVariant)));
     }
 
     final maxAmount =
@@ -757,7 +802,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      'LKR ${bar.amount}',
+                      AppFormat.lkr(bar.amount),
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
                       style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -776,7 +824,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  bar.month,
+                  _monthLabel(bar.month),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight:
@@ -802,9 +852,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: _cardDecoration(),
-        child: const Center(
-          child: Text('No recent orders',
-              style: TextStyle(color: AppColors.onSurfaceVariant)),
+        child: Center(
+          child: Text(context.l10n.dashboardNoRecentOrders,
+              style: const TextStyle(color: AppColors.onSurfaceVariant)),
         ),
       );
     }
@@ -857,6 +907,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Container(
+                      constraints: const BoxConstraints(maxWidth: 120),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -864,7 +915,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        order.status,
+                        statusLabel(order.status, context.l10n),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -877,18 +930,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      '${order.orderNumber.isNotEmpty ? order.orderNumber : order.id.substring(0, 6)} · ${order.buyerName}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        '${order.orderNumber.isNotEmpty ? order.orderNumber : order.id.substring(0, 6)} · ${order.buyerName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
-                      order.totalAmount.isNotEmpty
-                          ? order.totalAmount
-                          : 'LKR ${order.totalAmountNumber.toStringAsFixed(2)}',
+                      order.total > 0 || order.totalAmount.isEmpty
+                          ? AppFormat.lkr(order.total, decimals: 2)
+                          : order.totalAmount,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -909,13 +966,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 6. QUICK ACTIONS
   // ═══════════════════════════════════════════════════════════════
   Widget _buildQuickActions(BuildContext context, Role role) {
+    final l10n = context.l10n;
     final actions = <Map<String, dynamic>>[];
 
     if (role == Role.farmer) {
       actions.addAll([
         {
           'icon': Icons.add_circle_outline_rounded,
-          'label': 'Add Produce',
+          'label': l10n.dashboardAddProduce,
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -924,7 +982,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.receipt_long_outlined,
-          'label': 'Manage Orders',
+          'label': l10n.dashboardManageOrders,
           'color': const Color(0xFFE65100),
           'bg': const Color(0xFFFFF3E0),
           'onTap': () => Navigator.of(context).push(
@@ -933,7 +991,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.local_offer_outlined,
-          'label': 'Price Offers',
+          'label': l10n.dashboardPriceOffers,
           'color': const Color(0xFF6A1B9A),
           'bg': const Color(0xFFF3E5F5),
           'onTap': () => Navigator.of(context).push(
@@ -942,7 +1000,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.payments_outlined,
-          'label': 'View Earnings',
+          'label': l10n.dashboardViewEarnings,
           'color': const Color(0xFF006E1C),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -951,7 +1009,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.person_outline_rounded,
-          'label': 'Farm Profile',
+          'label': l10n.dashboardFarmProfile,
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
@@ -961,7 +1019,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.trending_up_rounded,
-          'label': 'Market Rates',
+          'label': l10n.dashboardMarketRates,
           'color': const Color(0xFFC2185B),
           'bg': const Color(0xFFFCE4EC),
           'onTap': () => Navigator.of(context).push(
@@ -971,7 +1029,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.local_shipping_outlined,
-          'label': 'Deliveries',
+          'label': l10n.deliveries,
           'color': const Color(0xFF00796B),
           'bg': const Color(0xFFE0F2F1),
           'onTap': () => Navigator.of(context).push(
@@ -980,7 +1038,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.near_me_rounded,
-          'label': 'Nearby Transport',
+          'label': l10n.dashboardNearbyTransport,
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
@@ -993,7 +1051,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       actions.addAll([
         {
           'icon': Icons.storefront_outlined,
-          'label': 'Produce',
+          'label': l10n.dashboardProduce,
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -1002,7 +1060,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.shopping_basket_outlined,
-          'label': 'My Orders',
+          'label': l10n.dashboardMyOrders,
           'color': const Color(0xFFE65100),
           'bg': const Color(0xFFFFF3E0),
           'onTap': () => Navigator.of(context).push(
@@ -1011,7 +1069,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.local_offer_outlined,
-          'label': 'My Offers',
+          'label': l10n.myOffers,
           'color': const Color(0xFF6A1B9A),
           'bg': const Color(0xFFF3E5F5),
           'onTap': () => Navigator.of(context).push(
@@ -1020,7 +1078,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.shopping_cart_outlined,
-          'label': 'My Cart',
+          'label': l10n.dashboardMyCart,
           'color': const Color(0xFF006D44),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -1029,7 +1087,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.near_me_rounded,
-          'label': 'Nearby Transport',
+          'label': l10n.dashboardNearbyTransport,
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
@@ -1042,7 +1100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       actions.addAll([
         {
           'icon': Icons.local_shipping_outlined,
-          'label': 'Available Jobs',
+          'label': l10n.availableJobs,
           'color': const Color(0xFF2E7D32),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -1051,7 +1109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.history_rounded,
-          'label': 'Deliveries',
+          'label': l10n.deliveries,
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
@@ -1061,7 +1119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.payments_outlined,
-          'label': 'Earnings',
+          'label': l10n.earnings,
           'color': const Color(0xFF006E1C),
           'bg': const Color(0xFFE8F5E9),
           'onTap': () => Navigator.of(context).push(
@@ -1071,7 +1129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         {
           'icon': Icons.my_location_rounded,
-          'label': 'Live Tracking',
+          'label': l10n.dashboardLiveTracking,
           'color': const Color(0xFF00796B),
           'bg': const Color(0xFFE0F2F1),
           'onTap': () {
@@ -1081,9 +1139,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 .where((j) => j.isActive)
                 .toList();
             if (jobs.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text(
-                    'No active delivery right now. Accept a job to start live tracking.'),
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(l10n.dashboardNoActiveDelivery),
               ));
               return;
             }
@@ -1098,7 +1155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       actions.addAll([
         {
           'icon': Icons.people_outline_rounded,
-          'label': 'User Management',
+          'label': l10n.dashboardUserManagement,
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
@@ -1140,6 +1197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       action['label'] as String,
                       textAlign: TextAlign.center,
                       maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1164,9 +1222,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final notifications = [...context.watch<FarmoraState>().notifications]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (notifications.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Text('No notifications yet.'),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(context.l10n.noNotificationsYet),
       );
     }
     return Column(
@@ -1183,14 +1241,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           _ => (Icons.notifications_rounded, AppColors.primary),
         };
-        final elapsed = DateTime.now().difference(notification.createdAt);
-        final time = elapsed.inMinutes < 1
-            ? 'Just now'
-            : elapsed.inHours < 1
-                ? '${elapsed.inMinutes} min ago'
-                : elapsed.inDays < 1
-                    ? '${elapsed.inHours} hr ago'
-                    : '${elapsed.inDays} day${elapsed.inDays == 1 ? '' : 's'} ago';
+        final time = AppFormat.relative(notification.createdAt);
         return _buildNotificationTile(_NotificationItem(
           icon: style.$1,
           iconColor: style.$2,
@@ -1244,11 +1295,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          Text(
-            item.time,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.onSurfaceVariant,
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 90),
+            child: Text(
+              item.time,
+              textAlign: TextAlign.end,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -1303,15 +1361,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'MARKETPLACE ORDERS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: Colors.white.withValues(alpha: 0.8),
+                  Flexible(
+                    child: Text(
+                      context.l10n.dashboardMarketplaceOrders,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1320,7 +1383,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${activeOrders.length} active',
+                      context.l10n.dashboardActiveCount(activeOrders.length),
                       style: const TextStyle(
                           fontSize: 11,
                           color: Colors.white,
@@ -1331,7 +1394,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'LKR ${totalSpent.toStringAsFixed(2)}',
+                AppFormat.lkr(totalSpent, decimals: 2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
@@ -1341,7 +1406,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Total order volume handled via secure escrow',
+                context.l10n.dashboardEscrowNote,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.85),
@@ -1360,9 +1425,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.local_shipping_rounded,
                 iconColor: const Color(0xFF1565C0),
                 iconBg: const Color(0xFFE3F2FD),
-                label: 'Active Orders',
-                value: '${activeOrders.length}',
-                trend: 'In progress',
+                label: context.l10n.dashboardActiveOrders,
+                value: AppFormat.number(activeOrders.length),
+                trend: context.l10n.dashboardInProgress,
                 trendUp: true,
               ),
             ),
@@ -1372,9 +1437,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.shopping_bag_rounded,
                 iconColor: const Color(0xFFE65100),
                 iconBg: const Color(0xFFFFF3E0),
-                label: 'In Cart',
-                value: '${state.cartItemCount}',
-                trend: 'Ready to order',
+                label: context.l10n.dashboardInCart,
+                value: AppFormat.number(state.cartItemCount),
+                trend: context.l10n.dashboardReadyToOrder,
                 trendUp: state.cartItemCount > 0,
               ),
             ),
@@ -1384,9 +1449,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.handshake_rounded,
                 iconColor: const Color(0xFF6A1B9A),
                 iconBg: const Color(0xFFF3E5F5),
-                label: 'Offers',
-                value: '${state.pendingOffersCount}',
-                trend: 'Negotiations',
+                label: context.l10n.dashboardOffers,
+                value: AppFormat.number(state.pendingOffersCount),
+                trend: context.l10n.dashboardNegotiations,
                 trendUp: state.pendingOffersCount > 0,
               ),
             ),
@@ -1396,8 +1461,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         // 3. Live Delivery Tracking Banner (if active delivery exists)
         if (activeDelivery != null) ...[
-          _buildSectionTitle('Active Delivery',
-              subtitle: 'Track your produce live'),
+          _buildSectionTitle(context.l10n.dashboardActiveDelivery,
+              subtitle: context.l10n.dashboardTrackProduceLive),
           const SizedBox(height: 14),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
@@ -1430,6 +1495,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Text(
                               activeDelivery.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -1437,7 +1504,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             Text(
-                              'Order ${activeDelivery.orderNumber} • ${activeDelivery.deliveryAddress}',
+                              context.l10n.dashboardOrderAndAddress(
+                                  activeDelivery.orderNumber,
+                                  activeDelivery.deliveryAddress),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.onSurfaceVariant,
@@ -1448,7 +1517,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
+                        constraints: const BoxConstraints(maxWidth: 120),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -1456,7 +1527,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          activeDelivery.status,
+                          statusLabel(activeDelivery.status, context.l10n),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1485,7 +1558,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Stage: ${activeDelivery.status}',
+                          context.l10n.dashboardStage(
+                              statusLabel(activeDelivery.status, context.l10n)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1494,15 +1568,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: AppColors.onSurfaceVariant),
                         ),
                       ),
-                      const Row(
+                      const SizedBox(width: 8),
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('View Detail',
-                              style: TextStyle(
+                          Text(context.l10n.commonViewDetails,
+                              style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary)),
-                          Icon(Icons.chevron_right_rounded,
+                          const Icon(Icons.chevron_right_rounded,
                               size: 16, color: AppColors.primary),
                         ],
                       ),
@@ -1516,7 +1591,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
 
         // 4. Quick Actions
-        _buildSectionTitle('Quick Actions'),
+        _buildSectionTitle(context.l10n.dashboardQuickActions),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.buyer),
         const SizedBox(height: 32),
@@ -1525,22 +1600,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Featured Produce',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.onSurface,
-                letterSpacing: -0.3,
+            Expanded(
+              child: Text(
+                context.l10n.dashboardFeaturedProduce,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onSurface,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
               ),
-              child: const Text(
-                'Browse All',
-                style: TextStyle(
+              child: Text(
+                context.l10n.dashboardBrowseAll,
+                style: const TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -1554,9 +1634,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: _cardDecoration(),
-            child: const Center(
-              child: Text('No produce currently listed',
-                  style: TextStyle(color: AppColors.onSurfaceVariant)),
+            child: Center(
+              child: Text(context.l10n.dashboardNoProduceListed,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ),
           )
         else
@@ -1594,6 +1675,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Expanded(
                                 child: Text(
                                   product.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -1609,9 +1692,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: const Color(0xFFE8F5E9),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
-                                    'ORGANIC',
-                                    style: TextStyle(
+                                  child: Text(
+                                    context.l10n.dashboardOrganic.toUpperCase(),
+                                    style: const TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w800,
                                       color: Color(0xFF2E7D32),
@@ -1622,7 +1705,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${product.location} • ${product.quantity}',
+                            '${districtLabel(product.location, context.l10n)} • ${product.quantity}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.onSurfaceVariant),
@@ -1631,21 +1716,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'LKR ${product.pricePerUnit.toStringAsFixed(0)} / ${product.unit}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primary,
+                              Flexible(
+                                child: Text(
+                                  '${AppFormat.lkr(product.pricePerUnit)} / ${_unitLabel(product.unit)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 onPressed: () {
                                   state.addToCart(product);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                          '${product.name} added to cart!'),
+                                      content: Text(context.l10n
+                                          .dashboardAddedToCart(product.name)),
                                       duration: const Duration(seconds: 1),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -1665,8 +1755,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 icon: const Icon(Icons.add_shopping_cart,
                                     size: 14),
-                                label: const Text('Add',
-                                    style: TextStyle(
+                                label: Text(context.l10n.dashboardAdd,
+                                    style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700)),
                               ),
@@ -1699,9 +1789,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.local_shipping_rounded,
               iconColor: const Color(0xFF2E7D32),
               iconBg: const Color(0xFFE8F5E9),
-              label: 'Active Jobs',
-              value: '${state.jobs.length}',
-              trend: 'In progress',
+              label: context.l10n.dashboardActiveJobs,
+              value: AppFormat.number(state.jobs.length),
+              trend: context.l10n.dashboardInProgress,
               trendUp: true,
             )),
             const SizedBox(width: 12),
@@ -1710,15 +1800,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.check_circle_rounded,
               iconColor: const Color(0xFF006E1C),
               iconBg: const Color(0xFFE8F5E9),
-              label: 'Completed',
-              value: '${state.completedOrders.length}',
-              trend: 'Total deliveries',
+              label: context.l10n.statusCompleted,
+              value: AppFormat.number(state.completedOrders.length),
+              trend: context.l10n.dashboardTotalDeliveries,
               trendUp: true,
             )),
           ],
         ),
         const SizedBox(height: 32),
-        _buildSectionTitle('Quick Actions'),
+        _buildSectionTitle(context.l10n.dashboardQuickActions),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.transporter),
       ],
@@ -1740,9 +1830,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.people_rounded,
               iconColor: const Color(0xFF1565C0),
               iconBg: const Color(0xFFE3F2FD),
-              label: 'Total Users',
-              value: '${state.users.length}',
-              trend: 'Registered',
+              label: context.l10n.dashboardTotalUsers,
+              value: AppFormat.number(state.users.length),
+              trend: context.l10n.dashboardRegistered,
               trendUp: true,
             )),
             const SizedBox(width: 12),
@@ -1751,15 +1841,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.receipt_long_rounded,
               iconColor: const Color(0xFF2E7D32),
               iconBg: const Color(0xFFE8F5E9),
-              label: 'Total Orders',
-              value: '${state.orders.length}',
-              trend: 'All time',
+              label: context.l10n.dashboardTotalOrders,
+              value: AppFormat.number(state.orders.length),
+              trend: context.l10n.dashboardAllTime,
               trendUp: true,
             )),
           ],
         ),
         const SizedBox(height: 32),
-        _buildSectionTitle('Quick Actions'),
+        _buildSectionTitle(context.l10n.dashboardQuickActions),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.admin),
       ],
@@ -1801,6 +1891,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ],
     );
+  }
+
+  /// Localized unit label; units are stored in English (e.g. "kg").
+  String _unitLabel(String unit) =>
+      unit.trim().toLowerCase() == 'kg' ? context.l10n.unitKg : unit;
+
+  /// Earnings bars carry an English short month ("Sep"); show it in the
+  /// current language.
+  String _monthLabel(String raw) {
+    try {
+      return AppFormat.shortMonth(DateFormat('MMM', 'en').parseStrict(raw));
+    } catch (_) {
+      return raw;
+    }
   }
 
   BoxDecoration _cardDecoration() {

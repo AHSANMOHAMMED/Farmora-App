@@ -1238,9 +1238,6 @@ class AppLocalizationsSi extends AppLocalizations {
   String get profileChangePhotoHint => 'ඡායාරූපය වෙනස් කිරීමට තට්ටු කරන්න';
 
   @override
-  String get profilePhotoUploading => 'ඡායාරූපය උඩුගත වෙමින්…';
-
-  @override
   String get profilePhotoUpdated => 'පැතිකඩ ඡායාරූපය යාවත්කාලීන විය.';
 
   @override
@@ -1252,9 +1249,6 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get profileStatCompletedOrders => 'නිම වූ ඇණවුම්';
-
-  @override
-  String get profileStatRating => 'ශ්‍රේණිගත කිරීම';
 
   @override
   String profileReviewCount(int count) {
@@ -6392,80 +6386,6 @@ class AppLocalizationsSi extends AppLocalizations {
   String get svcImageTooLarge => 'රූපය ඉතා විශාලයි. සීමාව 5 MB.';
 
   @override
-  String get svcAuthRoleInvalid => 'ඔබේ ගිණුමේ භූමිකාව වලංගු නැත.';
-
-  @override
-  String get svcAuthPhoneRegistered =>
-      'මෙම ජංගම අංකය දැනටමත් ලියාපදිංචි කර ඇත.';
-
-  @override
-  String get svcAuthPhoneRegisteredOther =>
-      'මෙම ජංගම අංකය දැනටමත් වෙනත් ගිණුමකට ලියාපදිංචි කර ඇත.';
-
-  @override
-  String get svcAuthProfileSaveFailed => 'ඔබේ පැතිකඩ සුරැකිය නොහැකි විය.';
-
-  @override
-  String get svcAuthProfileNotFound => 'පරිශීලක පැතිකඩ හමු නොවීය.';
-
-  @override
-  String get svcAuthNoGoogleProfile =>
-      'Farmora පැතිකඩක් හමු නොවීය. පළමුව Google සමඟ ලියාපදිංචි වන්න.';
-
-  @override
-  String get svcAuthNoPhoneProfile =>
-      'Farmora පැතිකඩක් හමු නොවීය. පළමුව මෙම දුරකථන අංකය ලියාපදිංචි කරන්න.';
-
-  @override
-  String get svcAuthEnterValidMobile => 'පළමුව වලංගු ජංගම අංකයක් ඇතුළත් කරන්න.';
-
-  @override
-  String get svcAuthPhoneExample =>
-      'වලංගු දුරකථන අංකයක් ඇතුළත් කරන්න, උදාහරණයක් ලෙස +94771234567.';
-
-  @override
-  String get svcAuthEnterOtp => 'ඉලක්කම් 6ක තහවුරු කිරීමේ කේතය ඇතුළත් කරන්න.';
-
-  @override
-  String get svcAuthRequestOtp => 'පළමුව නව OTP එකක් ඉල්ලන්න.';
-
-  @override
-  String get svcAuthAccountExists => 'මෙම දුරකථන අංකයට දැනටමත් ගිණුමක් ඇත.';
-
-  @override
-  String get svcAuthWeakPassword => 'මුරපදයේ අවම වශයෙන් අක්ෂර 6ක් තිබිය යුතුය.';
-
-  @override
-  String get svcAuthWrongCredentials => 'දුරකථන අංකය හෝ මුරපදය වැරදියි.';
-
-  @override
-  String get svcAuthNetwork =>
-      'ජාල දෝෂයකි. ඔබේ අන්තර්ජාල සම්බන්ධතාවය පරීක්ෂා කරන්න.';
-
-  @override
-  String get svcAuthProviderDisabled =>
-      'මෙම පුරනය වීමේ ක්‍රමය දැනට සක්‍රිය කර නැත.';
-
-  @override
-  String get svcAuthInvalidPhone =>
-      'රටේ කේතය සමඟ වලංගු දුරකථන අංකයක් ඇතුළත් කරන්න.';
-
-  @override
-  String get svcAuthWrongOtp => 'OTP වැරදියි. නැවත උත්සාහ කරන්න.';
-
-  @override
-  String get svcAuthOtpExpired => 'OTP කල් ඉකුත් විය. නව කේතයක් ඉල්ලන්න.';
-
-  @override
-  String get svcAuthSmsQuota => 'SMS සීමාව ඉක්මවා ඇත. පසුව නැවත උත්සාහ කරන්න.';
-
-  @override
-  String get svcAuthGoogleCancelled => 'Google පුරනය වීම අවලංගු කළා.';
-
-  @override
-  String get svcAuthFailed => 'සත්‍යාපනය අසාර්ථක විය.';
-
-  @override
   String get svcSeedNeedsUsers =>
       'පළමුව ගොවියෙක් සහ ගැනුම්කරුවෙක් ලියාපදිංචි කර, නැවත නියැදි දත්ත එක් කරන්න.';
 
@@ -6522,9 +6442,6 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get farmerTrackFarmPickup => 'ගොවිපළෙන් රැගෙන යාම';
-
-  @override
-  String get farmerTrackDeliveryPoint => 'බෙදාහැරීමේ ස්ථානය';
 
   @override
   String get farmerTrackDriverLive => 'රියදුරුගේ ස්ථානය සජීවී';
@@ -6759,4 +6676,16 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get farmerVerificationSelectFile => 'ගොනුව තෝරන්න';
+
+  @override
+  String get stateSettlementReferenceRequired =>
+      'සැබෑ බැංකු හෝ ගෙවීම් සේවා යොමු අංකය ඇතුළත් කරන්න.';
+
+  @override
+  String stateInvalidWithdrawalAmount(String balance) {
+    return 'වලංගු නොවන මුදල් ආපසු ගැනීමේ ප්‍රමාණයක්. ලබා ගත හැකි ශේෂය: $balance';
+  }
+
+  @override
+  String get authLanguageButton => 'භාෂාව වෙනස් කරන්න';
 }

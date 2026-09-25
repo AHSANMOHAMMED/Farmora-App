@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:farmora/features/payments/presentation/order_payment_card.dart';
 import 'package:farmora/models/bank_details.dart';
 import 'package:farmora/models/order.dart';
 import 'package:farmora/services/payment_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'helpers/l10n_test_app.dart';
 
 FarmoraOrder _order({
   String status = 'delivered',
@@ -178,5 +181,53 @@ void main() {
         throwsArgumentError,
       );
     });
+  });
+
+  group('OrderPaymentCard localization', () {
+    for (final locale in const [Locale('en'), Locale('ta'), Locale('si')]) {
+      testWidgets('buyer bank-deposit card fits 360px in ${locale.languageCode}',
+          (tester) async {
+        tester.view.physicalSize = const Size(360, 1400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final order = FarmoraOrder(
+          id: 'o1',
+          title: 'Carrots',
+          detail: '',
+          status: 'accepted',
+          progress: 0.2,
+          color: Colors.green,
+          paymentStatus: 'rejected',
+          paymentMethod: PaymentMethod.bankDeposit,
+          rejectionReason: 'Blurry',
+          totalMinor: 1250000,
+          buyerId: 'b1',
+          farmerId: 'f1',
+          bankDetailsSnapshot: const BankDetails(
+            bankName: 'Bank of Ceylon',
+            branch: 'Kandy',
+            accountHolderName: 'S. Perera',
+            accountNumber: '0012345678',
+          ),
+        );
+        await tester.pumpWidget(localizedTestApp(
+          Scaffold(
+            body: SingleChildScrollView(
+              child: OrderPaymentCard(order: order, viewerIsFarmer: false),
+            ),
+          ),
+          locale: locale,
+        ));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('LKR 12,500.00'), findsWidgets);
+        if (locale.languageCode == 'en') {
+          expect(find.text('Upload New Receipt'), findsOneWidget);
+          expect(find.text('Receipt rejected: Blurry'), findsOneWidget);
+        } else {
+          expect(find.text('Upload New Receipt'), findsNothing);
+        }
+      });
+    }
   });
 }

@@ -1,5 +1,6 @@
-
 import 'package:flutter/material.dart';
+
+import '../localization/l10n.dart';
 
 class TrustBadge extends StatelessWidget {
   final String trustLevel;
@@ -25,28 +26,28 @@ class TrustBadge extends StatelessWidget {
     }
   }
 
-  String _getTrustText() {
+  String _getTrustText(AppLocalizations l) {
     switch (trustLevel) {
       case 'High':
-        return 'Highly Trusted';
+        return l.trustHigh;
       case 'Medium':
-        return 'Verified';
+        return l.statusVerified;
       case 'Low':
-        return 'New Farmer';
+        return l.trustNewFarmer;
       default:
-        return 'Standard';
+        return l.trustStandard;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final color = _getTrustColor(context);
-    final text = _getTrustText();
-    
+    final text = _getTrustText(context.l10n);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color, width: 1),
       ),
@@ -54,19 +55,25 @@ class TrustBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            trustLevel == 'High' ? Icons.star : 
-            trustLevel == 'Medium' ? Icons.verified_outlined : 
-            Icons.person_outline,
+            trustLevel == 'High'
+                ? Icons.star
+                : trustLevel == 'Medium'
+                    ? Icons.verified_outlined
+                    : Icons.person_outline,
             color: color,
             size: 16,
           ),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../localization/l10n.dart';
 
 enum StatusChipType {
   active,
@@ -11,6 +12,8 @@ enum StatusChipType {
   rejected,
 }
 
+/// Pass the raw status (e.g. 'pending', 'Delivered'); it is shown in the
+/// current language via [statusLabel]. Unknown labels are shown as given.
 class StatusChip extends StatelessWidget {
   final String label;
   final StatusChipType? type;
@@ -72,7 +75,7 @@ class StatusChip extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(
-            label.toUpperCase(),
+            statusLabel(label, context.l10n).toUpperCase(),
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 11,

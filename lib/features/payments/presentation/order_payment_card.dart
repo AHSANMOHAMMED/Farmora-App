@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart' show ImageSource;
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/image_viewer.dart';
@@ -75,28 +77,29 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
   }
 
   Future<void> _markCashReceived() async {
+    final l = context.l10n;
     final ok = await _confirmDialog(
-      title: 'Mark cash received?',
-      body: 'Confirm you received ${_order.displayTotal} in cash from '
-          '${_order.buyerName.isNotEmpty ? _order.buyerName : 'the buyer'}. '
-          'This adds it to your earnings and cannot be undone.',
-      action: 'Cash received',
+      title: l.payMarkCashTitle,
+      body: _order.buyerName.isNotEmpty
+          ? l.payMarkCashBody(_order.displayTotal, _order.buyerName)
+          : l.payMarkCashBodyNoName(_order.displayTotal),
+      action: l.payCashReceived,
     );
     if (ok != true || !mounted) return;
     final state = context.read<FarmoraState>();
-    await _run(() => state.markCashReceived(_order.id), 'Cash payment recorded.');
+    await _run(() => state.markCashReceived(_order.id), l.payCashRecorded);
   }
 
   Future<void> _confirmPayment() async {
+    final l = context.l10n;
     final ok = await _confirmDialog(
-      title: 'Confirm payment?',
-      body: 'Only confirm after you see ${_order.displayTotal} in your bank '
-          'account. This adds it to your earnings.',
-      action: 'Confirm payment',
+      title: l.payConfirmTitle,
+      body: l.payConfirmBody(_order.displayTotal),
+      action: l.payConfirmAction,
     );
     if (ok != true || !mounted) return;
     final state = context.read<FarmoraState>();
-    await _run(() => state.confirmBankPayment(_order.id), 'Payment confirmed.');
+    await _run(() => state.confirmBankPayment(_order.id), l.payConfirmed);
   }
 
   Future<void> _rejectPayment() async {
@@ -104,7 +107,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
     if (reason == null || !mounted) return;
     final state = context.read<FarmoraState>();
     await _run(() => state.rejectBankPayment(_order.id, reason),
-        'Receipt rejected. The buyer has been notified.');
+        context.l10n.payReceiptRejectedNotified);
   }
 
   Future<bool?> _confirmDialog({
@@ -120,7 +123,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(ctx.l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -134,7 +137,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
   /// Buyer: take/select a deposit slip photo and submit it.
   Future<void> _pickAndUploadReceipt() async {
     final source =
-        await showImageSourceSheet(context, title: 'Upload deposit slip');
+        await showImageSourceSheet(context,
+            title: context.l10n.payUploadSlipTitle);
     if (source == null || !mounted) return;
     final PickedImage? image;
     try {
@@ -149,6 +153,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
 
   Future<void> _uploadReceipt(PickedImage image) async {
     final state = context.read<FarmoraState>();
+    final l = context.l10n;
     setState(() {
       _busy = true;
       _uploadProgress = 0;
@@ -163,8 +168,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
         },
       );
       _snack(chatError == null
-          ? 'Receipt sent to the farmer for confirmation.'
-          : 'Receipt submitted, but it could not be posted in chat: $chatError');
+          ? l.payReceiptSentToFarmer
+          : l.payReceiptChatFailed(chatError));
     } catch (e, st) {
       if (mounted) setState(() => _failedSlip = image);
       _snack(userMessage(e, action: 'upload the receipt', stack: st),
@@ -195,6 +200,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -214,10 +220,10 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Payment',
-                  style: TextStyle(
+                  l.payment,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -240,6 +246,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
               Expanded(
                 child: Text(
                   PaymentMethod.label(_order.paymentMethod),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
@@ -261,7 +269,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
           ),
           const SizedBox(height: 10),
           Text(
-            _guidance(),
+            _guidance(l),
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
@@ -275,7 +283,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
               icon: Icons.error_outline,
               color: AppColors.statusRejectedText,
               background: AppColors.statusRejectedBg,
-              text: 'Receipt rejected: ${_order.rejectionReason}',
+              text: l.payReceiptRejectedReason(_order.rejectionReason!),
             ),
           ],
           if (!widget.viewerIsFarmer &&
@@ -289,11 +297,11 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
             const SizedBox(height: 14),
             Semantics(
               button: true,
-              label: 'Open deposit slip',
+              label: l.payOpenDepositSlip,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => showImageViewer(context,
-                    url: _order.proofImageUrl!, title: 'Deposit slip'),
+                    url: _order.proofImageUrl!, title: l.payDepositSlip),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Stack(
@@ -314,13 +322,14 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
                             color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.zoom_in, size: 14, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text('Tap to view',
-                                  style: TextStyle(
+                              const Icon(Icons.zoom_in,
+                                  size: 14, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(l.payTapToView,
+                                  style: const TextStyle(
                                       color: Colors.white, fontSize: 11)),
                             ],
                           ),
@@ -335,7 +344,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
           if (_uploadProgress != null) ...[
             const SizedBox(height: 14),
             Text(
-              'Uploading receipt... ${(_uploadProgress! * 100).round()}%',
+              l.payUploadingReceipt((_uploadProgress! * 100).round()),
               style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,
@@ -347,48 +356,42 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
               color: AppColors.primary,
             ),
           ],
-          ..._actions(),
+          ..._actions(l),
         ],
       ),
     );
   }
 
-  String _guidance() {
+  String _guidance(AppLocalizations l) {
     final farmer = widget.viewerIsFarmer;
     switch (_order.paymentState) {
       case PaymentState.paid:
         final when = _order.paidAt;
         return when == null
-            ? 'Payment received.'
-            : 'Payment received on ${when.day}/${when.month}/${when.year}.';
+            ? l.payReceived
+            : l.payReceivedOn(AppFormat.date(when));
       case PaymentState.proofSubmitted:
-        return farmer
-            ? 'The buyer uploaded a deposit slip. Check your bank account before confirming.'
-            : 'Receipt sent. Waiting for the farmer to confirm the deposit.';
+        return farmer ? l.payGuideFarmerProof : l.payGuideBuyerProof;
       case PaymentState.rejected:
-        return farmer
-            ? 'Waiting for the buyer to upload a new receipt.'
-            : 'Please upload a new receipt.';
+        return farmer ? l.payGuideFarmerRejected : l.payGuideBuyerRejected;
       case PaymentState.refunded:
-        return 'This payment was refunded.';
+        return l.payGuideRefunded;
       case PaymentState.disputed:
-        return 'Payment is on hold while the dispute is reviewed.';
+        return l.payGuideDisputed;
       case PaymentState.pending:
-        if (_order.isCancelled) return 'Order cancelled — no payment due.';
+        if (_order.isCancelled) return l.payGuideCancelled;
         if (_order.isBankDeposit) {
-          return farmer
-              ? 'Waiting for the buyer to deposit and upload the slip.'
-              : 'Deposit the total to the account below, then upload a photo of the slip.';
+          return farmer ? l.payGuideFarmerDeposit : l.payGuideBuyerDeposit;
         }
         return farmer
             ? (_order.isCompleted
-                ? 'Delivered. Mark the cash as received once you have it.'
-                : 'The buyer pays cash on delivery.')
-            : 'Pay the farmer in cash when your order is delivered.';
+                ? l.payGuideFarmerCodDelivered
+                : l.payGuideFarmerCod)
+            : l.payGuideBuyerCod;
     }
   }
 
-  List<Widget> _actions() {
+  List<Widget> _actions(AppLocalizations l) {
     final buttons = <Widget>[];
     if (widget.viewerIsFarmer && _order.canMarkCashReceived) {
       buttons.add(SizedBox(
@@ -396,7 +399,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
         child: FilledButton.icon(
           onPressed: _busy ? null : _markCashReceived,
           icon: _busyIcon(Icons.payments_outlined),
-          label: const Text('Mark Cash Received'),
+          label: Text(l.payMarkCashButton),
         ),
       ));
     }
@@ -410,7 +413,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.errorContainer, width: 2),
               ),
-              child: const Text('Reject'),
+              child: Text(l.reject,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
           const SizedBox(width: 12),
@@ -419,7 +423,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
             child: FilledButton.icon(
               onPressed: _busy ? null : _confirmPayment,
               icon: _busyIcon(Icons.check_circle_outline),
-              label: const Text('Confirm Payment'),
+              label: Text(l.payConfirmButton,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ),
         ],
@@ -440,10 +445,10 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
               : Icon(retry != null ? Icons.refresh : Icons.receipt_long_outlined,
                   size: 18),
           label: Text(retry != null
-              ? 'Retry Upload'
+              ? l.payRetryUpload
               : _order.paymentState == PaymentState.pending
-                  ? 'Upload Payment Receipt'
-                  : 'Upload New Receipt'),
+                  ? l.payUploadReceipt
+                  : l.payUploadNewReceipt),
         ),
       ));
       if (retry != null) {
@@ -451,7 +456,7 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: _busy ? null : () => setState(() => _failedSlip = null),
-            child: const Text('Choose a different photo'),
+            child: Text(l.payChooseDifferentPhoto),
           ),
         ));
       }
@@ -462,7 +467,8 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
         child: OutlinedButton.icon(
           onPressed: _openChat,
           icon: const Icon(Icons.chat_bubble_outline, size: 18),
-          label: Text(widget.viewerIsFarmer ? 'Message Buyer' : 'Message Farmer'),
+          label: Text(
+              widget.viewerIsFarmer ? l.payMessageBuyer : l.payMessageFarmer),
         ),
       ));
     }
@@ -488,29 +494,30 @@ Future<String?> showRejectReasonDialog(BuildContext context) {
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) {
         final valid = controller.text.trim().length >= 3;
+        final l = ctx.l10n;
         return AlertDialog(
-          title: const Text('Reject receipt'),
+          title: Text(l.payRejectReceiptTitle),
           content: TextField(
             controller: controller,
             autofocus: true,
             maxLines: 3,
             maxLength: 200,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Reason (shown to the buyer)',
-              hintText: 'e.g. Amount does not match / slip is unreadable',
+            decoration: InputDecoration(
+              labelText: l.payRejectReasonLabel,
+              hintText: l.payRejectReasonHint,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l.commonCancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.error),
               onPressed:
                   valid ? () => Navigator.pop(ctx, controller.text.trim()) : null,
-              child: const Text('Reject'),
+              child: Text(l.reject),
             ),
           ],
         );
@@ -527,6 +534,7 @@ class BankDetailsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -537,19 +545,20 @@ class BankDetailsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row('Bank', details.bankName),
-          _row('Branch', details.branch),
-          _row('Account name', details.accountHolderName),
+          _row(l.bankLabelBank, details.bankName),
+          _row(l.bankBranchLabel, details.branch),
+          _row(l.bankLabelAccountName, details.accountHolderName),
           Row(
             children: [
-              Expanded(child: _row('Account no.', details.accountNumber)),
+              Expanded(
+                  child: _row(l.bankLabelAccountNo, details.accountNumber)),
               IconButton(
-                tooltip: 'Copy account number',
+                tooltip: l.bankCopyAccountNumber,
                 icon: const Icon(Icons.copy, size: 18, color: AppColors.primary),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: details.accountNumber));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Account number copied')),
+                    SnackBar(content: Text(l.bankAccountNumberCopied)),
                   );
                 },
               ),
@@ -631,7 +640,7 @@ class _Notice extends StatelessWidget {
 
 /// Lets the user choose camera or gallery. Returns null when dismissed.
 Future<ImageSource?> showImageSourceSheet(BuildContext context,
-    {String title = 'Add photo'}) {
+    {String? title}) {
   return showModalBottomSheet<ImageSource>(
     context: context,
     showDragHandle: true,
@@ -641,7 +650,7 @@ Future<ImageSource?> showImageSourceSheet(BuildContext context,
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(title,
+            child: Text(title ?? ctx.l10n.widgetAddPhoto,
                 style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 16,
@@ -649,12 +658,12 @@ Future<ImageSource?> showImageSourceSheet(BuildContext context,
           ),
           ListTile(
             leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Take a photo'),
+            title: Text(ctx.l10n.widgetTakePhoto),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Choose from gallery'),
+            title: Text(ctx.l10n.widgetChooseFromGallery),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
           const SizedBox(height: 8),

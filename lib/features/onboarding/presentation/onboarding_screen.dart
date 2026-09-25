@@ -56,7 +56,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           title: l10n.onboardingSlide1Title,
           description: l10n.onboardingSlide1Desc,
           imagePath: 'assets/images/onboarding_farmer.png',
-          highlights: [l10n.onboardingSlide1H1, l10n.onboardingSlide1H2, l10n.onboardingSlide1H3],
+          highlights: [
+            l10n.onboardingSlide1H1,
+            l10n.onboardingSlide1H2,
+            l10n.onboardingSlide1H3
+          ],
           fallbackIcon: Icons.eco_rounded,
         ),
         // Screen 2: Buyer
@@ -66,7 +70,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           title: l10n.onboardingSlide2Title,
           description: l10n.onboardingSlide2Desc,
           imagePath: 'assets/images/onboarding_buyer.png',
-          highlights: [l10n.onboardingSlide2H1, l10n.onboardingSlide2H2, l10n.onboardingSlide2H3],
+          highlights: [
+            l10n.onboardingSlide2H1,
+            l10n.onboardingSlide2H2,
+            l10n.onboardingSlide2H3
+          ],
           fallbackIcon: Icons.shopping_basket_rounded,
         ),
         // Screen 3: Transport
@@ -76,7 +84,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           title: l10n.onboardingSlide3Title,
           description: l10n.onboardingSlide3Desc,
           imagePath: 'assets/images/onboarding_transport.png',
-          highlights: [l10n.onboardingSlide3H1, l10n.onboardingSlide3H2, l10n.onboardingSlide3H3],
+          highlights: [
+            l10n.onboardingSlide3H1,
+            l10n.onboardingSlide3H2,
+            l10n.onboardingSlide3H3
+          ],
           fallbackIcon: Icons.local_shipping_rounded,
         ),
       ];
@@ -272,9 +284,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back_rounded,
                             color: AppColors.primary,
+                            semanticLabel: l10n.back,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -296,14 +309,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                isLastPage
-                                    ? AppLocalizations.of(context).done
-                                    : AppLocalizations.of(context).next,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.2,
+                              Flexible(
+                                child: Text(
+                                  isLastPage
+                                      ? AppLocalizations.of(context).done
+                                      : AppLocalizations.of(context).next,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -356,13 +373,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  slide.roleBadge,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                    color: AppColors.forestGreen,
+                Flexible(
+                  child: Text(
+                    slide.roleBadge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: AppColors.forestGreen,
+                    ),
                   ),
                 ),
               ],
@@ -452,12 +473,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       color: AppColors.primary,
                     ),
                     const SizedBox(width: 5),
-                    Text(
-                      highlight,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        highlight,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ],
