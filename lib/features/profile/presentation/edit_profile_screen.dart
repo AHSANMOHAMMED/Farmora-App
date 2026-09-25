@@ -6,6 +6,7 @@ import '../../../core/utils/image_upload.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
+import '../../auth/presentation/auth_l10n.dart';
 
 /// Edit profile screen for Farmer/Buyer accounts: photo, name, district and,
 /// for farmers, farm details. Phone is shown read-only (it is the sign-in id).
@@ -31,13 +32,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _saving = false;
   PickedImage? _photo;
 
-  static const List<String> _districts = [
-    'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle',
-    'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara', 'Kandy', 'Kegalle',
-    'Kilinochchi', 'Kurunegala', 'Mannar', 'Matale', 'Matara', 'Monaragala',
-    'Mullaitivu', 'Nuwara Eliya', 'Polonnaruwa', 'Puttalam', 'Ratnapura',
-    'Trincomalee', 'Vavuniya',
-  ];
+  static const List<String> _districts = sriLankaDistricts;
 
   @override
   void initState() {
@@ -193,7 +188,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     prefixIcon: const Icon(Icons.location_on_outlined),
                   ),
                   items: _districts
-                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                      .map((d) => DropdownMenuItem(
+                          value: d, child: Text(districtLabel(d, l))))
                       .toList(),
                   onChanged: _saving
                       ? null
