@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../core/localization/l10n.dart';
+
 enum Role { farmer, buyer, transporter, admin }
 
 extension RoleInfo on Role {
-  String get label {
-    switch (this) {
-      case Role.farmer:
-        return 'Farmer';
-      case Role.buyer:
-        return 'Buyer';
-      case Role.transporter:
-        return 'Transport provider';
-      case Role.admin:
-        return 'System Admin';
-    }
-  }
+  /// Display name in the current app language. Firestore stores [name].
+  String get label => switch (this) {
+        Role.farmer => L10n.current.roleFarmer,
+        Role.buyer => L10n.current.roleBuyer,
+        Role.transporter => L10n.current.roleTransporter,
+        Role.admin => L10n.current.roleAdmin,
+      };
 
   IconData get icon {
     switch (this) {
@@ -29,16 +26,10 @@ extension RoleInfo on Role {
     }
   }
 
-  String get description {
-    switch (this) {
-      case Role.farmer:
-        return 'Sell your harvest with confidence.';
-      case Role.buyer:
-        return 'Fresh produce, straight to you.';
-      case Role.transporter:
-        return 'Earn while you serve your community.';
-      case Role.admin:
-        return 'Manage the Farmora ecosystem.';
-    }
-  }
+  String get description => switch (this) {
+        Role.farmer => L10n.current.roleFarmerDescription,
+        Role.buyer => L10n.current.roleBuyerDescription,
+        Role.transporter => L10n.current.roleTransporterDescription,
+        Role.admin => L10n.current.roleAdminDescription,
+      };
 }

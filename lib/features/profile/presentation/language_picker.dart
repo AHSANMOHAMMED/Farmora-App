@@ -1,22 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/localization/farmora_strings.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/localization/language_prefs.dart';
 import '../../../providers/farmora_state.dart';
 
+/// Bottom-sheet language picker. The whole app switches immediately; when
+/// signed in the choice is also saved on the profile.
 class LanguagePicker extends StatelessWidget {
   const LanguagePicker({super.key});
 
+  Future<void> _select(BuildContext context, AppLanguage language) async {
+    final state = context.read<FarmoraState>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    if (navigator.canPop()) navigator.pop();
+    try {
+      await state.setLanguage(language.code);
+      // L10n.current already holds the NEW language here.
+      messenger.showSnackBar(SnackBar(
+        content: Text(L10n.current.langChangedTo(language.nativeName)),
+        backgroundColor: AppColors.primary,
+      ));
+    } catch (e) {
+      debugPrint('Saving language failed: $e');
+      messenger.showSnackBar(SnackBar(
+        content: Text(L10n.current.langSaveFailed),
+        backgroundColor: AppColors.error,
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final strings = FarmoraStrings.of(context);
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
-
-    const languages = [
-      (name: 'English', native: 'English', flag: '🇬🇧'),
-      (name: 'සිංහල', native: 'සිංහල', flag: '🇱🇰'),
-      (name: 'தமிழ்', native: 'தமிழ்', flag: '🇱🇰'),
-    ];
 
     return SafeArea(
       child: Padding(
@@ -37,7 +55,7 @@ class LanguagePicker extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              strings.t('selectLanguage'),
+              l.langSelectTitle,
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 20,
@@ -46,60 +64,71 @@ class LanguagePicker extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            ...languages.map((lang) {
-              final isSelected = state.language == lang.name;
-              // Resolve translated strings during build (context is valid
-              // here); using them after Navigator.pop would crash because
-              // FarmoraStrings reads state via context.watch.
-              final languageLabel = strings.t('language');
-              final messenger = ScaffoldMessenger.of(context);
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(lang.flag,
-                        style: const TextStyle(fontSize: 20)),
-                  ),
-                ),
-                title: Text(
-                  lang.native,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.onSurface,
-                  ),
-                ),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded,
-                        color: AppColors.primary)
-                    : null,
-                onTap: () {
-                  context.read<FarmoraState>().setLanguage(lang.name);
-                  Navigator.pop(context);
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('$languageLabel: ${lang.name}'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                },
-              );
-            }),
+            for (final lang in AppLanguage.all)
+              _LanguageTile(
+                language: lang,
+                selected: state.languageCode == lang.code,
+                onTap: () => _select(context, lang),
+              ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LanguageTile extends StatelessWidget {
+  final AppLanguage language;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguageTile({
+    required this.language,
+    required this.selected,
+    required this.onTap,
+  });
+
+  String get _glyph => switch (language.code) {
+        'ta' => 'அ',
+        'si' => 'අ',
+        _ => 'A',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      selected: selected,
+      leading: Container(
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          _glyph,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.primary,
+          ),
+        ),
+      ),
+      title: Text(
+        language.nativeName,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 16,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? AppColors.primary : AppColors.onSurface,
+        ),
+      ),
+      trailing: selected
+          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+          : null,
+      onTap: onTap,
     );
   }
 }

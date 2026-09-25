@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/localization/l10n.dart';
+
 enum VerificationStatus {
   pending,
   approved,
@@ -34,6 +36,48 @@ class VerificationDoc {
     this.frontImage,
     this.backImage,
   });
+
+  /// [title] in the app language when it is a known document type (stored
+  /// values stay English); otherwise the stored text.
+  String get displayTitle => documentTypeLabel(title);
+
+  /// [description] for display. A bare storage path is replaced with a short
+  /// localized note.
+  String get displayDescription {
+    final d = description.trim();
+    if (d.startsWith('verification/')) {
+      return L10n.current.svcDocUploadedForReview;
+    }
+    return description;
+  }
+
+  /// Display name for a stored document type such as `NIC` or
+  /// `Vehicle Registration`. Unknown values are returned unchanged.
+  static String documentTypeLabel(String raw, [AppLocalizations? l10n]) {
+    final l = l10n ?? L10n.current;
+    final n = raw.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+    bool has(String w) => n.split(' ').contains(w);
+    if (n.isEmpty) return raw;
+    if (n == 'document' || n == 'doc') return l.svcDocGeneric;
+    if (has('nic') || n.contains('national id')) return l.svcDocNationalId;
+    if (n.contains('land')) return l.svcDocLandOwnership;
+    if (n.contains('driving') || n.contains('driver')) {
+      return l.svcDocDrivingLicence;
+    }
+    if (n.contains('insurance')) return l.svcDocVehicleInsurance;
+    if (n.contains('vehicle') || n.contains('revenue licen')) {
+      return l.svcDocVehicleRegistration;
+    }
+    if (has('bank') || n.contains('passbook')) return l.svcDocBankProof;
+    if (n.contains('farm') && n.contains('photo')) return l.svcDocFarmPhoto;
+    if (n.contains('agrarian') || n.contains('farmer registration')) {
+      return l.svcDocFarmerRegistration;
+    }
+    if (n.contains('business') || has('br')) {
+      return l.svcDocBusinessRegistration;
+    }
+    return raw;
+  }
 
   VerificationDoc copyWith({
     String? id,
@@ -123,7 +167,8 @@ class VerificationDoc {
     return VerificationDoc(
       id: id,
       title: (data['title'] ?? data['documentType'] ?? '').toString(),
-      description: (data['description'] ?? data['storagePath'] ?? '').toString(),
+      description:
+          (data['description'] ?? data['storagePath'] ?? '').toString(),
       icon: iconData,
       status: statusVal,
       fileName: data['fileName'] as String? ?? data['storagePath'] as String?,

@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const _LegalScaffold(
-      title: 'Privacy Policy',
+    final l = context.l10n;
+    return _LegalScaffold(
+      title: l.profilePrivacyPolicy,
       body: [
-        'Farmora collects your profile, listings, orders and delivery data to operate the marketplace.',
-        'Phone numbers stay private by default. Buyers, farmers and transporters contact each other through order-scoped in-app messaging.',
-        'Media you upload (product images, harvest videos, verification documents) is stored in Firebase Storage and shown only where needed for trade and verification.',
-        'You can request data export or account deletion from Help & Support. Deletion removes your profile and personal data, subject to legal record-keeping for completed transactions.',
+        l.legalPrivacy1,
+        l.legalPrivacy2,
+        l.legalPrivacy3,
+        l.legalPrivacy4,
       ],
     );
   }
@@ -23,13 +25,14 @@ class TermsOfServiceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _LegalScaffold(
-      title: 'Terms of Service',
+    final l = context.l10n;
+    return _LegalScaffold(
+      title: l.profileTerms,
       body: [
-        'Farmora connects farmers, buyers and transport providers. Prices, stock and order totals are committed by trusted backend functions, not by the app.',
-        'Farmers may list only produce they can supply. Buyers pay for confirmed orders. Transporters accept only jobs they can fulfil and follow the valid delivery state machine.',
-        'Reviews are allowed once per delivered order and may be moderated. Abuse, fraud or harassment leads to suspension.',
-        'Disputes pause escrow release until an administrator resolves them.',
+        l.legalTerms1,
+        l.legalTerms2,
+        l.legalTerms3,
+        l.legalTerms4,
       ],
     );
   }
@@ -43,35 +46,38 @@ class SupportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Help & Support'), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+          title: Text(l.helpSupport),
+          backgroundColor: Colors.transparent,
+          elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (_supportEmail.isNotEmpty)
-            const ListTile(
-              leading: Icon(Icons.email_outlined),
-              title: Text(_supportEmail),
-              subtitle: Text('Email Farmora support'),
+            ListTile(
+              leading: const Icon(Icons.email_outlined),
+              title: const Text(_supportEmail),
+              subtitle: Text(l.emailFarmoraSupport),
             ),
           if (_supportPhone.isNotEmpty)
-            const ListTile(
-              leading: Icon(Icons.phone_outlined),
-              title: Text(_supportPhone),
-              subtitle: Text('Call Farmora support'),
+            ListTile(
+              leading: const Icon(Icons.phone_outlined),
+              title: const Text(_supportPhone),
+              subtitle: Text(l.callFarmoraSupport),
             ),
           if (_supportEmail.isEmpty && _supportPhone.isEmpty)
-            const ListTile(
-              leading: Icon(Icons.support_agent_outlined),
-              title: Text('Support contact is not configured'),
-              subtitle: Text(
-                  'Use the account data controls below or contact your Farmora administrator.'),
+            ListTile(
+              leading: const Icon(Icons.support_agent_outlined),
+              title: Text(l.legalSupportNotConfigured),
+              subtitle: Text(l.legalSupportNotConfiguredHint),
             ),
-          const ListTile(
-            leading: Icon(Icons.delete_outline),
-            title: Text('Request data export or deletion'),
-            subtitle: Text('Use the privacy controls in your profile.'),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(l.legalDataRequest),
+            subtitle: Text(l.legalDataRequestHint),
           ),
         ],
       ),
@@ -88,12 +94,16 @@ class _LegalScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: Text(title), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          backgroundColor: Colors.transparent,
+          elevation: 0),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: body.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, i) => Text('•  ${body[i]}', style: const TextStyle(fontSize: 14, height: 1.5)),
+        itemBuilder: (context, i) => Text('•  ${body[i]}',
+            style: const TextStyle(fontSize: 14, height: 1.5)),
       ),
     );
   }

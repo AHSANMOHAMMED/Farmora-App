@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -14,9 +15,9 @@ class RoleSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Account role',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          Text(
+            context.l10n.stateAccountRole,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Builder(
@@ -25,7 +26,7 @@ class RoleSheet extends StatelessWidget {
               return ListTile(
                 leading: Icon(role.icon, color: const Color(0xff1f7a4d)),
                 title: Text(role.label),
-                subtitle: const Text('This role is fixed to your account.'),
+                subtitle: Text(context.l10n.stateRoleFixed),
               );
             },
           ),

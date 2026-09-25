@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/localization/farmora_strings.dart';
-import '../../../providers/farmora_state.dart';
+import '../../../core/localization/l10n.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -16,14 +14,13 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = FarmoraStrings.of(context);
-    context.watch<FarmoraState>(); // rebuild when language changes
+    final l = context.l10n;
 
     final faqs = [
-      (q: strings.t('faqOrders'), a: strings.t('faqOrdersAnswer')),
-      (q: strings.t('faqPayout'), a: strings.t('faqPayoutAnswer')),
-      (q: strings.t('faqTransport'), a: strings.t('faqTransportAnswer')),
-      (q: strings.t('faqVerification'), a: strings.t('faqVerificationAnswer')),
+      (q: l.helpFaqOrdersQ, a: l.helpFaqOrdersA),
+      (q: l.helpFaqPayoutQ, a: l.helpFaqPayoutA),
+      (q: l.helpFaqTransportQ, a: l.helpFaqTransportA),
+      (q: l.helpFaqVerificationQ, a: l.helpFaqVerificationA),
     ];
 
     return Scaffold(
@@ -36,7 +33,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          strings.t('helpSupport'),
+          l.helpSupport,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 18,
@@ -75,7 +74,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    strings.t('helpSupport'),
+                    l.helpSupport,
                     style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 22,
@@ -84,7 +83,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    strings.t('supportHours'),
+                    l.helpSupportHours,
                     style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
@@ -98,7 +97,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
             // ── Contact options ──
             Text(
-              strings.t('contactUs'),
+              l.helpContactUs,
               style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 17,
@@ -111,7 +110,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 Expanded(
                   child: _buildContactCard(
                     icon: Icons.phone_rounded,
-                    label: strings.t('callSupport'),
+                    label: l.helpCallSupport,
                     value: '+94 11 234 5678',
                     color: AppColors.primary,
                     bg: const Color(0xFFE8F5E9),
@@ -121,7 +120,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 Expanded(
                   child: _buildContactCard(
                     icon: Icons.email_rounded,
-                    label: strings.t('emailUs'),
+                    label: l.helpEmailUs,
                     value: 'support@farmora.lk',
                     color: const Color(0xFF1565C0),
                     bg: const Color(0xFFE3F2FD),
@@ -132,7 +131,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             const SizedBox(height: 12),
             _buildContactCard(
               icon: Icons.chat_rounded,
-              label: strings.t('whatsapp'),
+              label: l.helpWhatsApp,
               value: '+94 77 123 4567',
               color: const Color(0xFF2E7D32),
               bg: const Color(0xFFE8F5E9),
@@ -142,7 +141,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
             // ── FAQ ──
             Text(
-              strings.t('faq'),
+              l.helpFaqTitle,
               style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 17,
@@ -170,19 +169,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     initiallyExpanded: isOpen,
                     onExpansionChanged: (v) =>
                         setState(() => _expandedFaq = v ? i : null),
-                    tilePadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    childrenPadding:
-                        const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    tilePadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                     title: Text(
                       faqs[i].q,
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: isOpen
-                            ? AppColors.primary
-                            : AppColors.onSurface,
+                        color: isOpen ? AppColors.primary : AppColors.onSurface,
                       ),
                     ),
                     trailing: isOpen
@@ -248,6 +244,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -255,6 +253,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                         color: AppColors.onSurfaceVariant)),
                 const SizedBox(height: 2),
                 Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
