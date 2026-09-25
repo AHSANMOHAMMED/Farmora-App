@@ -37,9 +37,19 @@ class UserLocationService {
   Future<LocationConsentResult> startSharing() async {
     if (_sharing) return LocationConsentResult.granted;
 
-    final status = await Permission.locationWhenInUse.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      return LocationConsentResult.permissionDenied;
+    if (!kIsWeb) {
+      final status = await Permission.locationWhenInUse.request();
+      if (status.isDenied || status.isPermanentlyDenied) {
+        return LocationConsentResult.permissionDenied;
+      }
+    } else {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        return LocationConsentResult.permissionDenied;
+      }
     }
     final enabled = await Geolocator.isLocationServiceEnabled();
     if (!enabled) return LocationConsentResult.serviceDisabled;

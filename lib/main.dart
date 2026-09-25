@@ -80,17 +80,16 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await _activateAppCheck();
-    
-    // Initialize Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
-    
-    // Initialize Performance Monitoring and Analytics
     if (!kIsWeb) {
+      await _activateAppCheck();
+      
+      // Initialize Crashlytics
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+      
       FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode);
     }
     FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(!kDebugMode);
@@ -102,6 +101,7 @@ void main() async {
 }
 
 Future<void> _activateAppCheck() async {
+  if (kIsWeb) return;
   try {
     await FirebaseAppCheck.instance.activate(
       // Debug provider for local builds. Production: Play Integrity / DeviceCheck.
