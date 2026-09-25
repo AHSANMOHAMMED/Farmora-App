@@ -25,11 +25,19 @@ import '../models/settlement_model.dart';
 import '../services/delivery_location_service.dart';
 import '../services/firebase_service.dart' as kajana_service;
 import '../services/user_location_service.dart';
+import '../models/bank_details.dart';
+import '../services/payment_service.dart';
+import '../services/earnings_calculator.dart';
+import '../core/utils/app_errors.dart';
+import '../core/utils/image_upload.dart';
+import '../models/conversation_model.dart';
+import 'package:intl/intl.dart';
 
 class FarmoraState extends ChangeNotifier {
   // Firebase services
   late final _authService = FirebaseAuthService();
   late final _firestoreService = kajana_service.FirestoreService();
+  late final _paymentService = PaymentService();
   String _currentUserId = '';
   String get currentUserId => _currentUserId;
   bool _profileLoaded = false;
@@ -48,6 +56,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<SettlementPayout>>? _settlementsSub;
   StreamSubscription<List<MarketPriceIndex>>? _marketPricesSub;
   StreamSubscription<String>? _deviceTokenSub;
+  StreamSubscription<BankDetails>? _bankDetailsSub;
   bool signedIn = false;
   String language = 'English';
   String country = 'Sri Lanka';
@@ -129,6 +138,11 @@ class FarmoraState extends ChangeNotifier {
   double _commissionRate = 5.0; // percent
   int _escrowReleaseHours = 48;
   String _minAppVersion = '1.0.0';
+
+  // Farmer payout account for Bank Deposit orders.
+  BankDetails _myBankDetails = BankDetails.empty;
+  BankDetails get myBankDetails => _myBankDetails;
+  bool get hasBankDetails => _myBankDetails.isComplete;
 
   // Constructor with demo data initialization
   FarmoraState() {
@@ -296,15 +310,28 @@ class FarmoraState extends ChangeNotifier {
   double get cartGrandTotal => cartSubtotal + cartDeliveryFee;
 
   String deliveryAddressDraft = '';
+  String paymentMethodDraft = PaymentMethod.cod;
+  String? _lastOrderError;
+  String? get lastOrderError => _lastOrderError;
 
-  Future<bool> placeOrder({String? deliveryAddress}) async {
+  void setPaymentMethodDraft(String method) {
+    if (paymentMethodDraft == method) return;
+    paymentMethodDraft = method;
+    notifyListeners();
+  }
+
+  Future<bool> placeOrder({
+    String? deliveryAddress,
+    String? paymentMethod,
+  }) async {
     if (_cartItems.isEmpty || _placingOrder) return false;
+    final method = paymentMethod ?? paymentMethodDraft;
     final address = (deliveryAddress ?? deliveryAddressDraft).trim();
     if (address.length < 5) return false;
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
     final key =
         _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
-    final fingerprint = '$key|$address';
+    final fingerprint = '$key|$address|$method';
     if (_checkoutAttemptFingerprint != fingerprint) {
       final random = Random.secure();
       _checkoutAttemptFingerprint = fingerprint;
@@ -319,6 +346,7 @@ class FarmoraState extends ChangeNotifier {
       return false;
     }
     _placingOrder = true;
+    _lastOrderError = null;
     notifyListeners();
     try {
       if (_currentUserId.isNotEmpty) {
@@ -331,6 +359,7 @@ class FarmoraState extends ChangeNotifier {
                 itemIndex == 0 ? (cartDeliveryFee * 100).round() : 0,
             deliveryAddress: address,
             idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
+            paymentMethod: method,
           );
         }
       }
@@ -367,7 +396,8 @@ class FarmoraState extends ChangeNotifier {
             subtotalMinor: (subtotal * 100).round(),
             deliveryFeeMinor: (itemDeliveryFee * 100).round(),
             totalMinor: (totalAmount * 100).round(),
-            paymentStatus: 'Payment Required',
+            paymentMethod: method,
+            paymentStatus: 'pending',
             escrowStatus: 'Held',
           );
           _orders.insert(0, newOrder);
@@ -396,10 +426,12 @@ class FarmoraState extends ChangeNotifier {
       _cartItems.clear();
       _checkoutAttemptFingerprint = null;
       _checkoutAttemptKey = null;
+      paymentMethodDraft = PaymentMethod.cod;
       _recalculateStats();
       notifyListeners();
       return true;
-    } catch (_) {
+    } catch (e) {
+      _lastOrderError = e is StateError ? e.message : e.toString();
       return false;
     } finally {
       _placingOrder = false;
@@ -411,6 +443,7 @@ class FarmoraState extends ChangeNotifier {
   void signIn(Role r) {
     role = r;
     signedIn = true;
+    _recalculateStats();
     notifyListeners();
     // If user is already authenticated via Firebase, init Firestore
     final user = FirebaseAuth.instance.currentUser;
@@ -437,6 +470,7 @@ class FarmoraState extends ChangeNotifier {
     // A signed-in account's role is owned by its Firestore profile.
     if (_currentUserId.isNotEmpty) return;
     role = r;
+    _recalculateStats();
     notifyListeners();
   }
 
@@ -647,6 +681,137 @@ class FarmoraState extends ChangeNotifier {
     if (_currentUserId.isNotEmpty) {
       _firestoreService.updateOrderStatus(orderId, 'Cancelled', 0.0);
     }
+  }
+
+  // ── Payments (COD / Bank Deposit) ───────────────────────
+
+  Future<void> saveBankDetails(BankDetails details) async {
+    if (_currentUserId.isNotEmpty) {
+      await _paymentService.saveBankDetails(details);
+    }
+    _myBankDetails = details;
+    notifyListeners();
+  }
+
+  Future<BankDetails> bankDetailsForFarmer(String farmerId) async {
+    if (_currentUserId.isEmpty || farmerId.isEmpty) return BankDetails.empty;
+    return _paymentService.getBankDetails(farmerId);
+  }
+
+  /// Bank Deposit is offered only when every farmer in the cart has an account.
+  Future<bool> cartSupportsBankDeposit() async {
+    if (_cartItems.isEmpty || _currentUserId.isEmpty) return false;
+    final farmerIds = _cartItems.map((c) => c.product.farmerId).toSet();
+    for (final farmerId in farmerIds) {
+      if (!(await bankDetailsForFarmer(farmerId)).isComplete) return false;
+    }
+    return true;
+  }
+
+  Future<void> markCashReceived(String orderId) => _applyPayment(
+        orderId,
+        remote: () => _paymentService.markCashReceived(orderId),
+        allowed: (o) => o.canMarkCashReceived,
+        local: (o) => o.copyWith(paymentStatus: 'paid', paidAt: DateTime.now()),
+      );
+
+  Future<void> confirmBankPayment(String orderId) => _applyPayment(
+        orderId,
+        remote: () => _paymentService.confirmBankPayment(orderId),
+        allowed: (o) => o.canReviewProof,
+        local: (o) => o.copyWith(paymentStatus: 'paid', paidAt: DateTime.now()),
+      );
+
+  Future<void> rejectBankPayment(String orderId, String reason) =>
+      _applyPayment(
+        orderId,
+        remote: () => _paymentService.rejectBankPayment(orderId, reason),
+        allowed: (o) => o.canReviewProof,
+        local: (o) => o.copyWith(
+            paymentStatus: 'rejected', rejectionReason: reason.trim()),
+      );
+
+  /// Uploads a bank-deposit slip photo for [orderId] to Storage.
+  Future<kajana_service.StoredImage> uploadPaymentSlip({
+    required String orderId,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) =>
+      _firestoreService.uploadPaymentSlip(
+        orderId: orderId,
+        image: image,
+        onProgress: onProgress,
+      );
+
+  /// Links an uploaded slip to the order so the farmer can review it.
+  Future<void> recordPaymentProof(
+          String orderId, kajana_service.StoredImage slip) =>
+      _paymentService.submitPaymentProof(
+        orderId: orderId,
+        proofImageUrl: slip.url,
+        proofImagePath: slip.path,
+      );
+
+  /// Buyer: upload a deposit slip, attach it to the order, and share it in
+  /// the order chat. The order update is the source of truth; if only the
+  /// chat post fails the receipt still counts and [chatError] is returned.
+  Future<String?> submitPaymentSlip({
+    required FarmoraOrder order,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (!order.canSubmitProof) {
+      throw StateError('This order does not need a payment receipt.');
+    }
+    if (_currentUserId.isEmpty) {
+      throw StateError('Please sign in to upload a payment receipt.');
+    }
+    final slip = await uploadPaymentSlip(
+      orderId: order.id,
+      image: image,
+      onProgress: onProgress,
+    );
+    await recordPaymentProof(order.id, slip);
+    if (order.farmerId.isEmpty) return null;
+    try {
+      final conversation = await _firestoreService.ensureConversation(
+        orderId: order.id,
+        peerId: order.farmerId,
+      );
+      await _firestoreService.sendChatMessage(
+        conversation: conversation,
+        recipientId: order.farmerId,
+        attachment: ChatAttachment(
+          url: slip.url,
+          path: slip.path,
+          kind: ChatAttachmentKind.paymentProof,
+        ),
+      );
+      return null;
+    } catch (e, st) {
+      return userMessage(e, action: 'share the receipt in chat', stack: st);
+    }
+  }
+
+  /// Signed in: write to Firestore and let the orders stream refresh the UI.
+  /// Demo mode: apply the same transition locally.
+  Future<void> _applyPayment(
+    String orderId, {
+    required Future<void> Function() remote,
+    required bool Function(FarmoraOrder order) allowed,
+    required FarmoraOrder Function(FarmoraOrder order) local,
+  }) async {
+    if (_currentUserId.isNotEmpty) {
+      await remote();
+      return;
+    }
+    final idx = _orders.indexWhere((o) => o.id == orderId);
+    if (idx == -1 || !allowed(_orders[idx])) {
+      throw StateError('This payment action is not available.');
+    }
+    _orders[idx] = local(_orders[idx]);
+    _recalculateStats();
+    notifyListeners();
   }
 
   // ── Offers & Negotiation CRUD ───────────────────────────
@@ -1229,6 +1394,17 @@ class FarmoraState extends ChangeNotifier {
         onError: (e) => debugPrint('Firestore market prices stream error: $e'),
       );
     }
+
+    _bankDetailsSub?.cancel();
+    if (role == Role.farmer) {
+      _bankDetailsSub = _paymentService.bankDetailsStream(uid).listen(
+        (details) {
+          _myBankDetails = details;
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore bank details stream error: $e'),
+      );
+    }
   }
 
   /// Cancel all Firestore subscriptions
@@ -1244,6 +1420,47 @@ class FarmoraState extends ChangeNotifier {
     _auditLogsSub?.cancel();
     _settlementsSub?.cancel();
     _marketPricesSub?.cancel();
+    _bankDetailsSub?.cancel();
+    _myBankDetails = BankDetails.empty;
+  }
+
+  List<FarmoraOrder> _demoPaymentHistory(DateTime now) {
+    FarmoraOrder demo(String id, String product, double amount, String method,
+        String payment, int createdDaysAgo, int? paidDaysAgo) {
+      return FarmoraOrder(
+        id: id,
+        orderNumber: id,
+        title: product,
+        productName: product,
+        quantity: '20 kg',
+        totalAmount: 'LKR ${amount.toStringAsFixed(2)}',
+        totalAmountNumber: amount,
+        buyerName: 'Demo Buyer',
+        detail: 'Demo order history',
+        status: 'Delivered',
+        progress: 1.0,
+        color: const Color(0xFF43A047),
+        buyerId: 'buyer_demo',
+        farmerId: 'farmer_demo_1',
+        createdAt: now.subtract(Duration(days: createdDaysAgo)),
+        paymentMethod: method,
+        paymentStatus: payment,
+        paidAt: paidDaysAgo == null
+            ? null
+            : now.subtract(Duration(days: paidDaysAgo)),
+      );
+    }
+
+    return [
+      demo('ORD-0986', 'Butternut Pumpkin', 5300, PaymentMethod.bankDeposit,
+          'proof_submitted', 2, null),
+      demo('ORD-0991', 'Green Beans', 6400, PaymentMethod.cod, 'paid', 5, 3),
+      demo('ORD-0978', 'Leeks', 8750, PaymentMethod.bankDeposit, 'paid', 35, 32),
+      demo('ORD-0965', 'Potatoes', 15200, PaymentMethod.cod, 'paid', 70, 66),
+      demo('ORD-0952', 'Red Onions', 11800, PaymentMethod.bankDeposit, 'paid',
+          100, 97),
+      demo('ORD-0940', 'Cabbage', 7300, PaymentMethod.cod, 'paid', 130, 128),
+    ];
   }
 
   void _initDemoData() {
@@ -1402,6 +1619,8 @@ class FarmoraState extends ChangeNotifier {
           paymentStatus: 'Released',
           escrowStatus: 'Released',
         ),
+        // Payment history for the demo farmer so Earnings has real data.
+        ..._demoPaymentHistory(DateTime.now()),
       ]);
       _recalculateStats();
     }
@@ -1883,74 +2102,64 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  /// Farmer whose earnings are shown: the signed-in farmer, or the demo farmer.
+  /// Admins and other roles see totals across all loaded orders.
+  String? get _earningsFarmerId => role != Role.farmer
+      ? null
+      : (_currentUserId.isNotEmpty ? _currentUserId : 'farmer_demo_1');
+
+  EarningsCalculator get earnings =>
+      EarningsCalculator(_orders, farmerId: _earningsFarmerId);
+
   void _recalculateStats() {
-    _totalEarnings = 0.0;
-    _thisMonth = 0.0;
-    _thisWeek = 0.0;
-    _pendingPayments = 0.0;
+    final calc = earnings;
+    _totalEarnings = calc.totalEarnings;
+    _thisMonth = calc.thisMonth;
+    _thisWeek = calc.thisWeek;
+    _pendingPayments = calc.pendingPayments;
 
-    final Map<String, double> monthlySums = {};
-    _transactions.clear();
+    _transactions
+      ..clear()
+      ..addAll(calc.paidOrders.map((order) {
+        final date = EarningsCalculator.earnedAt(order);
+        return EarningsTransaction(
+          id: 'tx-${order.id}',
+          orderNumber:
+              order.orderNumber.isNotEmpty ? order.orderNumber : order.id,
+          date: date != null
+              ? DateFormat('d MMM yyyy').format(date)
+              : order.timestamp,
+          amount: order.total,
+        );
+      }));
 
-    final now = DateTime.now();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
+    final bars = calc.monthly(months: 6);
+    final maxAmount = bars.fold<double>(0, (m, b) => b.amount > m ? b.amount : m);
+    _monthlyBars
+      ..clear()
+      ..addAll(bars.map((b) => MonthlyBarData(
+            month: DateFormat('MMM').format(b.month),
+            amount: b.amount,
+            heightRatio: maxAmount > 0 ? b.amount / maxAmount : 0,
+            isHighlighted: b == bars.last,
+          )));
+  }
 
-    for (final order in _orders) {
-      if (order.isPending) {
-        _pendingPayments += order.total;
-      }
-
-      // Earnings only from delivered/completed orders that are paid (LKR).
-      final pStatus = order.paymentStatus.toLowerCase();
-      final paid = pStatus == 'paid' || pStatus == 'released';
-      if (!order.isCompleted || !paid) continue;
-
-      _totalEarnings += order.total;
-      _transactions.add(EarningsTransaction(
-        id: 'tx-${order.id}',
-        orderNumber: order.orderNumber,
-        date: order.timestamp,
-        amount: order.total,
-      ));
-
-      final orderMonth =
-          order.createdAt.millisecondsSinceEpoch > 0 ? order.createdAt : now;
-      final monthStr = months[orderMonth.month - 1];
-      monthlySums[monthStr] = (monthlySums[monthStr] ?? 0.0) + order.total;
-      if (orderMonth.year == now.year && orderMonth.month == now.month) {
-        _thisMonth += order.total;
-      }
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      if (!orderMonth
-          .isBefore(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
-        _thisWeek += order.total;
-      }
+  /// One-shot re-read of the farmer's orders (pull-to-refresh). Throws on
+  /// failure so the caller can show the error.
+  Future<void> refreshOrders() async {
+    if (_currentUserId.isEmpty || role != Role.farmer) {
+      _recalculateStats();
+      notifyListeners();
+      return;
     }
-
-    final maxAmount =
-        monthlySums.values.fold<double>(0, (a, b) => a > b ? a : b);
-    _monthlyBars.clear();
-    monthlySums.forEach((month, amount) {
-      _monthlyBars.add(MonthlyBarData(
-        month: month,
-        amount: amount,
-        heightRatio: maxAmount > 0 ? amount / maxAmount : 0,
-        isHighlighted: true,
-      ));
-    });
+    final fresh =
+        await _firestoreService.ordersByFarmerStream(_currentUserId).first;
+    _orders
+      ..clear()
+      ..addAll(fresh);
+    _recalculateStats();
+    notifyListeners();
   }
 
   void updateVerificationDoc(String docId,

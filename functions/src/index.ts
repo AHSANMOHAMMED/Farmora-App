@@ -540,6 +540,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     ? data.deliveryAddress.trim().slice(0, 500) : "";
   const idempotencyKey = typeof data.idempotencyKey === "string"
     ? data.idempotencyKey : "";
+  const paymentMethod = data.paymentMethod === "bank_deposit" ? "bank_deposit" : "cod";
   if (!productId || !Number.isSafeInteger(quantity) || quantity < 1
     || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid order details.");
@@ -558,6 +559,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     deliveryFeeMinor,
     offerId,
     deliveryAddress,
+    paymentMethod,
   })).digest("hex");
   const idempotencyDocId = createHash("sha256")
     .update(`${uid}:${idempotencyKey}`).digest("hex");
@@ -585,6 +587,24 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     let priceMinor = Number(product?.priceMinor);
     let orderQuantity = quantity;
     let finalSubtotal = 0;
+    // Reads must precede writes in a transaction, so fetch bank details now.
+    let bankDetailsSnapshot: Record<string, string> | null = null;
+    if (paymentMethod === "bank_deposit") {
+      const bank = (await transaction.get(
+        db.collection("bank_details").doc(String(product?.farmerId || "-"))
+      )).data();
+      if (!bank || !bank.bankName || !bank.branch || !bank.accountHolderName
+        || !/^[0-9]{6,18}$/.test(String(bank.accountNumber || ""))) {
+        throw new functions.https.HttpsError(
+          "failed-precondition", "This farmer does not accept bank deposits yet.");
+      }
+      bankDetailsSnapshot = {
+        bankName: String(bank.bankName),
+        branch: String(bank.branch),
+        accountHolderName: String(bank.accountHolderName),
+        accountNumber: String(bank.accountNumber),
+      };
+    }
 
     if (offerRef) {
       const offerSnapshot = await transaction.get(offerRef);
@@ -643,7 +663,9 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       buyerName: String(buyer.displayName || buyer.name || "Buyer"),
       buyerCompany: String(buyer.district || ""),
       status: "pending",
-      paymentStatus: "payment_required",
+      paymentMethod,
+      paymentStatus: "pending",
+      ...(bankDetailsSnapshot ? { bankDetailsSnapshot } : {}),
       escrowStatus: "not_funded",
       requestedQuantity: quantity,
       idempotencyRequestHash,
@@ -890,7 +912,11 @@ export const createProduct = functions.https.onCall(async (data, context) => {
     quantity: `${quantityAvailable} ${unit} available`,
     status: quantityAvailable > 0 ? "Active" : "Empty",
     isOrganic: data.isOrganic === true,
-    media: Array.isArray(data.media) ? data.media.slice(0, 5) : [],
+    // Only https image URLs (Storage download URLs); drop anything else.
+    media: Array.isArray(data.media)
+      ? data.media.filter((u: unknown) => typeof u === "string"
+        && u.startsWith("https://") && u.length < 2048).slice(0, 5)
+      : [],
     harvestStatus: "growing",
     listingVersion: 1,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1023,12 +1049,14 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
   if (!order) {
     throw new functions.https.HttpsError("not-found", "Order not found.");
   }
-  const isBuyer = order.buyerId === uid;
+  // Only the farmer who received the money confirms it (COD after delivery).
+  const isFarmer = order.farmerId === uid;
   const isAdmin = context.auth?.token.admin === true;
-  if (!isBuyer && !isAdmin) {
+  if (!isFarmer && !isAdmin) {
     throw new functions.https.HttpsError("permission-denied", "Not allowed.");
   }
-  if (order.status !== "delivered" && !isAdmin) {
+  const delivered = ["delivered", "completed"].includes(String(order.status).toLowerCase());
+  if (!delivered && !isAdmin) {
     throw new functions.https.HttpsError(
       "failed-precondition",
       "Payment can be confirmed after delivery."
@@ -1036,17 +1064,15 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
   }
   await ref.update({
     paymentStatus: "paid",
-    escrowStatus: "held",
-    paymentMethod: method,
     paidAt: admin.firestore.FieldValue.serverTimestamp(),
-    paidBy: uid,
+    paymentConfirmedBy: uid,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-  if (order.farmerId) {
+  if (order.buyerId) {
     await writeNotification(
-      String(order.farmerId),
+      String(order.buyerId),
       "Payment received",
-      `COD/payment marked paid for ${order.productName || "an order"}.`,
+      `The farmer confirmed your ${method === "bank_deposit" ? "bank deposit" : "cash"} payment.`,
       "order",
       orderId
     );
@@ -1216,43 +1242,50 @@ export const submitVerification = functions.https.onCall(async (data, context) =
   return { documentId: ref.id };
 });
 
-// Only ciphertext is accepted. Plaintext chat is deliberately not persisted.
+// Chat text is accepted only as ciphertext (plaintext is never persisted).
+// Photos reference Storage objects the sender uploaded for this order.
 export const sendMessage = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
   const recipientId = typeof data.recipientId === "string" ? data.recipientId : "";
   const ciphertext = typeof data.ciphertext === "string" ? data.ciphertext : "";
-  if (!orderId || !recipientId || recipientId === uid || ciphertext.length < 16 || ciphertext.length > 20000) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid encrypted message.");
+  const attachmentUrl = typeof data.attachmentUrl === "string" ? data.attachmentUrl : "";
+  const attachmentPath = typeof data.attachmentPath === "string" ? data.attachmentPath : "";
+  const attachmentKind = data.attachmentKind === "payment_proof" ? "payment_proof" : "photo";
+  const hasText = ciphertext.length > 0;
+  const hasImage = attachmentUrl.length > 0;
+  if (!orderId || !recipientId || recipientId === uid || (!hasText && !hasImage)
+    || (hasText && (ciphertext.length < 16 || ciphertext.length > 20000))) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid message.");
   }
   const order = (await db.collection("orders").doc(orderId).get()).data();
   if (!order || ![order.buyerId, order.farmerId, order.transporterId].includes(uid)
     || ![order.buyerId, order.farmerId, order.transporterId].includes(recipientId)) {
     throw new functions.https.HttpsError("permission-denied", "Conversation is not authorized.");
   }
-  // Ensure the order-scoped conversation exists (created only by backend).
-  const participants = [uid, recipientId].sort();
-  const convoQuery = await db.collection("conversations")
-    .where("orderId", "==", orderId).get();
-  let conversationId = "";
-  for (const doc of convoQuery.docs) {
-    const ids = [...((doc.data().participantIds as string[]) || [])].sort();
-    if (ids.length === participants.length && ids.every((v, i) => v === participants[i])) {
-      conversationId = doc.id;
-      break;
+  if (hasImage) {
+    const expectedPrefix = attachmentKind === "payment_proof"
+      ? `payment_slips/${orderId}/${uid}_`
+      : `chat/${orderId}/${uid}/`;
+    if (!attachmentUrl.startsWith("https://") || attachmentUrl.length > 2048
+      || !attachmentPath.startsWith(expectedPrefix)
+      || (attachmentKind === "payment_proof" && order.buyerId !== uid)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid attachment.");
     }
   }
-  if (!conversationId) {
-    const convoRef = db.collection("conversations").doc();
+  // Same deterministic id the client uses (o_{orderId}_{uidA}_{uidB}).
+  const participants = [uid, recipientId].sort();
+  const conversationId = `o_${orderId}_${participants[0]}_${participants[1]}`;
+  const convoRef = db.collection("conversations").doc(conversationId);
+  if (!(await convoRef.get()).exists) {
     await convoRef.set({
       orderId,
       participantIds: participants,
       lastMessage: "",
       lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
-      unreadCounts: { [recipientId]: 0 },
+      unreadCounts: {},
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    conversationId = convoRef.id;
   }
   const ref = db.collection("messages").doc();
   await ref.set({
@@ -1261,17 +1294,21 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
     senderId: uid,
     receiverId: recipientId,
     recipientId,
-    ciphertext,
+    type: hasImage ? "image" : "text",
+    ...(hasText ? { ciphertext } : {}),
+    ...(hasImage ? { attachmentUrl, attachmentPath, attachmentKind } : {}),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-  await db.collection("conversations").doc(conversationId).update({
-    lastMessage: ciphertext.slice(0, 140),
+  await convoRef.update({
+    lastMessage: hasImage
+      ? (attachmentKind === "payment_proof" ? "Payment receipt" : "Photo")
+      : ciphertext.slice(0, 140),
     lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   await writeNotification(
     recipientId,
-    "New message",
-    "You have a new encrypted order message.",
+    hasImage && attachmentKind === "payment_proof" ? "Payment receipt received" : "New message",
+    hasImage ? "You received a photo in your order chat." : "You have a new encrypted order message.",
     "message",
     orderId
   );

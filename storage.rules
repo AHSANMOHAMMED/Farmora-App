@@ -11,9 +11,24 @@ service firebase.storage {
     }
     function admin() {
       return active() && (
-        request.auth.token.admin == true
+        request.auth.token.get('admin', false) == true
         || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
+    }
+
+    function order(orderId) {
+      return firestore.get(/databases/(default)/documents/orders/$(orderId)).data;
+    }
+    function orderParty(orderId) {
+      return active() && (
+        order(orderId).buyerId == request.auth.uid
+        || order(orderId).farmerId == request.auth.uid
+        || order(orderId).get('transporterId', '') == request.auth.uid
+      );
+    }
+    function validImageUpload() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
     }
 
     match /users/{userId}/{allPaths=**} {
@@ -27,8 +42,7 @@ service firebase.storage {
     match /product_images/{userId}/{allPaths=**} {
       allow read: if signedIn();
       allow write: if active() && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && validImageUpload();
       allow delete: if active() && request.auth.uid == userId;
     }
 
@@ -57,6 +71,27 @@ service firebase.storage {
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
       allow delete: if active() && request.auth.uid == userId;
+    }
+
+    // Bank-deposit slips: only the order's buyer uploads (file name prefixed
+    // with their uid); only parties to the order and admins can read. Slips
+    // are payment evidence, so they are never overwritten or deleted.
+    match /payment_slips/{orderId}/{fileName} {
+      allow read: if orderParty(orderId) || admin();
+      allow create: if active()
+        && order(orderId).buyerId == request.auth.uid
+        && fileName.matches(request.auth.uid + '_.+')
+        && validImageUpload();
+      allow update, delete: if false;
+    }
+
+    // Photos sent in an order chat, stored per sender.
+    match /chat/{orderId}/{senderId}/{fileName} {
+      allow read: if orderParty(orderId) || admin();
+      allow create: if request.auth != null && request.auth.uid == senderId
+        && orderParty(orderId)
+        && validImageUpload();
+      allow update, delete: if false;
     }
 
     // Transport providers can upload verification documents

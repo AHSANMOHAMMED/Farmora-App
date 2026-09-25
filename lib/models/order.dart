@@ -1,4 +1,37 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
+
+import 'bank_details.dart';
+
+/// How the buyer pays the farmer.
+class PaymentMethod {
+  static const cod = 'cod';
+  static const bankDeposit = 'bank_deposit';
+
+  /// Methods a buyer may choose at checkout.
+  static const checkoutMethods = [cod, bankDeposit];
+
+  static const payHere = 'payhere';
+
+  static String label(String method) => switch (method) {
+        bankDeposit => 'Bank Deposit',
+        payHere => 'Online (PayHere)',
+        _ => 'Cash on Delivery',
+      };
+}
+
+/// Normalised payment lifecycle. Legacy escrow/PayHere values stored in
+/// `paymentStatus` are mapped onto these so old orders still count correctly.
+enum PaymentState { pending, proofSubmitted, paid, rejected, refunded, disputed }
+
+/// Parses Firestore Timestamps, ISO strings and epoch millis.
+DateTime? parseFirestoreDate(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  return DateTime.tryParse(value.toString());
+}
 
 class FarmoraOrder {
   final String id;
@@ -42,6 +75,12 @@ class FarmoraOrder {
   final String escrowStatus;
   final String deliveryStatus;
   final String? disputeId;
+  // Farmer-direct payment (COD / bank deposit) fields.
+  final String paymentMethod;
+  final DateTime? paidAt;
+  final String? proofImageUrl;
+  final String? rejectionReason;
+  final BankDetails? bankDetailsSnapshot;
 
   FarmoraOrder({
     required this.id,
@@ -79,6 +118,11 @@ class FarmoraOrder {
     this.escrowStatus = 'not_funded',
     this.deliveryStatus = '',
     this.disputeId,
+    this.paymentMethod = PaymentMethod.cod,
+    this.paidAt,
+    this.proofImageUrl,
+    this.rejectionReason,
+    this.bankDetailsSnapshot,
   }) : createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   static const activeStatuses = {
@@ -97,6 +141,7 @@ class FarmoraOrder {
   bool get isCompleted => _norm == 'delivered' || _norm == 'completed';
   bool get isDeclined =>
       status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
+  bool get isCancelled => isDeclined || _norm == 'cancelled' || _norm == 'canceled';
 
   double get total =>
       totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
@@ -108,7 +153,60 @@ class FarmoraOrder {
     return totalAmount;
   }
 
-  bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'released';
+  PaymentState get paymentState {
+    switch (paymentStatus.toLowerCase().trim()) {
+      case 'proof_submitted':
+        return PaymentState.proofSubmitted;
+      case 'paid':
+      case 'released':
+      case 'paid (escrow)':
+      case 'settled_split':
+        return PaymentState.paid;
+      case 'rejected':
+        return PaymentState.rejected;
+      case 'refunded':
+        return PaymentState.refunded;
+      case 'disputed':
+        return PaymentState.disputed;
+      default: // pending, payment_required, unpaid, payment_failed
+        return PaymentState.pending;
+    }
+  }
+
+  bool get isPaid => paymentState == PaymentState.paid;
+  bool get isBankDeposit => paymentMethod == PaymentMethod.bankDeposit;
+
+  /// Money still owed to the farmer: unpaid, not cancelled/refunded/disputed.
+  bool get isAwaitingPayment =>
+      !isCancelled &&
+      (paymentState == PaymentState.pending ||
+          paymentState == PaymentState.proofSubmitted ||
+          paymentState == PaymentState.rejected);
+
+  /// Farmer can confirm cash once the goods reached the buyer.
+  bool get canMarkCashReceived =>
+      !isBankDeposit && isCompleted && isAwaitingPayment;
+
+  /// Farmer can confirm/reject only when a deposit slip is waiting.
+  bool get canReviewProof =>
+      isBankDeposit && paymentState == PaymentState.proofSubmitted;
+
+  /// Buyer can (re)upload a slip until the farmer confirms.
+  bool get canSubmitProof =>
+      isBankDeposit && !isCancelled &&
+      (paymentState == PaymentState.pending ||
+          paymentState == PaymentState.proofSubmitted ||
+          paymentState == PaymentState.rejected);
+
+  String get paymentStatusLabel => switch (paymentState) {
+        PaymentState.pending =>
+          isBankDeposit ? 'Awaiting deposit' : 'Cash due on delivery',
+        PaymentState.proofSubmitted => 'Receipt submitted',
+        PaymentState.paid => 'Paid',
+        PaymentState.rejected => 'Receipt rejected',
+        PaymentState.refunded => 'Refunded',
+        PaymentState.disputed => 'Disputed',
+      };
   bool get isDisputed => disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
   bool get canReview => isCompleted && !isDisputed;
 
@@ -148,6 +246,11 @@ class FarmoraOrder {
     String? escrowStatus,
     String? deliveryStatus,
     String? disputeId,
+    String? paymentMethod,
+    DateTime? paidAt,
+    String? proofImageUrl,
+    String? rejectionReason,
+    BankDetails? bankDetailsSnapshot,
   }) {
     return FarmoraOrder(
       id: id ?? this.id,
@@ -185,6 +288,11 @@ class FarmoraOrder {
       escrowStatus: escrowStatus ?? this.escrowStatus,
       deliveryStatus: deliveryStatus ?? this.deliveryStatus,
       disputeId: disputeId ?? this.disputeId,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paidAt: paidAt ?? this.paidAt,
+      proofImageUrl: proofImageUrl ?? this.proofImageUrl,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      bankDetailsSnapshot: bankDetailsSnapshot ?? this.bankDetailsSnapshot,
     );
   }
 
@@ -230,6 +338,12 @@ class FarmoraOrder {
       'escrowStatus': escrowStatus,
       'deliveryStatus': deliveryStatus,
       'disputeId': disputeId,
+      'paymentMethod': paymentMethod,
+      if (paidAt != null) 'paidAt': Timestamp.fromDate(paidAt!),
+      if (proofImageUrl != null) 'proofImageUrl': proofImageUrl,
+      if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      if (bankDetailsSnapshot != null)
+        'bankDetailsSnapshot': bankDetailsSnapshot!.toMap(),
     };
   }
 
@@ -278,10 +392,16 @@ class FarmoraOrder {
       escrowStatus: (data['escrowStatus'] ?? 'not_funded').toString(),
       deliveryStatus: (data['deliveryStatus'] ?? '').toString(),
       disputeId: data['disputeId'] as String?,
-      createdAt: data['createdAt'] != null
-          ? DateTime.tryParse(data['createdAt'].toString()) ??
-              DateTime.fromMillisecondsSinceEpoch(0)
-          : DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt: parseFirestoreDate(data['createdAt']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      paymentMethod: (data['paymentMethod'] ?? PaymentMethod.cod).toString(),
+      paidAt: parseFirestoreDate(data['paidAt']),
+      proofImageUrl: data['proofImageUrl'] as String?,
+      rejectionReason: data['rejectionReason'] as String?,
+      bankDetailsSnapshot: data['bankDetailsSnapshot'] is Map
+          ? BankDetails.fromMap(
+              Map<String, dynamic>.from(data['bankDetailsSnapshot'] as Map))
+          : null,
     );
   }
 }

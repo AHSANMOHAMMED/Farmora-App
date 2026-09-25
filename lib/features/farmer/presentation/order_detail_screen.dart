@@ -8,6 +8,7 @@ import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
+import '../../payments/presentation/order_payment_card.dart';
 import 'logistics_tracking_screen.dart';
 
 class OrderDetailScreen extends StatelessWidget {
@@ -220,11 +221,11 @@ class OrderDetailScreen extends StatelessWidget {
                               const SizedBox(width: 8),
                               _buildActionCircle(
                                 icon: Icons.chat_bubble_outline,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Opening chat with ${currentOrder.buyerName}...')),
-                                  );
-                                },
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ConversationsScreen(orderId: currentOrder.id),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -337,6 +338,10 @@ class OrderDetailScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!currentOrder.isDeclined) ...[
+                  const SizedBox(height: 20),
+                  OrderPaymentCard(order: currentOrder, viewerIsFarmer: true),
+                ],
                 if (!currentOrder.isPending && !currentOrder.isDeclined) ...[
                   const SizedBox(height: 20),
                   _AuthenticityBarcodeCard(orderId: currentOrder.id),

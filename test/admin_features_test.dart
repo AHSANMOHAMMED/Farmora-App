@@ -348,7 +348,8 @@ void main() {
 
       final pending =
           state.settlements.firstWhere((s) => s.status == 'pending');
-      await state.approveSettlement(pending.id);
+      await state.approveSettlement(pending.id,
+          transactionReference: 'CEFT-TEST-0001');
 
       final updatedSettled =
           state.settlements.firstWhere((s) => s.id == pending.id);

@@ -15,6 +15,7 @@ import 'legal_screens.dart';
 import 'help_support_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
+import '../../payments/presentation/bank_details_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../../services/user_location_service.dart';
@@ -222,6 +223,34 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (isFarmer) ...[
+            Card(
+              color: state.hasBankDetails
+                  ? AppColors.surfaceContainerLowest
+                  : AppColors.statusPendingBg,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                leading: const Icon(Icons.account_balance_outlined,
+                    color: AppColors.primary),
+                title: const Text(
+                  'Bank Details',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(state.hasBankDetails
+                    ? '${state.myBankDetails.bankName} · '
+                        '${state.myBankDetails.maskedAccountNumber}'
+                    : 'Add your bank account so buyers can pay by bank deposit'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BankDetailsScreen()),
+                ),
               ),
             ),
             const SizedBox(height: 16),

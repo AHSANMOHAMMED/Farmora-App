@@ -7,7 +7,7 @@ import 'track_order_screen.dart';
 import 'barcode_scan_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../../services/firebase_service.dart';
-import '../../reviews/presentation/submit_review_screen.dart';
+import '../../payments/presentation/order_payment_card.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -81,8 +81,8 @@ class BuyerOrderDetailScreen extends StatelessWidget {
               runSpacing: 8,
               children: [
                 _buildMiniBadge(
-                  _paymentLabel(currentOrder.paymentStatus),
-                  _paymentColor(currentOrder.paymentStatus),
+                  currentOrder.paymentStatusLabel,
+                  _paymentColor(currentOrder.paymentState),
                 ),
                 _buildMiniBadge(
                   _escrowLabel(currentOrder.escrowStatus),
@@ -150,6 +150,10 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             if (currentOrder.status.toLowerCase() == 'delivered')
               _TrustActions(order: currentOrder),
             const SizedBox(height: 16),
+            if (!currentOrder.isDeclined) ...[
+              OrderPaymentCard(order: currentOrder, viewerIsFarmer: false),
+              const SizedBox(height: 16),
+            ],
 
             // Farmer Info Card
             Container(
@@ -397,102 +401,6 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       bottomNavigationBar: (() {
             final s = currentOrder.status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
             final trackable = {'confirmed','assigned','pickedup','intransit','accepted'}.contains(s);
-            final delivered = s == 'delivered' || s == 'completed';
-            final unpaid = currentOrder.paymentStatus == 'payment_required' || currentOrder.paymentStatus == 'unpaid';
-            if (delivered && unpaid) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilledButton(
-                      onPressed: () async {
-                        try {
-                          final checkout = await FirestoreService()
-                              .createPayHereCheckout(orderId: currentOrder.id);
-                          if (!context.mounted) return;
-                          if (checkout['enabled'] == true) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'PayHere ready (${checkout['sandbox'] == true ? 'sandbox' : 'live'}). '
-                                  'Complete payment on ${checkout['checkoutUrl'] ?? 'PayHere'}.',
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-                          await FirestoreService()
-                              .markPaymentReceived(orderId: currentOrder.id);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('COD payment confirmed.')),
-                          );
-                          final leaveReview = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Leave a review?'),
-                              content: const Text(
-                                'Payment confirmed. Would you like to rate this order?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Later'),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Review'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (leaveReview == true && context.mounted) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    SubmitReviewScreen(order: currentOrder),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Payment confirm failed: $e')),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Pay (PayHere if enabled, else COD)'),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () async {
-                        try {
-                          await FirestoreService()
-                              .markPaymentReceived(orderId: currentOrder.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('COD payment confirmed.')),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('COD failed: $e')),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Confirm COD only'),
-                    ),
-                  ],
-                ),
-              );
-            }
             return trackable
           ? Container(
               padding: const EdgeInsets.all(16),
@@ -773,30 +681,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  String _paymentLabel(String s) {
+  Color _paymentColor(PaymentState s) {
     switch (s) {
-      case 'unpaid':
-        return 'Unpaid';
-      case 'paid':
-        return 'Paid';
-      case 'released':
-        return 'Released to farmer';
-      case 'disputed':
-        return 'Payment disputed';
-      case 'payment_failed':
-        return 'Payment failed';
-      default:
-        return 'Payment required';
-    }
-  }
-
-  Color _paymentColor(String s) {
-    switch (s) {
-      case 'paid':
-      case 'released':
+      case PaymentState.paid:
         return AppColors.statusApprovedText;
-      case 'disputed':
-      case 'payment_failed':
+      case PaymentState.rejected:
+      case PaymentState.disputed:
         return AppColors.error;
       default:
         return AppColors.statusPendingText;

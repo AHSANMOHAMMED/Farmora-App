@@ -3,7 +3,7 @@
   "description": "Cloud Functions for Farmora marketplace",
   "version": "1.0.0",
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {

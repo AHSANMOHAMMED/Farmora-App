@@ -607,12 +607,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(width: 10),
                           if (productOrders > 0)
-                            Text(
-                              '$productOrders active order${productOrders > 1 ? 's' : ''}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              child: Text(
+                                '$productOrders active order${productOrders > 1 ? 's' : ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                         ],
@@ -1479,14 +1483,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Stage: ${activeDelivery.status}',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurfaceVariant),
+                      Expanded(
+                        child: Text(
+                          'Stage: ${activeDelivery.status}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.onSurfaceVariant),
+                        ),
                       ),
                       const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text('View Detail',
                               style: TextStyle(
@@ -1763,22 +1772,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSectionTitle(String title, {String? subtitle}) {
     return Row(
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.onSurface,
-            letterSpacing: -0.3,
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.onSurface,
+              letterSpacing: -0.3,
+            ),
           ),
         ),
         if (subtitle != null) ...[
           const SizedBox(width: 8),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
         ],

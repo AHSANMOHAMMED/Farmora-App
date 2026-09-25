@@ -1,8 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_errors.dart';
+import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
@@ -23,7 +26,7 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final _picker = ImagePicker();
-  final _firestore = FirestoreService();
+  late final _firestore = FirestoreService();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
@@ -65,9 +68,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Mullaitivu',
   ];
 
-  final List<String> _selectedImages = [];
+  static const _maxImages = 5;
+  final _imagePicker = ImagePickerHelper();
+
+  /// Photos in display order: existing URLs and newly picked local images.
+  final List<_ImageSlot> _images = [];
+
+  /// URLs the product had when the screen opened (edit mode).
+  final Set<String> _originalUrls = {};
   bool _isSubmitting = false;
   bool _isPicking = false;
+  bool _saved = false;
 
   @override
   void initState() {
@@ -93,8 +104,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ...p.imageUrls,
         ...p.images,
       ].where((u) => u.isNotEmpty).toSet().toList();
-      if (existingMedia.isNotEmpty) {
-        _selectedImages.addAll(existingMedia);
+      for (final url in existingMedia.take(_maxImages)) {
+        _images.add(_ImageSlot.remote(url));
+        _originalUrls.add(url);
       }
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -109,6 +121,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   void dispose() {
+    // Photos uploaded during an attempt that was never saved would be
+    // orphaned in Storage; remove them (best effort).
+    if (!_saved) {
+      for (final slot in _images) {
+        if (slot.local != null && slot.uploadedUrl != null) {
+          _firestore.deleteOwnProductImage(slot.uploadedUrl!);
+        }
+      }
+    }
     _nameController.dispose();
     _quantityController.dispose();
     _priceController.dispose();
@@ -138,44 +159,91 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (picked != null) setState(() => _availabilityDate = picked);
   }
 
+  void _showSnack(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: error ? AppColors.error : null,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  /// Picks new photos for preview. Nothing is uploaded until Save.
   Future<void> _pickImages() async {
-    if (_selectedImages.length >= 5 || _isPicking) return;
+    if (_images.length >= _maxImages || _isPicking || _isSubmitting) return;
+    setState(() => _isPicking = true);
+    final rejected = <String>[];
+    try {
+      final picked = await _imagePicker.pickMany(
+        limit: _maxImages - _images.length,
+        rejected: rejected.add,
+      );
+      if (!mounted) return;
+      if (picked.isNotEmpty) {
+        setState(() => _images.addAll(picked.map(_ImageSlot.local)));
+      }
+      if (rejected.isNotEmpty) _showSnack(rejected.join('\n'), error: true);
+    } catch (e, st) {
+      _showSnack(userMessage(e, action: 'add photos', stack: st), error: true);
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
+    }
+  }
+
+  /// Replaces the photo at [index] with a newly picked one.
+  Future<void> _replaceImage(int index) async {
+    if (_isPicking || _isSubmitting) return;
     setState(() => _isPicking = true);
     try {
-      final remaining = 5 - _selectedImages.length;
-      final files = await _picker.pickMultiImage(
-        imageQuality: 75,
-        maxWidth: 1600,
-      );
-      if (files.isEmpty) return;
-      final urls = <String>[];
-      for (final file in files.take(remaining)) {
-        final bytes = await file.readAsBytes();
-        final contentType = file.mimeType ?? 'image/jpeg';
-        final url = await _firestore.uploadProductImage(
-          bytes: bytes,
-          fileName: file.name,
-          contentType: contentType,
-        );
-        urls.add(url);
+      final picked = await _imagePicker.pickOne();
+      if (picked == null || !mounted) return;
+      final old = _images[index];
+      if (old.local != null && old.uploadedUrl != null) {
+        _firestore.deleteOwnProductImage(old.uploadedUrl!);
       }
-      if (!mounted) return;
-      setState(() => _selectedImages.addAll(urls));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image upload failed: $e')),
-        );
-      }
+      setState(() => _images[index] = _ImageSlot.local(picked));
+    } catch (e, st) {
+      _showSnack(userMessage(e, action: 'replace the photo', stack: st),
+          error: true);
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
   }
 
   void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
+    if (_isSubmitting) return;
+    final slot = _images[index];
+    // An upload from a failed attempt that is now discarded.
+    if (slot.local != null && slot.uploadedUrl != null) {
+      _firestore.deleteOwnProductImage(slot.uploadedUrl!);
+    }
+    setState(() => _images.removeAt(index));
+  }
+
+  /// Uploads every picked photo that isn't uploaded yet. Already-uploaded
+  /// photos are reused, so a retry after a failure doesn't re-upload them.
+  /// Returns the final URL list in display order.
+  Future<List<String>> _uploadPendingImages() async {
+    for (final slot in _images) {
+      if (slot.url != null || slot.uploadedUrl != null) continue;
+      setState(() {
+        slot.failed = false;
+        slot.progress = 0;
+      });
+      try {
+        final stored = await _firestore.uploadProductImage(
+          slot.local!,
+          onProgress: (p) {
+            if (mounted) setState(() => slot.progress = p);
+          },
+        );
+        if (mounted) setState(() => slot.uploadedUrl = stored.url);
+      } catch (_) {
+        if (mounted) setState(() => slot.failed = true);
+        rethrow;
+      }
+    }
+    return [for (final slot in _images) slot.url ?? slot.uploadedUrl!];
   }
 
   Future<void> _submit() async {
@@ -197,9 +265,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isEdit = widget.existingProduct != null;
     final productId = isEdit ? widget.existingProduct!.id : '';
     final productStatus = isEdit ? widget.existingProduct!.status : 'Active';
-    final media = List<String>.from(_selectedImages);
-
     final location = _district;
+    final signedIn = state.currentUserId.isNotEmpty;
+
+    setState(() => _isSubmitting = true);
+    // 1. Upload photos first so Firestore never stores a broken reference.
+    final List<String> media;
+    try {
+      media = signedIn
+          ? await _uploadPendingImages()
+          : [for (final slot in _images) if (slot.url != null) slot.url!];
+    } catch (e, st) {
+      if (mounted) setState(() => _isSubmitting = false);
+      _showSnack(
+        '${userMessage(e, action: 'upload the photo', stack: st)} '
+        'Tap ${isEdit ? 'Save Changes' : 'Publish'} to retry.',
+        error: true,
+      );
+      return;
+    }
+    if (!mounted) return;
 
     final newProduct = Product(
       id: productId,
@@ -230,27 +315,40 @@ class _AddProductScreenState extends State<AddProductScreen> {
       imageUrls: media,
     );
 
-    setState(() => _isSubmitting = true);
+    // 2. Persist the product. Only fields owned by this form are written, so
+    // ownership (farmerId) and server-managed fields are never touched.
     try {
       if (isEdit) {
-        state.updateProduct(newProduct);
-        if (state.currentUserId.isNotEmpty) {
+        if (signedIn) {
           await _firestore.updateProduct(productId, {
             'name': name,
             'category': _category,
             'description': description,
             'unit': _unit,
+            'location': location,
             'media': media,
             'imageUrls': media,
+            'images': media,
+            'imagePath': media.isNotEmpty ? media.first : null,
             'quantityAvailable': quantityVal,
+            'quantity': '$quantityVal $_unit available',
             'priceMinor': (priceVal * 100).round(),
+            'pricePerUnit': priceVal,
+            'price': 'LKR ${priceVal.toStringAsFixed(2)} / $_unit',
             'isOrganic': _isOrganic,
+            'availabilityDate': _availabilityDate?.toIso8601String(),
             'status': productStatus,
-            'updatedAt': DateTime.now().toIso8601String(),
+            'updatedAt': FieldValue.serverTimestamp(),
           });
+          // Replaced/removed photos are no longer referenced anywhere.
+          for (final url in _originalUrls.difference(media.toSet())) {
+            _firestore.deleteOwnProductImage(url);
+          }
+        } else {
+          state.updateProduct(newProduct);
         }
       } else {
-        if (state.currentUserId.isNotEmpty) {
+        if (signedIn) {
           final newId = await _firestore.createSecureProduct(newProduct);
           if (!mounted) return;
           final uploadVideo = await showDialog<bool>(
@@ -291,6 +389,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           state.addProduct(newProduct);
         }
       }
+      _saved = true;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -300,13 +399,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
       );
       Navigator.of(context).pop();
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
-      final message = e.toString().contains('verification')
-          ? 'Account verification is required before publishing products.'
-          : 'Failed to save product: $e';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+      _showSnack(
+        userMessage(e,
+            action: isEdit ? 'update this product' : 'publish this product',
+            stack: st),
+        error: true,
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -384,11 +483,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Organic certified'),
-                        value: _isOrganic,
-                        onChanged: (v) => setState(() => _isOrganic = v),
+                      // Own Material so the tile's ink isn't hidden by the
+                      // decorated section card.
+                      Material(
+                        color: Colors.transparent,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Organic certified'),
+                          value: _isOrganic,
+                          onChanged: (v) => setState(() => _isOrganic = v),
+                        ),
                       ),
                     ],
                   ),
@@ -536,105 +640,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
                           // aspect-square = 1:1
                           childAspectRatio: 1.0,
                         ),
-                        itemCount: _selectedImages.length < 5
-                            ? _selectedImages.length + 1
-                            : _selectedImages.length,
+                        itemCount: _images.length < _maxImages
+                            ? _images.length + 1
+                            : _images.length,
                         itemBuilder: (context, index) {
-                          // Add tile
-                          if (index == _selectedImages.length && _selectedImages.length < 5) {
-                            return InkWell(
-                              onTap: _isPicking ? null : _pickImages,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  // Stitch: bg-surface border-2 border-dashed border-primary/50
-                                  color: AppColors.surfaceContainerLowest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.50),
-                                    width: 2,
-                                    // Dashed border via decoration
-                                  ),
-                                ),
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_photo_alternate_outlined,
-                                      color: AppColors.primary,
-                                      size: 28,
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Add',
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-
-                          // Image preview tile — Stitch: relative aspect-square rounded-xl overflow-hidden
-                          final imgPath = _selectedImages[index];
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                SafeImage(
-                                  path: imgPath,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: AppColors.surfaceContainer,
-                                    child: const Icon(Icons.image_outlined,
-                                        color: AppColors.onSurfaceVariant),
-                                  ),
-                                ),
-                                // Stitch: close button top-1 right-1 w-8 h-8 bg-surface/80 rounded-full
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: InkWell(
-                                    onTap: () => _removeImage(index),
-                                    child: Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.85),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.12),
-                                            blurRadius: 4,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: AppColors.error,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
+                          if (index == _images.length) return _buildAddTile();
+                          return _buildImageTile(index);
                         },
                       ),
+                      if (_images.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tap a photo to replace it. The first photo is the cover.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -663,7 +695,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               child: SizedBox(
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
+                  onPressed: _isSubmitting || _isPicking ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     // Stitch: bg-primary text-on-primary rounded-xl h-touch-target
                     backgroundColor: AppColors.primary,
@@ -685,7 +717,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       : const Icon(Icons.publish_rounded, size: 20),
                   label: Text(
                     _isSubmitting
-                        ? 'Saving...'
+                        ? (_images.any((i) =>
+                                i.local != null && i.uploadedUrl == null)
+                            ? 'Uploading photos...'
+                            : 'Saving...')
                         : (widget.existingProduct != null
                             ? 'Save Changes'
                             : 'Publish Product'),
@@ -699,6 +734,153 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // Stitch: bg-surface border-2 border-dashed border-primary/50
+  Widget _buildAddTile() {
+    final disabled = _isPicking || _isSubmitting;
+    return InkWell(
+      onTap: disabled ? null : _pickImages,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: disabled ? 0.2 : 0.5),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _isPicking
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_photo_alternate_outlined,
+                    color: AppColors.primary, size: 28),
+            const SizedBox(height: 4),
+            const Text(
+              'Add',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Stitch: relative aspect-square rounded-xl overflow-hidden
+  Widget _buildImageTile(int index) {
+    final slot = _images[index];
+    final uploading =
+        _isSubmitting && slot.local != null && slot.uploadedUrl == null;
+    final Widget preview = slot.local != null
+        ? Image.memory(slot.local!.bytes, fit: BoxFit.cover, gaplessPlayback: true)
+        : SafeImage(
+            path: slot.url!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: AppColors.surfaceContainer,
+              child: const Icon(Icons.broken_image_outlined,
+                  color: AppColors.onSurfaceVariant),
+            ),
+          );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Semantics(
+            button: true,
+            label: 'Product photo ${index + 1}. Tap to replace.',
+            child: GestureDetector(
+              onTap: () => _replaceImage(index),
+              child: preview,
+            ),
+          ),
+          if (uploading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.45),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  value: slot.progress > 0 ? slot.progress : null,
+                  strokeWidth: 3,
+                  color: Colors.white,
+                  backgroundColor: Colors.white24,
+                ),
+              ),
+            ),
+          if (slot.failed && !uploading)
+            Container(
+              color: AppColors.error.withValues(alpha: 0.55),
+              alignment: Alignment.center,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  Text('Failed',
+                      style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ),
+          if (index == 0)
+            Positioned(
+              left: 4,
+              bottom: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('Cover',
+                    style: TextStyle(color: Colors.white, fontSize: 10)),
+              ),
+            ),
+          // Stitch: close button top-1 right-1 bg-surface/80 rounded-full
+          if (!_isSubmitting)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Semantics(
+                button: true,
+                label: 'Remove photo ${index + 1}',
+                child: InkWell(
+                  onTap: () => _removeImage(index),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.close,
+                        size: 16, color: AppColors.error),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -826,4 +1008,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ),
     );
   }
+}
+
+/// A product photo: either already stored ([url]) or picked on this device
+/// ([local]) and, once uploaded, available at [uploadedUrl].
+class _ImageSlot {
+  _ImageSlot.remote(String this.url) : local = null;
+  _ImageSlot.local(PickedImage this.local) : url = null;
+
+  final String? url;
+  final PickedImage? local;
+  String? uploadedUrl;
+  double progress = 0;
+  bool failed = false;
 }

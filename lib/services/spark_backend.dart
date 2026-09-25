@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../models/bank_details.dart';
+import '../models/order.dart' show PaymentMethod;
 import '../models/product.dart';
 
 /// Firestore-only backend for Firebase Spark (no Cloud Functions).
@@ -106,6 +108,10 @@ class SparkBackend {
       'isOrganic': product.isOrganic,
       'media': media,
       'imageUrls': media,
+      'images': media,
+      if (media.isNotEmpty) 'imagePath': media.first,
+      if (product.availabilityDate != null)
+        'availabilityDate': product.availabilityDate!.toIso8601String(),
       'harvestStatus': 'growing',
       'listingVersion': 1,
       'createdAt': FieldValue.serverTimestamp(),
@@ -120,10 +126,14 @@ class SparkBackend {
     int deliveryFeeMinor = 0,
     required String deliveryAddress,
     required String idempotencyKey,
+    String paymentMethod = PaymentMethod.cod,
   }) async {
     final uid = _uid;
     if (idempotencyKey.length < 16 || idempotencyKey.length > 256) {
       throw ArgumentError('A valid idempotency key is required.');
+    }
+    if (!PaymentMethod.checkoutMethods.contains(paymentMethod)) {
+      throw ArgumentError('Unknown payment method: $paymentMethod');
     }
     if (quantity < 1 ||
         deliveryFeeMinor < 0 ||
@@ -147,7 +157,8 @@ class SparkBackend {
             old['productId'] != productId ||
             old['requestedQuantity'] != quantity ||
             old['deliveryFeeMinor'] != deliveryFeeMinor ||
-            old['deliveryAddress'] != deliveryAddress.trim()) {
+            old['deliveryAddress'] != deliveryAddress.trim() ||
+            (old['paymentMethod'] ?? PaymentMethod.cod) != paymentMethod) {
           throw StateError(
               'Idempotency key was already used for another order.');
         }
@@ -164,6 +175,19 @@ class SparkBackend {
       final subtotal = priceMinor * quantity;
       farmerId = product['farmerId'] as String?;
       productName = product['name'] as String? ?? '';
+      if (farmerId == null || farmerId!.isEmpty) {
+        throw StateError('Product has no farmer.');
+      }
+      // Transactions must read before writing, so snapshot bank details now.
+      BankDetails? bankSnapshot;
+      if (paymentMethod == PaymentMethod.bankDeposit) {
+        final bankSnap = await transaction
+            .get(_db.collection('bank_details').doc(farmerId));
+        bankSnapshot = BankDetails.fromMap(bankSnap.data());
+        if (!bankSnapshot.isComplete) {
+          throw StateError('This farmer does not accept bank deposits yet.');
+        }
+      }
       transaction.set(orderRef, {
         'buyerId': uid,
         'farmerId': farmerId,
@@ -190,7 +214,9 @@ class SparkBackend {
         'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
         'farmerName': product['farmerName'] ?? '',
         'status': 'pending',
-        'paymentStatus': 'payment_required',
+        'paymentMethod': paymentMethod,
+        'paymentStatus': 'pending',
+        if (bankSnapshot != null) 'bankDetailsSnapshot': bankSnapshot.toMap(),
         'escrowStatus': 'not_funded',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -254,9 +280,11 @@ class SparkBackend {
     if (order == null || order['farmerId'] != uid) {
       throw StateError('Order not found.');
     }
+    // Scoped to this farmer so firestore.rules can authorise the query.
     final existing = await _db
         .collection('transport_jobs')
         .where('orderId', isEqualTo: orderId)
+        .where('farmerId', isEqualTo: uid)
         .where('status',
             whereIn: ['requested', 'accepted', 'pickedUp', 'inTransit'])
         .limit(1)
@@ -381,21 +409,20 @@ class SparkBackend {
     final snap = await _db.collection('orders').doc(orderId).get();
     final order = snap.data();
     if (order == null) throw StateError('Order not found.');
-    if (order['buyerId'] != uid) throw StateError('Not allowed.');
+    // Only the farmer who received the money can confirm it.
+    if (order['farmerId'] != uid) throw StateError('Not allowed.');
     await snap.reference.update({
       'paymentStatus': 'paid',
-      'escrowStatus': 'held',
-      'paymentMethod': method,
       'paidAt': FieldValue.serverTimestamp(),
-      'paidBy': uid,
+      'paymentConfirmedBy': uid,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-    final farmerId = order['farmerId'];
-    if (farmerId is String) {
+    final buyerId = order['buyerId'];
+    if (buyerId is String) {
       await _notify(
-        farmerId,
+        buyerId,
         'Payment received',
-        'COD/payment marked paid.',
+        'The farmer confirmed your $method payment.',
         'order',
         orderId,
       );
@@ -481,7 +508,8 @@ class SparkBackend {
       'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
       'farmerName': product['farmerName'] ?? '',
       'status': 'confirmed',
-      'paymentStatus': 'payment_required',
+      'paymentMethod': PaymentMethod.cod,
+      'paymentStatus': 'pending',
       'escrowStatus': 'not_funded',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -735,62 +763,111 @@ class SparkBackend {
     return {'enabled': false, 'useCod': true};
   }
 
+  /// Deterministic id so both participants resolve the same conversation
+  /// without a (rules-unfriendly) query, and creation can't race.
+  static String conversationIdFor(String orderId, String a, String b) {
+    final ids = [a, b]..sort();
+    return 'o_${orderId}_${ids[0]}_${ids[1]}';
+  }
+
+  /// Returns the order conversation between the caller and [peerId],
+  /// creating it on first use. Rules require both to be order participants.
+  Future<String> ensureConversation({
+    required String orderId,
+    required String peerId,
+  }) async {
+    final uid = _uid;
+    if (peerId.isEmpty || peerId == uid) {
+      throw StateError('There is no one to chat with on this order yet.');
+    }
+    final ref = _db
+        .collection('conversations')
+        .doc(conversationIdFor(orderId, uid, peerId));
+    final snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({
+        'orderId': orderId,
+        'participantIds': [uid, peerId]..sort(),
+        'lastMessage': '',
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'unreadCounts': <String, int>{},
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    return ref.id;
+  }
+
+  /// Writes a chat message (encrypted text and/or a Storage image) and
+  /// updates the conversation preview atomically.
+  Future<String> sendChatMessage({
+    required String conversationId,
+    required String orderId,
+    required String recipientId,
+    String? ciphertext,
+    String? attachmentUrl,
+    String? attachmentPath,
+    String? attachmentKind,
+  }) async {
+    final uid = _uid;
+    final hasText = ciphertext != null && ciphertext.isNotEmpty;
+    final hasImage = attachmentUrl != null && attachmentPath != null;
+    if (!hasText && !hasImage) {
+      throw ArgumentError('Message is empty.');
+    }
+    final preview = hasImage
+        ? (attachmentKind == 'payment_proof' ? 'Payment receipt' : 'Photo')
+        : (ciphertext!.length > 140 ? ciphertext.substring(0, 140) : ciphertext);
+    final msgRef = _db.collection('messages').doc();
+    final batch = _db.batch()
+      ..set(msgRef, {
+        'orderId': orderId,
+        'conversationId': conversationId,
+        'senderId': uid,
+        'receiverId': recipientId,
+        'recipientId': recipientId,
+        'type': hasImage ? 'image' : 'text',
+        if (hasText) 'ciphertext': ciphertext,
+        if (hasImage) 'attachmentUrl': attachmentUrl,
+        if (hasImage) 'attachmentPath': attachmentPath,
+        if (hasImage) 'attachmentKind': attachmentKind ?? 'photo',
+        'createdAt': FieldValue.serverTimestamp(),
+      })
+      ..update(_db.collection('conversations').doc(conversationId), {
+        'lastMessage': preview,
+        'lastMessageAt': FieldValue.serverTimestamp(),
+      });
+    await batch.commit();
+    // Notification is best effort: the message itself is already delivered.
+    try {
+      await _notify(
+        recipientId,
+        hasImage && attachmentKind == 'payment_proof'
+            ? 'Payment receipt received'
+            : 'New message',
+        hasImage
+            ? 'You received a photo in your order chat.'
+            : 'You have a new encrypted order message.',
+        'message',
+        orderId,
+      );
+    } catch (_) {}
+    return msgRef.id;
+  }
+
+  /// Legacy entry point (offline outbox): text to the order conversation.
   Future<String> sendEncryptedMessage({
     required String orderId,
     required String recipientId,
     required String ciphertext,
   }) async {
-    final uid = _uid;
-    final participants = [uid, recipientId]..sort();
-    final convoQuery = await _db
-        .collection('conversations')
-        .where('orderId', isEqualTo: orderId)
-        .get();
-    String conversationId = '';
-    for (final doc in convoQuery.docs) {
-      final ids = List<String>.from(doc.data()['participantIds'] ?? []);
-      ids.sort();
-      if (ids.length == participants.length &&
-          ids.asMap().entries.every((e) => e.value == participants[e.key])) {
-        conversationId = doc.id;
-        break;
-      }
-    }
-    if (conversationId.isEmpty) {
-      final convoRef = _db.collection('conversations').doc();
-      await convoRef.set({
-        'orderId': orderId,
-        'participantIds': participants,
-        'lastMessage': '',
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      conversationId = convoRef.id;
-    }
-    final msgRef = _db.collection('messages').doc();
-    await msgRef.set({
-      'orderId': orderId,
-      'conversationId': conversationId,
-      'senderId': uid,
-      'receiverId': recipientId,
-      'recipientId': recipientId,
-      'ciphertext': ciphertext,
-      'body': ciphertext,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await _db.collection('conversations').doc(conversationId).update({
-      'lastMessage':
-          ciphertext.length > 140 ? ciphertext.substring(0, 140) : ciphertext,
-      'lastMessageAt': FieldValue.serverTimestamp(),
-    });
-    await _notify(
-      recipientId,
-      'New message',
-      'You have a new encrypted order message.',
-      'message',
-      orderId,
+    final conversationId =
+        await ensureConversation(orderId: orderId, peerId: recipientId);
+    return sendChatMessage(
+      conversationId: conversationId,
+      orderId: orderId,
+      recipientId: recipientId,
+      ciphertext: ciphertext,
     );
-    return msgRef.id;
   }
 
   Future<Map<String, String>> issueOrderBarcode(String orderId) async {

@@ -1,3 +1,5 @@
+import 'order.dart' show parseFirestoreDate;
+
 class FarmoraConversation {
   final String id;
   final String orderId;
@@ -23,9 +25,7 @@ class FarmoraConversation {
       orderId: (data['orderId'] ?? '').toString(),
       participantIds: List<String>.from(data['participantIds'] ?? []),
       lastMessage: (data['lastMessage'] ?? '').toString(),
-      lastMessageAt: data['lastMessageAt'] != null
-          ? DateTime.tryParse(data['lastMessageAt'].toString())
-          : null,
+      lastMessageAt: parseFirestoreDate(data['lastMessageAt']),
       unreadCounts: Map<String, int>.from(
         (data['unreadCounts'] as Map? ?? {}).map(
           (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
@@ -35,13 +35,38 @@ class FarmoraConversation {
   }
 }
 
+/// What a chat photo is for. Payment proofs are also linked to the order.
+class ChatAttachmentKind {
+  static const photo = 'photo';
+  static const paymentProof = 'payment_proof';
+}
+
+/// An image stored in Firebase Storage and referenced by a chat message.
+class ChatAttachment {
+  const ChatAttachment({
+    required this.url,
+    required this.path,
+    this.kind = ChatAttachmentKind.photo,
+  });
+
+  final String url;
+  final String path;
+  final String kind;
+
+  bool get isPaymentProof => kind == ChatAttachmentKind.paymentProof;
+}
+
 class FarmoraMessage {
   final String id;
   final String conversationId;
   final String senderId;
   final String recipientId;
+
+  /// Encrypted text (`farmora3:` ciphertext). Empty for photo-only messages.
   final String body;
   final String? attachmentUrl;
+  final String? attachmentPath;
+  final String attachmentKind;
   final DateTime? readAt;
   final DateTime createdAt;
 
@@ -52,22 +77,31 @@ class FarmoraMessage {
     required this.recipientId,
     required this.body,
     this.attachmentUrl,
+    this.attachmentPath,
+    this.attachmentKind = ChatAttachmentKind.photo,
     this.readAt,
     required this.createdAt,
   });
 
+  bool get hasImage => (attachmentUrl ?? '').isNotEmpty;
+  bool get isPaymentProof =>
+      hasImage && attachmentKind == ChatAttachmentKind.paymentProof;
+
   factory FarmoraMessage.fromMap(String id, Map<String, dynamic> data) {
-    DateTime parseTs(dynamic v) =>
-        v == null ? DateTime.fromMillisecondsSinceEpoch(0) : DateTime.tryParse(v.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
     return FarmoraMessage(
       id: id,
       conversationId: (data['conversationId'] ?? '').toString(),
       senderId: (data['senderId'] ?? '').toString(),
-      recipientId: (data['recipientId'] ?? '').toString(),
-      body: (data['body'] ?? data['ciphertext'] ?? '').toString(),
+      recipientId:
+          (data['recipientId'] ?? data['receiverId'] ?? '').toString(),
+      body: (data['ciphertext'] ?? data['body'] ?? '').toString(),
       attachmentUrl: data['attachmentUrl'] as String?,
-      readAt: data['readAt'] != null ? DateTime.tryParse(data['readAt'].toString()) : null,
-      createdAt: parseTs(data['createdAt']),
+      attachmentPath: data['attachmentPath'] as String?,
+      attachmentKind:
+          (data['attachmentKind'] ?? ChatAttachmentKind.photo).toString(),
+      readAt: parseFirestoreDate(data['readAt']),
+      // Pending server timestamps are null locally; sort those last.
+      createdAt: parseFirestoreDate(data['createdAt']) ?? DateTime.now(),
     );
   }
 }

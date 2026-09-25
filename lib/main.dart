@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'core/services/error_reporter.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 
@@ -81,21 +81,25 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await _activateAppCheck();
-    
-    // Initialize Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
-    
-    // Initialize Performance Monitoring and Analytics
-    if (!kIsWeb) {
-      FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode);
-    }
-    FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(!kDebugMode);
   } catch (e) {
     debugPrint('Firebase initialization failed (running in offline/mock mode): $e');
+  }
+
+  // Crashlytics only where supported (never on web); never throws.
+  await ErrorReporter.init();
+
+  if (Firebase.apps.isNotEmpty) {
+    // Telemetry is optional: a failure here must not block startup.
+    try {
+      if (!kIsWeb) {
+        await FirebasePerformance.instance
+            .setPerformanceCollectionEnabled(!kDebugMode);
+      }
+      await FirebaseAnalytics.instance
+          .setAnalyticsCollectionEnabled(!kDebugMode);
+    } catch (e) {
+      debugPrint('Analytics/Performance not enabled: $e');
+    }
   }
 
   runApp(const FarmoraApp());

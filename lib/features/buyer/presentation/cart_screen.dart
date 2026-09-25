@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../providers/farmora_state.dart';
+import '../../payments/presentation/payment_method_selector.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -272,17 +273,8 @@ class CartScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       _buildFeeRow('Delivery fee', 'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
                       const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Payment', style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.statusPendingBg, borderRadius: BorderRadius.circular(9999)),
-                            child: const Text('COD after delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(height: 4),
+                      const PaymentMethodSelector(),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -306,7 +298,7 @@ class CartScreen extends StatelessWidget {
                         maxLines: 2,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Server verifies price, stock and totals. Pay COD after delivery (or PayHere when configured).',
+                      const Text('Price, stock and totals are verified when the order is placed.',
                           style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -330,7 +322,7 @@ class CartScreen extends StatelessWidget {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok ? 'Order placed successfully!' : 'Could not place order. Check address or try again.'),
+                                      content: Text(ok ? 'Order placed successfully!' : (state.lastOrderError ?? 'Could not place order. Check address or try again.')),
                                       backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,

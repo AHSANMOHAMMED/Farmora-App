@@ -4,6 +4,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../core/config/app_backend.dart';
+import '../core/utils/app_errors.dart';
+import '../core/utils/image_upload.dart';
 import '../models/product.dart';
 import '../models/order.dart';
 import '../models/transport_job.dart';
@@ -16,6 +18,13 @@ import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
 import '../models/market_price_index.dart';
 import 'spark_backend.dart';
+
+/// A file stored in Firebase Storage.
+class StoredImage {
+  const StoredImage({required this.url, required this.path});
+  final String url;
+  final String path;
+}
 
 // ============================================================
 // Firebase Authentication Service
@@ -344,6 +353,7 @@ class FirestoreService {
     String? offerId,
     required String deliveryAddress,
     required String idempotencyKey,
+    String paymentMethod = PaymentMethod.cod,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.createOrder(
@@ -352,6 +362,7 @@ class FirestoreService {
         deliveryFeeMinor: deliveryFeeMinor,
         deliveryAddress: deliveryAddress,
         idempotencyKey: idempotencyKey,
+        paymentMethod: paymentMethod,
       );
     }
     final result = await _functions.httpsCallable('createOrder').call({
@@ -360,6 +371,7 @@ class FirestoreService {
       'deliveryFeeMinor': deliveryFeeMinor,
       'deliveryAddress': deliveryAddress,
       'idempotencyKey': idempotencyKey,
+      'paymentMethod': paymentMethod,
       if (offerId != null) 'offerId': offerId,
     });
     return result.data['orderId'] as String;
@@ -559,6 +571,7 @@ class FirestoreService {
     await _db.collection('users').doc(uid).update(updates);
   }
 
+  /// Farmer-only: confirms payment for [orderId]. Prefer [PaymentService].
   Future<void> markPaymentReceived({
     required String orderId,
     String method = 'cod',
@@ -696,26 +709,152 @@ class FirestoreService {
     return url;
   }
 
-  /// Upload a product image to Storage and return its download URL.
-  Future<String> uploadProductImage({
-    required Uint8List bytes,
-    required String fileName,
-    String contentType = 'image/jpeg',
+  // ── Image uploads (product photos, payment slips, chat photos) ──────────
+  //
+  // All uploads use putData (bytes), which works on Web, Android and iOS.
+  // Paths match storage.rules:
+  //   product_images/{uid}/…           farmer's listing photos
+  //   payment_slips/{orderId}/{uid}_…  buyer's bank-deposit slip
+  //   chat/{orderId}/{uid}/…           photos sent in an order chat
+
+  String _uniqueName(PickedImage image) =>
+      '${DateTime.now().millisecondsSinceEpoch}_'
+      '${_db.collection('_').doc().id.substring(0, 8)}.${image.extension}';
+
+  String get _requireUid {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw const AppException('Please sign in again.');
+    return uid;
+  }
+
+  Future<StoredImage> _uploadImage({
+    required String path,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) async {
+    if (image.bytes.length > kMaxImageBytes) {
+      throw const AppException('Image is too large. The limit is 5 MB.');
+    }
+    final ref = _storage.ref(path);
+    final task = ref.putData(
+      image.bytes,
+      SettableMetadata(
+        contentType: image.contentType,
+        cacheControl: 'private, max-age=86400',
+      ),
+    );
+    final sub = onProgress == null
+        ? null
+        : task.snapshotEvents.listen((snap) {
+            if (snap.totalBytes > 0) {
+              onProgress(snap.bytesTransferred / snap.totalBytes);
+            }
+          }, onError: (_) {});
+    try {
+      await task;
+    } finally {
+      await sub?.cancel();
+    }
+    final url = await ref.getDownloadURL();
+    return StoredImage(url: url, path: path);
+  }
+
+  /// Uploads a product photo and returns its download URL + storage path.
+  Future<StoredImage> uploadProductImage(
+    PickedImage image, {
+    void Function(double progress)? onProgress,
+  }) {
+    return _uploadImage(
+      path: 'product_images/$_requireUid/${_uniqueName(image)}',
+      image: image,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Uploads a bank-deposit slip for [orderId] (buyer only, per rules).
+  Future<StoredImage> uploadPaymentSlip({
+    required String orderId,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) {
+    final uid = _requireUid;
+    return _uploadImage(
+      path: 'payment_slips/$orderId/${uid}_${_uniqueName(image)}',
+      image: image,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Uploads a photo sent in the chat for [orderId].
+  Future<StoredImage> uploadChatImage({
+    required String orderId,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) {
+    final uid = _requireUid;
+    return _uploadImage(
+      path: 'chat/$orderId/$uid/${_uniqueName(image)}',
+      image: image,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Best-effort delete of a product photo this farmer uploaded. Only touches
+  /// objects under `product_images/{uid}/`, so seeded/external URLs are safe.
+  Future<void> deleteOwnProductImage(String url) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || !url.contains('firebasestorage')) return;
+    try {
+      final ref = _storage.refFromURL(url);
+      if (!ref.fullPath.startsWith('product_images/$uid/')) return;
+      await ref.delete();
+    } catch (e) {
+      // Missing file or offline: an orphaned object is harmless; log only.
+      debugPrint('Product image cleanup skipped: $e');
+    }
+  }
+
+  /// Opens (creating if needed) the chat for [orderId] with [peerId].
+  Future<FarmoraConversation> ensureConversation({
+    required String orderId,
+    required String peerId,
+  }) async {
+    final id = await _spark.ensureConversation(orderId: orderId, peerId: peerId);
+    final snap = await _db.collection('conversations').doc(id).get();
+    return FarmoraConversation.fromMap(id, snap.data() ?? {
+      'orderId': orderId,
+      'participantIds': [_requireUid, peerId],
+    });
+  }
+
+  /// Sends encrypted text and/or a Storage photo to a conversation.
+  Future<String> sendChatMessage({
+    required FarmoraConversation conversation,
+    required String recipientId,
+    String? ciphertext,
+    ChatAttachment? attachment,
   }) async {
     if (!kUseCloudFunctions) {
-      return 'https://ui-avatars.com/api/?name=Product&background=random'; // Dummy image for demo mode
+      return _spark.sendChatMessage(
+        conversationId: conversation.id,
+        orderId: conversation.orderId,
+        recipientId: recipientId,
+        ciphertext: ciphertext,
+        attachmentUrl: attachment?.url,
+        attachmentPath: attachment?.path,
+        attachmentKind: attachment?.kind,
+      );
     }
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw StateError('Authentication required.');
-    if (bytes.length > 5 * 1024 * 1024) {
-      throw StateError('Image must be smaller than 5 MB.');
-    }
-    final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final path =
-        'product_images/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
-    final ref = _storage.ref(path);
-    await ref.putData(bytes, SettableMetadata(contentType: contentType));
-    return ref.getDownloadURL();
+    final result = await _functions.httpsCallable('sendMessage').call({
+      'orderId': conversation.orderId,
+      'conversationId': conversation.id,
+      'recipientId': recipientId,
+      if (ciphertext != null && ciphertext.isNotEmpty) 'ciphertext': ciphertext,
+      if (attachment != null) 'attachmentUrl': attachment.url,
+      if (attachment != null) 'attachmentPath': attachment.path,
+      if (attachment != null) 'attachmentKind': attachment.kind,
+    });
+    return result.data['messageId'] as String;
   }
 
   Future<String> sendEncryptedMessage({

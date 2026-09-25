@@ -123,8 +123,12 @@ class FarmerJobsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             const Divider(color: AppColors.outlineVariant, height: 1),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Wraps on narrow screens instead of overflowing.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Text(
                   job.fee,
@@ -135,8 +139,9 @@ class FarmerJobsScreen extends StatelessWidget {
                     color: AppColors.primary,
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     if (canCancel) ...[
                       TextButton.icon(
@@ -149,7 +154,6 @@ class FarmerJobsScreen extends StatelessWidget {
                               horizontal: 10, vertical: 8),
                         ),
                       ),
-                      const SizedBox(width: 8),
                     ],
                     ElevatedButton.icon(
                       onPressed: () {

@@ -5,6 +5,7 @@ import '../../../core/widgets/farmer_header.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import '../../payments/presentation/order_payment_card.dart' show paymentMethodIcon;
 import 'order_detail_screen.dart';
 
 class FarmerOrdersScreen extends StatefulWidget {
@@ -328,6 +329,31 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 color: AppColors.onSurfaceVariant,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            // How the buyer pays and where that stands.
+                            Row(
+                              children: [
+                                Icon(paymentMethodIcon(order.paymentMethod),
+                                    size: 14, color: AppColors.primary),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${PaymentMethod.label(order.paymentMethod)} · '
+                                    '${order.paymentStatusLabel}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: order.canReviewProof
+                                          ? AppColors.statusPendingText
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -346,39 +372,46 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Buyer',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Buyer',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(
-                                order.buyerIcon,
-                                size: 15,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                order.buyerCompany,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurface,
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  order.buyerIcon,
+                                  size: 15,
+                                  color: AppColors.primary,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    order.buyerCompany,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onSurface,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -399,6 +432,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

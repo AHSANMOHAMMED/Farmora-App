@@ -1,6 +1,7 @@
 import 'package:logger/logger.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+
+import '../core/services/error_reporter.dart';
 
 class AppLogger {
   static final Logger _logger = Logger(
@@ -22,23 +23,26 @@ class AppLogger {
 
   static void i(String message, [dynamic error, StackTrace? stackTrace]) {
     _logger.i(message, error: error, stackTrace: stackTrace);
-    if (kReleaseMode) {
-      FirebaseCrashlytics.instance.log('INFO: $message');
-    }
+    if (kReleaseMode) ErrorReporter.log('INFO: $message');
   }
 
   static void w(String message, [dynamic error, StackTrace? stackTrace]) {
     _logger.w(message, error: error, stackTrace: stackTrace);
     if (kReleaseMode) {
-      FirebaseCrashlytics.instance.log('WARN: $message');
+      ErrorReporter.log('WARN: $message');
       if (error != null) {
-        FirebaseCrashlytics.instance.recordError(error, stackTrace, reason: message, fatal: false);
+        ErrorReporter.record(error as Object, stackTrace, reason: message);
       }
     }
   }
 
+  /// Logs a handled failure. Handled errors are non-fatal by definition.
   static void e(String message, [dynamic error, StackTrace? stackTrace]) {
     _logger.e(message, error: error, stackTrace: stackTrace);
-    FirebaseCrashlytics.instance.recordError(error ?? Exception(message), stackTrace, reason: message, fatal: true);
+    ErrorReporter.record(
+      (error as Object?) ?? Exception(message),
+      stackTrace ?? StackTrace.current,
+      reason: message,
+    );
   }
 }
