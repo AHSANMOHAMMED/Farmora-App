@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart' show PlatformException;
 
+import '../localization/l10n.dart';
 import '../services/error_reporter.dart';
 
 /// A failure with a message that is safe and useful to show a user.
@@ -26,14 +27,13 @@ String userMessage(
   return describeError(error, action: action);
 }
 
-/// Pure mapping (no logging); exposed for tests.
+/// Pure mapping (no logging); exposed for tests. Messages are in the current
+/// app language ([L10n.current]). [action] is kept for logging call sites.
 String describeError(Object error, {String action = 'complete this action'}) {
+  final l = L10n.current;
   if (error is AppException) return error.message;
-  if (error is StateError) return error.message;
-  if (error is ArgumentError) {
-    final msg = error.message?.toString();
-    return (msg == null || msg.isEmpty) ? 'Some details are invalid.' : msg;
-  }
+  if (error is StateError) return l.errorGeneric;
+  if (error is ArgumentError) return l.errorInvalidDetails;
 
   if (error is FirebaseFunctionsException) {
     return switch (error.code) {
@@ -43,15 +43,15 @@ String describeError(Object error, {String action = 'complete this action'}) {
           (error.message == null ||
               error.message!.isEmpty ||
               error.message!.toLowerCase() == 'internal') =>
-        'The Farmora server could not be reached. Please try again later.',
-      'unauthenticated' => 'Please sign in again and retry.',
-      'permission-denied' => "You don't have permission to $action.",
+        l.errorServerUnreachable,
+      'unauthenticated' => l.errorSignInAgain,
+      'permission-denied' => l.errorNoPermission,
       'invalid-argument' ||
       'failed-precondition' ||
       'already-exists' =>
-        error.message ?? 'Some details are invalid.',
-      'deadline-exceeded' => 'The request timed out. Check your connection.',
-      _ => error.message ?? 'Could not $action. Please try again.',
+        l.errorInvalidDetails,
+      'deadline-exceeded' => l.errorTimeout,
+      _ => l.errorGeneric,
     };
   }
 
@@ -59,37 +59,36 @@ String describeError(Object error, {String action = 'complete this action'}) {
     final code = error.code;
     if (error.plugin == 'firebase_storage') {
       return switch (code) {
-        'unauthorized' => "You don't have permission to upload this file.",
-        'unauthenticated' => 'Please sign in again and retry the upload.',
-        'canceled' => 'Upload cancelled.',
-        'quota-exceeded' => 'Storage is full. Please try again later.',
-        'retry-limit-exceeded' ||
-        'unknown' =>
-          'Upload failed. Check your connection and try again.',
-        'object-not-found' => 'The file no longer exists.',
-        'bucket-not-found' ||
-        'project-not-found' =>
-          'Photo storage is not set up for this app yet. Please contact support.',
-        _ => 'Upload failed. Please try again.',
+        'unauthorized' => l.errorUploadNoPermission,
+        'unauthenticated' => l.errorSignInAgain,
+        'canceled' => l.errorUploadCancelled,
+        'quota-exceeded' => l.errorStorageFull,
+        'object-not-found' => l.errorFileMissing,
+        'bucket-not-found' || 'project-not-found' => l.errorStorageNotSetUp,
+        _ => l.errorUploadFailed,
       };
     }
     return switch (code) {
-      'permission-denied' => "You don't have permission to $action.",
-      'unavailable' => 'You appear to be offline. Check your connection.',
-      'unauthenticated' => 'Please sign in again and retry.',
-      'not-found' => 'That item no longer exists.',
-      'deadline-exceeded' => 'The request timed out. Check your connection.',
-      _ => 'Could not $action. Please try again.',
+      'permission-denied' => l.errorNoPermission,
+      'unavailable' => l.errorOffline,
+      'unauthenticated' => l.errorSignInAgain,
+      'not-found' => l.errorNotFound,
+      'deadline-exceeded' => l.errorTimeout,
+      _ => l.errorGeneric,
     };
   }
 
   if (error is PlatformException) {
     final code = error.code.toLowerCase();
-    if (code.contains('denied') || code.contains('permission')) {
-      return 'Photo access was denied. Allow access in your device settings.';
+    if (code.contains('camera') &&
+        (code.contains('denied') || code.contains('permission'))) {
+      return l.errorCameraAccessDenied;
     }
-    return error.message ?? 'Could not $action. Please try again.';
+    if (code.contains('denied') || code.contains('permission')) {
+      return l.errorPhotoAccessDenied;
+    }
+    return l.errorGeneric;
   }
 
-  return 'Could not $action. Please try again.';
+  return l.errorGeneric;
 }
