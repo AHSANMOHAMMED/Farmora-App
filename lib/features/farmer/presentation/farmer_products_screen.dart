@@ -308,7 +308,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       Row(
                         children: [
                           if (product.hasVideo) ...[
-                            const Icon(Icons.videocam, size: 14, color: AppColors.primary),
+                            const Icon(Icons.videocam,
+                                size: 14, color: AppColors.primary),
                             const SizedBox(width: 4),
                             Text(
                               product.harvestStatus.name,
@@ -384,7 +385,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
   }
 
   Widget _buildFallbackThumbnail(Product product) {
-    final emojiText = product.emoji.length > 2 ? product.emoji.characters.first : product.emoji;
+    final emojiText = product.emoji.length > 2
+        ? product.emoji.characters.first
+        : product.emoji;
     return Container(
       color: product.color,
       child: Center(
@@ -492,9 +495,12 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.videocam_outlined, color: AppColors.primary),
+                  leading: const Icon(Icons.videocam_outlined,
+                      color: AppColors.primary),
                   title: Text(
-                    product.hasVideo ? 'Replace harvest video' : 'Upload harvest video',
+                    product.hasVideo
+                        ? 'Replace harvest video'
+                        : 'Upload harvest video',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
@@ -509,7 +515,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ),
                 if (product.hasVideo)
                   ListTile(
-                    leading: const Icon(Icons.play_circle_outline, color: AppColors.primary),
+                    leading: const Icon(Icons.play_circle_outline,
+                        color: AppColors.primary),
                     title: const Text('Preview harvest video',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
@@ -517,10 +524,12 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => Scaffold(
-                            appBar: AppBar(title: Text('${product.name} video')),
+                            appBar:
+                                AppBar(title: Text('${product.name} video')),
                             body: Padding(
                               padding: const EdgeInsets.all(16),
-                              child: HarvestVideoPlayer(videoUrl: product.videoUrl!),
+                              child: HarvestVideoPlayer(
+                                  videoUrl: product.videoUrl!),
                             ),
                           ),
                         ),
@@ -528,9 +537,12 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     },
                   ),
                 ListTile(
-                  leading: const Icon(Icons.qr_code_2, color: AppColors.primary),
+                  leading:
+                      const Icon(Icons.qr_code_2, color: AppColors.primary),
                   title: Text(
-                    product.hasQrCode ? 'Refresh packing QR' : 'Generate packing QR',
+                    product.hasQrCode
+                        ? 'Refresh packing QR'
+                        : 'Generate packing QR',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: const Text('Marks harvest as packed for buyers'),
@@ -571,15 +583,19 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         : 'Mark as Active / In Stock',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  onTap: () {
-                    state.toggleProductStock(product.id);
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Updated ${product.name} stock status'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    try {
+                      await state.toggleProductStock(product.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content:
+                              Text('Updated ${product.name} stock status')));
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Could not update listing: $error')));
+                    }
                   },
                 ),
                 ListTile(
@@ -611,15 +627,18 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  onTap: () {
-                    state.deleteProduct(product.id);
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Deleted ${product.name}'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    try {
+                      await state.deleteProduct(product.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Deleted ${product.name}')));
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Could not remove listing: $error')));
+                    }
                   },
                 ),
               ],

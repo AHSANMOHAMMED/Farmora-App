@@ -29,8 +29,6 @@ class TransporterController extends ChangeNotifier {
             const _UnavailableTransporterAccountRepository() {
     if (providerId != null && providerId.isNotEmpty) {
       bindProvider(providerId);
-    } else {
-      loadJobs();
     }
   }
 

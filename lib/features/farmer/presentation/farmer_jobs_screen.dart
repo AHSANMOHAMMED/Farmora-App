@@ -18,17 +18,11 @@ class FarmerJobsScreen extends StatelessWidget {
     final currentUserId = state.currentUserId;
 
     final farmerOrders = state.orders
-        .where((o) =>
-            currentUserId.isEmpty ||
-            o.farmerId == currentUserId ||
-            o.farmerId == 'farmer_demo_1' ||
-            o.farmerId.isEmpty)
+        .where((o) => currentUserId.isNotEmpty && o.farmerId == currentUserId)
         .map((o) => o.id)
         .toSet();
     final myJobs = state.jobs
-        .where((j) =>
-            (j.orderId != null && farmerOrders.contains(j.orderId)) ||
-            (currentUserId.isEmpty && j.status != 'cancelled'))
+        .where((j) => (j.orderId != null && farmerOrders.contains(j.orderId)))
         .toList();
 
     return Scaffold(

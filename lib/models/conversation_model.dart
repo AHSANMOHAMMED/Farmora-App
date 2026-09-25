@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class FarmoraConversation {
   final String id;
   final String orderId;
@@ -23,9 +25,7 @@ class FarmoraConversation {
       orderId: (data['orderId'] ?? '').toString(),
       participantIds: List<String>.from(data['participantIds'] ?? []),
       lastMessage: (data['lastMessage'] ?? '').toString(),
-      lastMessageAt: data['lastMessageAt'] != null
-          ? DateTime.tryParse(data['lastMessageAt'].toString())
-          : null,
+      lastMessageAt: firebaseDate(data['lastMessageAt']),
       unreadCounts: Map<String, int>.from(
         (data['unreadCounts'] as Map? ?? {}).map(
           (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
@@ -58,7 +58,7 @@ class FarmoraMessage {
 
   factory FarmoraMessage.fromMap(String id, Map<String, dynamic> data) {
     DateTime parseTs(dynamic v) =>
-        v == null ? DateTime.fromMillisecondsSinceEpoch(0) : DateTime.tryParse(v.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        firebaseDate(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
     return FarmoraMessage(
       id: id,
       conversationId: (data['conversationId'] ?? '').toString(),
@@ -66,7 +66,7 @@ class FarmoraMessage {
       recipientId: (data['recipientId'] ?? '').toString(),
       body: (data['body'] ?? data['ciphertext'] ?? '').toString(),
       attachmentUrl: data['attachmentUrl'] as String?,
-      readAt: data['readAt'] != null ? DateTime.tryParse(data['readAt'].toString()) : null,
+      readAt: firebaseDate(data['readAt']),
       createdAt: parseTs(data['createdAt']),
     );
   }

@@ -13,7 +13,8 @@ import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../farmer/presentation/farmer_jobs_screen.dart';
-import '../../admin/presentation/market_price_management_screen.dart';
+import '../../farmer/presentation/farm_workspace_screen.dart';
+import '../../market/presentation/market_price_board_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
@@ -21,6 +22,7 @@ import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/cart_screen.dart';
 import '../../buyer/presentation/product_detail_screen.dart';
 import '../../buyer/presentation/buyer_order_detail_screen.dart';
+import '../../buyer/presentation/buyer_market_screen.dart';
 import '../../transporter/presentation/active_delivery_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
@@ -938,6 +940,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
         },
         {
+          'icon': Icons.agriculture_outlined,
+          'label': 'My Farm',
+          'color': const Color(0xFF33691E),
+          'bg': const Color(0xFFF1F8E9),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen())),
+        },
+        {
           'icon': Icons.receipt_long_outlined,
           'label': 'Manage Orders',
           'color': const Color(0xFFE65100),
@@ -981,7 +990,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'bg': const Color(0xFFFCE4EC),
           'onTap': () => Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (_) => const MarketPriceManagementScreen()),
+                    builder: (_) => const MarketPriceBoardScreen()),
               ),
         },
         {
@@ -1041,6 +1050,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'onTap': () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CartScreen()),
               ),
+        },
+        {
+          'icon': Icons.campaign_outlined,
+          'label': 'Request & Rates',
+          'color': const Color(0xFF00838F),
+          'bg': const Color(0xFFE0F7FA),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerMarketScreen())),
         },
         {
           'icon': Icons.near_me_rounded,

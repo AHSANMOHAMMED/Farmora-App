@@ -41,30 +41,10 @@ class _LoginScreenState extends State<LoginScreen> {
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    final phoneInput = _phoneController.text.trim();
-    final passwordInput = _passwordController.text.trim();
-    final normalized = phoneInput.replaceAll(RegExp(r'[^0-9+]'), '');
-
     final state = context.read<FarmoraState>();
-
-    // Dedicated Platform Admin credential shortcut
-    if (normalized == '0119998888' ||
-        normalized == '+94119998888' ||
-        phoneInput == 'admin@farmora.lk') {
-      state.signIn(Role.admin);
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
-      }
-      setState(() => _isLoading = false);
-      return;
-    }
-
     final success = await state.signInWithBackend(
-      phone: phoneInput,
-      password: passwordInput,
+      phone: _phoneController.text,
+      password: _passwordController.text,
     );
     if (!success) {
       if (mounted) {
@@ -83,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     }
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _handleGoogleLogin() async {
@@ -105,140 +85,6 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
-  }
-
-  // Kept as a fallback for the previous demo-only OTP sheet during migration.
-  // ignore: unused_element
-  void _showOtpLoginSheet() {
-    final otpController = TextEditingController();
-    final phoneForOtp = _phoneController.text.isNotEmpty
-        ? _phoneController.text
-        : '077 123 4567';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            MediaQuery.of(ctx).viewInsets.bottom + 28,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Login with OTP',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.forestGreen,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter the 4-digit code sent via SMS to $phoneForOtp',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 26,
-                  letterSpacing: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.forestGreen,
-                ),
-                decoration: InputDecoration(
-                  counterText: '',
-                  hintText: '••••',
-                  hintStyle: const TextStyle(
-                    color: Colors.black26,
-                    letterSpacing: 14,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    final state = context.read<FarmoraState>();
-                    state.signIn(state.role);
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: const Size(double.infinity, 54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Verify & Login',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Resend Code via SMS',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _startPhoneOtpLogin() async {
@@ -628,42 +474,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.primary.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: TextButton.icon(
-                            onPressed: _isLoading
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _phoneController.text = '011 999 8888';
-                                      _passwordController.text = 'AdminPass123';
-                                    });
-                                    _handleLogin();
-                                  },
-                            icon: const Icon(
-                              Icons.admin_panel_settings_rounded,
-                              size: 19,
-                              color: Color(0xFF6A1B9A),
-                            ),
-                            label: const Text(
-                              'Sign In as Platform SuperAdmin',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF6A1B9A),
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 44),
-                              backgroundColor:
-                                  const Color(0xFF6A1B9A).withValues(alpha: 0.08),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),

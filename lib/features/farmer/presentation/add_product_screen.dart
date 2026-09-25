@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -150,6 +149,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       );
       if (files.isEmpty) return;
       final urls = <String>[];
+      var failedUploads = 0;
       for (final file in files.take(remaining)) {
         final bytes = await file.readAsBytes();
         final contentType = file.mimeType ?? 'image/jpeg';
@@ -160,16 +160,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
             contentType: contentType,
           );
           urls.add(url);
-        } catch (storageError) {
-          // If Firebase Storage is uninitialized or fails (HTTP 400),
-          // fallback to base64 data URI so user's image is preserved.
-          final base64String = base64Encode(bytes);
-          final dataUrl = 'data:$contentType;base64,$base64String';
-          urls.add(dataUrl);
+        } catch (_) {
+          // Base64 image data cannot be used reliably by the cloud workflow
+          // and can exceed Firestore's document limit. Keep only uploaded URLs.
+          failedUploads++;
         }
       }
       if (!mounted) return;
       setState(() => _selectedImages.addAll(urls));
+      if (failedUploads > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(urls.isEmpty
+                ? 'Could not upload the selected images. Check your connection and try again.'
+                : '$failedUploads image(s) could not be uploaded. The remaining images were added.'),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -191,6 +198,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
     final state = context.read<FarmoraState>();
+    if (state.currentUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to publish products.')),
+      );
+      return;
+    }
     final name = _nameController.text.trim();
     final quantityVal = int.tryParse(_quantityController.text.trim()) ?? 0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -242,69 +255,52 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isSubmitting = true);
     try {
       if (isEdit) {
-        state.updateProduct(newProduct);
-        if (state.currentUserId.isNotEmpty) {
-          await _firestore.updateProduct(productId, {
-            'name': name,
-            'category': _category,
-            'description': description,
-            'unit': _unit,
-            'media': media,
-            'imageUrls': media,
-            'quantityAvailable': quantityVal,
-            'priceMinor': (priceVal * 100).round(),
-            'isOrganic': _isOrganic,
-            'status': productStatus,
-            'updatedAt': DateTime.now().toIso8601String(),
-          });
-        }
+        await state.updateProduct(newProduct);
       } else {
-        if (state.currentUserId.isNotEmpty) {
-          final newId = await _firestore.createSecureProduct(newProduct);
-          if (!mounted) return;
-          final uploadVideo = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Add harvest video?'),
-              content: const Text(
-                'Optional: upload a short harvest video (MP4, max 100 MB). '
-                'It is auto-deleted after delivery.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Skip'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Upload'),
-                ),
-              ],
+        final newId = await _firestore.createSecureProduct(newProduct);
+        if (!mounted) return;
+        final uploadVideo = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Add harvest video?'),
+            content: const Text(
+              'Optional: upload a short harvest video (MP4, max 100 MB). '
+              'It is auto-deleted after delivery.',
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Skip'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Upload'),
+              ),
+            ],
+          ),
+        );
+        if (uploadVideo == true && mounted) {
+          final file = await _picker.pickVideo(
+            source: ImageSource.gallery,
+            maxDuration: const Duration(minutes: 3),
           );
-          if (uploadVideo == true && mounted) {
-            final file = await _picker.pickVideo(
-              source: ImageSource.gallery,
-              maxDuration: const Duration(minutes: 3),
+          if (file != null) {
+            final bytes = await file.readAsBytes();
+            await state.uploadHarvestVideo(
+              productId: newId,
+              bytes: bytes,
+              fileName: file.name,
             );
-            if (file != null) {
-              final bytes = await file.readAsBytes();
-              await state.uploadHarvestVideo(
-                productId: newId,
-                bytes: bytes,
-                fileName: file.name,
-              );
-            }
           }
-        } else {
-          state.addProduct(newProduct);
         }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.primary,
-          content: Text(isEdit ? 'Updated $name successfully!' : 'Published $name successfully!'),
+          content: Text(isEdit
+              ? 'Updated $name successfully!'
+              : 'Published $name successfully!'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -363,8 +359,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _nameController,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
-                        decoration: _inputDecoration('e.g. Nuwara Eliya Carrots'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter a product name'
+                            : null,
+                        decoration:
+                            _inputDecoration('e.g. Nuwara Eliya Carrots'),
                       ),
                       const SizedBox(height: 18),
                       _buildFieldLabel('Category'),
@@ -419,8 +418,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: _quantityController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter qty' : null,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                          ? 'Enter qty'
+                                          : null,
                                   decoration: _inputDecoration('0.00'),
                                 ),
                               ],
@@ -435,9 +439,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 const SizedBox(height: 6),
                                 _buildDropdown(
                                   value: _unit,
-                                  items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
+                                  items: const [
+                                    'kg',
+                                    'lbs',
+                                    'pcs',
+                                    'box',
+                                    'bunches'
+                                  ],
                                   onChanged: (val) {
-                                    if (val != null) setState(() => _unit = val);
+                                    if (val != null) {
+                                      setState(() => _unit = val);
+                                    }
                                   },
                                 ),
                               ],
@@ -450,13 +462,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter price' : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter price'
+                            : null,
                         decoration: InputDecoration(
                           hintText: '0.00',
                           hintStyle: TextStyle(
                             fontFamily: 'Inter',
-                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+                            color: AppColors.onSurfaceVariant
+                                .withValues(alpha: 0.50),
                           ),
                           // LKR prefix for Sri Lankan pricing
                           prefixText: 'LKR ',
@@ -469,17 +485,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           fillColor: AppColors.surfaceContainerLowest,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
+                            borderSide: const BorderSide(
+                                color: AppColors.outlineVariant),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
+                            borderSide: const BorderSide(
+                                color: AppColors.outlineVariant),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                            borderSide: const BorderSide(
+                                color: AppColors.primary, width: 2),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 16),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -502,7 +522,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             children: [
                               Text(
                                 _availabilityDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(_availabilityDate!)
+                                    ? DateFormat('yyyy-MM-dd')
+                                        .format(_availabilityDate!)
                                     : 'Select date',
                                 style: const TextStyle(
                                   fontFamily: 'Inter',
@@ -545,7 +566,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
@@ -557,7 +579,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             : _selectedImages.length,
                         itemBuilder: (context, index) {
                           // Add tile
-                          if (index == _selectedImages.length && _selectedImages.length < 5) {
+                          if (index == _selectedImages.length &&
+                              _selectedImages.length < 5) {
                             return InkWell(
                               onTap: _isPicking ? null : _pickImages,
                               borderRadius: BorderRadius.circular(12),
@@ -567,7 +590,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   color: AppColors.surfaceContainerLowest,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.50),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.50),
                                     width: 2,
                                     // Dashed border via decoration
                                   ),
@@ -622,11 +646,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.85),
+                                        color: Colors.white
+                                            .withValues(alpha: 0.85),
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.12),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.12),
                                             blurRadius: 4,
                                           ),
                                         ],
@@ -826,7 +852,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more, color: AppColors.onSurfaceVariant, size: 22),
+          icon: const Icon(Icons.expand_more,
+              color: AppColors.onSurfaceVariant, size: 22),
           items: items.map((item) {
             return DropdownMenuItem(value: item, child: Text(item));
           }).toList(),

@@ -13,6 +13,7 @@ import 'server_maintenance_screen.dart';
 import 'settlement_management_screen.dart';
 import 'logistics_management_screen.dart';
 import 'audit_log_screen.dart';
+import 'market_price_review_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -21,7 +22,7 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 11,
+      length: 12,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -46,13 +47,14 @@ class AdminDashboardScreen extends StatelessWidget {
               Tab(text: 'Disputes & Escrow', icon: Icon(Icons.gavel_rounded, size: 20)),
               Tab(text: 'Fleet Dispatch', icon: Icon(Icons.local_shipping_rounded, size: 20)),
               Tab(text: 'Market Rates', icon: Icon(Icons.trending_up_rounded, size: 20)),
+              Tab(text: 'Price Reports', icon: Icon(Icons.fact_check_outlined, size: 20)),
               Tab(text: 'Audit Trail', icon: Icon(Icons.shield_rounded, size: 20)),
               Tab(text: 'Firebase & Server', icon: Icon(Icons.cloud_sync_rounded, size: 20)),
               Tab(text: 'Advisories', icon: Icon(Icons.campaign_rounded, size: 20)),
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
             _OverviewTab(),
             PlatformAnalyticsScreen(),
@@ -62,6 +64,7 @@ class AdminDashboardScreen extends StatelessWidget {
             DisputeResolutionScreen(),
             LogisticsManagementScreen(),
             MarketPriceManagementScreen(),
+            MarketPriceReviewScreen(),
             AuditLogScreen(),
             ServerMaintenanceScreen(),
             BroadcastAdvisoryScreen(),

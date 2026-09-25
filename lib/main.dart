@@ -4,6 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
@@ -71,33 +75,55 @@ export 'features/auth/presentation/login_screen.dart';
 export 'features/auth/presentation/role_selection_screen.dart';
 export 'features/auth/presentation/register_screen.dart';
 
+const _useFirebaseEmulators = bool.fromEnvironment(
+  'USE_FIREBASE_EMULATORS',
+  defaultValue: false,
+);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase once `flutterfire configure` has filled firebase_options.dart.
-  // Without Firebase the auth gate stays signed-out — no mock marketplace data.
+// The emulator switch is opt-in; normal builds stay attached to the configured
+// Firebase project.
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (!kIsWeb) {
+    if (_useFirebaseEmulators) {
+      _configureFirebaseEmulators();
+    }
+    if (!kIsWeb && !_useFirebaseEmulators) {
       await _activateAppCheck();
-      
+
       // Initialize Crashlytics
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
       };
-      
+
       FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode);
     }
-    FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(!kDebugMode);
+    FirebaseAnalytics.instance
+        .setAnalyticsCollectionEnabled(!_useFirebaseEmulators && !kDebugMode);
   } catch (e) {
-    debugPrint('Firebase initialization failed (running in offline/mock mode): $e');
+    throw StateError(
+        'Firebase initialization failed; Farmora needs a live Firebase backend: $e');
   }
 
   runApp(const FarmoraApp());
+}
+
+void _configureFirebaseEmulators() {
+  final host = !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+      ? '10.0.2.2'
+      : '127.0.0.1';
+  FirebaseAuth.instance.useAuthEmulator(host, 9099);
+  FirebaseFirestore.instance.useFirestoreEmulator(host, 8085);
+  FirebaseFunctions.instance.useFunctionsEmulator(host, 5001);
+  FirebaseStorage.instance.useStorageEmulator(host, 9199);
 }
 
 Future<void> _activateAppCheck() async {

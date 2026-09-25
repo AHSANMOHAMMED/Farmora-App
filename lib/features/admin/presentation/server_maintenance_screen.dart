@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../services/firebase_service.dart';
 
 class ServerMaintenanceScreen extends StatefulWidget {
   const ServerMaintenanceScreen({super.key});
 
   @override
-  State<ServerMaintenanceScreen> createState() => _ServerMaintenanceScreenState();
+  State<ServerMaintenanceScreen> createState() =>
+      _ServerMaintenanceScreenState();
 }
 
 class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
@@ -40,7 +40,8 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Firebase & Server Control', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('Firebase & Server Control',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -51,7 +52,9 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: state.maintenanceMode ? Colors.red.shade400 : AppColors.outlineVariant,
+                color: state.maintenanceMode
+                    ? Colors.red.shade400
+                    : AppColors.outlineVariant,
                 width: state.maintenanceMode ? 2 : 1,
               ),
             ),
@@ -67,14 +70,19 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                       Row(
                         children: [
                           Icon(
-                            state.maintenanceMode ? Icons.warning_rounded : Icons.verified_user_rounded,
-                            color: state.maintenanceMode ? Colors.red : AppColors.primary,
+                            state.maintenanceMode
+                                ? Icons.warning_rounded
+                                : Icons.verified_user_rounded,
+                            color: state.maintenanceMode
+                                ? Colors.red
+                                : AppColors.primary,
                             size: 24,
                           ),
                           const SizedBox(width: 10),
                           const Text(
                             'Platform Maintenance Mode',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                         ],
                       ),
@@ -82,13 +90,17 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                         value: state.maintenanceMode,
                         activeThumbColor: Colors.red,
                         onChanged: (val) {
-                          state.setMaintenanceMode(enabled: val, notice: _noticeCtrl.text.trim());
+                          state.setMaintenanceMode(
+                              enabled: val, notice: _noticeCtrl.text.trim());
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                val ? '🚨 Platform placed in MAINTENANCE MODE. Non-admin access restricted.' : '✅ Maintenance mode disabled. Marketplace trades live.',
+                                val
+                                    ? '🚨 Platform placed in MAINTENANCE MODE. Non-admin access restricted.'
+                                    : '✅ Maintenance mode disabled. Marketplace trades live.',
                               ),
-                              backgroundColor: val ? Colors.red.shade800 : AppColors.primary,
+                              backgroundColor:
+                                  val ? Colors.red.shade800 : AppColors.primary,
                             ),
                           );
                         },
@@ -102,7 +114,9 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                         : 'Disabled: All marketplace bidding, logistics, and order operations running normally.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: state.maintenanceMode ? Colors.red.shade900 : AppColors.textSecondary,
+                      color: state.maintenanceMode
+                          ? Colors.red.shade900
+                          : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -111,8 +125,10 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                     maxLines: 2,
                     decoration: InputDecoration(
                       labelText: 'Maintenance Broadcast Banner',
-                      hintText: 'e.g. Server upgrade in progress. Estimated return: 3:00 PM.',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      hintText:
+                          'e.g. Server upgrade in progress. Estimated return: 3:00 PM.',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -127,7 +143,8 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                           notice: _noticeCtrl.text.trim(),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Maintenance notice updated.')),
+                          const SnackBar(
+                              content: Text('Maintenance notice updated.')),
                         );
                       },
                       child: const Text('Update Notice'),
@@ -143,7 +160,10 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
           // Firebase Infrastructure Health
           const Text(
             'Firebase Infrastructure Health Monitor',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -170,14 +190,16 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                   Divider(height: 18),
                   _FirebaseServiceRow(
                     name: 'Firebase Authentication & Security Rules',
-                    details: 'Operational · OTP & Email/Password · RBAC enforce',
+                    details:
+                        'Operational · OTP & Email/Password · RBAC enforce',
                     icon: Icons.lock_outline_rounded,
                     isHealthy: true,
                   ),
                   Divider(height: 18),
                   _FirebaseServiceRow(
                     name: 'Cloud Storage (CDN Media Bucket)',
-                    details: 'Connected · 100MB video quota · Image compression',
+                    details:
+                        'Connected · 100MB video quota · Image compression',
                     icon: Icons.cloud_done_rounded,
                     isHealthy: true,
                   ),
@@ -198,7 +220,10 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
           // Marketplace Economics & Parameter Tuning
           const Text(
             'Marketplace Rules & Engine Tuning',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
           Card(
@@ -216,8 +241,13 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Platform Commission Cut', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('${_commission.toStringAsFixed(1)}%', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      const Text('Platform Commission Cut',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('${_commission.toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary)),
                     ],
                   ),
                   Slider(
@@ -236,8 +266,13 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Escrow Auto-Release Window', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text('$_escrowHours hours', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                      const Text('Escrow Auto-Release Window',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('$_escrowHours hours',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFE65100))),
                     ],
                   ),
                   Slider(
@@ -262,7 +297,8 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                             labelText: 'Minimum Required Client Version',
                             hintText: '1.0.0',
                             border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                           ),
                         ),
                       ),
@@ -271,7 +307,9 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                         onPressed: () {
                           state.setMinAppVersion(_minVersionCtrl.text.trim());
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Minimum version requirement enforced.')),
+                            const SnackBar(
+                                content: Text(
+                                    'Minimum version requirement enforced.')),
                           );
                         },
                         child: const Text('Enforce'),
@@ -285,10 +323,13 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
 
           const SizedBox(height: 24),
 
-          // Operational Actions (Purge Cache, Backup, Seed)
+          // Operational Actions
           const Text(
             'Operational & Maintenance Actions',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
           Card(
@@ -300,56 +341,19 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.cleaning_services_rounded, color: Colors.blue),
+                  leading: const Icon(Icons.cleaning_services_rounded,
+                      color: Colors.blue),
                   title: const Text('Purge Client Cache & Force Resync'),
-                  subtitle: const Text('Clears in-memory caches and re-queries real-time listeners'),
+                  subtitle: const Text(
+                      'Clears in-memory caches and re-queries real-time listeners'),
                   trailing: const Icon(Icons.refresh_rounded),
                   onTap: () {
                     state.clearLocalCache();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('🔄 Local client state purged and refreshed.')),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.cloud_upload_rounded, color: Colors.teal),
-                  title: const Text('Trigger Database Backup Snapshot'),
-                  subtitle: const Text('Export cloud backup snapshot to cloud storage bucket'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('💾 Database backup snapshot initiated to gs://farmora-backups/'),
-                        backgroundColor: Colors.teal,
-                      ),
+                          content: Text(
+                              '🔄 Local client state purged and refreshed.')),
                     );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.add_business_rounded, color: AppColors.primary),
-                  title: const Text('Re-seed Sri Lankan Marketplace Data'),
-                  subtitle: const Text('Attaches real LKR produce, regional orders, and logistics jobs'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Seeding Sri Lankan marketplace…')),
-                    );
-                    try {
-                      await FirestoreService().seedDatabase();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Seeded successfully with authentic LKR produce and orders.')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Seed notice: $e')),
-                        );
-                      }
-                    }
                   },
                 ),
               ],
@@ -381,18 +385,24 @@ class _FirebaseServiceRow extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          backgroundColor: (isHealthy ? Colors.green : Colors.red).withValues(alpha: 0.1),
+          backgroundColor:
+              (isHealthy ? Colors.green : Colors.red).withValues(alpha: 0.1),
           radius: 18,
-          child: Icon(icon, color: isHealthy ? Colors.green.shade700 : Colors.red, size: 18),
+          child: Icon(icon,
+              color: isHealthy ? Colors.green.shade700 : Colors.red, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 2),
-              Text(details, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(details,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
             ],
           ),
         ),
@@ -402,7 +412,11 @@ class _FirebaseServiceRow extends StatelessWidget {
             color: Colors.green.shade50,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: const Text('HEALTHY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+          child: const Text('HEALTHY',
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green)),
         ),
       ],
     );

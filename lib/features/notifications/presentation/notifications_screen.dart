@@ -352,7 +352,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             orderId: notif.referenceId!,
             transporterId: state.currentUserId,
           );
-          if (!context.mounted) return;
+          if (!mounted) return;
           if (job == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -366,7 +366,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           );
         } catch (e) {
-          if (!context.mounted) return;
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Could not open delivery request: $e')),
           );
