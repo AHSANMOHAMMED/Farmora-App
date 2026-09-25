@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -26,23 +27,25 @@ class _AddProductDialogState extends State<AddProductDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add a product'),
+      title: Text(context.l10n.addAProduct),
       content: SingleChildScrollView(
         child: Column(
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Product name'),
+              decoration:
+                  InputDecoration(labelText: context.l10n.farmerProductName),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: quantityController,
-              decoration: const InputDecoration(labelText: 'Quantity'),
+              decoration: InputDecoration(labelText: context.l10n.quantity),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: priceController,
-              decoration: const InputDecoration(labelText: 'Price per unit'),
+              decoration:
+                  InputDecoration(labelText: context.l10n.farmerPricePerUnit),
             ),
           ],
         ),
@@ -50,7 +53,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.commonCancel),
         ),
         FilledButton(
           onPressed: () {
@@ -70,7 +73,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
               Navigator.pop(context);
             }
           },
-          child: const Text('Publish'),
+          child: Text(context.l10n.publish),
         ),
       ],
     );

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/async_state_view.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/offer.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -36,9 +38,9 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Buyer Offers',
-          style: TextStyle(
+        title: Text(
+          l10n.farmerOffersTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -60,7 +62,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                         color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: Text(
-                    '${state.pendingOffersCount} Pending',
+                    l10n.farmerOffersPendingCount(state.pendingOffersCount),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
@@ -81,26 +83,33 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                _buildFilterChip('all', 'All (${allOffers.length})'),
+                _buildFilterChip(
+                    'all',
+                    l10n.farmerOffersFilterLabel(
+                        l10n.commonAll, allOffers.length)),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   'pending',
-                  'Pending (${allOffers.where((o) => o.status == 'pending').length})',
+                  l10n.farmerOffersFilterLabel(l10n.statusPending,
+                      allOffers.where((o) => o.status == 'pending').length),
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   'countered',
-                  'Countered (${allOffers.where((o) => o.status == 'countered').length})',
+                  l10n.farmerOffersFilterLabel(l10n.statusCountered,
+                      allOffers.where((o) => o.status == 'countered').length),
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   'accepted',
-                  'Accepted (${allOffers.where((o) => o.status == 'accepted').length})',
+                  l10n.farmerOffersFilterLabel(l10n.statusAccepted,
+                      allOffers.where((o) => o.status == 'accepted').length),
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   'rejected',
-                  'Rejected (${allOffers.where((o) => o.status == 'rejected').length})',
+                  l10n.farmerOffersFilterLabel(l10n.statusRejected,
+                      allOffers.where((o) => o.status == 'rejected').length),
                 ),
               ],
             ),
@@ -111,7 +120,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
             child: AsyncStateView(
               isLoading: state.currentUserId.isNotEmpty && !state.profileLoaded,
               isEmpty: filteredOffers.isEmpty,
-              emptyMessage: 'No offers matching this filter',
+              emptyMessage: l10n.farmerOffersEmpty,
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredOffers.length,
@@ -190,7 +199,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 child: Text(
                   offer.productName.isNotEmpty
                       ? offer.productName
-                      : 'Produce Order Offer',
+                      : l10n.farmerOffersProduceOffer,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 16,
@@ -199,7 +208,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                   ),
                 ),
               ),
-              _buildStatusBadge(offer.status),
+              _buildStatusBadge(offer.status, l10n),
             ],
           ),
           const SizedBox(height: 8),
@@ -208,12 +217,18 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
               const Icon(Icons.person_outline,
                   size: 16, color: AppColors.onSurfaceVariant),
               const SizedBox(width: 4),
-              Text(
-                'Buyer: ${offer.buyerId.isNotEmpty ? offer.buyerId : "Verified Buyer"}',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: AppColors.onSurfaceVariant,
+              Expanded(
+                child: Text(
+                  l10n.farmerOffersBuyerLine(offer.buyerId.isNotEmpty
+                      ? offer.buyerId
+                      : l10n.farmerOffersVerifiedBuyer),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -226,14 +241,16 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                Expanded(
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Quantity',
-                      style: TextStyle(
+                    Text(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      l10n.quantity,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,
@@ -241,7 +258,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${offer.proposedQuantity} kg',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      l10n.farmerQuantityKg(
+                          AppFormat.number(offer.proposedQuantity)),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
@@ -250,13 +270,17 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                     ),
                   ],
-                ),
-                Column(
+                )),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Offer Price',
-                      style: TextStyle(
+                    Text(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      l10n.farmerOffersOfferPrice,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,
@@ -264,7 +288,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'LKR ${offer.proposedPrice.toStringAsFixed(2)} /kg',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      l10n.farmerPricePerKgValue(
+                          AppFormat.lkr(offer.proposedPrice, decimals: 2)),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
@@ -273,13 +300,18 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                     ),
                   ],
-                ),
-                Column(
+                )),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'Total Value',
-                      style: TextStyle(
+                    Text(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      l10n.farmerOffersTotalValue,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,
@@ -287,7 +319,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'LKR ${totalAmount.toStringAsFixed(0)}',
+                      AppFormat.lkr(totalAmount),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
@@ -296,7 +331,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                     ),
                   ],
-                ),
+                )),
               ],
             ),
           ),
@@ -318,7 +353,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('Reject'),
+                    child: Text(l10n.reject,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -333,7 +369,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('Counter'),
+                    child: Text(l10n.counter,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -350,7 +387,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
-                    child: const Text('Accept'),
+                    child: Text(l10n.accept,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -361,10 +399,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(String status, AppLocalizations l10n) {
     Color bg;
     Color fg;
-    String label = status.toUpperCase();
+    final label = statusLabel(status, l10n).toUpperCase();
 
     switch (status.toLowerCase()) {
       case 'accepted':
@@ -410,8 +448,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
       await state.acceptOffer(offer.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Offer accepted! New order created in Orders.'),
+          SnackBar(
+            content: Text(l10n.farmerOffersAccepted),
             backgroundColor: AppColors.primary,
           ),
         );
@@ -420,7 +458,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${l10n.error}: $e'),
+            content: Text(describeError(e)),
             backgroundColor: AppColors.error,
           ),
         );
@@ -433,14 +471,15 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reject Offer?'),
+        title: Text(l10n.rejectOffer),
         content: Text(
-          'Are you sure you want to decline this offer for ${offer.proposedQuantity} kg of ${offer.productName}?',
+          l10n.farmerOffersRejectConfirm(
+              AppFormat.number(offer.proposedQuantity), offer.productName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -449,14 +488,14 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 await state.rejectOffer(offer.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Offer rejected')),
+                    SnackBar(content: Text(l10n.offerRejected)),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error: $e'),
+                      content: Text(describeError(e)),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -467,7 +506,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Decline'),
+            child: Text(l10n.decline),
           ),
         ],
       ),
@@ -480,32 +519,34 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
       text: offer.proposedPrice.toStringAsFixed(0),
     );
     double currentCalc = offer.proposedPrice * offer.proposedQuantity;
+    final l10n = context.l10n;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Send Counter Offer'),
+          title: Text(l10n.sendCounterOffer),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Product: ${offer.productName}',
+                l10n.farmerOffersProductLine(offer.productName),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              Text('Quantity: ${offer.proposedQuantity} kg'),
-              Text(
-                  'Buyer Offer: LKR ${offer.proposedPrice.toStringAsFixed(2)} /kg'),
+              Text(l10n.farmerOffersQuantityLine(
+                  AppFormat.number(offer.proposedQuantity))),
+              Text(l10n.farmerOffersBuyerOfferLine(
+                  AppFormat.lkr(offer.proposedPrice, decimals: 2))),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Your Counter Price (LKR / kg)',
+                decoration: InputDecoration(
+                  labelText: l10n.farmerOffersCounterPriceLabel,
                   prefixText: 'LKR ',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (val) {
                   final parsed = double.tryParse(val) ?? 0.0;
@@ -524,9 +565,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('New Total:'),
+                    Flexible(child: Text(l10n.newTotal)),
+                    const SizedBox(width: 8),
                     Text(
-                      'LKR ${currentCalc.toStringAsFixed(2)}',
+                      AppFormat.lkr(currentCalc, decimals: 2),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
@@ -540,15 +582,15 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             ElevatedButton(
               onPressed: () async {
                 final newPrice = double.tryParse(controller.text);
                 if (newPrice == null || newPrice <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a valid counter price'),
+                    SnackBar(
+                      content: Text(l10n.farmerOffersInvalidCounterPrice),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -561,7 +603,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Counter offer sent: LKR ${newPrice.toStringAsFixed(2)} /kg',
+                          l10n.farmerOffersCounterSent(
+                              AppFormat.lkr(newPrice, decimals: 2)),
                         ),
                         backgroundColor: AppColors.primary,
                       ),
@@ -571,7 +614,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Error sending counter offer: $e'),
+                        content: Text(
+                            l10n.farmerOffersCounterFailed(describeError(e))),
                         backgroundColor: AppColors.error,
                       ),
                     );
@@ -582,7 +626,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.onPrimary,
               ),
-              child: const Text('Submit Counter'),
+              child: Text(l10n.submitCounter),
             ),
           ],
         ),

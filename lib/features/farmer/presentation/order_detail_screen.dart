@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
@@ -24,6 +26,7 @@ class OrderDetailScreen extends StatelessWidget {
       orElse: () => order,
     );
     final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -34,9 +37,9 @@ class OrderDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Order Detail',
-          style: TextStyle(
+        title: Text(
+          l.farmerOrderDetailTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -45,7 +48,7 @@ class OrderDetailScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Message',
+            tooltip: l.message,
             icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -66,8 +69,10 @@ class OrderDetailScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'ORDER ${currentOrder.orderNumber.toUpperCase()}',
+                    Flexible(
+                      child: Text(
+                      l.farmerOrderNumberUpper(currentOrder.orderNumber.toUpperCase()),
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -76,6 +81,8 @@ class OrderDetailScreen extends StatelessWidget {
                         color: AppColors.tertiary,
                       ),
                     ),
+                    ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -99,7 +106,7 @@ class OrderDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            currentOrder.status.toUpperCase(),
+                            statusLabel(currentOrder.status, l).toUpperCase(),
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
@@ -131,14 +138,16 @@ class OrderDetailScreen extends StatelessWidget {
                       color: AppColors.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      currentOrder.requestedDate.contains('Requested')
-                          ? currentOrder.requestedDate
-                          : 'Requested for ${currentOrder.requestedDate}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        currentOrder.requestedDate.contains('Requested')
+                            ? currentOrder.requestedDate
+                            : l.farmerOrderRequestedFor(currentOrder.requestedDate),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -214,7 +223,7 @@ class OrderDetailScreen extends StatelessWidget {
                                 icon: Icons.call_outlined,
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Calling ${currentOrder.buyerName}...')),
+                                    SnackBar(content: Text(l.farmerOrderCalling(currentOrder.buyerName))),
                                   );
                                 },
                               ),
@@ -247,9 +256,9 @@ class OrderDetailScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Delivery Address',
-                                  style: TextStyle(
+                                Text(
+                                  l.farmerOrderDeliveryAddress,
+                                  style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 12,
                                     color: AppColors.onSurfaceVariant,
@@ -293,9 +302,9 @@ class OrderDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Order Summary',
-                        style: TextStyle(
+                      Text(
+                        l.farmerOrderSummary,
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -303,20 +312,20 @@ class OrderDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildSummaryRow('Product', currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title),
+                      _buildSummaryRow(l.farmerOrderProduct, currentOrder.productName.isNotEmpty ? currentOrder.productName : currentOrder.title),
                       _buildDivider(),
-                      _buildSummaryRow('Quantity', currentOrder.quantity),
+                      _buildSummaryRow(l.quantity, currentOrder.quantity),
                       _buildDivider(),
-                      _buildSummaryRow('Unit Price', currentOrder.unitPrice),
+                      _buildSummaryRow(l.farmerOrderUnitPrice, currentOrder.unitPrice),
                       _buildDivider(),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Total',
-                              style: TextStyle(
+                            Text(
+                              l.commonTotal,
+                              style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -368,13 +377,15 @@ class OrderDetailScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Transport Job',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.onSurface,
+                            Expanded(
+                              child: Text(
+                                l.farmerOrderTransportJob,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
                             ),
                             Container(
@@ -384,7 +395,7 @@ class OrderDetailScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(9999),
                               ),
                               child: Text(
-                                linkedJob.status.toUpperCase(),
+                                statusLabel(linkedJob.status, l).toUpperCase(),
                                 style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 11,
@@ -396,9 +407,9 @@ class OrderDetailScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildSummaryRow('Driver', linkedJob.transporterId != null ? 'Assigned (${linkedJob.transporterId})' : 'Pending'),
+                        _buildSummaryRow(l.farmerOrderDriver, linkedJob.transporterId != null ? l.farmerOrderDriverAssigned(linkedJob.transporterId!) : l.statusPending),
                         _buildDivider(),
-                        _buildSummaryRow('Fee', linkedJob.fee),
+                        _buildSummaryRow(l.farmerOrderFee, linkedJob.fee),
                       ],
                     ),
                   ),
@@ -433,8 +444,8 @@ class OrderDetailScreen extends StatelessWidget {
                         onPressed: () {
                           state.declineOrder(currentOrder.id);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order rejected'),
+                            SnackBar(
+                              content: Text(l.orderRejected),
                               backgroundColor: AppColors.error,
                             ),
                           );
@@ -448,9 +459,11 @@ class OrderDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(9999),
                           ),
                         ),
-                        child: const Text(
-                          'Reject',
-                          style: TextStyle(
+                        child: Text(
+                          l.reject,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -465,8 +478,8 @@ class OrderDetailScreen extends StatelessWidget {
                         onPressed: () {
                           state.acceptOrder(currentOrder.id);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order accepted! Balance updated.'),
+                            SnackBar(
+                              content: Text(l.farmerOrderAcceptedBalance),
                               backgroundColor: AppColors.primary,
                             ),
                           );
@@ -481,9 +494,11 @@ class OrderDetailScreen extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(Icons.check_circle_outline, size: 20),
-                        label: const Text(
-                          'Accept Order',
-                          style: TextStyle(
+                        label: Text(
+                          l.farmerOrderAccept,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -533,9 +548,12 @@ class OrderDetailScreen extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(Icons.navigation_outlined, size: 18),
-                        label: const Text(
-                          'Track Logistics',
-                          style: TextStyle(
+                        label: Text(
+                          l.farmerOrderTrackLogistics,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -556,19 +574,19 @@ class OrderDetailScreen extends StatelessWidget {
                           final fee = await showDialog<int>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Transport fee (LKR)'),
+                              title: Text(l.transportFeeLkr),
                               content: TextField(
                                 controller: feeController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Offered delivery fee',
+                                decoration: InputDecoration(
+                                  labelText: l.farmerOrderOfferedFee,
                                   prefixText: 'LKR ',
                                 ),
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('Cancel'),
+                                  child: Text(l.commonCancel),
                                 ),
                                 FilledButton(
                                   onPressed: () {
@@ -576,7 +594,7 @@ class OrderDetailScreen extends StatelessWidget {
                                         int.tryParse(feeController.text.trim()) ?? 0;
                                     Navigator.pop(ctx, major * 100);
                                   },
-                                  child: const Text('Request'),
+                                  child: Text(l.request),
                                 ),
                               ],
                             ),
@@ -589,8 +607,8 @@ class OrderDetailScreen extends StatelessWidget {
                             );
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Transport requested successfully!'),
+                                SnackBar(
+                                  content: Text(l.farmerOrderTransportRequested),
                                   backgroundColor: AppColors.primary,
                                 ),
                               );
@@ -598,7 +616,7 @@ class OrderDetailScreen extends StatelessWidget {
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Transport request failed: $e')),
+                                SnackBar(content: Text(l.farmerOrderTransportRequestFailed(describeError(e)))),
                               );
                             }
                           }
@@ -612,9 +630,12 @@ class OrderDetailScreen extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(Icons.local_shipping_outlined, size: 18),
-                        label: const Text(
-                          'Request Transport',
-                          style: TextStyle(
+                        label: Text(
+                          l.farmerOrderRequestTransport,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -653,21 +674,27 @@ class OrderDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
             ),
           ),
         ],
@@ -710,7 +737,7 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
       setState(() => _scanPayload = result['scanPayload']);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      setState(() => _error = describeError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -718,6 +745,7 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -735,9 +763,9 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Authenticity barcode',
-            style: TextStyle(
+          Text(
+            l.farmerBarcodeTitle,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -745,9 +773,9 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Issue a signed QR for the buyer to scan after delivery.',
-            style: TextStyle(
+          Text(
+            l.farmerBarcodeHint,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               color: AppColors.onSurfaceVariant,
@@ -771,11 +799,11 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: _scanPayload!));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Barcode payload copied')),
+                  SnackBar(content: Text(l.barcodePayloadCopied)),
                 );
               },
               icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Copy payload'),
+              label: Text(l.copyPayload),
             ),
           ] else
             SizedBox(
@@ -789,7 +817,7 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.qr_code_2),
-                label: Text(_busy ? 'Issuing...' : 'Issue authenticity QR'),
+                label: Text(_busy ? l.farmerBarcodeIssuing : l.farmerBarcodeIssue),
               ),
             ),
           if (_error != null) ...[

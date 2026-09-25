@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../../models/user_role.dart';
 import '../../../models/verification_model.dart';
@@ -60,13 +62,15 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transporter profile saved.')),
+          SnackBar(content: Text(context.l10n.farmerVerificationSaved)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save profile: $e')),
+          SnackBar(
+              content: Text(
+                  context.l10n.farmerVerificationSaveFailed(describeError(e)))),
         );
       }
     } finally {
@@ -94,13 +98,15 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
       await _service.submitVerification(
           documentType: doc.title, storagePath: path);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Document uploaded and queued for manual review.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(context.l10n.farmerVerificationUploadedQueued)));
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Upload failed: $error')));
+            .showSnackBar(SnackBar(
+                content: Text(context.l10n
+                    .farmerVerificationUploadFailed(describeError(error)))));
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -112,6 +118,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     final state = context.watch<FarmoraState>();
     final docs = state.verificationDocs;
     final isTransporter = state.role == Role.transporter;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -122,9 +129,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Account Verification',
-          style: TextStyle(
+        title: Text(
+          l.farmerVerificationTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -140,9 +147,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header Intro
-                const Text(
-                  'Verify Your Account',
-                  style: TextStyle(
+                Text(
+                  l.farmerVerificationHeading,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -150,9 +157,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Please provide the following documents to activate your Farmora profile.',
-                  style: TextStyle(
+                Text(
+                  l.farmerVerificationIntro,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
                     color: AppColors.onSurfaceVariant,
@@ -171,9 +178,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Vehicle & service area',
-                          style: TextStyle(
+                        Text(
+                          l.farmerVerificationVehicleSection,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -182,25 +189,25 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _vehicleTypeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Vehicle type',
-                            hintText: 'e.g. Pickup, Van, Lorry',
+                          decoration: InputDecoration(
+                            labelText: l.vehicleType,
+                            hintText: l.farmerVerificationVehicleHint,
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _capacityController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Capacity (kg)',
+                          decoration: InputDecoration(
+                            labelText: l.farmerVerificationCapacity,
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _districtsController,
-                          decoration: const InputDecoration(
-                            labelText: 'Service districts',
-                            hintText: 'Comma-separated, e.g. Colombo, Gampaha',
+                          decoration: InputDecoration(
+                            labelText: l.farmerVerificationDistricts,
+                            hintText: l.farmerVerificationDistrictsHint,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -209,8 +216,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                           child: FilledButton(
                             onPressed:
                                 _savingProfile ? null : _saveTransporterProfile,
-                            child: Text(
-                                _savingProfile ? 'Saving…' : 'Save profile'),
+                            child: Text(_savingProfile
+                                ? l.farmerSaving
+                                : l.farmerVerificationSaveProfile),
                           ),
                         ),
                       ],
@@ -248,10 +256,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                   ElevatedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           backgroundColor: AppColors.primary,
-                          content: Text(
-                              'Documents submitted for verification review!'),
+                          content: Text(l.farmerVerificationSubmitted),
                         ),
                       );
                       Navigator.of(context).pop();
@@ -265,9 +272,11 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                       ),
                     ),
                     icon: const Icon(Icons.verified_outlined, size: 20),
-                    label: const Text(
-                      'Submit for Verification',
-                      style: TextStyle(
+                    label: Text(
+                      l.farmerVerificationSubmit,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -275,9 +284,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'All required documents must be uploaded to submit.',
-                    style: TextStyle(
+                  Text(
+                    l.farmerVerificationAllRequired,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
                       color: AppColors.onSurfaceVariant,
@@ -295,6 +304,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
 
   Widget _buildDocCard(
       BuildContext context, FarmoraState state, VerificationDoc doc) {
+    final l = context.l10n;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
@@ -317,21 +327,26 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(doc.icon, color: AppColors.primary, size: 22),
-                  const SizedBox(width: 10),
-                  Text(
-                    doc.title,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(doc.icon, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        doc.displayTitle,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               StatusChip(
                 label: doc.status.name,
                 type: doc.status == VerificationStatus.approved
@@ -344,7 +359,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            doc.description,
+            doc.displayDescription,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
@@ -371,7 +386,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
               children: [
                 Expanded(
                   child: _buildUploadTile(
-                    label: 'Front',
+                    label: l.farmerVerificationFront,
                     icon: Icons.add_a_photo_outlined,
                     onTap: () => _pickDocument(doc),
                   ),
@@ -379,7 +394,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildUploadTile(
-                    label: 'Back',
+                    label: l.farmerVerificationBack,
                     icon: Icons.add_a_photo_outlined,
                     onTap: () => _pickDocument(doc),
                   ),
@@ -427,7 +442,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          doc.fileSizeInfo ?? '2.4 MB • Uploaded',
+                          doc.fileSizeInfo ?? l.farmerVerificationUploaded,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
@@ -470,8 +485,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                       imagePreview: 'assets/images/roma_tomatoes_1.png',
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Uploaded new clear vehicle photo!')),
+                      SnackBar(content: Text(l.farmerVerificationNewPhoto)),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -482,7 +496,7 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                     ),
                   ),
                   icon: const Icon(Icons.replay, size: 18),
-                  label: const Text('Re-upload'),
+                  label: Text(l.reupload),
                 ),
               ),
             ),
@@ -503,9 +517,9 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
                 ),
                 icon: const Icon(Icons.upload_file_outlined,
                     color: AppColors.primary),
-                label: const Text(
-                  'Select File',
-                  style: TextStyle(
+                label: Text(
+                  l.farmerVerificationSelectFile,
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -541,6 +555,8 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
             const SizedBox(height: 6),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 12,

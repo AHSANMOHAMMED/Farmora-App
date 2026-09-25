@@ -5,10 +5,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmer_header.dart';
 import '../../../core/widgets/harvest_video_player.dart';
 import '../../../core/widgets/safe_image.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
+import 'farmer_l10n.dart';
 
 class FarmerProductsScreen extends StatefulWidget {
   const FarmerProductsScreen({super.key});
@@ -33,7 +35,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: const FarmerHeader(title: 'Products'),
+      appBar: FarmerHeader(title: context.l10n.farmerProductsTitle),
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -65,7 +67,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                           controller: _searchController,
                           onChanged: (val) => state.setSearchQuery(val),
                           decoration: InputDecoration(
-                            hintText: 'Search products...',
+                            hintText: context.l10n.farmerProductsSearchHint,
                             hintStyle: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 15,
@@ -132,7 +134,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Chip(
-                      label: Text('Category: ${state.selectedCategory}'),
+                      label: Text(context.l10n.farmerProductsCategoryChip(
+                          farmerCategoryLabel(
+                              state.selectedCategory, context.l10n))),
                       deleteIcon: const Icon(Icons.close, size: 16),
                       onDeleted: () => state.setSelectedCategory('All'),
                       backgroundColor: AppColors.surfaceContainerHigh,
@@ -153,7 +157,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            AppLocalizations.of(context).emptyState,
+                            context.l10n.emptyState,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -165,7 +169,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                             const SizedBox(height: 16),
                             const CircularProgressIndicator(),
                             const SizedBox(height: 8),
-                            Text(AppLocalizations.of(context).loading),
+                            Text(context.l10n.loading),
                           ],
                         ],
                       ),
@@ -288,13 +292,13 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         ),
                         const SizedBox(width: 8),
                         // Stitch: Active = bg-[#E3F2FD] text-[#0D47A1], Empty = bg-[#EEEEEE] text-[#424242]
-                        _buildStatusPill(product.status, isEmpty),
+                        _buildStatusPill(context, product.status, isEmpty),
                       ],
                     ),
                     const SizedBox(height: 4),
                     // Stitch: Organic • 50 kg available
                     Text(
-                      '${product.isOrganic ? "Organic" : "Convention"} • ${product.quantity}',
+                      '${product.isOrganic ? context.l10n.farmerOrganic : context.l10n.farmerConventional} • ${farmerProductQuantityText(product, context.l10n)}',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
@@ -311,7 +315,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                             const Icon(Icons.videocam, size: 14, color: AppColors.primary),
                             const SizedBox(width: 4),
                             Text(
-                              product.harvestStatus.name,
+                              farmerHarvestStatusLabel(
+                                  product.harvestStatus, context.l10n),
                               style: const TextStyle(
                                   fontSize: 11, color: AppColors.primary),
                             ),
@@ -326,7 +331,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     const SizedBox(height: 8),
                     // Price - Stitch: strikethrough + muted if empty
                     Text(
-                      product.price,
+                      farmerProductPriceText(product, context.l10n),
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
@@ -350,7 +355,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
   }
 
   // Stitch exact status chip colors
-  Widget _buildStatusPill(String status, bool isEmpty) {
+  Widget _buildStatusPill(BuildContext context, String status, bool isEmpty) {
     final Color bgColor;
     final Color textColor;
 
@@ -371,7 +376,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Text(
-        status.toUpperCase(),
+        statusLabel(status, context.l10n).toUpperCase(),
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
@@ -417,9 +422,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Filter by Category',
-                style: TextStyle(
+              Text(
+                ctx.l10n.farmerProductsFilterByCategory,
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -433,7 +438,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 children: categories.map((cat) {
                   final isSelected = state.selectedCategory == cat;
                   return ChoiceChip(
-                    label: Text(cat),
+                    label: Text(farmerCategoryLabel(cat, ctx.l10n)),
                     selected: isSelected,
                     selectedColor: AppColors.primaryContainer,
                     labelStyle: TextStyle(
@@ -466,6 +471,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        final l = ctx.l10n;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -483,7 +489,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                   ),
                 ),
                 Text(
-                  '${product.price} • ${product.quantity}',
+                  '${farmerProductPriceText(product, l)} • ${farmerProductQuantityText(product, l)}',
                   style: const TextStyle(
                     color: AppColors.onSurfaceVariant,
                     fontSize: 14,
@@ -493,13 +499,16 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ListTile(
                   leading: const Icon(Icons.videocam_outlined, color: AppColors.primary),
                   title: Text(
-                    product.hasVideo ? 'Replace harvest video' : 'Upload harvest video',
+                    product.hasVideo
+                        ? l.farmerProductsReplaceVideo
+                        : l.farmerProductsUploadVideo,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
                     product.hasVideo
-                        ? 'Status: ${product.harvestStatus.name}'
-                        : 'MP4 up to 100 MB — auto-deleted after delivery',
+                        ? l.farmerProductsVideoStatus(
+                            farmerHarvestStatusLabel(product.harvestStatus, l))
+                        : l.farmerProductsVideoHint,
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -509,14 +518,15 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 if (product.hasVideo)
                   ListTile(
                     leading: const Icon(Icons.play_circle_outline, color: AppColors.primary),
-                    title: const Text('Preview harvest video',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(l.farmerProductsPreviewVideo,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.of(ctx).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => Scaffold(
-                            appBar: AppBar(title: Text('${product.name} video')),
+                            appBar: AppBar(
+                                title: Text(l.farmerProductsVideoTitle(product.name))),
                             body: Padding(
                               padding: const EdgeInsets.all(16),
                               child: HarvestVideoPlayer(videoUrl: product.videoUrl!),
@@ -529,10 +539,12 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ListTile(
                   leading: const Icon(Icons.qr_code_2, color: AppColors.primary),
                   title: Text(
-                    product.hasQrCode ? 'Refresh packing QR' : 'Generate packing QR',
+                    product.hasQrCode
+                        ? l.farmerProductsRefreshQr
+                        : l.farmerProductsGenerateQr,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: const Text('Marks harvest as packed for buyers'),
+                  subtitle: Text(l.farmerProductsQrHint),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     try {
@@ -543,15 +555,17 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         SnackBar(
                           content: Text(
                             payload == null
-                                ? 'Could not generate QR'
-                                : 'Packing QR ready',
+                                ? l.farmerProductsQrFailed
+                                : l.farmerProductsQrReady,
                           ),
                         ),
                       );
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('QR failed: $e')),
+                          SnackBar(
+                              content: Text(
+                                  l.farmerProductsQrError(describeError(e)))),
                         );
                       }
                     }
@@ -566,8 +580,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                   ),
                   title: Text(
                     product.isActive
-                        ? 'Mark as Out of Stock'
-                        : 'Mark as Active / In Stock',
+                        ? l.farmerProductsMarkOutOfStock
+                        : l.farmerProductsMarkInStock,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
@@ -575,7 +589,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Updated ${product.name} stock status'),
+                        content: Text(l.farmerProductsStockUpdated(product.name)),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -586,9 +600,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     Icons.edit_outlined,
                     color: AppColors.onSurface,
                   ),
-                  title: const Text(
-                    'Edit Listing',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    l.farmerProductsEditListing,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -603,9 +617,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ListTile(
                   leading:
                       const Icon(Icons.delete_outline, color: AppColors.error),
-                  title: const Text(
-                    'Remove Listing',
-                    style: TextStyle(
+                  title: Text(
+                    l.farmerProductsRemoveListing,
+                    style: const TextStyle(
                       color: AppColors.error,
                       fontWeight: FontWeight.w600,
                     ),
@@ -615,7 +629,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Deleted ${product.name}'),
+                        content: Text(l.farmerProductsDeleted(product.name)),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -658,15 +672,17 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result == null
-              ? 'Video upload failed'
-              : 'Harvest video uploaded for ${product.name}'),
+              ? context.l10n.farmerProductsVideoUploadFailed
+              : context.l10n.farmerProductsVideoUploaded(product.name)),
         ),
       );
     } catch (e) {
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Video upload failed: $e')),
+          SnackBar(
+              content: Text(context.l10n
+                  .farmerProductsVideoUploadFailedReason(describeError(e)))),
         );
       }
     }

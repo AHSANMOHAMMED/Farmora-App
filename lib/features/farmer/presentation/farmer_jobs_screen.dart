@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/async_state_view.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
@@ -99,7 +99,7 @@ class FarmerJobsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                _buildStatusPill(job.status),
+                _buildStatusPill(context, job.status),
               ],
             ),
             const SizedBox(height: 12),
@@ -147,7 +147,7 @@ class FarmerJobsScreen extends StatelessWidget {
                       TextButton.icon(
                         onPressed: () => _showCancelDialog(context, state, job),
                         icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('Cancel'),
+                        label: Text(context.l10n.commonCancel),
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.error,
                           padding: const EdgeInsets.symmetric(
@@ -170,15 +170,15 @@ class FarmerJobsScreen extends StatelessWidget {
                               totalAmountNumber: double.tryParse(job.fee
                                       .replaceAll(RegExp(r'[^0-9.]'), '')) ??
                                   0.0,
-                              quantity: '1 load',
-                              buyerName: 'Direct Buyer',
+                              quantity: context.l10n.farmerJobsOneLoad,
+                              buyerName: context.l10n.farmerJobsDirectBuyer,
                               deliveryAddress: job.route,
                               status: job.status == 'completed'
                                   ? 'Delivered'
                                   : 'In transit',
                               progress: job.status == 'completed' ? 1.0 : 0.6,
                               color: const Color(0xFF2E7D32),
-                              timestamp: 'Today',
+                              timestamp: context.l10n.commonToday,
                             );
                         Navigator.push(
                           context,
@@ -189,7 +189,7 @@ class FarmerJobsScreen extends StatelessWidget {
                         );
                       },
                       icon: const Icon(Icons.navigation_outlined, size: 16),
-                      label: const Text('Track Live'),
+                      label: Text(context.l10n.trackLive),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.onPrimary,
@@ -210,7 +210,7 @@ class FarmerJobsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusPill(String status) {
+  Widget _buildStatusPill(BuildContext context, String status) {
     Color bgColor;
     Color textColor;
 
@@ -245,7 +245,7 @@ class FarmerJobsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        status.toUpperCase(),
+        statusLabel(status, context.l10n).toUpperCase(),
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
@@ -261,24 +261,23 @@ class FarmerJobsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Request?'),
-        content: const Text(
-            'Are you sure you want to cancel this transport request?'),
+        title: Text(context.l10n.cancelRequest),
+        content: Text(context.l10n.farmerJobsCancelConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('No'),
+            child: Text(context.l10n.commonNo),
           ),
           TextButton(
             onPressed: () {
               state.deleteTransportJob(job.id);
               Navigator.of(ctx).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Transport request cancelled')),
+                SnackBar(content: Text(context.l10n.transportRequestCancelled)),
               );
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Cancel Request'),
+            child: Text(context.l10n.farmerJobsCancelRequestButton),
           ),
         ],
       ),

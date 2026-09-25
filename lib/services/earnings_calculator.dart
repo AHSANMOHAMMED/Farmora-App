@@ -1,10 +1,18 @@
-import 'package:intl/intl.dart';
-
+import '../core/localization/app_format.dart';
 import '../models/order.dart';
 
+/// Formats LKR amounts as "LKR 12,500.00" using the current app language's
+/// digit grouping (see [AppFormat.lkr]).
+class LkrFormatter {
+  const LkrFormatter({this.decimals = 2});
+
+  final int decimals;
+
+  String format(num amount) => AppFormat.lkr(amount, decimals: decimals);
+}
+
 /// Formats LKR amounts as "LKR 12,500.00".
-final NumberFormat lkrFormat =
-    NumberFormat.currency(locale: 'en_US', symbol: 'LKR ', decimalDigits: 2);
+const LkrFormatter lkrFormat = LkrFormatter();
 
 enum EarningsFilter { all, cod, bankDeposit, pending }
 
@@ -35,9 +43,8 @@ class MonthSummary {
   });
 
   /// % change vs the previous month; null when there is nothing to compare.
-  double? get changePercent => previousTotal == 0
-      ? null
-      : (total - previousTotal) / previousTotal * 100;
+  double? get changePercent =>
+      previousTotal == 0 ? null : (total - previousTotal) / previousTotal * 100;
 }
 
 /// Farmer earnings derived from orders.
@@ -107,8 +114,8 @@ class EarningsCalculator {
             final month = DateTime(now.year, now.month - i);
             return MonthlyEarning(
               month: month,
-              amount: _sum(
-                  paidOrders.where((o) => _sameMonth(earnedAt(o), month))),
+              amount:
+                  _sum(paidOrders.where((o) => _sameMonth(earnedAt(o), month))),
             );
           }(),
       ];
@@ -123,8 +130,8 @@ class EarningsCalculator {
       paidOrders: paid.length,
       codTotal: _sum(paid.where((o) => !o.isBankDeposit)),
       bankTotal: _sum(paid.where((o) => o.isBankDeposit)),
-      pending: _sum(
-          awaitingOrders.where((o) => _sameMonth(_createdAt(o), month))),
+      pending:
+          _sum(awaitingOrders.where((o) => _sameMonth(_createdAt(o), month))),
       previousTotal:
           _sum(paidOrders.where((o) => _sameMonth(earnedAt(o), previous))),
     );

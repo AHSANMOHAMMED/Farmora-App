@@ -1,15 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
+import '../../auth/presentation/auth_l10n.dart' show districtLabel;
+import 'farmer_l10n.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Product? existingProduct;
@@ -257,7 +260,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     if (quantityVal < 0 || priceVal < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid quantity and price.')),
+        SnackBar(content: Text(context.l10n.farmerAddProductInvalidQtyPrice)),
       );
       return;
     }
@@ -276,10 +279,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ? await _uploadPendingImages()
           : [for (final slot in _images) if (slot.url != null) slot.url!];
     } catch (e, st) {
-      if (mounted) setState(() => _isSubmitting = false);
+      final reason = userMessage(e, action: 'upload the photo', stack: st);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      final l = context.l10n;
       _showSnack(
-        '${userMessage(e, action: 'upload the photo', stack: st)} '
-        'Tap ${isEdit ? 'Save Changes' : 'Publish'} to retry.',
+        l.farmerAddProductUploadRetry(
+            reason, isEdit ? l.saveChanges : l.publish),
         error: true,
       );
       return;
@@ -354,19 +360,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
           final uploadVideo = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Add harvest video?'),
-              content: const Text(
-                'Optional: upload a short harvest video (MP4, max 100 MB). '
-                'It is auto-deleted after delivery.',
-              ),
+              title: Text(ctx.l10n.addHarvestVideo),
+              content: Text(ctx.l10n.farmerAddProductVideoPrompt),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Skip'),
+                  child: Text(ctx.l10n.skip),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Upload'),
+                  child: Text(ctx.l10n.upload),
                 ),
               ],
             ),
@@ -394,7 +397,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.primary,
-          content: Text(isEdit ? 'Updated $name successfully!' : 'Published $name successfully!'),
+          content: Text(isEdit
+              ? context.l10n.farmerAddProductUpdated(name)
+              : context.l10n.farmerAddProductPublished(name)),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -414,6 +419,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       // Stitch: fixed top-0 h-16 px-margin-mobile flex items-center gap-md
@@ -427,7 +433,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          widget.existingProduct != null ? 'Edit Product' : 'Add Product',
+          widget.existingProduct != null
+              ? l.farmerAddProductEditTitle
+              : l.addProduct,
           style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
@@ -447,17 +455,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 children: [
                   // 1. Basic Details — Stitch: bg-surface-container-low rounded-xl p-md shadow-sm
                   _buildSectionCard(
-                    title: 'Basic Details',
+                    title: l.farmerAddProductBasicDetails,
                     children: [
-                      _buildFieldLabel('Product Name'),
+                      _buildFieldLabel(l.farmerAddProductNameLabel),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _nameController,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a product name' : null,
-                        decoration: _inputDecoration('e.g. Nuwara Eliya Carrots'),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductNameRequired : null,
+                        decoration: _inputDecoration(l.farmerAddProductNameHint),
                       ),
                       const SizedBox(height: 18),
-                      _buildFieldLabel('Category'),
+                      _buildFieldLabel(l.category),
                       const SizedBox(height: 6),
                       _buildDropdown(
                         value: _category,
@@ -468,16 +476,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           'Grains',
                           'Herbs',
                         ],
+                        labelOf: (v) => farmerCategoryLabel(v, l),
                         onChanged: (val) {
                           if (val != null) setState(() => _category = val);
                         },
                       ),
                       const SizedBox(height: 18),
-                      _buildFieldLabel('Farm District / Location'),
+                      _buildFieldLabel(l.farmerAddProductDistrict),
                       const SizedBox(height: 6),
                       _buildDropdown(
                         value: _district,
                         items: _districts,
+                        labelOf: (v) => districtLabel(v, l),
                         onChanged: (val) {
                           if (val != null) setState(() => _district = val);
                         },
@@ -489,7 +499,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         color: Colors.transparent,
                         child: SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Organic certified'),
+                          title: Text(l.organicCertified),
                           value: _isOrganic,
                           onChanged: (v) => setState(() => _isOrganic = v),
                         ),
@@ -500,7 +510,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                   // 2. Inventory & Pricing
                   _buildSectionCard(
-                    title: 'Inventory & Pricing',
+                    title: l.farmerAddProductInventory,
                     children: [
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,12 +520,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildFieldLabel('Quantity'),
+                                _buildFieldLabel(l.quantity),
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: _quantityController,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter qty' : null,
+                                  validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductQtyRequired : null,
                                   decoration: _inputDecoration('0.00'),
                                 ),
                               ],
@@ -526,11 +536,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildFieldLabel('Unit'),
+                                _buildFieldLabel(l.unit),
                                 const SizedBox(height: 6),
                                 _buildDropdown(
                                   value: _unit,
                                   items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
+                                  labelOf: (v) => farmerUnitLabel(v, l),
                                   onChanged: (val) {
                                     if (val != null) setState(() => _unit = val);
                                   },
@@ -541,12 +552,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      _buildFieldLabel('Price per unit'),
+                      _buildFieldLabel(l.farmerPricePerUnit),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _priceController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter price' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductPriceRequired : null,
                         decoration: InputDecoration(
                           hintText: '0.00',
                           hintStyle: TextStyle(
@@ -578,7 +589,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      _buildFieldLabel('Availability Date'),
+                      _buildFieldLabel(l.farmerAddProductAvailabilityDate),
                       const SizedBox(height: 6),
                       // Stitch: date input with calendar icon
                       InkWell(
@@ -595,14 +606,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _availabilityDate != null
-                                    ? DateFormat('yyyy-MM-dd').format(_availabilityDate!)
-                                    : 'Select date',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  color: AppColors.onSurface,
+                              Expanded(
+                                child: Text(
+                                  _availabilityDate != null
+                                      ? AppFormat.date(_availabilityDate!)
+                                      : l.farmerAddProductSelectDate,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 15,
+                                    color: AppColors.onSurface,
+                                  ),
                                 ),
                               ),
                               const Icon(Icons.calendar_today_outlined,
@@ -617,15 +632,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                   // 3. Description
                   _buildSectionCard(
-                    title: 'Description',
+                    title: l.description,
                     children: [
                       // Screen reader label
-                      const Offstage(child: Text('Product Description')),
+                      Offstage(child: Text(l.productDescription)),
                       TextFormField(
                         controller: _descriptionController,
                         maxLines: 4,
                         decoration: _inputDecoration(
-                          'Describe the quality, origin, and any certifications...',
+                          l.farmerAddProductDescriptionHint,
                         ),
                       ),
                     ],
@@ -634,8 +649,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                   // 4. Product Images — Stitch: grid grid-cols-3 gap-sm, aspect-square cells
                   _buildSectionCard(
-                    title: 'Product Images',
-                    subtitle: 'Upload up to 5 clear photos of your product.',
+                    title: l.farmerAddProductImages,
+                    subtitle: l.farmerAddProductImagesHint(_maxImages),
                     children: [
                       GridView.builder(
                         shrinkWrap: true,
@@ -658,9 +673,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       ),
                       if (_images.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        const Text(
-                          'Tap a photo to replace it. The first photo is the cover.',
-                          style: TextStyle(
+                        Text(
+                          l.farmerAddProductImagesTip,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             color: AppColors.onSurfaceVariant,
@@ -719,11 +734,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     _isSubmitting
                         ? (_images.any((i) =>
                                 i.local != null && i.uploadedUrl == null)
-                            ? 'Uploading photos...'
-                            : 'Saving...')
+                            ? l.farmerAddProductUploadingPhotos
+                            : l.farmerSaving)
                         : (widget.existingProduct != null
-                            ? 'Save Changes'
-                            : 'Publish Product'),
+                            ? l.saveChanges
+                            : l.farmerAddProductPublish),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
@@ -766,9 +783,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 : const Icon(Icons.add_photo_alternate_outlined,
                     color: AppColors.primary, size: 28),
             const SizedBox(height: 4),
-            const Text(
-              'Add',
-              style: TextStyle(
+            Text(
+              context.l10n.farmerAddProductAddPhoto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -804,7 +823,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         children: [
           Semantics(
             button: true,
-            label: 'Product photo ${index + 1}. Tap to replace.',
+            label: context.l10n.farmerAddProductPhotoSemantics(index + 1),
             child: GestureDetector(
               onTap: () => _replaceImage(index),
               child: preview,
@@ -829,12 +848,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
             Container(
               color: AppColors.error.withValues(alpha: 0.55),
               alignment: Alignment.center,
-              child: const Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline, color: Colors.white),
-                  Text('Failed',
-                      style: TextStyle(color: Colors.white, fontSize: 12)),
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  Text(context.l10n.statusFailed,
+                      style: const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
             ),
@@ -848,8 +867,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   color: Colors.black.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text('Cover',
-                    style: TextStyle(color: Colors.white, fontSize: 10)),
+                child: Text(context.l10n.farmerAddProductCover,
+                    style: const TextStyle(color: Colors.white, fontSize: 10)),
               ),
             ),
           // Stitch: close button top-1 right-1 bg-surface/80 rounded-full
@@ -859,7 +878,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               right: 4,
               child: Semantics(
                 button: true,
-                label: 'Remove photo ${index + 1}',
+                label: context.l10n.farmerAddProductRemovePhoto(index + 1),
                 child: InkWell(
                   onTap: () => _removeImage(index),
                   child: Container(
@@ -986,6 +1005,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
+    String Function(String value)? labelOf,
   }) {
     return Container(
       height: 56,
@@ -1001,7 +1021,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
           isExpanded: true,
           icon: const Icon(Icons.expand_more, color: AppColors.onSurfaceVariant, size: 22),
           items: items.map((item) {
-            return DropdownMenuItem(value: item, child: Text(item));
+            return DropdownMenuItem(
+              value: item,
+              child: Text(
+                labelOf?.call(item) ?? item,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
           }).toList(),
           onChanged: onChanged,
         ),

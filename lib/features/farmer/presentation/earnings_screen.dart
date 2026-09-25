@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/farmer_header.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../../models/order.dart';
@@ -43,7 +46,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
       debugPrint('Earnings refresh failed: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Could not refresh earnings. Check your connection. ($e)'),
+        content:
+            Text(context.l10n.farmerEarningsRefreshFailed(describeError(e))),
         backgroundColor: AppColors.error,
       ));
     }
@@ -71,11 +75,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 12),
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Text(
-                'Select month',
-                style: TextStyle(
+                ctx.l10n.farmerEarningsSelectMonth,
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -86,7 +90,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               ListTile(
                 selected: m == _selectedMonth,
                 selectedColor: AppColors.primary,
-                title: Text(DateFormat('MMMM yyyy').format(m)),
+                title: Text(AppFormat.monthYear(m)),
                 trailing: Text(lkrFormat.format(calc.summaryFor(m).total)),
                 onTap: () => Navigator.pop(ctx, m),
               ),
@@ -104,10 +108,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
     final summary = calc.summaryFor(_selectedMonth);
     final transactions = calc.transactionsFor(_selectedMonth, filter: _filter);
     final undated = calc.undatedPaidOrders.length;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: const FarmerHeader(title: 'Earnings'),
+      appBar: FarmerHeader(title: l.earnings),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: _refresh,
@@ -121,11 +126,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
               children: [
                 Expanded(
                   child: _MetricCard(
-                      title: 'This Month', amount: calc.thisMonth),
+                      title: l.farmerEarningsThisMonth, amount: calc.thisMonth),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _MetricCard(title: 'This Week', amount: calc.thisWeek),
+                  child: _MetricCard(
+                      title: l.farmerEarningsThisWeek, amount: calc.thisWeek),
                 ),
               ],
             ),
@@ -138,13 +144,22 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text('Monthly Earnings', style: _titleStyle),
+                      Expanded(
+                        child: Text(
+                          l.farmerEarningsMonthly,
+                          style: _titleStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       SegmentedButton<int>(
-                        segments: const [
-                          ButtonSegment(value: 6, label: Text('6M')),
-                          ButtonSegment(value: 12, label: Text('12M')),
+                        segments: [
+                          ButtonSegment(
+                              value: 6,
+                              label: Text(l.farmerEarningsMonthsShort(6))),
+                          ButtonSegment(
+                              value: 12,
+                              label: Text(l.farmerEarningsMonthsShort(12))),
                         ],
                         selected: {_chartMonths},
                         showSelectedIcon: false,
@@ -180,7 +195,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Transactions', style: _titleStyle),
+                  Text(l.farmerEarningsTransactions, style: _titleStyle),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -188,7 +203,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     children: [
                       for (final f in EarningsFilter.values)
                         ChoiceChip(
-                          label: Text(_filterLabel(f)),
+                          label: Text(_filterLabel(l, f)),
                           selected: _filter == f,
                           selectedColor: AppColors.primaryLight,
                           onSelected: (_) => setState(() => _filter = f),
@@ -201,8 +216,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
-                          'No ${_filter == EarningsFilter.all ? '' : '${_filterLabel(_filter)} '}'
-                          'transactions in ${DateFormat('MMMM yyyy').format(_selectedMonth)}.',
+                          _filter == EarningsFilter.all
+                              ? l.farmerEarningsNoTransactions(
+                                  AppFormat.monthYear(_selectedMonth))
+                              : l.farmerEarningsNoFilteredTransactions(
+                                  _filterLabel(l, _filter),
+                                  AppFormat.monthYear(_selectedMonth)),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontFamily: 'Inter',
@@ -219,7 +238,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         Divider(
                           height: 1,
                           indent: 54,
-                          color: AppColors.outlineVariant.withValues(alpha: 0.3),
+                          color:
+                              AppColors.outlineVariant.withValues(alpha: 0.3),
                         ),
                     ],
                 ],
@@ -229,9 +249,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(
-                  '$undated paid ${undated == 1 ? 'order has' : 'orders have'} no '
-                  'payment date. ${undated == 1 ? 'It is' : 'They are'} included '
-                  'in Total Earnings but not in monthly figures.',
+                  l.farmerEarningsUndatedNote(undated),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -245,11 +263,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
     );
   }
 
-  static String _filterLabel(EarningsFilter f) => switch (f) {
-        EarningsFilter.all => 'All',
-        EarningsFilter.cod => 'COD',
-        EarningsFilter.bankDeposit => 'Bank Deposit',
-        EarningsFilter.pending => 'Pending',
+  static String _filterLabel(AppLocalizations l, EarningsFilter f) =>
+      switch (f) {
+        EarningsFilter.all => l.commonAll,
+        EarningsFilter.cod => l.farmerEarningsFilterCod,
+        EarningsFilter.bankDeposit => l.farmerBankDeposit,
+        EarningsFilter.pending => l.statusPending,
       };
 }
 
@@ -321,7 +340,7 @@ class _TotalCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'TOTAL EARNINGS',
+                context.l10n.farmerEarningsTotalUpper,
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,
@@ -415,7 +434,7 @@ class _PendingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pending Payments',
+                  context.l10n.pendingPayments,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -437,7 +456,7 @@ class _PendingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Unpaid, receipt under review, or rejected',
+                  context.l10n.farmerEarningsPendingHint,
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,
@@ -470,26 +489,25 @@ class _EarningsChart extends StatelessWidget {
     required this.onMonthTap,
   });
 
-  static String _compact(double v) =>
-      NumberFormat.compact(locale: 'en_US').format(v);
+  static String _compact(double v) => AppFormat.compact(v);
 
   @override
   Widget build(BuildContext context) {
     final maxY = data.fold<double>(0, (m, e) => e.amount > m ? e.amount : m);
     if (maxY == 0) {
-      return const SizedBox(
+      return SizedBox(
         height: 180,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bar_chart_rounded,
+              const Icon(Icons.bar_chart_rounded,
                   size: 48, color: AppColors.outlineVariant),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                'No earnings yet. Completed payments will appear here.',
+                context.l10n.farmerEarningsChartEmpty,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 13,
                   color: AppColors.onSurfaceVariant,
@@ -502,6 +520,7 @@ class _EarningsChart extends StatelessWidget {
     }
 
     final dense = data.length > 6;
+    final localeName = context.l10n.localeName;
     return SizedBox(
       height: 220,
       child: BarChart(
@@ -551,7 +570,9 @@ class _EarningsChart extends StatelessWidget {
                   return SideTitleWidget(
                     meta: meta,
                     child: Text(
-                      DateFormat(dense ? 'MMMMM' : 'MMM').format(m),
+                      dense
+                          ? DateFormat('MMMMM', localeName).format(m)
+                          : AppFormat.shortMonth(m, locale: localeName),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight:
@@ -571,7 +592,7 @@ class _EarningsChart extends StatelessWidget {
               getTooltipColor: (_) => AppColors.inverseSurface,
               getTooltipItem: (group, groupIndex, rod, rodIndex) =>
                   BarTooltipItem(
-                '${DateFormat('MMM yyyy').format(data[group.x].month)}\n'
+                '${AppFormat.shortMonthYear(data[group.x].month, locale: localeName)}\n'
                 '${lkrFormat.format(rod.toY)}',
                 const TextStyle(
                   color: AppColors.inverseOnSurface,
@@ -630,7 +651,7 @@ class _MonthHeader extends StatelessWidget {
     return Row(
       children: [
         IconButton(
-          tooltip: 'Previous month',
+          tooltip: context.l10n.farmerEarningsPreviousMonth,
           onPressed: onPrevious,
           icon: const Icon(Icons.chevron_left),
         ),
@@ -646,13 +667,19 @@ class _MonthHeader extends StatelessWidget {
                   const Icon(Icons.calendar_month_outlined,
                       size: 18, color: AppColors.primary),
                   const SizedBox(width: 6),
-                  Text(
-                    '${DateFormat('MMMM yyyy').format(month)} summary',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+                  Flexible(
+                    child: Text(
+                      context.l10n.farmerEarningsMonthSummary(
+                          AppFormat.monthYear(month)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                   ),
                   const Icon(Icons.arrow_drop_down, color: AppColors.primary),
@@ -662,7 +689,7 @@ class _MonthHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Next month',
+          tooltip: context.l10n.farmerEarningsNextMonth,
           onPressed: canGoForward ? onNext : null,
           icon: const Icon(Icons.chevron_right),
         ),
@@ -680,16 +707,17 @@ class _MonthSummaryCard extends StatelessWidget {
     final change = summary.changePercent;
     final up = (change ?? 0) >= 0;
     final paidTotal = summary.codTotal + summary.bankTotal;
-    final previousLabel = DateFormat('MMM')
-        .format(DateTime(summary.month.year, summary.month.month - 1));
+    final l = context.l10n;
+    final previousLabel = AppFormat.shortMonth(
+        DateTime(summary.month.year, summary.month.month - 1));
 
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Total income',
-            style: TextStyle(
+          Text(
+            l.farmerEarningsTotalIncome,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -712,35 +740,50 @@ class _MonthSummaryCard extends StatelessWidget {
                 ),
               ),
               if (change != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      up ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 16,
-                      color: up ? AppColors.statusApprovedText : AppColors.error,
-                    ),
-                    Text(
-                      '${change.abs().toStringAsFixed(1)}% vs $previousLabel',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        up ? Icons.arrow_upward : Icons.arrow_downward,
+                        size: 16,
                         color:
                             up ? AppColors.statusApprovedText : AppColors.error,
                       ),
-                    ),
-                  ],
+                      Flexible(
+                        child: Text(
+                          l.farmerEarningsChangeVs(
+                              AppFormat.number(change.abs(), decimals: 1),
+                              previousLabel),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: up
+                                ? AppColors.statusApprovedText
+                                : AppColors.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               else
-                Text(
-                  summary.total == 0
-                      ? ''
-                      : 'No income in $previousLabel to compare',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: AppColors.onSurfaceVariant,
+                Flexible(
+                  child: Text(
+                    summary.total == 0
+                        ? ''
+                        : l.farmerEarningsNoCompare(previousLabel),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ),
             ],
@@ -749,18 +792,19 @@ class _MonthSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _stat('Paid orders', '${summary.paidOrders}'),
+                child: _stat(l.farmerEarningsPaidOrders,
+                    AppFormat.number(summary.paidOrders)),
               ),
               Expanded(
-                child: _stat('Pending this month',
+                child: _stat(l.farmerEarningsPendingThisMonth,
                     lkrFormat.format(summary.pending)),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'By payment method',
-            style: TextStyle(
+          Text(
+            l.farmerEarningsByMethod,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -795,11 +839,11 @@ class _MonthSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _legend(AppColors.primary, 'Cash on Delivery',
+                child: _legend(AppColors.primary, l.farmerCashOnDelivery,
                     summary.codTotal),
               ),
               Expanded(
-                child: _legend(AppColors.accentWheat, 'Bank Deposit',
+                child: _legend(AppColors.accentWheat, l.farmerBankDeposit,
                     summary.bankTotal),
               ),
             ],
@@ -814,6 +858,8 @@ class _MonthSummaryCard extends StatelessWidget {
         children: [
           Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
@@ -881,7 +927,8 @@ class _TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = EarningsCalculator.transactionDate(order);
     final number = order.orderNumber.isNotEmpty ? order.orderNumber : order.id;
-    final buyer = order.buyerName.isNotEmpty ? order.buyerName : 'Buyer';
+    final buyer =
+        order.buyerName.isNotEmpty ? order.buyerName : context.l10n.roleBuyer;
     return InkWell(
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => OrderDetailScreen(order: order),
@@ -906,7 +953,7 @@ class _TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Order $number',
+                    context.l10n.farmerOrderNumber(number),
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Inter',
@@ -917,7 +964,7 @@ class _TransactionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$buyer · ${date != null ? DateFormat('d MMM yyyy').format(date) : '—'}',
+                    '$buyer · ${date != null ? AppFormat.date(date) : '—'}',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Inter',

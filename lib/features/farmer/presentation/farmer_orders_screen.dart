@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/widgets/farmer_header.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../payments/presentation/order_payment_card.dart' show paymentMethodIcon;
@@ -253,7 +254,8 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              order.status.toUpperCase(),
+                              statusLabel(order.status, context.l10n)
+                                  .toUpperCase(),
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 10,
@@ -266,7 +268,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         ),
                       ),
                       Text(
-                        order.timestamp,
+                        order.createdAt.millisecondsSinceEpoch > 0
+                            ? AppFormat.relative(order.createdAt)
+                            : order.timestamp,
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
@@ -376,9 +380,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Buyer',
-                              style: TextStyle(
+                            Text(
+                              context.l10n.roleBuyer,
+                              style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 11,
                                 color: AppColors.onSurfaceVariant,
@@ -415,9 +419,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text(
-                            'Total',
-                            style: TextStyle(
+                          Text(
+                            context.l10n.commonTotal,
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
                               color: AppColors.onSurfaceVariant,
@@ -454,8 +458,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 state.declineOrder(order.id);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text(
-                                          'Declined ${order.orderNumber}')),
+                                      content: Text(context.l10n
+                                          .farmerOrderDeclinedSnack(
+                                              order.orderNumber))),
                                 );
                               },
                               style: OutlinedButton.styleFrom(
@@ -468,9 +473,11 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 ),
                               ),
                               icon: const Icon(Icons.close, size: 18),
-                              label: const Text(
-                                'Decline',
-                                style: TextStyle(
+                              label: Text(
+                                context.l10n.decline,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -489,8 +496,9 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     backgroundColor: AppColors.primary,
-                                    content: Text(
-                                        'Accepted ${order.orderNumber}! Balance updated.'),
+                                    content: Text(context.l10n
+                                        .farmerOrderAcceptedSnack(
+                                            order.orderNumber)),
                                   ),
                                 );
                               },
@@ -504,9 +512,11 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                                 ),
                               ),
                               icon: const Icon(Icons.check, size: 18),
-                              label: const Text(
-                                'Accept',
-                                style: TextStyle(
+                              label: Text(
+                                context.l10n.accept,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
