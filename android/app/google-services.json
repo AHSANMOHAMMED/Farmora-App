@@ -1,42 +1,41 @@
 {
   "project_info": {
-    "project_number": "33678627494",
-    "project_id": "farmingapp-24b34",
-    "storage_bucket": "farmingapp-24b34.firebasestorage.app"
+    "project_number": "83367323369",
+    "project_id": "farmora-1da5a",
+    "storage_bucket": "farmora-1da5a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:33678627494:android:6d2db665cdbd33ff549a67",
+        "mobilesdk_app_id": "1:83367323369:android:56f5bdcfd2c40ccda83278",
         "android_client_info": {
           "package_name": "com.example.farmora"
         }
       },
       "oauth_client": [
         {
-          "client_id": "33678627494-42rntmvpna4in0dm08opm1odlnmggsjj.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.farmora",
-            "certificate_hash": "f4009b3441688dc3f8233f3a54bfbd1f5e8cc608"
-          }
-        },
-        {
-          "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
+          "client_id": "83367323369-5lqjli7046bvs3s6gqe0tt2d526535fv.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBsvO-upUbT-4-kaDHqP2j2CUpYT4j2_qs"
+          "current_key": "AIzaSyAEbeqlZ-Q18_fYWyFCEzKl9ZZgPNVBGl0"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
+              "client_id": "83367323369-5lqjli7046bvs3s6gqe0tt2d526535fv.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "83367323369-nccqd050c644g08dmh4uf1okp9bd3s7c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.farmora"
+              }
             }
           ]
         }
