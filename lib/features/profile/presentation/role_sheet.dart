@@ -21,11 +21,40 @@ class RoleSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Builder(
             builder: (context) {
-              final role = context.watch<FarmoraState>().role;
-              return ListTile(
-                leading: Icon(role.icon, color: const Color(0xff1f7a4d)),
-                title: Text(role.label),
-                subtitle: const Text('This role is fixed to your account.'),
+              final state = context.watch<FarmoraState>();
+              final currentRole = state.role;
+              return Column(
+                children: Role.values.map((r) {
+                  final isSelected = r == currentRole;
+                  return ListTile(
+                    leading: Icon(r.icon,
+                        color: isSelected
+                            ? const Color(0xff1f7a4d)
+                            : Colors.grey.shade600),
+                    title: Text(
+                      r.label,
+                      style: TextStyle(
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? const Color(0xff1f7a4d) : null,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle,
+                            color: Color(0xff1f7a4d))
+                        : null,
+                    onTap: () {
+                      state.setRole(r);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Switched to ${r.label} view'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
               );
             },
           ),
