@@ -7,8 +7,6 @@ import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 
-import 'cart_screen.dart';
-
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
 
@@ -19,14 +17,20 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  int _selectedQuantity = 1;
+  late String? _selectedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedImage = widget.product.primaryImage;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
     final state = context.watch<FarmoraState>();
-    final cartItem = state.cartItems.where((c) => c.product.id == product.id).firstOrNull;
-    final isInCart = cartItem != null;
+    final product = widget.product;
+    final isInCart = state.cartItems.any((c) => c.product.id == product.id);
+    final displayedImage = _selectedImage ?? product.primaryImage;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -61,7 +65,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product Image
+                // Product Main Image
                 Container(
                   width: double.infinity,
                   height: 240,
@@ -71,15 +75,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: product.imagePath != null && product.imagePath!.isNotEmpty
+                    child: displayedImage != null && displayedImage.isNotEmpty
                         ? SafeImage(
-                            path: product.imagePath!,
+                            path: displayedImage,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _buildFallbackImage(),
                           )
                         : _buildFallbackImage(),
                   ),
                 ),
+                if (product.allImages.length > 1) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 60,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: product.allImages.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, idx) {
+                        final imgUrl = product.allImages[idx];
+                        final isSelected = displayedImage == imgUrl;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedImage = imgUrl),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected ? AppColors.primary : Colors.black12,
+                                width: isSelected ? 2.5 : 1,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SafeImage(
+                                path: imgUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade100,
+                                  child: const Icon(Icons.image, size: 24, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
                 if (product.videoUrl != null && product.videoUrl!.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   HarvestVideoPlayer(videoUrl: product.videoUrl!),
@@ -207,97 +252,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             _buildInfoChip(Icons.eco_outlined, 'Organic'),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      const Divider(height: 1),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Purchase Quantity',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Unit: ${product.unit}',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  color: AppColors.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainer,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove, size: 18),
-                                  onPressed: _selectedQuantity > 1
-                                      ? () => setState(() => _selectedQuantity--)
-                                      : null,
-                                  color: AppColors.onSurface,
-                                ),
-                                Container(
-                                  constraints: const BoxConstraints(minWidth: 36),
-                                  alignment: Alignment.center,
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                  child: Text(
-                                    '$_selectedQuantity',
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.add, size: 18),
-                                  onPressed: () => setState(() => _selectedQuantity++),
-                                  color: AppColors.primary,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Estimated Total:',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 13,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            'LKR ${(product.effectivePricePerUnit * _selectedQuantity).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -336,7 +290,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                 decoration: BoxDecoration(
                   color: AppColors.surface.withValues(alpha: 0.95),
                   boxShadow: [
@@ -347,39 +301,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    // Make Offer Button
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        _showMakeOfferDialog(context, product);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      icon: const Icon(Icons.local_offer_outlined, size: 18),
-                      label: const Text(
-                        'Offer',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Add to Cart / In Cart button
-                    Expanded(
-                      flex: 1,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          if (isInCart) {
+                child: SizedBox(
+                  height: 52,
+                  child: isInCart
+                      ? OutlinedButton.icon(
+                          onPressed: () {
                             state.removeFromCart(product.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -389,78 +315,84 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
-                          } else {
-                            state.addToCart(product, quantity: _selectedQuantity);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Added $_selectedQuantity ${product.unit} to cart'),
-                                backgroundColor: AppColors.primary,
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.errorContainer, width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.remove_shopping_cart, size: 20),
+                          label: const Text(
+                            'Remove from Cart',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    _showMakeOfferDialog(context, product);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: const BorderSide(color: AppColors.primary, width: 2),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.local_offer, size: 20),
+                                  label: const Text(
+                                    'Make Offer',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            );
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: isInCart ? AppColors.error : AppColors.primary,
-                          side: BorderSide(
-                            color: isInCart ? AppColors.error : AppColors.primary,
-                            width: 1.5,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    state.addToCart(product);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Added ${product.name} to cart'),
+                                        backgroundColor: AppColors.primary,
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
+                                  label: const Text(
+                                    'Add to Cart',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: Icon(
-                          isInCart ? Icons.remove_shopping_cart : Icons.add_shopping_cart,
-                          size: 18,
-                        ),
-                        label: Text(
-                          isInCart ? 'In Cart' : 'Add Cart',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Buy Now Button (Instant Checkout)
-                    Expanded(
-                      flex: 1,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (!isInCart) {
-                            state.addToCart(product, quantity: _selectedQuantity);
-                          }
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const CartScreen()),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 2,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.flash_on_rounded, size: 18),
-                        label: const Text(
-                          'Buy Now',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -471,10 +403,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildFallbackImage() {
     return Container(
-      color: product.color,
+      color: widget.product.color,
       child: Center(
         child: Text(
-          product.emoji,
+          widget.product.emoji,
           style: const TextStyle(fontSize: 80),
         ),
       ),

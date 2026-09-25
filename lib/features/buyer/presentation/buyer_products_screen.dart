@@ -322,9 +322,9 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: product.imagePath != null && product.imagePath!.isNotEmpty
+                child: product.primaryImage != null && product.primaryImage!.isNotEmpty
                     ? SafeImage(
-                        path: product.imagePath!,
+                        path: product.primaryImage!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _buildFallbackIcon(product),
                       )
@@ -386,32 +386,21 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
               ),
             ),
 
-            // Action buttons (Make Offer & Add to Cart)
+            // Add to cart button
             if (product.isActive)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Make an offer',
-                    onPressed: () => _showQuickOfferDialog(context, product),
-                    icon: const Icon(Icons.local_offer_outlined, color: AppColors.primary, size: 20),
-                  ),
-                  IconButton(
-                    tooltip: 'Add to cart',
-                    onPressed: () {
-                      state.addToCart(product);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Added ${product.name} to cart'),
-                          backgroundColor: AppColors.primary,
-                          duration: const Duration(seconds: 1),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.primary, size: 20),
-                  ),
-                ],
+              IconButton(
+                onPressed: () {
+                  state.addToCart(product);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Added ${product.name} to cart'),
+                      backgroundColor: AppColors.primary,
+                      duration: const Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.primary),
               ),
           ],
         ),
@@ -497,140 +486,6 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                     },
                   );
                 }).toList(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showQuickOfferDialog(BuildContext context, Product product) {
-    final quantityController = TextEditingController(text: '10');
-    final initialPrice = product.pricePerUnit > 0
-        ? product.pricePerUnit.toStringAsFixed(0)
-        : product.price.replaceAll(RegExp(r'[^0-9.]'), '');
-    final priceController = TextEditingController(text: initialPrice);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Make an Offer',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Negotiate directly for ${product.name} (Listed: LKR ${product.pricePerUnit.toStringAsFixed(0)}/${product.unit})',
-                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: quantityController,
-                decoration: InputDecoration(
-                  labelText: 'Quantity (${product.unit})',
-                  hintText: 'e.g. 50',
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: priceController,
-                decoration: InputDecoration(
-                  labelText: 'Proposed Unit Price (LKR / ${product.unit})',
-                  hintText: 'e.g. 170',
-                  prefixText: 'LKR ',
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final qty = int.tryParse(quantityController.text) ?? 0;
-                    final price = double.tryParse(priceController.text) ?? 0.0;
-
-                    if (qty < 1 || price <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a valid quantity and price.')),
-                      );
-                      return;
-                    }
-
-                    final state = context.read<FarmoraState>();
-                    await state.makeOffer(
-                      productId: product.id,
-                      productName: product.name,
-                      farmerId: product.farmerId,
-                      quantity: qty,
-                      price: price,
-                    );
-
-                    if (context.mounted) {
-                      Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Offer of LKR ${price.toStringAsFixed(0)}/${product.unit} sent to farmer!'),
-                          backgroundColor: AppColors.primary,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text(
-                    'Submit Proposal',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ),
               ),
             ],
           ),

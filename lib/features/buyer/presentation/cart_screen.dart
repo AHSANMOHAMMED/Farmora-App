@@ -4,35 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../providers/farmora_state.dart';
 
-class CartScreen extends StatefulWidget {
+class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
-
-  @override
-  State<CartScreen> createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  late TextEditingController _addressController;
-  String _paymentMethod = 'cod'; // 'cod' or 'payhere'
-
-  @override
-  void initState() {
-    super.initState();
-    final state = context.read<FarmoraState>();
-    final initialAddress = state.deliveryAddressDraft.isNotEmpty
-        ? state.deliveryAddressDraft
-        : (state.district.isNotEmpty ? '${state.district}, ${state.country}' : '');
-    _addressController = TextEditingController(text: initialAddress);
-    if (state.deliveryAddressDraft.isEmpty && initialAddress.isNotEmpty) {
-      state.deliveryAddressDraft = initialAddress;
-    }
-  }
-
-  @override
-  void dispose() {
-    _addressController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,18 +139,20 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: item.product.imagePath != null
+                                child: item.product.primaryImage != null && item.product.primaryImage!.isNotEmpty
                                     ? SafeImage(
-                                        path: item.product.imagePath!,
+                                        path: item.product.primaryImage!,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => Center(child: Text(
                                           item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
                                         )),
                                       )
-                                    : Text(
-                                        item.product.emoji,
-                                        style: const TextStyle(fontSize: 32),
+                                    : Center(
+                                        child: Text(
+                                          item.product.emoji,
+                                          style: const TextStyle(fontSize: 32),
+                                        ),
                                       ),
                               ),
                             ),
@@ -299,140 +274,18 @@ class _CartScreenState extends State<CartScreen> {
                       const SizedBox(height: 4),
                       _buildFeeRow('Delivery fee', 'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
                       const SizedBox(height: 4),
-                      const SizedBox(height: 8),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Payment Method',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => setState(() => _paymentMethod = 'cod'),
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: _paymentMethod == 'cod'
-                                      ? AppColors.primary.withValues(alpha: 0.1)
-                                      : AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: _paymentMethod == 'cod'
-                                        ? AppColors.primary
-                                        : AppColors.outlineVariant.withValues(alpha: 0.5),
-                                    width: _paymentMethod == 'cod' ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _paymentMethod == 'cod'
-                                          ? Icons.radio_button_checked
-                                          : Icons.radio_button_off,
-                                      size: 16,
-                                      color: _paymentMethod == 'cod'
-                                          ? AppColors.primary
-                                          : AppColors.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Cash On Delivery',
-                                            style: TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Pay upon delivery',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: AppColors.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => setState(() => _paymentMethod = 'payhere'),
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: _paymentMethod == 'payhere'
-                                      ? AppColors.primary.withValues(alpha: 0.1)
-                                      : AppColors.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: _paymentMethod == 'payhere'
-                                        ? AppColors.primary
-                                        : AppColors.outlineVariant.withValues(alpha: 0.5),
-                                    width: _paymentMethod == 'payhere' ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _paymentMethod == 'payhere'
-                                          ? Icons.radio_button_checked
-                                          : Icons.radio_button_off,
-                                      size: 16,
-                                      color: _paymentMethod == 'payhere'
-                                          ? AppColors.primary
-                                          : AppColors.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Card / Escrow',
-                                            style: TextStyle(
-                                              fontFamily: 'Inter',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          Text(
-                                            'PayHere secure',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: AppColors.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          const Text('Payment', style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(color: AppColors.statusPendingBg, borderRadius: BorderRadius.circular(9999)),
+                            child: const Text('COD after delivery', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusPendingText)),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -443,28 +296,20 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       TextField(
-                        controller: _addressController,
                         onChanged: (v) => state.deliveryAddressDraft = v,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Delivery address',
                           hintText: 'Street, city, district',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                          border: OutlineInputBorder(),
                           isDense: true,
                         ),
                         maxLines: 2,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _paymentMethod == 'cod'
-                            ? 'Server verifies price, stock & totals. Cash collected upon delivery.'
-                            : 'Order placed with escrow protection. Pay safely via online checkout.',
-                        style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant),
-                      ),
+                      const Text('Server verifies price, stock and totals. Pay COD after delivery (or PayHere when configured).',
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -473,7 +318,7 @@ class _CartScreenState extends State<CartScreen> {
                           onPressed: state.placingOrder
                               ? null
                               : () async {
-                                  final address = _addressController.text.trim();
+                                  final address = state.deliveryAddressDraft.trim();
                                   if (address.length < 5) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -483,14 +328,11 @@ class _CartScreenState extends State<CartScreen> {
                                     );
                                     return;
                                   }
-                                  state.deliveryAddressDraft = address;
                                   final ok = await state.placeOrder(deliveryAddress: address);
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok
-                                          ? 'Order placed successfully! (${_paymentMethod == 'cod' ? "Cash on Delivery" : "Escrow / Online"})'
-                                          : 'Could not place order. Check address or try again.'),
+                                      content: Text(ok ? 'Order placed successfully!' : 'Could not place order. Check address or try again.'),
                                       backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
