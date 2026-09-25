@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/localization/l10n.dart';
+
 /// X25519 + AES-GCM chat crypto. Public keys live on the user profile;
 /// private keys stay in secure storage (`farmora_x25519_sk`).
 class ChatCrypto {
@@ -87,7 +89,7 @@ class ChatCrypto {
     }
     final prefix = isV3 ? currentCiphertextPrefix : ciphertextPrefix;
     final raw = base64Url.decode(ciphertext.substring(prefix.length));
-    if (raw.length < 12 + 16) return '[undecryptable]';
+    if (raw.length < 12 + 16) return L10n.current.chatUndecryptable;
     final nonce = raw.sublist(0, 12);
     final mac = Mac(raw.sublist(raw.length - 16));
     final cipherText = raw.sublist(12, raw.length - 16);

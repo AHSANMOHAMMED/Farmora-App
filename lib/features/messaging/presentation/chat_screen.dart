@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart' show ImageSource;
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/image_viewer.dart';
@@ -111,8 +112,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _pickAndSendImage({required bool paymentProof}) async {
-    final source = await _chooseSource(
-        paymentProof ? 'Send deposit slip' : 'Send a photo');
+    final source = await _chooseSource(paymentProof
+        ? context.l10n.chatSendDepositSlip
+        : context.l10n.chatSendPhoto);
     if (source == null || !mounted) return;
     final PickedImage? image;
     try {
@@ -146,9 +148,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final peerKey =
             _peerPublicKey ?? await _service.fetchChatPublicKey(_recipientId);
         if (peerKey == null || peerKey.isEmpty) {
-          throw const AppException(
-              'The other person has not opened chat yet, so text can\'t be '
-              'encrypted for them. You can still send photos.');
+          throw AppException(L10n.current.chatNoPeerKey);
         }
         _peerPublicKey = peerKey;
         ciphertext = await ChatCrypto.instance
@@ -188,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       if (mounted) setState(() => _outgoing.remove(item));
       if (item.kind == ChatAttachmentKind.paymentProof) {
-        _snack('Receipt sent. The farmer will confirm your payment.');
+        _snack(L10n.current.chatReceiptSent);
       }
     } catch (e, st) {
       if (!mounted) return;
@@ -217,12 +217,12 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
+              title: Text(ctx.l10n.widgetTakePhoto),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
+              title: Text(ctx.l10n.widgetChooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -233,9 +233,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _openAttachMenu(FarmoraOrder? order) async {
-    final canSendProof = order != null &&
-        order.buyerId == _uid &&
-        order.canSubmitProof;
+    final canSendProof =
+        order != null && order.buyerId == _uid && order.canSubmitProof;
     final choice = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -245,17 +244,17 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.image_outlined),
-              title: const Text('Photo'),
-              subtitle: const Text('Send a picture of your produce or delivery'),
+              title: Text(ctx.l10n.chatPhoto),
+              subtitle: Text(ctx.l10n.chatPhotoSubtitle),
               onTap: () => Navigator.pop(ctx, 'photo'),
             ),
             if (canSendProof)
               ListTile(
                 leading: const Icon(Icons.receipt_long_outlined,
                     color: AppColors.primary),
-                title: const Text('Payment receipt'),
-                subtitle: Text(
-                    'Deposit slip for ${order.displayTotal} — the farmer will confirm it'),
+                title: Text(ctx.l10n.chatPaymentReceipt),
+                subtitle:
+                    Text(ctx.l10n.chatReceiptSubtitle(order.displayTotal)),
                 onTap: () => Navigator.pop(ctx, 'proof'),
               ),
             const SizedBox(height: 8),
@@ -288,7 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         if (body.startsWith(ChatCrypto.currentCiphertextPrefix) ||
             body.startsWith(ChatCrypto.ciphertextPrefix)) {
-          return _keysReady ? '[encrypted]' : '…';
+          return _keysReady ? L10n.current.chatEncryptedPlaceholder : '…';
         }
         return body;
       }
@@ -296,7 +295,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return await ChatCrypto.instance
             .decrypt(ciphertext: body, peerPublicKeyB64: peerKey);
       } catch (_) {
-        return '[undecryptable]';
+        return L10n.current.chatUndecryptable;
       }
     });
   }
@@ -306,12 +305,19 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final order = _order(context.watch<FarmoraState>());
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: Text(order == null
-            ? 'Order chat'
-            : 'Order chat · ${order.productName.isNotEmpty ? order.productName : order.title}'),
+        title: Text(
+          order == null
+              ? l.orderChat
+              : l.chatOrderChatWith(order.productName.isNotEmpty
+                  ? order.productName
+                  : order.title),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -334,10 +340,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
                 final msgs = snap.data ?? const <FarmoraMessage>[];
                 if (msgs.isEmpty && _outgoing.isEmpty) {
-                  return const _CenteredNote(
+                  return _CenteredNote(
                     icon: Icons.lock_outline,
-                    text: 'Say hello. Messages are order-scoped and text is '
-                        'encrypted for the recipient.',
+                    text: l.chatEmpty,
                   );
                 }
                 // Newest at the bottom; reverse list keeps it in view.
@@ -367,8 +372,8 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(6),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
           color: mine ? AppColors.primary : AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(12),
@@ -392,11 +397,15 @@ class _ChatScreenState extends State<ChatScreen> {
             Icon(Icons.receipt_long_outlined,
                 size: 14, color: mine ? Colors.white : AppColors.primary),
             const SizedBox(width: 4),
-            Text('Payment receipt',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: mine ? Colors.white : AppColors.primary)),
+            Flexible(
+              child: Text(context.l10n.chatPaymentReceipt,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: mine ? Colors.white : AppColors.primary)),
+            ),
           ],
         ),
       );
@@ -414,11 +423,15 @@ class _ChatScreenState extends State<ChatScreen> {
           if (m.hasImage)
             Semantics(
               button: true,
-              label: m.isPaymentProof ? 'Open payment receipt' : 'Open photo',
+              label: m.isPaymentProof
+                  ? context.l10n.chatOpenReceipt
+                  : context.l10n.chatOpenPhoto,
               child: GestureDetector(
                 onTap: () => showImageViewer(context,
                     url: m.attachmentUrl!,
-                    title: m.isPaymentProof ? 'Payment receipt' : 'Photo'),
+                    title: m.isPaymentProof
+                        ? context.l10n.chatPaymentReceipt
+                        : context.l10n.chatPhoto),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: SizedBox(
@@ -477,9 +490,10 @@ class _ChatScreenState extends State<ChatScreen> {
                               color: Colors.black38,
                               alignment: Alignment.center,
                               child: CircularProgressIndicator(
-                                value: item.uploaded == null && item.progress > 0
-                                    ? item.progress
-                                    : null,
+                                value:
+                                    item.uploaded == null && item.progress > 0
+                                        ? item.progress
+                                        : null,
                                 color: Colors.white,
                               ),
                             ),
@@ -491,7 +505,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (!failed)
                   const Padding(
                     padding: EdgeInsets.only(right: 4, top: 2),
-                    child: Icon(Icons.schedule, size: 12, color: Colors.white70),
+                    child:
+                        Icon(Icons.schedule, size: 12, color: Colors.white70),
                   ),
               ],
             ),
@@ -507,7 +522,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ConstrainedBox(
                   constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.6),
-                  child: Text(item.error ?? 'Not sent.',
+                  child: Text(item.error ?? context.l10n.chatNotSent,
                       textAlign: TextAlign.end,
                       style: const TextStyle(
                           color: AppColors.error, fontSize: 12)),
@@ -515,11 +530,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 TextButton.icon(
                   onPressed: () => _deliver(item),
                   icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Retry'),
+                  label: Text(context.l10n.chatRetry),
                 ),
                 TextButton(
                   onPressed: () => _discard(item),
-                  child: const Text('Discard'),
+                  child: Text(context.l10n.chatDiscard),
                 ),
               ],
             ),
@@ -535,7 +550,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(
           children: [
             IconButton(
-              tooltip: 'Attach photo',
+              tooltip: context.l10n.chatAttachPhoto,
               onPressed: () => _openAttachMenu(order),
               icon: const Icon(Icons.add_photo_alternate_outlined,
                   color: AppColors.primary),
@@ -546,11 +561,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
-                decoration: const InputDecoration(
-                  hintText: 'Type a message…',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: context.l10n.chatTypeMessage,
+                  border: const OutlineInputBorder(),
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 onSubmitted: (_) => _sendText(),
               ),
@@ -560,7 +575,7 @@ class _ChatScreenState extends State<ChatScreen> {
               height: 48,
               width: 48,
               child: IconButton.filled(
-                tooltip: 'Send',
+                tooltip: context.l10n.send,
                 onPressed: _sendText,
                 icon: const Icon(Icons.send),
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../models/conversation_model.dart';
 import '../../../models/order.dart';
@@ -74,10 +75,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             .orders
             .where((o) => o.id == orderId)
             .firstOrNull;
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Messages'),
+        title: Text(l.messages),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -98,7 +100,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           }
           if (items.isEmpty) {
             if (order != null && _peerFor(order).isNotEmpty) {
-              final peerLabel = order.buyerId == _uid ? 'farmer' : 'buyer';
+              final peerIsFarmer = order.buyerId == _uid;
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -109,8 +111,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                           size: 40, color: AppColors.primary),
                       const SizedBox(height: 12),
                       Text(
-                        'Start a private chat with the $peerLabel about this order. '
-                        'Phone numbers stay private.',
+                        peerIsFarmer
+                            ? l.chatStartWithFarmer
+                            : l.chatStartWithBuyer,
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -124,7 +127,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                     strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.send, size: 18),
-                        label: Text('Message the $peerLabel'),
+                        label: Text(peerIsFarmer
+                            ? l.chatMessageTheFarmer
+                            : l.chatMessageTheBuyer),
                       ),
                       if (_startError != null) ...[
                         const SizedBox(height: 12),
@@ -137,8 +142,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 ),
               );
             }
-            return _note(
-                'No messages yet. Open an order and tap Message to contact the other party. Phone numbers stay private.');
+            return _note(l.chatNoConversations);
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -147,11 +151,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             itemBuilder: (context, i) {
               final c = items[i];
               final unread = c.unreadFor(_uid);
-              final preview = c.lastMessage.isEmpty
-                  ? 'No messages yet'
-                  : (c.lastMessage.startsWith('farmora')
-                      ? 'Encrypted message'
-                      : c.lastMessage);
+              // Stored previews are English system values; show them in the
+              // app language.
+              final preview = switch (c.lastMessage) {
+                '' => l.chatNoMessagesYet,
+                'Photo' => l.chatPhoto,
+                'Payment receipt' => l.chatPaymentReceipt,
+                final m when m.startsWith('farmora') => l.chatEncryptedMessage,
+                final m => m,
+              };
+              final shortId = c.orderId.substring(
+                  0, c.orderId.length > 6 ? 6 : c.orderId.length);
               return ListTile(
                 tileColor: AppColors.surfaceContainerLowest,
                 shape: RoundedRectangleBorder(
@@ -159,17 +169,25 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 leading:
                     const CircleAvatar(child: Icon(Icons.chat_bubble_outline)),
                 title: Text(
-                    'Order ${c.orderId.isEmpty ? '' : '#${c.orderId.substring(0, c.orderId.length > 6 ? 6 : c.orderId.length)}'}',
+                    c.orderId.isEmpty
+                        ? l.chatOrderTitleNoId
+                        : l.chatOrderTitle(shortId),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(preview,
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: unread > 0
-                    ? CircleAvatar(
-                        radius: 11,
-                        backgroundColor: AppColors.primary,
-                        child: Text('$unread',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 11)))
+                    ? Semantics(
+                        label: l.chatUnreadCount(unread),
+                        excludeSemantics: true,
+                        child: CircleAvatar(
+                            radius: 11,
+                            backgroundColor: AppColors.primary,
+                            child: Text('$unread',
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 11))),
+                      )
                     : null,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => ChatScreen(conversation: c)),
