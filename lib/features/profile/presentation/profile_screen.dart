@@ -400,14 +400,12 @@ class ProfileScreen extends StatelessWidget {
                   title: Text(l10n?.signOut ?? 'Sign out',
                       style: const TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
-                  onTap: () async {
-                    await context.read<FarmoraState>().signOut();
-                    if (context.mounted) {
-                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AuthGate()),
-                        (route) => false,
-                      );
-                    }
+                  onTap: () {
+                    context.read<FarmoraState>().signOut();
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthGate()),
+                      (route) => false,
+                    );
                   },
                 ),
               ],
