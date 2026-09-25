@@ -152,7 +152,7 @@
   "roleRequired": "Role is required",
   "districtRequired": "District is required",
   "selectRole": "Select a role to continue",
-  "profilePhoto": "Profile Photo",
+  "profilePhoto": "Profile photo",
   "uploadPhoto": "Upload Photo",
   "changeLanguage": "Change Language",
   "languageChanged": "Language changed",
@@ -404,5 +404,3295 @@
   "leaveAReview": "Leave a review?",
   "editDeliveryAddress": "Edit Delivery Address",
   "harvestAuthenticityVerified": "Harvest authenticity verified.",
-  "reviewSubmittedSuccessfully": "Review submitted successfully!"
+  "reviewSubmittedSuccessfully": "Review submitted successfully!",
+  "profileUnnamedUser": "Farmora user",
+  "profileVerified": "Verified",
+  "profileVerificationPending": "Verification pending",
+  "profileNotVerified": "Not verified",
+  "profileMemberSince": "Member since {date}",
+  "@profileMemberSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "profileChangePhotoHint": "Tap to change photo",
+  "profilePhotoUploading": "Uploading photo…",
+  "profilePhotoUpdated": "Profile photo updated.",
+  "profilePhotoFailed": "Could not update your photo. Please try again.",
+  "profileStatProducts": "Products listed",
+  "profileStatCompletedOrders": "Completed orders",
+  "profileStatRating": "Rating",
+  "profileReviewCount": "{count, plural, =1{1 review} other{{count} reviews}}",
+  "@profileReviewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCompletePercent": "Profile {percent}% complete",
+  "@profileCompletePercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCompleteHint": "Finish these steps so buyers can trust you.",
+  "profileCompleteHintBuyer": "Finish these steps for faster ordering.",
+  "profileMissingPhoto": "Add photo",
+  "profileMissingDistrict": "Add district",
+  "profileMissingFarm": "Add farm details",
+  "profileMissingBank": "Add bank details",
+  "profileMissingVerification": "Get verified",
+  "profileSectionAccount": "Account",
+  "profileSectionLocation": "Location & transport",
+  "profileSectionPreferences": "Preferences",
+  "profileSectionSupport": "Support",
+  "profileSectionPrivacy": "Privacy & data",
+  "profileEditSubtitle": "Name, photo and district",
+  "profileFarmDetails": "Farm details",
+  "profileFarmDetailsEmpty": "Add your farm name, size and main crops",
+  "profileBankDetails": "Bank details",
+  "profileBankDetailsEmpty": "Needed so buyers can pay by bank deposit",
+  "profileVerification": "Account verification",
+  "profileVerificationNoneSubtitle": "Upload your documents for review",
+  "profileVerificationPendingSubtitle": "We are checking your documents",
+  "profileVerificationDoneSubtitle": "Your account is verified",
+  "profileNotificationsSubtitle": "Order, payment and delivery alerts",
+  "profileHelpSubtitle": "Questions and contact us",
+  "profileTerms": "Terms of Service",
+  "profilePrivacyPolicy": "Privacy Policy",
+  "profileAbout": "About Farmora",
+  "profileAppVersion": "Version {version}",
+  "@profileAppVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "profileAboutDescription": "Farmora connects Sri Lankan farmers directly with buyers and transporters.",
+  "profileLiveLocation": "Live location sharing",
+  "profileLiveLocationOn": "On — nearby transporters and your order partners can see your location",
+  "profileLiveLocationOff": "Off — turn on so nearby transporters can find you",
+  "profileLiveLocationStarted": "Live location sharing started.",
+  "profileLocationDenied": "Location permission denied. Allow it in Settings.",
+  "profileLocationOff": "Device location is turned off.",
+  "profileNearbyTransporters": "Nearby transporters",
+  "profileNearbyTransportersSubtitle": "Find verified transporters close to you",
+  "profileExportSubtitle": "Copy all your Farmora data",
+  "profileExportCopied": "Your data was copied to the clipboard.",
+  "profileExportFailed": "Could not export your data. Please try again.",
+  "profileDeleteSubtitle": "Permanently remove your account",
+  "profileDeleteTitle": "Delete your account?",
+  "profileDeleteIntro": "If you continue:",
+  "profileDeletePoint1": "Your profile, photo and contact details are removed.",
+  "profileDeletePoint2": "Your products, offers, messages and notifications are deleted.",
+  "profileDeletePoint3": "Past orders and payments are kept without your name, for records.",
+  "profileDeletePoint4": "You will be signed out. This cannot be undone.",
+  "profileDeleteConfirmCheck": "I understand this cannot be undone",
+  "profileDeleteFailed": "Could not delete your account. Please try again.",
+  "profileLogoutTitle": "Log out?",
+  "profileLogoutMessage": "You will need to sign in again to use Farmora.",
+  "profileRefreshFailed": "Could not refresh your profile. Check your connection.",
+  "profileCancel": "Cancel",
+  "editProfilePersonal": "Personal details",
+  "editProfileFullName": "Full name",
+  "editProfileNameRequired": "Please enter your name",
+  "editProfileTooLong": "Keep it under {max} characters",
+  "@editProfileTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "editProfileDistrict": "District",
+  "editProfilePhone": "Phone number",
+  "editProfilePhoneLocked": "Contact support to change your phone number",
+  "editProfileFarmSection": "Farm details",
+  "editProfileFarmName": "Farm name",
+  "editProfileFarmSize": "Farm size",
+  "editProfileFarmSizeHint": "e.g. 2 acres",
+  "editProfileMainCrops": "Main crops",
+  "editProfileMainCropsHint": "Separate with commas, e.g. Carrot, Leeks",
+  "editProfileTooManyCrops": "Add up to 10 crops",
+  "editProfileSave": "Save changes",
+  "editProfileSaving": "Saving…",
+  "editProfileSaveFailed": "Could not save your profile. Please try again.",
+  "editProfilePhotoPickFailed": "Could not open your photos.",
+  "statusPending": "Pending",
+  "statusAccepted": "Accepted",
+  "statusConfirmed": "Confirmed",
+  "statusAssigned": "Assigned",
+  "statusPickedUp": "Picked up",
+  "statusInTransit": "On the way",
+  "statusDelivered": "Delivered",
+  "statusCompleted": "Completed",
+  "statusCancelled": "Cancelled",
+  "statusDeclined": "Declined",
+  "statusRejected": "Rejected",
+  "statusApproved": "Approved",
+  "statusRequested": "Requested",
+  "statusCountered": "Counter offer",
+  "statusActive": "Active",
+  "statusInactive": "Inactive",
+  "statusOutOfStock": "Out of stock",
+  "statusEmpty": "Empty",
+  "statusOpen": "Open",
+  "statusCollected": "Collected",
+  "statusProcessing": "Processing",
+  "statusSettled": "Settled",
+  "statusOnHold": "On hold",
+  "statusPaid": "Paid",
+  "statusUnpaid": "Unpaid",
+  "statusRefunded": "Refunded",
+  "statusDisputed": "Disputed",
+  "statusUnderReview": "Under review",
+  "statusResolved": "Resolved",
+  "statusSuspended": "Suspended",
+  "statusVerified": "Verified",
+  "statusFailed": "Failed",
+  "statusDraft": "Draft",
+  "statusHarvested": "Harvested",
+  "statusSold": "Sold",
+  "statusExpired": "Expired",
+  "paymentAwaitingDeposit": "Awaiting deposit",
+  "paymentCashDue": "Cash due on delivery",
+  "paymentReceiptSubmitted": "Receipt submitted",
+  "paymentReceiptRejected": "Receipt rejected",
+  "roleFarmer": "Farmer",
+  "roleBuyer": "Buyer",
+  "roleTransporter": "Transporter",
+  "roleAdmin": "System admin",
+  "roleFarmerDescription": "Sell your harvest with confidence.",
+  "roleBuyerDescription": "Fresh produce, straight to you.",
+  "roleTransporterDescription": "Earn while you serve your community.",
+  "roleAdminDescription": "Manage the Farmora ecosystem.",
+  "disputeReasonDamaged": "Damaged goods",
+  "disputeReasonWrongItems": "Wrong items",
+  "disputeReasonLate": "Late delivery",
+  "disputeReasonQuality": "Quality issues",
+  "disputeReasonPricing": "Price difference",
+  "disputeReasonOther": "Other",
+  "ratingExcellent": "Excellent",
+  "ratingGood": "Good",
+  "ratingAverage": "Average",
+  "ratingPoor": "Poor",
+  "ratingTerrible": "Very bad",
+  "ratingNone": "No rating",
+  "trustHigh": "Highly trusted",
+  "trustNewFarmer": "New farmer",
+  "trustStandard": "Standard",
+  "errorServerUnreachable": "The Farmora server could not be reached. Please try again later.",
+  "errorSignInAgain": "Please sign in again and retry.",
+  "errorNoPermission": "You don't have permission to do this.",
+  "errorInvalidDetails": "Some details are invalid.",
+  "errorTimeout": "The request timed out. Check your connection.",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorOffline": "You appear to be offline. Check your connection.",
+  "errorNotFound": "That item no longer exists.",
+  "errorUploadNoPermission": "You don't have permission to upload this file.",
+  "errorUploadCancelled": "Upload cancelled.",
+  "errorStorageFull": "Storage is full. Please try again later.",
+  "errorUploadFailed": "Upload failed. Check your connection and try again.",
+  "errorFileMissing": "The file no longer exists.",
+  "errorStorageNotSetUp": "Photo storage is not set up yet. Please contact support.",
+  "errorPhotoAccessDenied": "Photo access was denied. Allow it in your device settings.",
+  "errorCameraAccessDenied": "Camera access was denied. Allow it in your device settings.",
+  "errorNoCamera": "No camera is available on this device.",
+  "errorPickerFailed": "Could not open the photo picker.",
+  "errorImageEmpty": "The selected file is empty.",
+  "errorImageUnsupported": "Unsupported file. Please choose a JPG, PNG or WebP photo.",
+  "errorImageTooLarge": "Image is too large ({size} MB). The limit is 5 MB.",
+  "@errorImageTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "errorTooManyPhotos": "{count, plural, =1{Only 1 more photo can be added.} other{Only {count} more photos can be added.}}",
+  "@errorTooManyPhotos": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonConfirm": "Confirm",
+  "commonDelete": "Delete",
+  "commonEdit": "Edit",
+  "commonClose": "Close",
+  "commonOk": "OK",
+  "commonYes": "Yes",
+  "commonNo": "No",
+  "commonRetry": "Try again",
+  "commonBack": "Back",
+  "commonNext": "Next",
+  "commonDone": "Done",
+  "commonSubmit": "Submit",
+  "commonSearch": "Search",
+  "commonViewAll": "View all",
+  "commonViewDetails": "View details",
+  "commonLoading": "Loading…",
+  "commonRequired": "This field is required",
+  "commonAll": "All",
+  "commonTotal": "Total",
+  "commonUnknown": "Unknown",
+  "commonNotAvailable": "Not available",
+  "commonJustNow": "Just now",
+  "commonMinutesAgo": "{count, plural, =1{1 min ago} other{{count} mins ago}}",
+  "@commonMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@commonHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonDaysAgo": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@commonDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonYesterday": "Yesterday",
+  "commonToday": "Today",
+  "unitKg": "kg",
+  "commonPerKg": "/kg",
+  "farmerEarningsRefreshFailed": "Could not refresh earnings. {reason}",
+  "@farmerEarningsRefreshFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsSelectMonth": "Select month",
+  "farmerEarningsThisMonth": "This Month",
+  "farmerEarningsThisWeek": "This Week",
+  "farmerEarningsMonthly": "Monthly Earnings",
+  "farmerEarningsMonthsShort": "{count}M",
+  "@farmerEarningsMonthsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerEarningsTransactions": "Transactions",
+  "farmerEarningsNoTransactions": "No transactions in {month}.",
+  "@farmerEarningsNoTransactions": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsNoFilteredTransactions": "No {filter} transactions in {month}.",
+  "@farmerEarningsNoFilteredTransactions": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsUndatedNote": "{count, plural, =1{1 paid order has no payment date. It is included in Total Earnings but not in monthly figures.} other{{count} paid orders have no payment date. They are included in Total Earnings but not in monthly figures.}}",
+  "@farmerEarningsUndatedNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerEarningsFilterCod": "COD",
+  "farmerBankDeposit": "Bank Deposit",
+  "farmerCashOnDelivery": "Cash on Delivery",
+  "farmerEarningsTotalUpper": "TOTAL EARNINGS",
+  "farmerEarningsPendingHint": "Unpaid, receipt under review, or rejected",
+  "farmerEarningsChartEmpty": "No earnings yet. Completed payments will appear here.",
+  "farmerEarningsPreviousMonth": "Previous month",
+  "farmerEarningsNextMonth": "Next month",
+  "farmerEarningsMonthSummary": "{month} summary",
+  "@farmerEarningsMonthSummary": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsTotalIncome": "Total income",
+  "farmerEarningsChangeVs": "{percent}% vs {month}",
+  "@farmerEarningsChangeVs": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsNoCompare": "No income in {month} to compare",
+  "@farmerEarningsNoCompare": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerEarningsPaidOrders": "Paid orders",
+  "farmerEarningsPendingThisMonth": "Pending this month",
+  "farmerEarningsByMethod": "By payment method",
+  "farmerOrderNumber": "Order {number}",
+  "@farmerOrderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "adminReviewsTitle": "Review & Feedback Moderation",
+  "adminReviewsFilterAll": "All ({count})",
+  "@adminReviewsFilterAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminReviewsFilterPending": "Pending ({count})",
+  "@adminReviewsFilterPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminReviewsFilterFlagged": "Flagged / Rejected",
+  "adminReviewsFilterLowRating": "Low Rating ({count})",
+  "@adminReviewsFilterLowRating": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminReviewsEmpty": "No reviews found for this filter",
+  "adminReviewsReviewed": "Reviewed: {name}",
+  "@adminReviewsReviewed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminReviewsOrder": "Order: {number}",
+  "@adminReviewsOrder": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "adminReviewsAdminNote": "Admin Note: {note}",
+  "@adminReviewsAdminNote": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "adminReviewsAddNote": "Add Note",
+  "adminReviewsApprove": "Approve",
+  "adminReviewsApprovedSnack": "Review approved and visible publicly.",
+  "adminReviewsFlag": "Flag",
+  "adminReviewsFlaggedSnack": "Review flagged and hidden.",
+  "adminReviewsDeleteTooltip": "Delete Review",
+  "adminReviewsDeleteTitle": "Delete Review?",
+  "adminReviewsDeleteMessage": "This will permanently delete this feedback entry from the platform.",
+  "adminReviewsDeletedSnack": "Review permanently removed.",
+  "adminReviewsNoteTitle": "Admin Moderation Note",
+  "adminReviewsNoteHint": "Enter internal audit note or reasoning...",
+  "adminReviewsNoteSaved": "Audit note saved.",
+  "adminReviewsSaveNote": "Save Note",
+  "adminVerificationTitle": "Verification Review",
+  "adminVerificationSubtitle": "Review and approve farmer verification documents",
+  "adminVerificationEmptyTitle": "No verification requests",
+  "adminVerificationEmptyMessage": "Verification requests will appear here when farmers submit documents",
+  "adminVerificationPendingReview": "Pending Review",
+  "adminVerificationFileName": "File Name",
+  "adminVerificationFileSize": "File Size",
+  "adminVerificationImages": "Document Images",
+  "adminVerificationFront": "Front",
+  "adminVerificationBack": "Back",
+  "adminVerificationDocument": "Document",
+  "adminVerificationPreview": "Document Preview",
+  "adminVerificationRejectionReason": "Rejection Reason",
+  "adminVerificationRejectionHint": "Please provide a reason for rejection...",
+  "adminVerificationApproving": "Approving...",
+  "adminVerificationApprove": "Approve",
+  "adminVerificationReject": "Reject",
+  "adminVerificationConfirmRejection": "Confirm Rejection",
+  "adminVerificationDocApproved": "This document has been approved",
+  "adminVerificationDocRejected": "This document has been rejected",
+  "adminVerificationApprovedSnack": "Verification document approved successfully",
+  "adminVerificationRejectedSnack": "Verification document rejected",
+  "adminVerificationApproveFailed": "Failed to approve: {message}",
+  "@adminVerificationApproveFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "adminVerificationRejectFailed": "Failed to reject: {message}",
+  "@adminVerificationRejectFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "adminServerTitle": "Firebase & Server Control",
+  "adminServerMaintenanceMode": "Platform Maintenance Mode",
+  "adminServerMaintenanceOnSnack": "🚨 Platform placed in MAINTENANCE MODE. Non-admin access restricted.",
+  "adminServerMaintenanceOffSnack": "✅ Maintenance mode disabled. Marketplace trades live.",
+  "adminServerMaintenanceActive": "Active: All buyer and farmer clients receive maintenance screen broadcast.",
+  "adminServerMaintenanceInactive": "Disabled: All marketplace bidding, logistics, and order operations running normally.",
+  "adminServerNoticeLabel": "Maintenance Broadcast Banner",
+  "adminServerNoticeHint": "e.g. Server upgrade in progress. Estimated return: 3:00 PM.",
+  "adminServerNoticeUpdated": "Maintenance notice updated.",
+  "adminServerUpdateNotice": "Update Notice",
+  "adminServerHealthTitle": "Firebase Infrastructure Health Monitor",
+  "adminServerHealthSubtitle": "Live telemetry and cloud service status for Farmora Web & App",
+  "adminServerFirestoreName": "Cloud Firestore Database",
+  "adminServerFirestoreDetails": "Active · Multi-Region (asia-south1) · 38ms",
+  "adminServerAuthName": "Firebase Authentication & Security Rules",
+  "adminServerAuthDetails": "Operational · OTP & Email/Password · RBAC enforce",
+  "adminServerStorageName": "Cloud Storage (CDN Media Bucket)",
+  "adminServerStorageDetails": "Connected · 100MB video quota · Image compression",
+  "adminServerFcmName": "Firebase Cloud Messaging (FCM)",
+  "adminServerFcmDetails": "Active · In-App Broadcasts & Push Delivery",
+  "adminServerHealthy": "HEALTHY",
+  "adminServerRulesTitle": "Marketplace Rules & Engine Tuning",
+  "adminServerCommission": "Platform Commission Cut",
+  "adminServerPercent": "{value}%",
+  "@adminServerPercent": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "adminServerEscrowWindow": "Escrow Auto-Release Window",
+  "adminServerHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@adminServerHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminServerHoursShort": "{count} h",
+  "@adminServerHoursShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminServerMinVersionLabel": "Minimum Required Client Version",
+  "adminServerMinVersionEnforced": "Minimum version requirement enforced.",
+  "adminServerEnforce": "Enforce",
+  "adminServerActionsTitle": "Operational & Maintenance Actions",
+  "adminServerPurgeTitle": "Purge Client Cache & Force Resync",
+  "adminServerPurgeSubtitle": "Clears in-memory caches and re-queries real-time listeners",
+  "adminServerPurgeSnack": "🔄 Local client state purged and refreshed.",
+  "adminServerBackupTitle": "Trigger Database Backup Snapshot",
+  "adminServerBackupSubtitle": "Export cloud backup snapshot to cloud storage bucket",
+  "adminServerBackupSnack": "💾 Database backup snapshot initiated to {bucket}",
+  "@adminServerBackupSnack": {
+    "placeholders": {
+      "bucket": {
+        "type": "String"
+      }
+    }
+  },
+  "adminServerSeedTitle": "Re-seed Sri Lankan Marketplace Data",
+  "adminServerSeedSubtitle": "Attaches real LKR produce, regional orders, and logistics jobs",
+  "adminServerSeeding": "Seeding Sri Lankan marketplace…",
+  "adminServerSeedSuccess": "Seeded successfully with authentic LKR produce and orders.",
+  "adminServerSeedNotice": "Seed notice: {message}",
+  "@adminServerSeedNotice": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettingsTitle": "Platform Settings",
+  "adminSettingsUpdateFailed": "Settings update failed: {message}",
+  "@adminSettingsUpdateFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettingsMaintenanceMode": "Maintenance Mode",
+  "adminSettingsMaintenanceSubtitle": "Disable access to the platform for all non-admin users.",
+  "adminSettingsFeeTitle": "Fee Configuration",
+  "adminSettingsFeeCurrent": "Current: {percent}%",
+  "@adminSettingsFeeCurrent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettingsFeeDialogTitle": "Platform fee (basis points)",
+  "adminSettingsSecurityTitle": "Security Policies",
+  "adminSettingsSessionTimeout": "{count, plural, =1{Session timeout: 1 minute} other{Session timeout: {count} minutes}}",
+  "@adminSettingsSessionTimeout": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSettingsSessionDialogTitle": "Session timeout (minutes)",
+  "adminSettingsMarketPriceTitle": "Market Price Intelligence",
+  "adminSettingsMarketPriceSubtitle": "Configure Sri Lankan wholesale Pola benchmark rates",
+  "adminSettingsBroadcastTitle": "Broadcast Advisories & Weather Alerts",
+  "adminSettingsBroadcastSubtitle": "Push emergency and operational notices to users",
+  "adminSettingsDisputeTitle": "Dispute & Escrow Arbitrator Desk",
+  "adminSettingsDisputeSubtitle": "Inspect claims and trigger escrow payouts",
+  "adminSettingsKycTitle": "Farmer & Transporter KYC Verification",
+  "adminSettingsKycSubtitle": "Review national identity, land permits, and driving licenses",
+  "adminSettingsAnalyticsTitle": "Platform Analytics & Insights",
+  "adminSettingsAnalyticsSubtitle": "GMV, volume flow, regional distribution, and export reports",
+  "adminSettingsReviewsSubtitle": "Moderate buyer and farmer ratings, audit notes, and flags",
+  "adminSettingsServerSubtitle": "Maintenance mode, service latency, version enforcement, and cache ops",
+  "adminSettingsTreasuryTitle": "Treasury & Bank Wire Settlements",
+  "adminSettingsTreasurySubtitle": "Farmer & transporter CEFT/SLIP payouts, escrow release, and wire manifests",
+  "adminSettingsFleetTitle": "Fleet & Supply Chain Dispatch Radar",
+  "adminSettingsFleetSubtitle": "Real-time tracking of active hauls, transit checkpoints, and driver loads",
+  "adminSettingsAuditTitle": "Compliance & Security Audit Trail",
+  "adminSettingsAuditSubtitle": "Tamper-proof event logs for admin actions, security alerts, and exports",
+  "adminSettingsSeedTitle": "Seed Sri Lankan marketplace",
+  "adminSettingsSeedSubtitle": "Requires registered farmer + buyer. Attaches real LKR produce, orders and jobs to those accounts.",
+  "adminSettingsSeeded": "Seeded. Sign in as farmer/buyer/transporter to see data.",
+  "adminSettingsSeedFailed": "Seed failed: {message}",
+  "@adminSettingsSeedFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterAllLocations": "All locations",
+  "transporterAllDestinations": "All destinations",
+  "transporterAllProduce": "All produce",
+  "jobSignInToAccept": "Please sign in again to accept this job.",
+  "jobNoLongerAvailable": "This job is no longer available.",
+  "jobAcceptedNotifTitle": "Job accepted successfully",
+  "jobAcceptedNotifBody": "{produce} has been added to your active jobs.",
+  "@jobAcceptedNotifBody": {
+    "placeholders": {
+      "produce": {
+        "type": "String"
+      }
+    }
+  },
+  "jobAcceptedAddedToMyJobs": "Job accepted and added to My Jobs.",
+  "jobIssueOnlyActive": "Only active deliveries can have an issue reported.",
+  "jobIssueReportedSuccess": "Issue reported. Farmora support will follow up shortly.",
+  "jobInvalidRating": "Please select a valid rating.",
+  "jobThanksFeedback": "Thank you for your feedback.",
+  "jobDeliveryCompletedNotifTitle": "Delivery completed",
+  "jobDeliveryCompletedNotifBody": "{produce} was delivered successfully.",
+  "@jobDeliveryCompletedNotifBody": {
+    "placeholders": {
+      "produce": {
+        "type": "String"
+      }
+    }
+  },
+  "jobPickupConfirmed": "Pickup confirmed.",
+  "jobDeliveryStarted": "Delivery started.",
+  "jobCancelledMessage": "Job cancelled.",
+  "jobDeliveryCompletedSuccess": "Delivery completed successfully.",
+  "transporterAvailabilityUpdated": "Availability updated.",
+  "transporterNamePhoneRequired": "Name and phone number are required.",
+  "transporterRegistrationRequired": "Vehicle registration number is required.",
+  "transporterProfileUpdated": "Profile updated successfully.",
+  "jobWarnLoadExceeds": "Load exceeds vehicle capacity",
+  "jobWarnSmallLoad": "Small load for your vehicle",
+  "jobTimelineCreated": "Job created",
+  "jobUnknownProduce": "Unknown produce",
+  "jobNotProvided": "Not provided",
+  "jobNotFound": "Job not found.",
+  "jobUnsupportedStatus": "Unsupported status update: {status}.",
+  "@jobUnsupportedStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "jobProduceCollectionFallback": "Produce collection",
+  "jobPickupNotProvided": "Pickup location not provided",
+  "jobDeliveryNotProvided": "Delivery location not provided",
+  "jobFarmerDetailsUnavailable": "Farmer details unavailable",
+  "jobBuyerDetailsUnavailable": "Buyer details unavailable",
+  "jobNoPermissionUpdate": "Your transporter account cannot update this job.",
+  "jobNoLongerExists": "This collection job no longer exists.",
+  "jobUpdatedElsewhere": "This job was updated by someone else. Refresh and try again.",
+  "jobCouldNotUpdate": "Could not update the collection job.",
+  "jobNoPermissionView": "You do not have permission to view these collection jobs.",
+  "jobDatabaseUnavailable": "The database is temporarily unavailable.",
+  "jobServiceNotReady": "This service is not ready yet. Please try again later.",
+  "jobCouldNotLoad": "Could not load collection jobs.",
+  "jobNotificationFallbackTitle": "Farmora update",
+  "jobAlreadyAccepted": "This job has already been accepted by another provider.",
+  "jobNotAssigned": "You are not assigned to this job.",
+  "jobCannotChangeStatus": "Cannot change {from} to {to}.",
+  "@jobCannotChangeStatus": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementRecordTitle": "Record completed bank transfer",
+  "adminSettlementDisburseFor": "Disburse funds for {orderNumber} to:",
+  "@adminSettlementDisburseFor": {
+    "placeholders": {
+      "orderNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementTransferHint": "Transfer the funds through your bank first, then enter its real confirmation reference.",
+  "adminSettlementReferenceLabel": "Bank confirmation reference",
+  "adminSettlementRecipient": "Recipient: {name} ({role})",
+  "@adminSettlementRecipient": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementBank": "Bank: {bank}",
+  "@adminSettlementBank": {
+    "placeholders": {
+      "bank": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementAccount": "Account: {account}",
+  "@adminSettlementAccount": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementGrossOrder": "Gross Order:",
+  "adminSettlementPlatformFee": "Platform Fee (5%):",
+  "adminSettlementNetPayout": "Net Payout:",
+  "adminSettlementEnterReference": "Enter the actual bank transfer reference.",
+  "adminSettlementRecordFailed": "Could not record transfer: {message}",
+  "@adminSettlementRecordFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementRecorded": "Transfer reference recorded for {name}.",
+  "@adminSettlementRecorded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementRecordTransfer": "Record Transfer",
+  "adminSettlementHoldDefaultReason": "Suspected bank detail mismatch; flagged for manual compliance review.",
+  "adminSettlementHoldTitle": "Place Settlement On Hold",
+  "adminSettlementHoldMessage": "Hold disbursement of {amount} for {name}.",
+  "@adminSettlementHoldMessage": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementHoldReasonLabel": "Compliance Hold Reason",
+  "adminSettlementHoldApplied": "Settlement {id} placed on compliance hold.",
+  "@adminSettlementHoldApplied": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementApplyHold": "Apply Hold",
+  "adminSettlementExported": "{count, plural, =1{Exported bank wire batch manifest (1 disbursement) for CEFT/SLIP processing.} other{Exported bank wire batch manifest ({count} disbursements) for CEFT/SLIP processing.}}",
+  "@adminSettlementExported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSettlementKpiDisbursed": "Disbursed To Date",
+  "adminSettlementKpiPending": "Pending In Vault",
+  "adminSettlementKpiFees": "Platform Fees Kept",
+  "adminSettlementKpiHeld": "Held Flagged",
+  "adminSettlementPayoutsCount": "{count, plural, =1{1 payout} other{{count} payouts}}",
+  "@adminSettlementPayoutsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSettlementFilterAll": "All ({count})",
+  "@adminSettlementFilterAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminSettlementExportCsv": "Export Wire CSV",
+  "adminSettlementEmptyTitle": "No Settlements Found",
+  "adminSettlementEmptyMessage": "No payout records match \"{status}\".",
+  "@adminSettlementEmptyMessage": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementBankAccount": "{bank} · Acc: {account}",
+  "@adminSettlementBankAccount": {
+    "placeholders": {
+      "bank": {
+        "type": "String"
+      },
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementBreakdown": "Gross: {gross} | Fee (5%): {fee} | Method: {method}",
+  "@adminSettlementBreakdown": {
+    "placeholders": {
+      "gross": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      },
+      "method": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementBankRef": "Bank Ref: {reference}",
+  "@adminSettlementBankRef": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementHoldReason": "Hold Reason: {reason}",
+  "@adminSettlementHoldReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSettlementApproveWire": "Approve & Wire",
+  "adminSettlementHoldPayout": "Hold Payout",
+  "adminSettlementResumed": "Disbursement resumed for wire processing.",
+  "adminSettlementResolveHold": "Resolve Hold & Resume",
+  "adminUsersTitle": "User Management & Access Control",
+  "adminUsersSearchHint": "Search by name, phone, email, or user ID...",
+  "adminUsersAllRoles": "All Roles ({count})",
+  "@adminUsersAllRoles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminUsersFarmers": "Farmers",
+  "adminUsersBuyers": "Buyers",
+  "adminUsersTransporters": "Transporters",
+  "adminUsersAdmins": "Admins",
+  "adminUsersVerifiedOnly": "Verified Only",
+  "adminUsersEmpty": "No users match your criteria.",
+  "adminUsersUnknownUser": "Unknown User",
+  "adminUsersNotProvided": "Not provided",
+  "adminUsersDefaultDistrict": "Sri Lanka",
+  "adminUsersRoleDistrict": "Role: {role} · District: {district}",
+  "@adminUsersRoleDistrict": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      },
+      "district": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUsersUid": "UID: {uid}",
+  "@adminUsersUid": {
+    "placeholders": {
+      "uid": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUsersActionsTitle": "Administrative Actions",
+  "adminUsersRevokeBadge": "Revoke Verified Badge",
+  "adminUsersGrantBadge": "Grant Verified Badge",
+  "adminUsersRevokeBadgeSubtitle": "Remove trust badge from marketplace listings",
+  "adminUsersGrantBadgeSubtitle": "Mark user as officially verified partner",
+  "adminUsersVerifiedSnack": "User verified successfully",
+  "adminUsersRevokedSnack": "Verification badge revoked",
+  "adminUsersLiftSuspension": "Lift User Suspension",
+  "adminUsersSuspend": "Suspend User Account",
+  "adminUsersLiftSuspensionSubtitle": "Allow user to trade and sign in",
+  "adminUsersSuspendSubtitle": "Block user from logging in or accepting orders",
+  "adminUsersRestoredSnack": "User account restored",
+  "adminUsersSuspendedSnack": "User account suspended",
+  "adminUsersChangeRole": "Change User Role",
+  "adminUsersCurrentRole": "Current: {role}",
+  "@adminUsersCurrentRole": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUsersInspectKyc": "Inspect KYC Verification Documents",
+  "adminUsersInspectKycSubtitle": "National Identity Card, Land Deeds, Driving License",
+  "adminUsersContact": "Contact: {phone} · {email}",
+  "@adminUsersContact": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUsersChangeRoleFor": "Change Role for {name}",
+  "@adminUsersChangeRoleFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUsersRoleFarmerOption": "Farmer (Grower/Producer)",
+  "adminUsersRoleBuyerOption": "Buyer (Wholesaler/Retailer)",
+  "adminUsersRoleTransporterOption": "Transporter (Logistics Provider)",
+  "adminUsersRoleAdminOption": "Admin (Platform Operations)",
+  "adminUsersConfirmRoleChange": "Confirm Role Change",
+  "adminUsersRoleUpdated": "Updated {name} role to {role}",
+  "@adminUsersRoleUpdated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDashTitle": "Admin Operations Control",
+  "adminDashTabOverview": "Overview",
+  "adminDashTabAnalytics": "Analytics",
+  "adminDashTabUsers": "Users & Access",
+  "adminDashTabReviews": "Reviews",
+  "adminDashTabTreasury": "Treasury & Payouts",
+  "adminDashTabDisputes": "Disputes & Escrow",
+  "adminDashTabFleet": "Fleet Dispatch",
+  "adminDashTabMarket": "Market Rates",
+  "adminDashTabAudit": "Audit Trail",
+  "adminDashTabServer": "Firebase & Server",
+  "adminDashTabAdvisories": "Advisories",
+  "adminDashGmv": "Platform GMV",
+  "adminDashTotalTrades": "{count, plural, =1{1 total trade} other{{count} total trades}}",
+  "@adminDashTotalTrades": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminDashPlatformCut": "Platform Cut (5%)",
+  "adminDashEarnedCommission": "Earned commission",
+  "adminDashEscrowLocked": "Escrow Locked",
+  "adminDashPendingBuyerDelivery": "Pending buyer delivery",
+  "adminDashRegisteredUsers": "Registered Users",
+  "adminDashPendingKyc": "{count} pending KYC",
+  "@adminDashPendingKyc": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminDashQuickHub": "Quick Operations Hub",
+  "adminDashServerOps": "Server Ops",
+  "adminDashReviewKyc": "Review KYC",
+  "adminDashPolaRates": "Pola Rates",
+  "adminDashBroadcast": "Broadcast",
+  "adminDashTreasuryPayouts": "Treasury Payouts",
+  "adminDashEscrowReleases": "Escrow Releases",
+  "adminDashRecentActivities": "Recent Platform Activities",
+  "adminDashNoRecentActivities": "No recent activities.",
+  "adminDashOrderCompleted": "Order {orderNumber} completed",
+  "@adminDashOrderCompleted": {
+    "placeholders": {
+      "orderNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDashNoEscrowPending": "No delivered orders pending escrow release at this time.",
+  "adminDashEscrowReleased": "Escrow released to farmer successfully",
+  "adminDashReleaseFailed": "Release failed: {error}",
+  "@adminDashReleaseFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAuditSeverityInfo": "Info",
+  "adminAuditSeverityWarning": "Warning",
+  "adminAuditSeverityCritical": "Critical",
+  "adminAuditTarget": "Target: {entity} ({id})",
+  "@adminAuditTarget": {
+    "placeholders": {
+      "entity": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAuditEventDetails": "Audit Event Details",
+  "adminAuditActor": "Actor / Operator",
+  "adminAuditActorValue": "{name} ({role})",
+  "@adminAuditActorValue": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAuditRecordedAt": "Recorded Timestamp",
+  "adminAuditExported": "{count, plural, =1{Exported 1 audit trail record to compliance CSV archive.} other{Exported {count} audit trail records to compliance CSV archive.}}",
+  "@adminAuditExported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminAuditSearchHint": "Search audit logs (action, entity ID, actor)...",
+  "adminAuditExportTooltip": "Export CSV Audit Trail",
+  "adminAuditAllSeverity": "All Severity ({count})",
+  "@adminAuditAllSeverity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminAuditAllModules": "All Modules",
+  "adminAuditModuleOrders": "Orders & Escrow",
+  "adminAuditModuleSettlements": "Settlements",
+  "adminAuditModuleSystem": "System & Server",
+  "adminAuditEmptyTitle": "No Audit Events Found",
+  "adminAuditEmptyHint": "Try changing filters or search terms.",
+  "adminBroadcastTitle": "Broadcast Advisories & Alerts",
+  "adminBroadcastTemplates": "Quick AgriTech Templates",
+  "adminBroadcastTplRainTitle": "Heavy Monsoon Rainfall Warning",
+  "adminBroadcastTplRainMessage": "Department of Meteorology warns of heavy rainfall across Nuwara Eliya and Badulla districts. Expect transport delays along mountain corridors.",
+  "adminBroadcastTplPolaTitle": "Dambulla Pola Festive Market Schedule",
+  "adminBroadcastTplPolaMessage": "Dambulla Dedicated Economic Center will operate special extended trading hours this weekend. Transporters are advised to book loading bays early.",
+  "adminBroadcastTplSubsidyTitle": "Fertilizer & Pesticide Subsidy Advisory",
+  "adminBroadcastTplSubsidyMessage": "Agrarian Services Department has updated certified organic fertilizer distribution centers across Central and Southern provinces.",
+  "adminBroadcastCompose": "Compose Announcement",
+  "adminBroadcastHeadline": "Advisory Headline",
+  "adminBroadcastHeadlineHint": "e.g. Flash Flood Alert in Nuwara Eliya",
+  "adminBroadcastMessage": "Detailed Message",
+  "adminBroadcastMessageHint": "Provide actionable details for farmers, buyers, or transporters...",
+  "adminBroadcastAudience": "Target Audience",
+  "adminBroadcastFarmersOnly": "Farmers Only",
+  "adminBroadcastBuyersOnly": "Buyers Only",
+  "adminBroadcastTransportersOnly": "Transporters Only",
+  "adminBroadcastPriority": "Priority Level",
+  "adminBroadcastPriorityNormal": "Normal (Info)",
+  "adminBroadcastPriorityEmergency": "🚨 Emergency Alert",
+  "adminBroadcastSending": "Broadcasting...",
+  "adminBroadcastSend": "Send Broadcast Notification",
+  "adminBroadcastMissingFields": "Please enter both title and message.",
+  "adminBroadcastSent": "Advisory successfully broadcasted to users!",
+  "adminDisputeTitle": "Dispute & Escrow Arbitrator",
+  "adminDisputeNoneOpen": "No open disputes.",
+  "adminDisputeNoneResolved": "No resolved disputes.",
+  "adminDisputeNoneAll": "No disputes.",
+  "adminDisputeReference": "Dispute Reference: {id}",
+  "@adminDisputeReference": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeClaimReason": "Buyer Claim Reason",
+  "adminDisputeDefaultReason": "Produce quality damaged upon delivery or missing quantity mismatch.",
+  "adminDisputeEscrowStatus": "Escrow Status: {status}",
+  "@adminDisputeEscrowStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeStatusReleased": "Released",
+  "adminDisputeStatusSplit": "Split settled",
+  "adminDisputeArbitrate": "Arbitrate",
+  "adminDisputeArbitrateTitle": "Arbitrate Dispute",
+  "adminDisputeOrderAmount": "Order: {orderNumber} · Amount: {amount}",
+  "@adminDisputeOrderAmount": {
+    "placeholders": {
+      "orderNumber": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDisputeSelectOutcome": "Select Arbitration Outcome",
+  "adminDisputeRefundTitle": "Full Refund to Buyer (100%)",
+  "adminDisputeRefundSubtitle": "Return locked escrow to buyer. Cancel order.",
+  "adminDisputeReleaseTitle": "Release to Farmer (100%)",
+  "adminDisputeReleaseSubtitle": "Dismiss dispute. Payout full funds to farmer.",
+  "adminDisputeSplitTitle": "Split Settlement (50% / 50%)",
+  "adminDisputeSplitSubtitle": "Partial refund to buyer, remainder to farmer.",
+  "adminDisputeNotesLabel": "Admin Audit Notes",
+  "adminDisputeDefaultNotes": "Inspected photographic evidence and verified delivery log.",
+  "adminDisputeNotesRequired": "Add audit notes before resolving this dispute.",
+  "adminDisputeRecorded": "Dispute decision recorded.",
+  "adminDisputeResolveFailed": "Could not resolve the dispute. Try again.",
+  "adminDisputeRecordDecision": "Record Dispute Decision",
+  "adminLogisticsDefaultRoute": "Supply Corridor Dispatch",
+  "adminLogisticsLinkedOrder": "Linked Order: {orderId}",
+  "@adminLogisticsLinkedOrder": {
+    "placeholders": {
+      "orderId": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsCargoLoad": "Cargo Load: {load}",
+  "@adminLogisticsCargoLoad": {
+    "placeholders": {
+      "load": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsWeightKg": "{weight} kg",
+  "@adminLogisticsWeightKg": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsStandardCrates": "Standard Agricultural Crates",
+  "adminLogisticsGpsLive": "Driver GPS LIVE — {lat}, {lng}",
+  "@adminLogisticsGpsLive": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lng": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsGpsLast": "Last known driver GPS: {lat}, {lng}",
+  "@adminLogisticsGpsLast": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lng": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsFee": "Transporter Fee:",
+  "adminLogisticsNotSet": "Not set",
+  "adminLogisticsMilestones": "Transit Milestones",
+  "adminLogisticsMilestoneRequested": "Job requested",
+  "adminLogisticsMilestonePickup": "Pickup confirmed",
+  "adminLogisticsMilestoneDelivered": "Delivery completed",
+  "adminLogisticsActiveInTransit": "Active In-Transit",
+  "adminLogisticsHauls": "{count, plural, =1{1 haul} other{{count} hauls}}",
+  "@adminLogisticsHauls": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminLogisticsAwaitingPickup": "Awaiting Pickup",
+  "adminLogisticsJobs": "{count, plural, =1{1 job} other{{count} jobs}}",
+  "@adminLogisticsJobs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminLogisticsTrips": "{count, plural, =1{1 trip} other{{count} trips}}",
+  "@adminLogisticsTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminLogisticsAllJobs": "All Fleet Jobs ({count})",
+  "@adminLogisticsAllJobs": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminLogisticsEmptyTitle": "No Fleet Hauls Found",
+  "adminLogisticsEmptyHint": "No transport routes match the selected filter.",
+  "adminLogisticsCentralCorridor": "Central Supply Corridor",
+  "adminLogisticsKgLoad": "{weight} kg load",
+  "@adminLogisticsKgLoad": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "adminLogisticsCapacity": "500 kg capacity",
+  "adminMarketTitle": "Market Price Intelligence",
+  "adminMarketAddTooltip": "Add Commodity Rate",
+  "adminMarketBenchmarkTitle": "Sri Lankan Pola Wholesale Benchmark",
+  "adminMarketBenchmarkBody": "Benchmark rates reference Dambulla, Pettah, and regional economic centers to guide buyer offers and farmer listings.",
+  "adminMarketEmpty": "No commodity rates found.",
+  "adminMarketTrendRising": "Price Rising",
+  "adminMarketTrendSoftening": "Price Softening",
+  "adminMarketTrendStable": "Stable",
+  "adminMarketCenterCategory": "{district} Economic Center · {category}",
+  "@adminMarketCenterCategory": {
+    "placeholders": {
+      "district": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketWholesaleRange": "Wholesale Range",
+  "adminMarketRangePerKg": "{min} - {max} / kg",
+  "@adminMarketRangePerKg": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketPricePerKg": "{price} / kg",
+  "@adminMarketPricePerKg": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketAvgBenchmark": "Avg Benchmark",
+  "adminMarketUpdateTooltip": "Update Rates",
+  "adminMarketDeleteTooltip": "Delete Benchmark",
+  "adminMarketDeleteTitle": "Delete {crop}?",
+  "@adminMarketDeleteTitle": {
+    "placeholders": {
+      "crop": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketDeleteBody": "This removes the {district} benchmark from the marketplace. Farmers and buyers will no longer see this reference rate.",
+  "@adminMarketDeleteBody": {
+    "placeholders": {
+      "district": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketDeleted": "Deleted {crop} benchmark",
+  "@adminMarketDeleted": {
+    "placeholders": {
+      "crop": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketEditTitle": "Edit {crop} Benchmark",
+  "@adminMarketEditTitle": {
+    "placeholders": {
+      "crop": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketMinPriceKg": "Min Price (LKR/kg)",
+  "adminMarketMaxPriceKg": "Max Price (LKR/kg)",
+  "adminMarketTrendLabel": "Market Trend",
+  "adminMarketTrendRisingOption": "Rising (↑)",
+  "adminMarketTrendStableOption": "Stable (→)",
+  "adminMarketTrendSofteningOption": "Softening (↓)",
+  "adminMarketUpdated": "Updated {crop} rate",
+  "@adminMarketUpdated": {
+    "placeholders": {
+      "crop": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketAddTitle": "Add Commodity Pola Rate",
+  "adminMarketCropName": "Crop / Commodity Name",
+  "adminMarketCropHint": "e.g. Red Dambulla Onions",
+  "adminMarketDistrict": "Economic Center / District",
+  "adminMarketDistrictHint": "e.g. Dambulla, Pettah, Jaffna",
+  "adminMarketMinPrice": "Min Price",
+  "adminMarketMaxPrice": "Max Price",
+  "adminMarketAdded": "Added {crop} rate",
+  "@adminMarketAdded": {
+    "placeholders": {
+      "crop": {
+        "type": "String"
+      }
+    }
+  },
+  "adminMarketAddRate": "Add Rate",
+  "adminAnalyticsTitle": "Platform Analytics & Insights",
+  "adminAnalyticsExportTooltip": "Export Report",
+  "adminAnalyticsExportUnavailable": "Report export is not available yet.",
+  "adminAnalyticsGmv": "Gross Merchandise Value (GMV)",
+  "adminAnalyticsEstCommission": "Est. commission ({rate}%): {amount}",
+  "@adminAnalyticsEstCommission": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAnalyticsAvgDeal": "Avg Deal: {amount}",
+  "@adminAnalyticsAvgDeal": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAnalyticsPaidUnfinished": "Paid, unfinished",
+  "adminAnalyticsPaidUnfinishedHint": "Order value; provider balance unverified",
+  "adminAnalyticsFulfillment": "Order Fulfillment",
+  "adminAnalyticsDeliveredSafely": "{count, plural, =1{1 delivered safely} other{{count} delivered safely}}",
+  "@adminAnalyticsDeliveredSafely": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminAnalyticsByLocation": "Active Listings by Product Location",
+  "adminAnalyticsLoadedNote": "Counts are based on the currently loaded active listings.",
+  "adminAnalyticsNoLocationListings": "No active listings with a location are loaded.",
+  "adminAnalyticsActiveListings": "{count, plural, =1{1 active listing} other{{count} active listings}}",
+  "@adminAnalyticsActiveListings": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminAnalyticsByCategory": "Active Listings by Category",
+  "adminAnalyticsNoListings": "No active listings are loaded.",
+  "adminAnalyticsUncategorized": "Uncategorized",
+  "adminAnalyticsEcosystem": "Registered Marketplace Ecosystem",
+  "adminAnalyticsFarmers": "Farmers",
+  "adminAnalyticsBuyers": "Buyers",
+  "adminAnalyticsTransporters": "Transporters",
+  "adminAnalyticsTrust": "Trading Trust & Dispute Ratio",
+  "adminAnalyticsDisputeRate": "Dispute Arbitration Rate",
+  "adminAnalyticsInTransitOrders": "Active In-Transit Escrow Orders: {count}",
+  "@adminAnalyticsInTransitOrders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminAnalyticsResolvedOrders": "Resolved Orders: {count}",
+  "@adminAnalyticsResolvedOrders": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "authLogin": "Login",
+  "authLoginWithOtp": "Login with OTP",
+  "authNoAccount": "Don't have an account? ",
+  "authPasswordRequired": "Please enter your password",
+  "authLoginFailed": "Login failed. Please check your credentials.",
+  "authGoogleSignInFailed": "Google sign-in failed.",
+  "authCouldNotSendOtp": "Could not send OTP.",
+  "authOtpSmsSent": "Enter the 4-digit code sent via SMS to {phone}",
+  "@authOtpSmsSent": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "authVerifyAndLogin": "Verify & Login",
+  "authResendSms": "Resend Code via SMS",
+  "authOtpEnterCode": "Enter the 6-digit code for {phone}.",
+  "@authOtpEnterCode": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "authVerificationCode": "Verification code",
+  "authNewCodeRequested": "A new code was requested.",
+  "authCouldNotResendOtp": "Could not resend OTP.",
+  "authOtpVerificationFailed": "OTP verification failed.",
+  "authAcceptTermsRequired": "Please accept the Terms of Service and Privacy Policy.",
+  "authRegistrationFailed": "Registration failed. Please try again.",
+  "authGoogleNeedsMobile": "Enter a valid mobile number before continuing with Google.",
+  "authGoogleRegistrationFailed": "Google registration failed.",
+  "authSignupTermsNote": "By signing up, you agree to Farmora Marketplace Terms",
+  "authErrInvalidRole": "Your account role is invalid.",
+  "authErrProfileNotFound": "User profile was not found.",
+  "authErrNoGoogleProfile": "No Farmora profile found. Register with Google first.",
+  "authErrNoPhoneProfile": "No Farmora profile found. Register this phone number first.",
+  "authErrEnterValidMobile": "Enter a valid mobile number first.",
+  "authErrPhoneFormat": "Enter a valid phone number, for example +94771234567.",
+  "authErrEnterSixDigits": "Enter the 6-digit verification code.",
+  "authErrRequestNewOtp": "Request a new OTP first.",
+  "authErrPhoneTaken": "This mobile number is already registered.",
+  "authErrCouldNotSaveProfile": "Could not save your profile.",
+  "authErrAccountExists": "An account already exists for this phone number.",
+  "authErrWrongCredentials": "Phone number or password is incorrect.",
+  "authErrMethodUnavailable": "This sign-in method is not available right now.",
+  "authErrInvalidPhone": "Enter a valid phone number with country code.",
+  "authErrWrongOtp": "The OTP is incorrect. Please try again.",
+  "authErrOtpExpired": "The OTP expired. Request a new code.",
+  "authErrSmsLimit": "SMS limit reached. Please try again later.",
+  "authErrGoogleCancelled": "Google sign-in was cancelled.",
+  "authDistrictAmpara": "Ampara",
+  "authDistrictAnuradhapura": "Anuradhapura",
+  "authDistrictBadulla": "Badulla",
+  "authDistrictBatticaloa": "Batticaloa",
+  "authDistrictColombo": "Colombo",
+  "authDistrictGalle": "Galle",
+  "authDistrictGampaha": "Gampaha",
+  "authDistrictHambantota": "Hambantota",
+  "authDistrictJaffna": "Jaffna",
+  "authDistrictKalutara": "Kalutara",
+  "authDistrictKandy": "Kandy",
+  "authDistrictKegalle": "Kegalle",
+  "authDistrictKilinochchi": "Kilinochchi",
+  "authDistrictKurunegala": "Kurunegala",
+  "authDistrictMannar": "Mannar",
+  "authDistrictMatale": "Matale",
+  "authDistrictMatara": "Matara",
+  "authDistrictMonaragala": "Monaragala",
+  "authDistrictMullaitivu": "Mullaitivu",
+  "authDistrictNuwaraEliya": "Nuwara Eliya",
+  "authDistrictPolonnaruwa": "Polonnaruwa",
+  "authDistrictPuttalam": "Puttalam",
+  "authDistrictRatnapura": "Ratnapura",
+  "authDistrictTrincomalee": "Trincomalee",
+  "authDistrictVavuniya": "Vavuniya",
+  "buyerCategoryHerbs": "Herbs",
+  "buyerPricePerUnit": "{price}/{unit}",
+  "@buyerPricePerUnit": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerQuantityWithUnit": "{quantity} {unit}",
+  "@buyerQuantityWithUnit": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerHarvestGrowing": "Growing",
+  "buyerHarvestPacked": "Packed",
+  "buyerCartTitle": "My Cart",
+  "buyerCartClearAll": "Clear All",
+  "buyerCartEmptyTitle": "Your cart is empty",
+  "buyerCartEmptyHint": "Browse fresh produce and add items to your cart",
+  "buyerContinueShopping": "Continue Shopping",
+  "buyerCartSubtotalItems": "{count, plural, =1{Subtotal (1 item)} other{Subtotal ({count} items)}}",
+  "@buyerCartSubtotalItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerDeliveryFee": "Delivery fee",
+  "buyerDeliveryAddress": "Delivery address",
+  "buyerDeliveryAddressHint": "Street, city, district",
+  "buyerCartVerifyNote": "Price, stock and totals are verified when the order is placed.",
+  "buyerEnterAddressToOrder": "Enter a delivery address to place the order.",
+  "buyerOrderPlaced": "Order placed successfully!",
+  "buyerOrderPlaceFailed": "Could not place order. Check address or try again.",
+  "buyerPlacingOrder": "Placing…",
+  "buyerBrowseProduce": "Browse Produce",
+  "buyerSearchProduceHint": "Search fresh produce...",
+  "buyerItemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@buyerItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerCategoryChip": "Category: {category}",
+  "@buyerCategoryChip": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerProductsAvailable": "{count, plural, =1{1 product available} other{{count} products available}}",
+  "@buyerProductsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerNoProductsFound": "No products found",
+  "buyerOrganic": "Organic",
+  "buyerConventional": "Conventional",
+  "buyerAddedToCart": "Added {product} to cart",
+  "@buyerAddedToCart": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerAvailable": "Available",
+  "buyerFilterByCategory": "Filter by Category",
+  "buyerFilterTooltip": "Filter",
+  "buyerCartTooltip": "Open cart",
+  "buyerHarvestStatus": "Harvest status: {status}",
+  "@buyerHarvestStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerAboutProduct": "About this product",
+  "buyerRemovedFromCart": "Removed {product} from cart",
+  "@buyerRemovedFromCart": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerRemoveFromCart": "Remove from Cart",
+  "buyerMakeOffer": "Make Offer",
+  "buyerAddToCart": "Add to Cart",
+  "buyerMakeAnOffer": "Make an Offer",
+  "buyerNegotiateFor": "Negotiate directly for {product} (Listed: {price})",
+  "@buyerNegotiateFor": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerQuantityInUnit": "Quantity ({unit})",
+  "@buyerQuantityInUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerQuantityHint": "e.g. 50",
+  "buyerProposedUnitPriceIn": "Proposed Unit Price (LKR / {unit})",
+  "@buyerProposedUnitPriceIn": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerPriceHint": "e.g. 170",
+  "buyerEnterValidQtyPrice": "Please enter a valid quantity and price.",
+  "buyerOfferSent": "Offer of {price} sent to farmer!",
+  "@buyerOfferSent": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerSubmitProposal": "Submit Proposal",
+  "buyerActiveOffersCount": "{count} Active",
+  "@buyerActiveOffersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerNegotiationTitle": "Direct Price Negotiation",
+  "buyerNegotiationSubtitle": "Propose custom prices and bulk quantities directly to local farmers.",
+  "buyerFilterWithCount": "{label} ({count})",
+  "@buyerFilterWithCount": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerNoOffersFound": "No Offers Found",
+  "buyerNoOffersHint": "Find fresh produce in the marketplace and propose your price.",
+  "buyerAgriculturalCrop": "Agricultural Crop",
+  "buyerOfferRequestedQty": "Requested: {quantity}",
+  "@buyerOfferRequestedQty": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerProposedUnitPrice": "Proposed Unit Price",
+  "buyerTotalContractValue": "Total Contract Value",
+  "buyerFarmerCounterProposal": "Farmer offered counter-proposal: {price}.",
+  "@buyerFarmerCounterProposal": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerCounterAccepted": "Counter offer accepted! Order created.",
+  "buyerWithdrawOffer": "Withdraw Offer",
+  "buyerViewInOrders": "View in Orders",
+  "buyerOrdersEmptyHint": "Your marketplace orders will appear here.",
+  "buyerOrderFallback": "ORDER",
+  "buyerAddressNotSet": "Address not set",
+  "buyerEscrowProtected": "Escrow Protected",
+  "buyerEscrowReleased": "Escrow Released",
+  "buyerEscrowFunded": "Escrow funded",
+  "buyerEscrowStatus": "Escrow: {status}",
+  "@buyerEscrowStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerTotalAmount": "Total Amount",
+  "buyerDetails": "Details",
+  "buyerReceipt": "Receipt",
+  "buyerCancelOrderConfirm": "Are you sure you want to cancel this order? Any payment held in escrow will be refunded.",
+  "buyerOrderDetailTitle": "Order Detail",
+  "buyerOrderNumber": "ORDER {number}",
+  "@buyerOrderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerDisputedPayoutPaused": "Disputed — payout paused",
+  "buyerRequestedFor": "Requested for {date}",
+  "@buyerRequestedFor": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerOrderSummary": "Order Summary",
+  "buyerProduct": "Product",
+  "buyerUnitPrice": "Unit Price",
+  "buyerGrade": "Grade",
+  "buyerLogisticsTransport": "Logistics & Transport",
+  "buyerTransportProvider": "Provider",
+  "buyerAssignedTo": "Assigned ({id})",
+  "@buyerAssignedTo": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerPendingAssignment": "Pending Assignment",
+  "buyerRoute": "Route",
+  "buyerFee": "Fee",
+  "buyerCancelOrderButton": "Cancel Order",
+  "buyerStepOrderPlaced": "Order Placed",
+  "buyerStepAcceptedByFarmer": "Accepted by Farmer",
+  "buyerOrderStatus": "Order Status",
+  "buyerEnterNewAddress": "Enter new address",
+  "buyerReviewOnlyAfterDelivery": "Reviews are allowed only after delivery, one per order.",
+  "buyerWriteReviewFirst": "Please write a short review comment first.",
+  "buyerReviewSubmittedModeration": "Review submitted for moderation.",
+  "reviewSubmitFailed": "Could not submit review: {error}",
+  "@reviewSubmitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerComplaintOpened": "Complaint opened. Escrow is protected while it is reviewed.",
+  "buyerTrustAndSupport": "Trust and support",
+  "buyerReviewsUnlockHint": "Reviews unlock after delivery (one per order). Complaints pause escrow release.",
+  "buyerStarsCount": "{count, plural, =1{1 star} other{{count} stars}}",
+  "@buyerStarsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "buyerProductRating": "Product rating",
+  "buyerReviewOrComplaintDetails": "Review or complaint details",
+  "buyerNotFarmoraCode": "This is not a Farmora authenticity code.",
+  "buyerBarcodeVerifyFailed": "Barcode could not be verified or is not assigned to you.",
+  "buyerScanInstructions": "Scan the Farmora code attached to your parcel. Verification is required before escrow can be released.",
+  "buyerTotalValue": "Total: {amount}",
+  "@buyerTotalValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerFarmPickup": "Farm pickup",
+  "buyerInNetwork": "in network",
+  "buyerDeliveryStatus": "Delivery Status",
+  "buyerAwaitingFarmerConfirmation": "Awaiting farmer confirmation",
+  "buyerStepFarmerAccepted": "Farmer accepted the order",
+  "buyerStepOnTheWay": "On the way to the buyer",
+  "buyerStepBuyerReceived": "Buyer received the produce",
+  "buyerCourierLive": "Courier location is LIVE",
+  "buyerCourierLastKnown": "Last known courier position",
+  "buyerCourierUpdated": "Updated {time} • Delivery: {status}",
+  "@buyerCourierUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerCourierDelivery": "Delivery: {status}",
+  "@buyerCourierDelivery": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "buyerInProgress": "in progress",
+  "buyerOrderInformation": "Order Information",
+  "buyerOrderNumberLabel": "Order #",
+  "buyerDate": "Date",
+  "disputeCreateTitle": "Create Dispute",
+  "disputeReasonTitle": "Reason for Dispute",
+  "disputeReasonDamagedDesc": "Items arrived damaged or broken",
+  "disputeReasonWrongItemsDesc": "Received different items than ordered",
+  "disputeReasonLateDesc": "Delivery was significantly delayed",
+  "disputeReasonQualityDesc": "Product quality did not meet expectations",
+  "disputeReasonPricingDesc": "Charged differently than agreed price",
+  "disputeReasonOtherDesc": "Other issue not listed above",
+  "disputeDescriptionHelp": "Please provide details about your dispute",
+  "disputeDescriptionRequired": "Please provide a description",
+  "disputeDescriptionTooShort": "Description must be at least {min} characters",
+  "@disputeDescriptionTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "disputeDescriptionHint": "Describe the issue in detail...",
+  "disputeEvidenceTitle": "Evidence (Optional)",
+  "disputeEvidenceHelp": "Add photos to support your dispute",
+  "disputeLoadingPhotos": "Loading photos…",
+  "disputeAddPhotoCount": "Add Photo ({count}/{max})",
+  "@disputeAddPhotoCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "disputeRemovePhoto": "Remove photo",
+  "disputeSubmit": "Submit Dispute",
+  "disputeOpenedEscrowPaused": "Dispute {id} opened. Escrow is paused while it is reviewed.",
+  "@disputeOpenedEscrowPaused": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "disputeSubmitFailed": "Failed to submit dispute: {error}",
+  "@disputeSubmitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewHowWasExperience": "How was your experience?",
+  "reviewTapToRate": "Tap to rate",
+  "reviewCommentsTitle": "Additional Comments (Optional)",
+  "reviewCommentsHelp": "Share more details about your experience",
+  "reviewCommentTooLong": "Comment must be less than {max} characters",
+  "@reviewCommentTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewCommentHint": "What did you like or dislike?",
+  "reviewGuidelinesTitle": "Review Guidelines",
+  "reviewGuidelineHonest": "Be honest and specific",
+  "reviewGuidelineFocus": "Focus on the product and service",
+  "reviewGuidelineLanguage": "Avoid offensive language",
+  "reviewGuidelineModeration": "Reviews are subject to moderation",
+  "ordersTrackEveryStep": "Track every step from farm to table.",
+  "bankDetailsTitle": "Bank Details",
+  "bankSaved": "Bank details saved. Buyers can now pay by bank deposit.",
+  "bankSaveFailed": "Could not save bank details: {reason}",
+  "@bankSaveFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "bankIntro": "Buyers who choose Bank Deposit will see these details and upload their deposit slip in the order chat. Money goes directly to your account.",
+  "bankNameLabel": "Bank name",
+  "bankNameHint": "e.g. Bank of Ceylon",
+  "bankBranchLabel": "Branch",
+  "bankBranchHint": "e.g. Nuwara Eliya",
+  "bankHolderLabel": "Account holder name",
+  "bankAccountNumberLabel": "Account number",
+  "bankAccountDigits": "Enter 6–18 digits",
+  "bankSaveButton": "Save bank details",
+  "bankLabelBank": "Bank",
+  "bankLabelAccountName": "Account name",
+  "bankLabelAccountNo": "Account no.",
+  "bankCopyAccountNumber": "Copy account number",
+  "bankAccountNumberCopied": "Account number copied",
+  "payMethodTitle": "Payment method",
+  "payMethodCod": "Cash on Delivery",
+  "payMethodBankDeposit": "Bank Deposit",
+  "payMethodOnline": "Online (PayHere)",
+  "payBankUnavailable": "Bank deposit is unavailable: a farmer in your cart has not added bank details.",
+  "payBankDepositHint": "You'll see the farmer's bank details on the order. Upload the deposit slip in the order chat.",
+  "payMarkCashTitle": "Mark cash received?",
+  "payMarkCashBody": "Confirm you received {amount} in cash from {buyer}. This adds it to your earnings and cannot be undone.",
+  "@payMarkCashBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "buyer": {
+        "type": "String"
+      }
+    }
+  },
+  "payMarkCashBodyNoName": "Confirm you received {amount} in cash from the buyer. This adds it to your earnings and cannot be undone.",
+  "@payMarkCashBodyNoName": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payCashReceived": "Cash received",
+  "payCashRecorded": "Cash payment recorded.",
+  "payConfirmTitle": "Confirm payment?",
+  "payConfirmBody": "Only confirm after you see {amount} in your bank account. This adds it to your earnings.",
+  "@payConfirmBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payConfirmAction": "Confirm payment",
+  "payConfirmed": "Payment confirmed.",
+  "payReceiptRejectedNotified": "Receipt rejected. The buyer has been notified.",
+  "payUploadSlipTitle": "Upload deposit slip",
+  "payReceiptSentToFarmer": "Receipt sent to the farmer for confirmation.",
+  "payReceiptChatFailed": "Receipt submitted, but it could not be posted in chat: {reason}",
+  "@payReceiptChatFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "payReceiptRejectedReason": "Receipt rejected: {reason}",
+  "@payReceiptRejectedReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "payOpenDepositSlip": "Open deposit slip",
+  "payDepositSlip": "Deposit slip",
+  "payTapToView": "Tap to view",
+  "payUploadingReceipt": "Uploading receipt... {percent}%",
+  "@payUploadingReceipt": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "payReceived": "Payment received.",
+  "payReceivedOn": "Payment received on {date}.",
+  "@payReceivedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "payGuideFarmerProof": "The buyer uploaded a deposit slip. Check your bank account before confirming.",
+  "payGuideBuyerProof": "Receipt sent. Waiting for the farmer to confirm the deposit.",
+  "payGuideFarmerRejected": "Waiting for the buyer to upload a new receipt.",
+  "payGuideBuyerRejected": "Please upload a new receipt.",
+  "payGuideRefunded": "This payment was refunded.",
+  "payGuideDisputed": "Payment is on hold while the dispute is reviewed.",
+  "payGuideCancelled": "Order cancelled — no payment due.",
+  "payGuideFarmerDeposit": "Waiting for the buyer to deposit and upload the slip.",
+  "payGuideBuyerDeposit": "Deposit the total to the account below, then upload a photo of the slip.",
+  "payGuideFarmerCodDelivered": "Delivered. Mark the cash as received once you have it.",
+  "payGuideFarmerCod": "The buyer pays cash on delivery.",
+  "payGuideBuyerCod": "Pay the farmer in cash when your order is delivered.",
+  "payMarkCashButton": "Mark Cash Received",
+  "payConfirmButton": "Confirm Payment",
+  "payRetryUpload": "Retry Upload",
+  "payUploadReceipt": "Upload Payment Receipt",
+  "payUploadNewReceipt": "Upload New Receipt",
+  "payChooseDifferentPhoto": "Choose a different photo",
+  "payMessageBuyer": "Message Buyer",
+  "payMessageFarmer": "Message Farmer",
+  "payRejectReceiptTitle": "Reject receipt",
+  "payRejectReasonLabel": "Reason (shown to the buyer)",
+  "payRejectReasonHint": "e.g. Amount does not match / slip is unreadable",
+  "widgetAddPhoto": "Add photo",
+  "widgetTakePhoto": "Take a photo",
+  "widgetChooseFromGallery": "Choose from gallery",
+  "farmerOrderDetailTitle": "Order Detail",
+  "farmerOrderNumberUpper": "ORDER {number}",
+  "@farmerOrderNumberUpper": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderRequestedFor": "Requested for {date}",
+  "@farmerOrderRequestedFor": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderCalling": "Calling {name}...",
+  "@farmerOrderCalling": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderDeliveryAddress": "Delivery Address",
+  "farmerOrderSummary": "Order Summary",
+  "farmerOrderProduct": "Product",
+  "farmerOrderUnitPrice": "Unit Price",
+  "farmerOrderTransportJob": "Transport Job",
+  "farmerOrderDriver": "Driver",
+  "farmerOrderDriverAssigned": "Assigned ({id})",
+  "@farmerOrderDriverAssigned": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderFee": "Fee",
+  "farmerOrderAcceptedBalance": "Order accepted! Balance updated.",
+  "farmerOrderAccept": "Accept Order",
+  "farmerOrderTrackLogistics": "Track Logistics",
+  "farmerOrderOfferedFee": "Offered delivery fee",
+  "farmerOrderTransportRequested": "Transport requested successfully!",
+  "farmerOrderTransportRequestFailed": "Transport request failed. {reason}",
+  "@farmerOrderTransportRequestFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderRequestTransport": "Request Transport",
+  "farmerBarcodeTitle": "Authenticity barcode",
+  "farmerBarcodeHint": "Issue a signed QR for the buyer to scan after delivery.",
+  "farmerBarcodeIssuing": "Issuing...",
+  "farmerBarcodeIssue": "Issue authenticity QR",
+  "jobUnavailableTitle": "Job unavailable",
+  "jobUnavailableMessage": "This job may have been removed. Return to the jobs list.",
+  "jobGoBack": "Go back",
+  "jobNumberTitle": "Job #{id}",
+  "@jobNumberTitle": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "jobTimelineTitle": "Job timeline",
+  "jobVehicleSuitability": "Vehicle suitability",
+  "jobCollectionRoute": "Collection route",
+  "jobPickupLabel": "Pickup",
+  "jobDeliveryLabel": "Delivery",
+  "jobDeliverLabel": "Deliver",
+  "jobDropoffLabel": "Dropoff",
+  "jobCollectionLabel": "Collection",
+  "jobCollectionNotes": "Collection notes",
+  "jobNoNotes": "No special collection instructions were provided.",
+  "jobContacts": "Contacts",
+  "jobNavigation": "Navigation",
+  "jobViewPickup": "View pickup",
+  "jobCompletion": "Completion",
+  "jobTransactionFeedback": "Transaction feedback",
+  "jobRated": "Rated",
+  "jobUpdateRating": "Update rating",
+  "jobRateTransaction": "Rate this transaction",
+  "jobDeliverySupport": "Delivery support",
+  "jobIssueReportedNote": "Issue reported — Farmora support is following up.",
+  "jobReportAnotherIssue": "Report another issue",
+  "jobReportIssue": "Report an issue",
+  "jobAcceptJobButton": "Accept Job",
+  "jobMarkAsCollected": "Mark as Collected",
+  "jobStartDeliveryButton": "Start Delivery",
+  "jobConfirmDeliveryButton": "Confirm Delivery",
+  "jobCompleteDeliveryButton": "Complete Delivery",
+  "jobCancelJobButton": "Cancel job",
+  "jobAcceptConfirmTitle": "Accept this job?",
+  "jobAcceptConfirmMessage": "You will be responsible for collecting {quantity} of {produce} and delivering it to {destination}.",
+  "@jobAcceptConfirmMessage": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      },
+      "produce": {
+        "type": "String"
+      },
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "jobAcceptConfirmAction": "Accept job",
+  "jobConfirmPickupTitle": "Confirm pickup?",
+  "jobStartDeliveryTitle": "Start delivery?",
+  "jobConfirmDeliveryTitle": "Confirm delivery?",
+  "jobConfirmPickupMessage": "Have you collected this produce from the farmer?",
+  "jobStartDeliveryMessage": "Start the delivery to {destination}?",
+  "@jobStartDeliveryMessage": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "jobConfirmDeliveryMessage": "Confirm that the produce reached {destination}.",
+  "@jobConfirmDeliveryMessage": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "jobContinueDeliveryMessage": "Continue this delivery to {destination}?",
+  "@jobContinueDeliveryMessage": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "jobMarkCollectedAction": "Mark collected",
+  "jobStartDeliveryAction": "Start delivery",
+  "jobCompleteDeliveryAction": "Complete delivery",
+  "jobConfirmPickupAction": "Confirm pickup",
+  "jobConfirmDeliveryAction": "Confirm delivery",
+  "jobCancelReasonTitle": "Why are you cancelling?",
+  "jobCancelReasonBreakdown": "Vehicle breakdown",
+  "jobCancelReasonEmergency": "Emergency",
+  "jobCancelReasonUnreachable": "Unable to reach pickup location",
+  "jobReasonOther": "Other",
+  "jobCancelConfirmTitle": "Cancel this job?",
+  "jobCancelConfirmMessage": "This cancellation will be recorded for {produce}.",
+  "@jobCancelConfirmMessage": {
+    "placeholders": {
+      "produce": {
+        "type": "String"
+      }
+    }
+  },
+  "jobIssueVehicleProblem": "Vehicle Problem",
+  "jobIssueFarmerUnavailable": "Farmer Unavailable",
+  "jobIssueBuyerUnavailable": "Buyer Unavailable",
+  "jobIssueWrongPickup": "Incorrect Pickup Location",
+  "jobIssueWrongDelivery": "Incorrect Delivery Location",
+  "jobIssueProduceQuantity": "Produce/Quantity Issue",
+  "jobDescriptionOptional": "Description (optional)",
+  "jobCommentOptional": "Comment (optional)",
+  "jobSuitableForVehicle": "Suitable for your vehicle",
+  "jobMayExceedCapacity": "Load may exceed your vehicle capacity",
+  "jobOrderAndPostRefs": "Order {order}  •  Produce post {post}",
+  "@jobOrderAndPostRefs": {
+    "placeholders": {
+      "order": {
+        "type": "String"
+      },
+      "post": {
+        "type": "String"
+      }
+    }
+  },
+  "jobNotLinked": "not linked",
+  "jobPhoneNotProvided": "Phone not provided",
+  "jobNotNow": "Not now",
+  "jobCancelledNote": "Job cancelled",
+  "jobCancelledSeeNotes": "Job cancelled — see notes below",
+  "jobDeliveryFeeLine": "Delivery fee: {amount}",
+  "@jobDeliveryFeeLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "jobCompletedOn": "Completed {date}",
+  "@jobCompletedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "jobCollectOn": "Collect {date}",
+  "@jobCollectOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "jobScoreTooltip": "Suitability score: {score}/100",
+  "@jobScoreTooltip": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterCouldNotLoadJobs": "Could not load jobs",
+  "jobActiveDeliveryTitle": "Active Delivery",
+  "jobLiveSharingStarted": "Live location sharing is ON. Customers on this order can see you.",
+  "jobLocationPermissionDenied": "Location permission denied — enable it in Settings to share live location.",
+  "jobLocationUpdated": "Location updated.",
+  "jobNoGpsFix": "Could not get a GPS fix. Try again outdoors.",
+  "jobCouldNotUpdateDelivery": "Could not update delivery: {reason}",
+  "@jobCouldNotUpdateDelivery": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "jobCallsPrivate": "Calls go through the app: open chat to reach the farmer or buyer. Phone numbers stay private.",
+  "jobDestinationLine": "Destination: {destination}",
+  "@jobDestinationLine": {
+    "placeholders": {
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "jobFeeLine": "Fee: {fee}",
+  "@jobFeeLine": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "jobDeliveryStatusTitle": "Delivery Status",
+  "jobStepDone": "Done",
+  "jobMarkStatus": "Mark {status}",
+  "@jobMarkStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "jobLiveSharingOn": "Live location sharing ON",
+  "jobShareLiveLocation": "Share live location",
+  "jobSharingUnavailable": "Location sharing unavailable for this job state",
+  "jobLiveBadge": "LIVE",
+  "jobStaleBadge": "STALE",
+  "jobSharingOnHelp": "The farmer and buyer on this order can see your position in real time. Sharing stops automatically after delivery.",
+  "jobSharingOffHelp": "While a delivery is accepted and in progress you can broadcast your GPS position so the farmer and buyer can track you live.",
+  "jobRestartSharing": "Restart",
+  "jobStartSharing": "Start sharing",
+  "jobUpdateNow": "Update now",
+  "transporterVerifyToSeeJobs": "Verify your transporter account to see available jobs.",
+  "transporterDeliveryHistoryTitle": "Delivery History",
+  "transporterNoDeliveryHistory": "No delivery history found.",
+  "jobDeliveryNumber": "Delivery #{id}",
+  "@jobDeliveryNumber": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "jobOrderDeliveryFallback": "Order Delivery",
+  "jobRouteFallback": "Farm → Destination",
+  "transporterAvailableJobsTitle": "Available Jobs",
+  "transporterRefreshJobs": "Refresh jobs",
+  "transporterSearchJobsHint": "Search produce or location",
+  "transporterClearSearch": "Clear search",
+  "transporterPickupArea": "Pickup area",
+  "transporterProduceLabel": "Produce",
+  "transporterDestinationLabel": "Destination",
+  "transporterAllStatuses": "All statuses",
+  "transporterAnyCollectionDate": "Any collection date",
+  "transporterSuitableForMyVehicle": "Suitable for my vehicle",
+  "transporterNoMatchingJobs": "No matching jobs",
+  "transporterNoMatchingJobsHint": "Try changing your filters or pull down to refresh.",
+  "transporterClearFilters": "Clear filters",
+  "transporterOpenJobsCount": "{count, plural, =1{1 open job} other{{count} open jobs}}",
+  "@transporterOpenJobsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterSummaryAvailable": "Available",
+  "transporterNearbyJobs": "Nearby available jobs",
+  "transporterNoOpenJobsNearby": "No open jobs nearby",
+  "transporterPullToRefresh": "Pull down to refresh or check again shortly.",
+  "transporterRefresh": "Refresh",
+  "transporterGoodDay": "Good day,",
+  "transporterTagline": "Keep Sri Lanka’s harvest moving",
+  "transporterAvailableForJobs": "Available for jobs",
+  "transporterCurrentlyUnavailable": "Currently unavailable",
+  "transporterReadyToClaim": "Ready to claim collections",
+  "transporterJobsStillVisible": "New jobs remain visible",
+  "transporterEarningsSummary": "Today {today}\nWeek {week}\nTotal {total}",
+  "@transporterEarningsSummary": {
+    "placeholders": {
+      "today": {
+        "type": "String"
+      },
+      "week": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterMyJobsTitle": "My Jobs",
+  "transporterNoActiveJobs": "No active jobs",
+  "transporterNoActiveJobsHint": "Jobs you accept will appear here.",
+  "transporterNoCompletedDeliveries": "No completed deliveries",
+  "transporterNoCompletedHint": "Your delivery history will appear here.",
+  "transporterNoCancelledJobs": "No cancelled jobs",
+  "transporterNoCancelledHint": "Cancelled assigned jobs will appear here.",
+  "transporterLocationPermissionOff": "Location permission is off — showing all transporters without distances.",
+  "transporterDeviceLocationOff": "Device location is off — showing all transporters without distances.",
+  "transporterLocationFailed": "Could not get your location. Distances hidden.",
+  "transporterNearbyTitle": "Nearby Transporters",
+  "transporterSearchNameDistrict": "Search by name or district…",
+  "transporterUseMyLocation": "Use my location",
+  "transporterLocationSet": "Location set — sorted by distance",
+  "transporterProvidersCount": "{count, plural, =1{1 provider} other{{count} providers}}",
+  "@transporterProvidersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterNoProviders": "No transport providers found yet. Check back soon — new providers join after admin verification.",
+  "transporterCapacityLine": "Capacity: {amount}",
+  "@transporterCapacityLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterCapacityAmount": "{amount} {unit}",
+  "@transporterCapacityAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterUnitTons": "tons",
+  "transporterAvailable": "Available",
+  "transporterBusy": "Busy",
+  "transporterConnectTooltip": "Messaging is order-scoped: open an order and tap Message to reach this provider directly.",
+  "transporterConnect": "Connect",
+  "transporterDeliveredCount": "{count, plural, =1{1 delivered} other{{count} delivered}}",
+  "@transporterDeliveredCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterThisMonth": "This month",
+  "transporterThisWeek": "This week",
+  "transporterRecentTransactions": "Recent Transactions",
+  "transporterNoEarningsYet": "No earnings yet",
+  "transporterTotalEarnings": "Total Earnings",
+  "transporterMarkAllRead": "Mark all read",
+  "transporterNoNotifications": "No notifications",
+  "transporterNotificationsHint": "Job updates and reminders will appear here.",
+  "transporterAvailableForNewJobs": "Available for new jobs",
+  "transporterUnavailableForNewJobs": "Unavailable for new jobs",
+  "transporterManageVehicle": "Manage vehicle",
+  "transporterManageVehicleHint": "Type, registration and load capacity",
+  "transporterVehicleInfo": "Vehicle information",
+  "transporterRegistrationNumber": "Registration number",
+  "transporterMaxCapacity": "Maximum capacity",
+  "transporterLogoutConfirmTitle": "Log out?",
+  "transporterLogoutConfirmMessage": "You will need to sign in again to manage collection jobs.",
+  "transporterFullName": "Full name",
+  "transporterPhoneNumber": "Phone number",
+  "transporterFieldRequired": "{field} is required",
+  "@transporterFieldRequired": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterCapacityUnit": "Capacity unit",
+  "transporterUnitKilograms": "Kilograms (kg)",
+  "transporterUnitTonsOption": "Tons",
+  "transporterMaxLoadCapacity": "Maximum load capacity",
+  "transporterVehicleDescriptionOptional": "Vehicle description (optional)",
+  "transporterSaveChanges": "Save changes",
+  "transporterRequestDetailsTitle": "Request Details",
+  "transporterMessage": "Message",
+  "jobTransportJobFallback": "Transport job",
+  "jobRouteLine": "{pickup} → {dropoff}",
+  "@jobRouteLine": {
+    "placeholders": {
+      "pickup": {
+        "type": "String"
+      },
+      "dropoff": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterDistrictLine": "District: {district}",
+  "@transporterDistrictLine": {
+    "placeholders": {
+      "district": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterLoadLine": "Load: {weight} kg",
+  "@transporterLoadLine": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterLinkedOrderId": "Linked Order ID",
+  "transporterStatusLine": "Status: {status}",
+  "@transporterStatusLine": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterPickupDropoffLine": "Pickup: {pickup} · Dropoff: {dropoff}",
+  "@transporterPickupDropoffLine": {
+    "placeholders": {
+      "pickup": {
+        "type": "String"
+      },
+      "dropoff": {
+        "type": "String"
+      }
+    }
+  },
+  "transporterContactPrivate": "Contact via in-app messaging — phone numbers stay private.",
+  "transporterAcceptRequest": "Accept Request",
+  "transporterMarkPickedUp": "Mark as Picked Up",
+  "transporterMarkInTransit": "Mark as In Transit",
+  "transporterMarkDelivered": "Mark as Delivered",
+  "farmerOrderDeclinedSnack": "Declined {number}",
+  "@farmerOrderDeclinedSnack": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOrderAcceptedSnack": "Accepted {number}! Balance updated.",
+  "@farmerOrderAcceptedSnack": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerJobsCancelConfirm": "Are you sure you want to cancel this transport request?",
+  "farmerJobsCancelRequestButton": "Cancel Request",
+  "farmerJobsOneLoad": "1 load",
+  "farmerJobsDirectBuyer": "Direct Buyer",
+  "farmerProductName": "Product name",
+  "farmerPricePerUnit": "Price per unit",
+  "chatSendDepositSlip": "Send deposit slip",
+  "chatSendPhoto": "Send a photo",
+  "chatNoPeerKey": "The other person has not opened chat yet, so text can't be encrypted for them. You can still send photos.",
+  "chatReceiptSent": "Receipt sent. The farmer will confirm your payment.",
+  "chatPhoto": "Photo",
+  "chatPhotoSubtitle": "Send a picture of your produce or delivery",
+  "chatPaymentReceipt": "Payment receipt",
+  "chatReceiptSubtitle": "Deposit slip for {amount} — the farmer will confirm it",
+  "@chatReceiptSubtitle": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "chatEncryptedPlaceholder": "[encrypted]",
+  "chatUndecryptable": "[undecryptable]",
+  "chatOrderChatWith": "Order chat · {product}",
+  "@chatOrderChatWith": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "chatEmpty": "Say hello. Messages are order-scoped and text is encrypted for the recipient.",
+  "chatOpenReceipt": "Open payment receipt",
+  "chatOpenPhoto": "Open photo",
+  "chatNotSent": "Not sent.",
+  "chatRetry": "Retry",
+  "chatDiscard": "Discard",
+  "chatAttachPhoto": "Attach photo",
+  "chatTypeMessage": "Type a message…",
+  "chatStartWithFarmer": "Start a private chat with the farmer about this order. Phone numbers stay private.",
+  "chatStartWithBuyer": "Start a private chat with the buyer about this order. Phone numbers stay private.",
+  "chatMessageTheFarmer": "Message the farmer",
+  "chatMessageTheBuyer": "Message the buyer",
+  "chatNoConversations": "No messages yet. Open an order and tap Message to contact the other party. Phone numbers stay private.",
+  "chatNoMessagesYet": "No messages yet",
+  "chatEncryptedMessage": "Encrypted message",
+  "chatOrderTitle": "Order #{id}",
+  "@chatOrderTitle": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "chatOrderTitleNoId": "Order",
+  "chatUnreadCount": "{count, plural, =1{1 unread message} other{{count} unread messages}}",
+  "@chatUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetImageLoadFailed": "This image could not be loaded.",
+  "widgetVideoLoadFailed": "Could not load harvest video.",
+  "widgetHarvestVideo": "Harvest video",
+  "widgetPlayVideo": "Play video",
+  "widgetPauseVideo": "Pause video",
+  "widgetFarmPickup": "Farm pickup",
+  "widgetDeliveryPoint": "Delivery point",
+  "widgetCourier": "Courier",
+  "widgetEnRoute": "{percent}% en route",
+  "@widgetEnRoute": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "widgetVerificationStatus": "Verification status",
+  "stateReceiptNotNeeded": "This order does not need a payment receipt.",
+  "stateSignInToUploadReceipt": "Please sign in to upload a payment receipt.",
+  "statePaymentActionUnavailable": "This payment action is not available.",
+  "stateProfileNotFound": "Your profile could not be found.",
+  "stateSignInToChangePhoto": "Sign in to change your photo.",
+  "stateWithdrawalFailed": "Your payout request could not be sent. Please try again.",
+  "stateDisputeResolvedTitle": "Dispute resolved: order {orderNumber}",
+  "@stateDisputeResolvedTitle": {
+    "placeholders": {
+      "orderNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "stateDisputeSettledTitle": "Dispute settled: order {orderNumber}",
+  "@stateDisputeSettledTitle": {
+    "placeholders": {
+      "orderNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "stateDisputeResolvedBody": "The admin resolved the dispute: {resolution}. Notes: {notes}",
+  "@stateDisputeResolvedBody": {
+    "placeholders": {
+      "resolution": {
+        "type": "String"
+      },
+      "notes": {
+        "type": "String"
+      }
+    }
+  },
+  "stateResolutionRefundBuyer": "Refund to the buyer",
+  "stateResolutionReleaseFarmer": "Payment released to the farmer",
+  "stateResolutionSplit": "Amount split between buyer and farmer",
+  "homeNavHome": "Home",
+  "homeNavProducts": "Products",
+  "homeNavOrders": "Orders",
+  "homeNavDeliveries": "Deliveries",
+  "homeNavEarnings": "Earnings",
+  "homeNavProfile": "Profile",
+  "homeNavJobs": "Jobs",
+  "homeNavAlerts": "Alerts",
+  "homeNavOffers": "Offers",
+  "homeNavDashboard": "Dashboard",
+  "homeNavVerify": "Verify",
+  "homeNavUsers": "Users",
+  "homeNavLogistics": "Logistics",
+  "homeNavSettings": "Settings",
+  "dashboardFarmActivity": "Farm Activity",
+  "dashboardYourProduce": "Your current produce",
+  "dashboardEarningsOverview": "Earnings Overview",
+  "dashboardRecentOrders": "Recent Orders",
+  "dashboardQuickActions": "Quick Actions",
+  "dashboardRecentNotifications": "Recent Notifications",
+  "dashboardGoodMorning": "Good Morning, {name} 👋",
+  "@dashboardGoodMorning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardGoodAfternoon": "Good Afternoon, {name} 👋",
+  "@dashboardGoodAfternoon": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardGoodEvening": "Good Evening, {name} 👋",
+  "@dashboardGoodEvening": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardHappeningInDistrict": "Here's what's happening in {district} today.",
+  "@dashboardHappeningInDistrict": {
+    "placeholders": {
+      "district": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardHappeningOnFarm": "Here's what's happening with your farm today.",
+  "dashboardTodaysOrders": "Today's Orders",
+  "dashboardTrendFromYesterday": "+{count} from yesterday",
+  "@dashboardTrendFromYesterday": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardActiveProducts": "Active Products",
+  "dashboardListedForSale": "Listed for sale",
+  "dashboardPendingOrders": "Pending Orders",
+  "dashboardAwaitingResponse": "Awaiting response",
+  "dashboardThisMonth": "This Month",
+  "dashboardNoProduceYet": "No produce listed yet",
+  "dashboardOrganic": "Organic",
+  "dashboardInStock": "In Stock",
+  "dashboardActiveOrdersCount": "{count, plural, =1{1 active order} other{{count} active orders}}",
+  "@dashboardActiveOrdersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardMonthly": "Monthly",
+  "dashboardWeekly": "Weekly",
+  "dashboardThisMonthEarnings": "This month's earnings",
+  "dashboardThisWeekEarnings": "This week's earnings",
+  "dashboardVsLastMonth": "{percent} vs last month",
+  "@dashboardVsLastMonth": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardVsLastWeek": "{percent} vs last week",
+  "@dashboardVsLastWeek": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardNoData": "No data",
+  "dashboardNoRecentOrders": "No recent orders",
+  "dashboardAddProduce": "Add Produce",
+  "dashboardManageOrders": "Manage Orders",
+  "dashboardPriceOffers": "Price Offers",
+  "dashboardViewEarnings": "View Earnings",
+  "dashboardFarmProfile": "Farm Profile",
+  "dashboardMarketRates": "Market Rates",
+  "dashboardNearbyTransport": "Nearby Transport",
+  "dashboardProduce": "Produce",
+  "dashboardMyOrders": "My Orders",
+  "dashboardMyCart": "My Cart",
+  "dashboardLiveTracking": "Live Tracking",
+  "dashboardNoActiveDelivery": "No active delivery right now. Accept a job to start live tracking.",
+  "dashboardUserManagement": "User Management",
+  "dashboardMarketplaceOrders": "MARKETPLACE ORDERS",
+  "dashboardActiveCount": "{count} active",
+  "@dashboardActiveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardEscrowNote": "Total order volume handled via secure escrow",
+  "dashboardActiveOrders": "Active Orders",
+  "dashboardInProgress": "In progress",
+  "dashboardInCart": "In Cart",
+  "dashboardReadyToOrder": "Ready to order",
+  "dashboardOffers": "Offers",
+  "dashboardNegotiations": "Negotiations",
+  "dashboardActiveDelivery": "Active Delivery",
+  "dashboardTrackProduceLive": "Track your produce live",
+  "dashboardOrderAndAddress": "Order {number} • {address}",
+  "@dashboardOrderAndAddress": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      },
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardStage": "Stage: {status}",
+  "@dashboardStage": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardFeaturedProduce": "Featured Produce",
+  "dashboardBrowseAll": "Browse All",
+  "dashboardNoProduceListed": "No produce currently listed",
+  "dashboardAddedToCart": "{product} added to cart!",
+  "@dashboardAddedToCart": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardAdd": "Add",
+  "dashboardActiveJobs": "Active Jobs",
+  "dashboardTotalDeliveries": "Total deliveries",
+  "dashboardTotalUsers": "Total Users",
+  "dashboardRegistered": "Registered",
+  "dashboardTotalOrders": "Total Orders",
+  "dashboardAllTime": "All time",
+  "farmerOffersTitle": "Buyer Offers",
+  "farmerOffersPendingCount": "{count} Pending",
+  "@farmerOffersPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerOffersFilterLabel": "{label} ({count})",
+  "@farmerOffersFilterLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerOffersEmpty": "No offers matching this filter",
+  "farmerOffersProduceOffer": "Produce Order Offer",
+  "farmerOffersBuyerLine": "Buyer: {buyer}",
+  "@farmerOffersBuyerLine": {
+    "placeholders": {
+      "buyer": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersVerifiedBuyer": "Verified Buyer",
+  "farmerQuantityKg": "{quantity} kg",
+  "@farmerQuantityKg": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerPricePerKgValue": "{price} /kg",
+  "@farmerPricePerKgValue": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersOfferPrice": "Offer Price",
+  "farmerOffersTotalValue": "Total Value",
+  "farmerOffersAccepted": "Offer accepted! New order created in Orders.",
+  "farmerOffersRejectConfirm": "Are you sure you want to decline this offer for {quantity} kg of {product}?",
+  "@farmerOffersRejectConfirm": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      },
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersProductLine": "Product: {product}",
+  "@farmerOffersProductLine": {
+    "placeholders": {
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersQuantityLine": "Quantity: {quantity} kg",
+  "@farmerOffersQuantityLine": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersBuyerOfferLine": "Buyer Offer: {price} /kg",
+  "@farmerOffersBuyerOfferLine": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersCounterPriceLabel": "Your Counter Price (LKR / kg)",
+  "farmerOffersInvalidCounterPrice": "Please enter a valid counter price",
+  "farmerOffersCounterSent": "Counter offer sent: {price} /kg",
+  "@farmerOffersCounterSent": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerOffersCounterFailed": "Could not send counter offer. {reason}",
+  "@farmerOffersCounterFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "langSelectTitle": "Choose your language",
+  "langSelectHint": "You can change this later in your profile.",
+  "langChangedTo": "Language changed to {language}",
+  "@langChangedTo": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "langSaveFailed": "The language changed on this device but could not be saved to your account. Check your connection.",
+  "splashTagline": "Connecting Farmers, Buyers & Transport",
+  "splashFarmers": "Farmers",
+  "splashBuyers": "Buyers",
+  "splashTransport": "Transport",
+  "splashLoading": "Connecting agricultural network…",
+  "helpSupportHours": "Support hours: Mon–Sat, 8:00 AM – 6:00 PM",
+  "helpContactUs": "Contact us",
+  "helpCallSupport": "Call support",
+  "helpEmailUs": "Email us",
+  "helpWhatsApp": "WhatsApp",
+  "helpFaqTitle": "Frequently asked questions",
+  "helpFaqOrdersQ": "How do orders work?",
+  "helpFaqOrdersA": "A buyer places an order and you accept it. A verified transporter collects your produce and delivers it to the buyer. You can follow every step in the app.",
+  "helpFaqPayoutQ": "When do I get paid?",
+  "helpFaqPayoutA": "Once the buyer confirms delivery, your payment is released to you within 24 hours.",
+  "helpFaqTransportQ": "Who arranges transport?",
+  "helpFaqTransportA": "Farmora sends the transport request to verified transporters. You only need to pack the harvest and keep it ready at your farm.",
+  "helpFaqVerificationQ": "Why do I need verification?",
+  "helpFaqVerificationA": "Verification helps buyers trust you. Verified farmers are shown first and get paid faster.",
+  "legalPrivacy1": "Farmora collects your profile, listings, orders and delivery data to operate the marketplace.",
+  "legalPrivacy2": "Phone numbers stay private by default. Buyers, farmers and transporters contact each other through in-app messages for each order.",
+  "legalPrivacy3": "Media you upload (product images, harvest videos, verification documents) is stored in Firebase Storage and shown only where needed for trade and verification.",
+  "legalPrivacy4": "You can request data export or account deletion from Help & Support. Deletion removes your profile and personal data, subject to legal record-keeping for completed transactions.",
+  "legalTerms1": "Farmora connects farmers, buyers and transport providers. Prices, stock and order totals are confirmed by Farmora's secure server, not by the app.",
+  "legalTerms2": "Farmers may list only produce they can supply. Buyers pay for confirmed orders. Transporters accept only jobs they can complete and follow the delivery steps in order.",
+  "legalTerms3": "You can review each delivered order once, and reviews may be moderated. Abuse, fraud or harassment leads to suspension.",
+  "legalTerms4": "While a dispute is open, the held payment is not released until an administrator resolves it.",
+  "legalSupportNotConfigured": "Support contact is not set up yet",
+  "legalSupportNotConfiguredHint": "Use the account data controls below or contact your Farmora administrator.",
+  "legalDataRequest": "Request data export or deletion",
+  "legalDataRequestHint": "Use the privacy controls in your profile.",
+  "stateAccountRole": "Account role",
+  "stateRoleFixed": "This role is fixed to your account.",
+  "notifFilterUnread": "Unread",
+  "notifPreferencesTooltip": "Notification preferences",
+  "notifAllMarkedRead": "All notifications marked as read",
+  "notifPrefOrderUpdates": "Order status updates",
+  "notifPrefMessages": "New messages and alerts",
+  "notifPrefsSaved": "Notification preferences saved.",
+  "notifEmptyFiltered": "No notifications here.",
+  "farmerCategoryHerbs": "Herbs",
+  "farmerCategoryDairy": "Dairy",
+  "farmerUnitLbs": "lbs",
+  "farmerUnitPcs": "pcs",
+  "farmerUnitBox": "box",
+  "farmerUnitBunches": "bunches",
+  "farmerHarvestGrowing": "Growing",
+  "farmerHarvestPacked": "Packed",
+  "farmerOrganic": "Organic",
+  "farmerConventional": "Conventional",
+  "farmerQuantityAvailable": "{quantity} {unit} available",
+  "@farmerQuantityAvailable": {
+    "placeholders": {
+      "quantity": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerPricePerUnitValue": "{price} / {unit}",
+  "@farmerPricePerUnitValue": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsTitle": "Products",
+  "farmerProductsSearchHint": "Search products...",
+  "farmerProductsCategoryChip": "Category: {category}",
+  "@farmerProductsCategoryChip": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsFilterByCategory": "Filter by Category",
+  "farmerProductsReplaceVideo": "Replace harvest video",
+  "farmerProductsUploadVideo": "Upload harvest video",
+  "farmerProductsVideoStatus": "Status: {status}",
+  "@farmerProductsVideoStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsVideoHint": "MP4 up to 100 MB — auto-deleted after delivery",
+  "farmerProductsPreviewVideo": "Preview harvest video",
+  "farmerProductsVideoTitle": "{name} video",
+  "@farmerProductsVideoTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsRefreshQr": "Refresh packing QR",
+  "farmerProductsGenerateQr": "Generate packing QR",
+  "farmerProductsQrHint": "Marks harvest as packed for buyers",
+  "farmerProductsQrFailed": "Could not generate QR",
+  "farmerProductsQrReady": "Packing QR ready",
+  "farmerProductsQrError": "QR failed. {reason}",
+  "@farmerProductsQrError": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsMarkOutOfStock": "Mark as Out of Stock",
+  "farmerProductsMarkInStock": "Mark as Active / In Stock",
+  "farmerProductsStockUpdated": "Updated {name} stock status",
+  "@farmerProductsStockUpdated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsEditListing": "Edit Listing",
+  "farmerProductsRemoveListing": "Remove Listing",
+  "farmerProductsDeleted": "Deleted {name}",
+  "@farmerProductsDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsVideoUploadFailed": "Video upload failed",
+  "farmerProductsVideoUploadFailedReason": "Video upload failed. {reason}",
+  "@farmerProductsVideoUploadFailedReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerProductsVideoUploaded": "Harvest video uploaded for {name}",
+  "@farmerProductsVideoUploaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerAddProductEditTitle": "Edit Product",
+  "farmerAddProductBasicDetails": "Basic Details",
+  "farmerAddProductNameLabel": "Product Name",
+  "farmerAddProductNameRequired": "Please enter a product name",
+  "farmerAddProductNameHint": "e.g. Nuwara Eliya Carrots",
+  "farmerAddProductDistrict": "Farm District / Location",
+  "farmerAddProductInventory": "Inventory & Pricing",
+  "farmerAddProductQtyRequired": "Enter qty",
+  "farmerAddProductPriceRequired": "Enter price",
+  "farmerAddProductAvailabilityDate": "Availability Date",
+  "farmerAddProductSelectDate": "Select date",
+  "farmerAddProductDescriptionHint": "Describe the quality, origin, and any certifications...",
+  "farmerAddProductImages": "Product Images",
+  "farmerAddProductImagesHint": "Upload up to {count} clear photos of your product.",
+  "@farmerAddProductImagesHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerAddProductImagesTip": "Tap a photo to replace it. The first photo is the cover.",
+  "farmerAddProductUploadingPhotos": "Uploading photos...",
+  "farmerSaving": "Saving...",
+  "farmerAddProductPublish": "Publish Product",
+  "farmerAddProductAddPhoto": "Add",
+  "farmerAddProductPhotoSemantics": "Product photo {index}. Tap to replace.",
+  "@farmerAddProductPhotoSemantics": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerAddProductCover": "Cover",
+  "farmerAddProductRemovePhoto": "Remove photo {index}",
+  "@farmerAddProductRemovePhoto": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerAddProductInvalidQtyPrice": "Enter a valid quantity and price.",
+  "farmerAddProductUploadRetry": "{reason} Tap {button} to retry.",
+  "@farmerAddProductUploadRetry": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      },
+      "button": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerAddProductVideoPrompt": "Optional: upload a short harvest video (MP4, max 100 MB). It is auto-deleted after delivery.",
+  "farmerAddProductUpdated": "Updated {name} successfully!",
+  "@farmerAddProductUpdated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerAddProductPublished": "Published {name} successfully!",
+  "@farmerAddProductPublished": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "svcProductNotFound": "This product is no longer available.",
+  "svcNotEnoughStock": "Not enough stock.",
+  "svcFarmerNoBankDeposit": "This farmer does not accept bank deposits yet.",
+  "svcOrderNotFound": "Order not found.",
+  "svcJobNotFound": "Delivery job not found.",
+  "svcAddressLocked": "The address can only be changed while the order is pending.",
+  "svcOfferNotFound": "Offer not found.",
+  "svcOfferNotPending": "This offer has already been answered.",
+  "svcOfferCannotChange": "This offer can no longer be changed.",
+  "svcOfferCannotCounter": "This offer can no longer be countered.",
+  "svcCounterPriceRequired": "Enter a valid counter price.",
+  "svcNoChatPeer": "There is no one to chat with on this order yet.",
+  "svcBarcodeWrongBuyer": "This barcode is for another buyer's order.",
+  "svcDisputeNotOpen": "This order has no open dispute.",
+  "svcDisputeClosed": "This dispute is already closed.",
+  "svcBankFieldsRequired": "All bank fields are required.",
+  "svcReceiptNotNeeded": "This order no longer needs a payment receipt.",
+  "svcReceiptBankOnly": "Receipts are only needed for bank deposit orders.",
+  "svcPaidByBank": "This order is paid by bank deposit.",
+  "svcCashAfterDelivery": "Cash can be marked received after delivery.",
+  "svcNoReceiptWaiting": "No payment receipt is waiting for review.",
+  "svcRejectReasonRequired": "Please give the buyer a reason.",
+  "svcFileTooLarge": "File must be smaller than 5 MB.",
+  "svcProfilePhotoTooLarge": "Profile photo must be smaller than 5 MB.",
+  "svcVideoTooLarge": "Video must be smaller than 100 MB.",
+  "svcEvidenceTooLarge": "Evidence photo must be smaller than 5 MB.",
+  "svcImageTooLarge": "Image is too large. The limit is 5 MB.",
+  "svcAuthRoleInvalid": "Your account role is invalid.",
+  "svcAuthPhoneRegistered": "This mobile number is already registered.",
+  "svcAuthPhoneRegisteredOther": "This mobile number is already registered to another account.",
+  "svcAuthProfileSaveFailed": "Could not save your profile.",
+  "svcAuthProfileNotFound": "User profile was not found.",
+  "svcAuthNoGoogleProfile": "No Farmora profile found. Register with Google first.",
+  "svcAuthNoPhoneProfile": "No Farmora profile found. Register this phone number first.",
+  "svcAuthEnterValidMobile": "Enter a valid mobile number first.",
+  "svcAuthPhoneExample": "Enter a valid phone number, for example +94771234567.",
+  "svcAuthEnterOtp": "Enter the 6-digit verification code.",
+  "svcAuthRequestOtp": "Request a new OTP first.",
+  "svcAuthAccountExists": "An account already exists for this phone number.",
+  "svcAuthWeakPassword": "Password must contain at least 6 characters.",
+  "svcAuthWrongCredentials": "Phone number or password is incorrect.",
+  "svcAuthNetwork": "Network error. Check your internet connection.",
+  "svcAuthProviderDisabled": "Enable this sign-in provider in Firebase Authentication.",
+  "svcAuthInvalidPhone": "Enter a valid phone number with country code.",
+  "svcAuthWrongOtp": "The OTP is incorrect. Please try again.",
+  "svcAuthOtpExpired": "The OTP expired. Request a new code.",
+  "svcAuthSmsQuota": "SMS quota exceeded. Use a Firebase test phone number.",
+  "svcAuthGoogleCancelled": "Google sign-in was cancelled.",
+  "svcAuthFailed": "Authentication failed.",
+  "svcSeedNeedsUsers": "Register a farmer and buyer first, then seed again.",
+  "farmerTrackOrderHash": "Order #{number}",
+  "@farmerTrackOrderHash": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerTrackPickupRequested": "Pickup requested",
+  "farmerTrackDeliveryStatus": "DELIVERY STATUS",
+  "farmerTrackPickupNote": "3PL Automated Pickup: Driver collects directly from your farm gate loading dock.",
+  "farmerTrackTransportProvider": "Transport provider",
+  "farmerTrackAwaitingTransporter": "Awaiting transporter acceptance",
+  "farmerTrackAssignedTransporter": "Assigned transporter",
+  "farmerTrackVehicleUnavailable": "Vehicle details unavailable",
+  "farmerTrackEstimatedArrival": "Estimated Arrival",
+  "farmerTrackEtaUnavailable": "ETA unavailable",
+  "farmerTrackCallDriver": "Call Driver",
+  "farmerTrackLiveGps": "Live driver GPS: {lat}, {lng}",
+  "@farmerTrackLiveGps": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lng": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerTrackRouteWaypoints": "Route Waypoints",
+  "farmerTrackGpsRoute": "GPS route",
+  "farmerTrackRoutePreview": "Route preview",
+  "farmerTrackFarmPickup": "Farm pickup",
+  "farmerTrackDeliveryPoint": "Delivery point",
+  "farmerTrackDriverLive": "Driver location LIVE",
+  "farmerTrackDriverUpdating": "Driver location updating…",
+  "farmerTrackRouteProgress": "Route progress",
+  "farmerTrackSharingLive": "Driver is sharing live GPS — watch the map marker move.",
+  "farmerTrackLastKnown": "Showing last known driver position.",
+  "farmerTrackPickupOrigin": "Pickup Origin",
+  "farmerTrackDeliveryDestination": "Delivery Destination",
+  "farmerTrackNoInstructions": "No delivery instructions provided.",
+  "farmerTrackOrderLifecycle": "Order Lifecycle",
+  "farmerTrackPickupChecklist": "Pickup Checklist",
+  "farmerTrackChecklistDone": "{done}/{total} Done",
+  "@farmerTrackChecklistDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "farmerTrackPrepareBefore": "Prepare prior to driver arrival",
+  "farmerTrackHandedConfirmed": "Produce handed to driver confirmed!",
+  "farmerTrackConfirmHanded": "Confirm Produce Handed to Driver",
+  "farmerTrackViewPaymentStatus": "View Payment Status",
+  "farmerTrackStepRequested": "Transport requested",
+  "farmerTrackStepAccepted": "Transport accepted",
+  "farmerTrackStepPickedUp": "Produce picked up",
+  "farmerTrackStepInTransit": "Delivery in transit",
+  "farmerTrackStepCompleted": "Delivery completed",
+  "farmerTrackStepRequestedDesc": "A transport provider can accept this delivery.",
+  "farmerTrackStepAcceptedDesc": "The provider has accepted the delivery request.",
+  "farmerTrackStepPickedUpDesc": "The provider has recorded pickup.",
+  "farmerTrackStepInTransitDesc": "The provider has started the delivery route.",
+  "farmerTrackStepCompletedDesc": "The provider has marked the order delivered.",
+  "farmerTrackCheckPack": "Pack the produce for pickup",
+  "farmerTrackCheckReview": "Review the order and delivery instructions",
+  "farmerTrackCheckHandOffAssigned": "Hand off produce to the assigned transport provider",
+  "farmerTrackCheckHandOffTo": "Hand off produce to {name}",
+  "@farmerTrackCheckHandOffTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerTrackContactPartner": "Contact Delivery Partner",
+  "farmerTrackContactBody": "Your delivery partner and buyer are reachable through the order chat. Messages are encrypted for the recipient and phone numbers stay private.",
+  "farmerTrackContactNote": "You will see the assigned driver details (name, vehicle, ratings) inside the conversation once a transporter accepts this delivery.",
+  "farmerTrackPaymentDetails": "Payment details",
+  "farmerTrackOrderTotal": "Order total:",
+  "farmerTrackPaymentStatusColon": "Payment status:",
+  "farmerTrackSettlementInfo": "Settlement information",
+  "farmerTrackSettlementBody": "This screen shows the payment state recorded for this order. Settlement timing and dispute outcomes depend on the configured payment provider and platform policy.",
+  "svcDocNationalId": "National ID card (NIC)",
+  "svcDocLandOwnership": "Land ownership document",
+  "svcDocFarmPhoto": "Farm photo",
+  "svcDocBankProof": "Bank passbook or statement",
+  "svcDocDrivingLicence": "Driving licence",
+  "svcDocVehicleRegistration": "Vehicle registration",
+  "svcDocVehicleInsurance": "Vehicle insurance",
+  "svcDocFarmerRegistration": "Farmer registration certificate",
+  "svcDocBusinessRegistration": "Business registration",
+  "svcDocGeneric": "Document",
+  "svcDocUploadedForReview": "Uploaded for manual review",
+  "farmerVerificationSaved": "Transporter profile saved.",
+  "farmerVerificationSaveFailed": "Could not save profile. {reason}",
+  "@farmerVerificationSaveFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerVerificationUploadedQueued": "Document uploaded and queued for manual review.",
+  "farmerVerificationUploadFailed": "Upload failed. {reason}",
+  "@farmerVerificationUploadFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "farmerVerificationTitle": "Account Verification",
+  "farmerVerificationHeading": "Verify Your Account",
+  "farmerVerificationIntro": "Please provide the following documents to activate your Farmora profile.",
+  "farmerVerificationVehicleSection": "Vehicle & service area",
+  "farmerVerificationVehicleHint": "e.g. Pickup, Van, Lorry",
+  "farmerVerificationCapacity": "Capacity (kg)",
+  "farmerVerificationDistricts": "Service districts",
+  "farmerVerificationDistrictsHint": "Comma-separated, e.g. Colombo, Gampaha",
+  "farmerVerificationSaveProfile": "Save profile",
+  "farmerVerificationSubmitted": "Documents submitted for verification review!",
+  "farmerVerificationSubmit": "Submit for Verification",
+  "farmerVerificationAllRequired": "All required documents must be uploaded to submit.",
+  "farmerVerificationFront": "Front",
+  "farmerVerificationBack": "Back",
+  "farmerVerificationUploaded": "Uploaded",
+  "farmerVerificationNewPhoto": "Uploaded new clear vehicle photo!",
+  "farmerVerificationSelectFile": "Select File"
 }
