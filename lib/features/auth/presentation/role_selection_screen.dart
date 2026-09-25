@@ -184,13 +184,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        l10n.continueToFarmora,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
-                          color: isSelected ? Colors.white : Colors.black38,
+                      Flexible(
+                        child: Text(
+                          l10n.continueToFarmora,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                            color: isSelected ? Colors.white : Colors.black38,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -206,8 +210,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               const SizedBox(height: 18),
 
               // Already have an account? Log In Link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
                     l10n.alreadyHaveAccount,
@@ -243,6 +248,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               Center(
                 child: Text(
                   l10n.chooseRoleHint,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.black38, fontSize: 12),
                 ),
               ),

@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/user_role.dart';
+import 'auth_language_button.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 
@@ -22,8 +23,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           children: [
+            const Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: AuthLanguageButton(),
+            ),
             const FarmoraLogo(size: 80),
             const SizedBox(height: 20),
             Text(
@@ -55,28 +60,30 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
             const SizedBox(height: 12),
             ...Role.values.where((r) => r != Role.admin).map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Material(
-                  color: selectedRole == r
-                      ? AppColors.primaryLight
-                      : AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  clipBehavior: Clip.antiAlias,
-                  child: ListTile(
-                    onTap: () => setState(() => selectedRole = r),
-                    leading: Icon(r.icon, color: AppColors.primary),
-                    title: Text(r.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    trailing: Icon(
-                      selectedRole == r
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color: AppColors.primary,
+                  (r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Material(
+                      color: selectedRole == r
+                          ? AppColors.primaryLight
+                          : AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        onTap: () => setState(() => selectedRole = r),
+                        leading: Icon(r.icon, color: AppColors.primary),
+                        title: Text(r.label,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        trailing: Icon(
+                          selectedRole == r
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,

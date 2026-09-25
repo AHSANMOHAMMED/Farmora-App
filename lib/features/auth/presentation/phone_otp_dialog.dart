@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import 'auth_l10n.dart';
 
 Future<bool> showPhoneOtpDialog({
   required BuildContext context,
@@ -16,12 +18,12 @@ Future<bool> showPhoneOtpDialog({
     barrierDismissible: false,
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: const Text('Verify phone number'),
+        title: Text(context.l10n.verifyPhoneNumber),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Enter the 6-digit code for $phone.'),
+            Text(context.l10n.authOtpEnterCode(phone)),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -30,10 +32,10 @@ Future<bool> showPhoneOtpDialog({
               keyboardType: TextInputType.number,
               maxLength: 6,
               textAlign: TextAlign.center,
-              decoration: const InputDecoration(
-                labelText: 'Verification code',
+              decoration: InputDecoration(
+                labelText: context.l10n.authVerificationCode,
                 counterText: '',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -41,7 +43,7 @@ Future<bool> showPhoneOtpDialog({
         actions: [
           TextButton(
             onPressed: busy ? null : () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: busy
@@ -54,13 +56,14 @@ Future<bool> showPhoneOtpDialog({
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(sent
-                            ? 'A new code was requested.'
-                            : (error() ?? 'Could not resend OTP.')),
+                            ? context.l10n.authNewCodeRequested
+                            : authErrorText(error(), context.l10n,
+                                context.l10n.authCouldNotResendOtp)),
                         backgroundColor: sent ? AppColors.primary : Colors.red,
                       ),
                     );
                   },
-            child: const Text('Resend'),
+            child: Text(context.l10n.resend),
           ),
           FilledButton(
             onPressed: busy
@@ -76,7 +79,8 @@ Future<bool> showPhoneOtpDialog({
                     setDialogState(() => busy = false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(error() ?? 'OTP verification failed.'),
+                        content: Text(authErrorText(error(), context.l10n,
+                            context.l10n.authOtpVerificationFailed)),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -87,7 +91,7 @@ Future<bool> showPhoneOtpDialog({
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Verify'),
+                : Text(context.l10n.verify),
           ),
         ],
       ),

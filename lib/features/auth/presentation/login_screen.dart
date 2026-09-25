@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../providers/farmora_state.dart';
 import '../../home/presentation/home_screen.dart';
+import 'auth_l10n.dart';
+import 'auth_language_button.dart';
 import 'phone_otp_dialog.dart';
 import 'role_selection_screen.dart';
 
@@ -50,8 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.authError ??
-                'Login failed. Please check your credentials.'),
+            content: Text(authErrorText(
+                state.authError, context.l10n, context.l10n.authLoginFailed)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 2),
           ),
@@ -80,7 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(state.authError ?? 'Google sign-in failed.'),
+          content: Text(authErrorText(state.authError, context.l10n,
+              context.l10n.authGoogleSignInFailed)),
           backgroundColor: Colors.red,
         ),
       );
@@ -125,9 +128,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Login with OTP',
-                style: TextStyle(
+              Text(
+                context.l10n.authLoginWithOtp,
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: AppColors.forestGreen,
@@ -135,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter the 4-digit code sent via SMS to $phoneForOtp',
+                context.l10n.authOtpSmsSent(phoneForOtp),
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -195,9 +198,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Verify & Login',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  child: Text(
+                    context.l10n.authVerifyAndLogin,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -205,9 +210,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: TextButton(
                   onPressed: () {},
-                  child: const Text(
-                    'Resend Code via SMS',
-                    style: TextStyle(
+                  child: Text(
+                    context.l10n.authResendSms,
+                    style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -225,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter your phone number first.')),
+        SnackBar(content: Text(context.l10n.enterYourPhoneNumberFirst)),
       );
       return;
     }
@@ -236,7 +241,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
     if (!sent) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.authError ?? 'Could not send OTP.')),
+        SnackBar(
+          content: Text(authErrorText(
+              state.authError, context.l10n, context.l10n.authCouldNotSendOtp)),
+        ),
       );
       return;
     }
@@ -269,6 +277,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: AuthLanguageButton(),
+                  ),
                   // 1. Top Logo & Brand Identity
                   const Center(
                     child: Column(
@@ -294,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 2. Welcome Back Greeting
                   Builder(builder: (context) {
-                    final l10n = AppLocalizations.of(context);
+                    final l10n = context.l10n;
                     return Column(
                       children: [
                         Text(
@@ -344,9 +356,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Phone Number Label & Input
-                        const Text(
-                          'Phone Number',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.phoneNumber,
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.forestGreen,
@@ -362,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'e.g. 077 123 4567',
+                            hintText: context.l10n.phoneHint,
                             hintStyle: const TextStyle(
                               color: Colors.black38,
                               fontSize: 15,
@@ -402,7 +414,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Please enter your phone number';
+                              return context.l10n.phoneRequiredError;
                             }
                             return null;
                           },
@@ -410,9 +422,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
 
                         // Password Label & Input
-                        const Text(
-                          'Password',
-                          style: TextStyle(
+                        Text(
+                          context.l10n.password,
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.forestGreen,
@@ -428,7 +440,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Enter your password',
+                            hintText: context.l10n.enterYourPassword,
                             hintStyle: const TextStyle(
                               color: Colors.black38,
                               fontSize: 15,
@@ -482,7 +494,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Please enter your password';
+                              return context.l10n.authPasswordRequired;
                             }
                             return null;
                           },
@@ -501,9 +513,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               foregroundColor: AppColors.primary,
                             ),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
+                            child: Text(
+                              context.l10n.forgotPassword,
+                              style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -535,19 +547,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                       strokeWidth: 2.5,
                                     ),
                                   )
-                                : const Row(
+                                : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        'Login',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.3,
+                                      Flexible(
+                                        child: Text(
+                                          context.l10n.authLogin,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.3,
+                                          ),
                                         ),
                                       ),
-                                      SizedBox(width: 8),
-                                      Icon(
+                                      const SizedBox(width: 8),
+                                      const Icon(
                                         Icons.arrow_forward_rounded,
                                         size: 20,
                                       ),
@@ -567,9 +583,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               size: 18,
                               color: AppColors.primary,
                             ),
-                            label: const Text(
-                              'Login with OTP',
-                              style: TextStyle(
+                            label: Text(
+                              context.l10n.authLoginWithOtp,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.forestGreen,
@@ -596,9 +614,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _isLoading ? null : _handleGoogleLogin,
                             icon: Image.asset('assets/icons/google_g.png',
                                 width: 20, height: 20),
-                            label: const Text(
-                              'Continue with Google',
-                              style: TextStyle(
+                            label: Text(
+                              context.l10n.googleSignIn,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                   fontSize: 15, fontWeight: FontWeight.w700),
                             ),
                             style: OutlinedButton.styleFrom(
@@ -624,9 +644,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: WrapAlignment.center,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Text(
-                        "Don't have an account? ",
-                        style: TextStyle(
+                      Text(
+                        context.l10n.authNoAccount,
+                        style: const TextStyle(
                           fontSize: 15,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w500,
@@ -640,9 +660,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           );
                         },
-                        child: const Text(
-                          'Register',
-                          style: TextStyle(
+                        child: Text(
+                          context.l10n.registerLink,
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primary,
