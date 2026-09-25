@@ -541,9 +541,26 @@ class FirestoreService {
     };
     if (vehicleType != null) updates['vehicleType'] = vehicleType;
     if (capacityKg != null) updates['capacityKg'] = capacityKg;
-    if (serviceDistricts != null)
+    if (serviceDistricts != null) {
       updates['serviceDistricts'] = serviceDistricts;
+    }
     await _db.collection('users').doc(uid).update(updates);
+  }
+
+  Stream<Map<String, dynamic>?> transporterPublicProfileStream(
+    String transporterId,
+  ) {
+    return _db.collection('users').doc(transporterId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      final data = doc.data() ?? <String, dynamic>{};
+      return <String, dynamic>{
+        'displayName': data['displayName'] ?? data['name'] ?? '',
+        'photoUrl': data['photoUrl'] ?? '',
+        'vehicleType': data['vehicleType'] ?? '',
+        'vehicleRegistration': data['vehicleRegistration'] ?? '',
+        'isVerified': data['isVerified'] == true,
+      };
+    });
   }
 
   Future<void> markPaymentReceived({
@@ -746,6 +763,16 @@ class FirestoreService {
         .map((snap) => snap.docs
             .map((doc) => FarmoraMessage.fromMap(doc.id, doc.data()))
             .toList());
+  }
+
+  Future<void> clearMyLocation() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('users').doc(uid).update({
+      'location': FieldValue.delete(),
+      'locationUpdatedAt': FieldValue.delete(),
+      'locationAccuracy': FieldValue.delete(),
+    });
   }
 
   Future<Map<String, dynamic>> verifyProductBarcode({

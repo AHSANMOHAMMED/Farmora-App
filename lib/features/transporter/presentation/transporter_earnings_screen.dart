@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../application/transporter_controller.dart';
-import '../domain/collection_job.dart';
 
 class TransporterEarningsScreen extends StatelessWidget {
   const TransporterEarningsScreen({super.key});
@@ -11,17 +10,17 @@ class TransporterEarningsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<TransporterController>();
     const currency = 'Rs. ';
-    
+
     final completed = controller.completedJobs;
     double total = 0;
     double month = 0;
     double week = 0;
     final now = DateTime.now();
-    
+
     for (final job in completed) {
       final amount = (job.deliveryFeeMinor ?? 0) / 100;
       total += amount;
-      
+
       final date = job.completedAt ?? job.updatedAt;
       if (date.year == now.year && date.month == now.month) {
         month += amount;
@@ -30,7 +29,7 @@ class TransporterEarningsScreen extends StatelessWidget {
         week += amount;
       }
     }
-    
+
     final recent = completed.reversed.take(5).toList();
 
     return Scaffold(
@@ -47,8 +46,7 @@ class TransporterEarningsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         children: [
-          _EarningsHero(
-              amount: '$currency${total.toStringAsFixed(2)}'),
+          _EarningsHero(amount: '$currency${total.toStringAsFixed(2)}'),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -79,32 +77,31 @@ class TransporterEarningsScreen extends StatelessWidget {
               message: 'No earnings yet',
             )
           else
-            ...recent.map(
-              (job) {
-                final amount = (job.deliveryFeeMinor ?? 0) / 100;
-                final dateStr = (job.completedAt ?? job.updatedAt).toString().split(' ')[0];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(Icons.local_shipping_outlined,
-                          color: AppColors.primary),
-                    ),
-                    title: Text(job.produceName,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text(dateStr),
-                    trailing: Text(
-                      '+ $currency${amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+            ...recent.map((job) {
+              final amount = (job.deliveryFeeMinor ?? 0) / 100;
+              final dateStr =
+                  (job.completedAt ?? job.updatedAt).toString().split(' ')[0];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.primaryLight,
+                    child: Icon(Icons.local_shipping_outlined,
+                        color: AppColors.primary),
+                  ),
+                  title: Text(job.produceName,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text(dateStr),
+                  trailing: Text(
+                    '+ $currency${amount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                );
-              }
-            ),
+                ),
+              );
+            }),
         ],
       ),
     );

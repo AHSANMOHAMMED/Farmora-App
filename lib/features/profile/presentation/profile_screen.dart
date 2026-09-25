@@ -398,7 +398,7 @@ class ProfileScreen extends StatelessWidget {
                       style: TextStyle(
                           fontWeight: FontWeight.w600, color: AppColors.error)),
                   onTap: () async {
-                    await context.read<FarmoraState>().signOut();
+                    context.read<FarmoraState>().signOut();
                   },
                 ),
               ],

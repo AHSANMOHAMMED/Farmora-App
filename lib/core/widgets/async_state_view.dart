@@ -64,7 +64,7 @@ class AsyncStateView extends StatelessWidget {
               const Icon(Icons.error_outline, size: 48, color: AppColors.error),
               const SizedBox(height: 16),
               Text(
-                '${l10n.error}', 
+                l10n.error,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: AppColors.error,
                 ),

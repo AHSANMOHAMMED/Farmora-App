@@ -141,8 +141,6 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<List<FarmoraMessage>>(
               stream: _service.messagesStream(
                 widget.conversation.id,
-                orderId: widget.conversation.orderId,
-                uid: FirebaseAuth.instance.currentUser?.uid ?? '',
               ),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
