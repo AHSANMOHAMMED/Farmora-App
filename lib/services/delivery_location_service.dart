@@ -36,8 +36,19 @@ class DeliveryLocationService {
   Future<bool> requestConsentAndStart({required String jobId}) async {
     if (_sharing && _activeJobId == jobId) return true;
 
-    final status = await Permission.locationWhenInUse.request();
-    if (!status.isGranted) return false;
+    if (!kIsWeb) {
+      final status = await Permission.locationWhenInUse.request();
+      if (!status.isGranted) return false;
+    } else {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return false;
+      }
+    }
     final enabled = await Geolocator.isLocationServiceEnabled();
     if (!enabled) return false;
 
@@ -115,8 +126,16 @@ class DeliveryLocationService {
   /// transition flows that want to stamp a position at pickup/transit time.
   Future<Position?> currentPositionQuick() async {
     try {
-      final status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) return null;
+      if (!kIsWeb) {
+        final status = await Permission.locationWhenInUse.status;
+        if (!status.isGranted) return null;
+      } else {
+        final perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied ||
+            perm == LocationPermission.deniedForever) {
+          return null;
+        }
+      }
       return await Geolocator.getCurrentPosition(
         locationSettings:
             const LocationSettings(accuracy: LocationAccuracy.high),
