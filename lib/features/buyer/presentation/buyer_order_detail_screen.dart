@@ -8,6 +8,10 @@ import 'barcode_scan_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../../services/firebase_service.dart';
 import '../../payments/presentation/order_payment_card.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import 'buyer_l10n.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final FarmoraOrder order;
@@ -22,6 +26,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       orElse: () => order,
     );
     final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -32,9 +37,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Order Detail',
-          style: TextStyle(
+        title: Text(
+          l.buyerOrderDetailTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -43,7 +48,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Message',
+            tooltip: l.message,
             icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -62,17 +67,22 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'ORDER ${currentOrder.orderNumber.toUpperCase()}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: AppColors.tertiary,
+                Expanded(
+                  child: Text(
+                    l.buyerOrderNumber(currentOrder.orderNumber.toUpperCase()),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: AppColors.tertiary,
+                    ),
                   ),
                 ),
-                _buildStatusBadge(currentOrder.status),
+                const SizedBox(width: 8),
+                _buildStatusBadge(l, currentOrder.status),
               ],
             ),
             const SizedBox(height: 8),
@@ -85,11 +95,11 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   _paymentColor(currentOrder.paymentState),
                 ),
                 _buildMiniBadge(
-                  _escrowLabel(currentOrder.escrowStatus),
+                  _escrowLabel(l, currentOrder.escrowStatus),
                   AppColors.onSurfaceVariant,
                 ),
                 if (currentOrder.isDisputed)
-                  _buildMiniBadge('Disputed — payout paused', AppColors.error),
+                  _buildMiniBadge(l.buyerDisputedPayoutPaused, AppColors.error),
               ],
             ),
             const SizedBox(height: 8),
@@ -111,12 +121,16 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   color: AppColors.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Requested for ${currentOrder.requestedDate}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    l.buyerRequestedFor(currentOrder.requestedDate.isNotEmpty
+                        ? currentOrder.requestedDate
+                        : AppFormat.date(currentOrder.createdAt)),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -124,14 +138,14 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Status Timeline
-            _buildStatusTimeline(currentOrder),
+            _buildStatusTimeline(l, currentOrder),
             const SizedBox(height: 20),
             if (currentOrder.status.toLowerCase() != 'delivered')
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.qr_code_scanner_rounded),
-                  label: const Text('Verify harvest barcode'),
+                  label: Text(l.verifyHarvestBarcode),
                   onPressed: () async {
                     final result =
                         await Navigator.of(context).push<Map<String, dynamic>>(
@@ -140,8 +154,8 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     );
                     if (context.mounted && result != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Harvest authenticity verified.')),
+                        SnackBar(
+                            content: Text(l.harvestAuthenticityVerified)),
                       );
                     }
                   },
@@ -231,9 +245,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Delivery Address',
-                              style: TextStyle(
+                            Text(
+                              l.buyerDeliveryAddress,
+                              style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 12,
                                 color: AppColors.onSurfaceVariant,
@@ -254,6 +268,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                       ),
                       if (currentOrder.status == 'pending')
                         IconButton(
+                          tooltip: l.editDeliveryAddress,
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           onPressed: () => _editDeliveryAddress(context, state, currentOrder),
                           color: AppColors.primary,
@@ -283,9 +298,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Order Summary',
-                    style: TextStyle(
+                  Text(
+                    l.buyerOrderSummary,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -294,36 +309,43 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _buildSummaryRow(
-                      'Product',
+                      l.buyerProduct,
                       currentOrder.productName.isNotEmpty
                           ? currentOrder.productName
                           : currentOrder.title),
                   _buildDivider(),
-                  _buildSummaryRow('Quantity', currentOrder.quantity),
+                  _buildSummaryRow(l.quantity, currentOrder.quantity),
                   _buildDivider(),
-                  _buildSummaryRow('Unit Price', currentOrder.unitPrice),
+                  _buildSummaryRow(l.buyerUnitPrice, currentOrder.unitPrice),
                   _buildDivider(),
-                  _buildSummaryRow('Grade', currentOrder.grade),
+                  _buildSummaryRow(l.buyerGrade, currentOrder.grade),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Total',
-                        style: TextStyle(
+                      Text(
+                        l.commonTotal,
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.onSurface,
                         ),
                       ),
-                      Text(
-                        currentOrder.totalAmount,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                        buyerOrderTotal(currentOrder),
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
+                        ),
+                      ),
                         ),
                       ),
                     ],
@@ -353,15 +375,18 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Logistics & Transport',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurface,
+                        Expanded(
+                          child: Text(
+                            l.buyerLogisticsTransport,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.onSurface,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -369,7 +394,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(9999),
                           ),
                           child: Text(
-                            linkedJob.status.toUpperCase(),
+                            statusLabel(linkedJob.status, l),
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
@@ -382,15 +407,15 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildSummaryRow(
-                      'Provider',
+                      l.buyerTransportProvider,
                       linkedJob.transporterId != null && linkedJob.transporterId!.isNotEmpty
-                          ? 'Assigned (${linkedJob.transporterId})'
-                          : 'Pending Assignment',
+                          ? l.buyerAssignedTo(linkedJob.transporterId!)
+                          : l.buyerPendingAssignment,
                     ),
                     _buildDivider(),
-                    _buildSummaryRow('Route', linkedJob.route),
+                    _buildSummaryRow(l.buyerRoute, linkedJob.route),
                     _buildDivider(),
-                    _buildSummaryRow('Fee', linkedJob.fee),
+                    _buildSummaryRow(l.buyerFee, linkedJob.fee),
                   ],
                 ),
               ),
@@ -429,9 +454,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   ),
                   backgroundColor: AppColors.primary,
                 ),
-                child: const Text(
-                  'Track Order',
-                  style: TextStyle(
+                child: Text(
+                  l.trackOrder,
+                  style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.bold),
@@ -455,7 +480,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     onPressed: () {
                       state.cancelOrder(currentOrder.id);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Order cancelled.')),
+                        SnackBar(content: Text(l.orderCancelled)),
                       );
                       Navigator.of(context).pop();
                     },
@@ -467,9 +492,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Cancel Order',
-                      style: TextStyle(
+                    child: Text(
+                      l.buyerCancelOrderButton,
+                      style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 16,
                           fontWeight: FontWeight.bold),
@@ -481,12 +506,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusTimeline(FarmoraOrder order) {
+  Widget _buildStatusTimeline(AppLocalizations l, FarmoraOrder order) {
     final steps = [
-      'Order Placed',
-      'Accepted by Farmer',
-      'In Transit',
-      'Delivered'
+      l.buyerStepOrderPlaced,
+      l.buyerStepAcceptedByFarmer,
+      l.statusInTransit,
+      l.statusDelivered,
     ];
     int currentStep;
     switch (order.status.toLowerCase()) {
@@ -520,9 +545,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Order Status',
-            style: TextStyle(
+          Text(
+            l.buyerOrderStatus,
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -609,21 +634,27 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
             ),
           ),
         ],
@@ -638,7 +669,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(AppLocalizations l, String status) {
     Color bgColor;
     Color textColor;
 
@@ -669,7 +700,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Text(
-        status.toUpperCase(),
+        statusLabel(status, l),
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
@@ -693,14 +724,16 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     }
   }
 
-  String _escrowLabel(String s) {
-    switch (s) {
+  String _escrowLabel(AppLocalizations l, String s) {
+    switch (s.toLowerCase()) {
       case 'funded_pending_delivery':
-        return 'Escrow funded';
+        return l.buyerEscrowFunded;
       case 'released':
-        return 'Escrow released';
+        return l.buyerEscrowReleased;
+      case 'held':
+        return l.buyerEscrowProtected;
       default:
-        return 'Escrow: $s';
+        return l.buyerEscrowStatus(statusLabel(s, l));
     }
   }
 
@@ -719,21 +752,22 @@ class BuyerOrderDetailScreen extends StatelessWidget {
 
   void _editDeliveryAddress(BuildContext context, FarmoraState state, FarmoraOrder order) {
     final controller = TextEditingController(text: order.deliveryAddress);
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Delivery Address'),
+        title: Text(l.editDeliveryAddress),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Enter new address',
+          decoration: InputDecoration(
+            hintText: l.buyerEnterNewAddress,
           ),
           maxLines: 2,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () async {
@@ -742,12 +776,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.of(ctx).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Address updated successfully')),
+                    SnackBar(content: Text(l.addressUpdatedSuccessfully)),
                   );
                 }
               }
             },
-            child: const Text('Save'),
+            child: Text(l.commonSave),
           ),
         ],
       ),
@@ -778,15 +812,15 @@ class _TrustActionsState extends State<_TrustActions> {
   Future<void> _review() async {
     if (!widget.order.canReview) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Reviews are allowed only after delivery, one per order.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(context.l10n.buyerReviewOnlyAfterDelivery)));
       }
       return;
     }
     if (_comment.text.trim().isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Please write a short review comment first.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(context.l10n.buyerWriteReviewFirst)));
       }
       return;
     }
@@ -798,12 +832,13 @@ class _TrustActionsState extends State<_TrustActions> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Review submitted for moderation.')));
+            SnackBar(content: Text(context.l10n.buyerReviewSubmittedModeration)));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not submit review: $e')));
+            SnackBar(content: Text(context.l10n.reviewSubmitFailed(
+                userMessage(e, action: 'submit review')))));
       }
     }
   }
@@ -813,34 +848,34 @@ class _TrustActionsState extends State<_TrustActions> {
     if (reason.isEmpty) return;
     await _service.openDispute(orderId: widget.order.id, reason: reason);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Complaint opened. Escrow is protected while it is reviewed.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(context.l10n.buyerComplaintOpened)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Trust and support',
+        Text(l.buyerTrustAndSupport,
             style: Theme.of(context).textTheme.titleMedium),
         if (!widget.order.canReview)
-          const Padding(
-            padding: EdgeInsets.only(top: 4, bottom: 4),
-            child: Text('Reviews unlock after delivery (one per order). Complaints pause escrow release.',
-                style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: Text(l.buyerReviewsUnlockHint,
+                style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
           ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           initialValue: _rating,
           items: [1, 2, 3, 4, 5]
               .map((value) =>
-                  DropdownMenuItem(value: value, child: Text('$value stars')))
+                  DropdownMenuItem(value: value, child: Text(l.buyerStarsCount(value))))
               .toList(),
           onChanged: (value) => setState(() => _rating = value ?? 5),
-          decoration: const InputDecoration(labelText: 'Product rating'),
+          decoration: InputDecoration(labelText: l.buyerProductRating),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -848,17 +883,17 @@ class _TrustActionsState extends State<_TrustActions> {
           maxLength: 2000,
           maxLines: 3,
           decoration:
-              const InputDecoration(labelText: 'Review or complaint details'),
+              InputDecoration(labelText: l.buyerReviewOrComplaintDetails),
         ),
         Row(
           children: [
             Expanded(
                 child: FilledButton(
-                    onPressed: _review, child: const Text('Submit review'))),
+                    onPressed: _review, child: Text(l.submitReview))),
             const SizedBox(width: 8),
             Expanded(
                 child: OutlinedButton(
-                    onPressed: _dispute, child: const Text('Open complaint'))),
+                    onPressed: _dispute, child: Text(l.openComplaint))),
           ],
         ),
       ],

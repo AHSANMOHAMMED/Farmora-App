@@ -6,6 +6,9 @@ import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import 'buyer_l10n.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
@@ -16,6 +19,7 @@ class ProductDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final isInCart = state.cartItems.any((c) => c.product.id == product.id);
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -38,6 +42,7 @@ class ProductDetailScreen extends StatelessWidget {
         actions: [
           if (isInCart)
             IconButton(
+              tooltip: l.buyerRemoveFromCart,
               onPressed: () => state.removeFromCart(product.id),
               icon: const Icon(Icons.shopping_cart, color: AppColors.primary),
             ),
@@ -74,7 +79,7 @@ class ProductDetailScreen extends StatelessWidget {
                   HarvestVideoPlayer(videoUrl: product.videoUrl!),
                   const SizedBox(height: 8),
                   Text(
-                    'Harvest status: ${product.harvestStatus.name}',
+                    l.buyerHarvestStatus(buyerHarvestStatusLabel(l, product.harvestStatus)),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 13,
@@ -106,7 +111,7 @@ class ProductDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Text(
-                        product.status.toUpperCase(),
+                        statusLabel(product.status, l),
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 11,
@@ -126,23 +131,31 @@ class ProductDetailScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.location_on_outlined, size: 18, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text(
-                      product.location,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                    Flexible(
+                      child: Text(
+                        product.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     const Icon(Icons.category_outlined, size: 18, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text(
-                      product.category,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
+                    Flexible(
+                      child: Text(
+                        buyerCategoryLabel(l, product.category),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -167,9 +180,9 @@ class ProductDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Price',
-                        style: TextStyle(
+                      Text(
+                        l.price,
+                        style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -179,7 +192,7 @@ class ProductDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        product.price,
+                        buyerProductPrice(l, product),
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 28,
@@ -188,12 +201,13 @@ class ProductDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          _buildInfoChip(Icons.inventory_outlined, product.quantity),
-                          const SizedBox(width: 8),
+                          _buildInfoChip(Icons.inventory_outlined, buyerProductQuantity(l, product)),
                           if (product.isOrganic)
-                            _buildInfoChip(Icons.eco_outlined, 'Organic'),
+                            _buildInfoChip(Icons.eco_outlined, l.buyerOrganic),
                         ],
                       ),
                     ],
@@ -203,9 +217,9 @@ class ProductDetailScreen extends StatelessWidget {
 
                 // Description
                 if (product.description.isNotEmpty) ...[
-                  const Text(
-                    'About this product',
-                    style: TextStyle(
+                  Text(
+                    l.buyerAboutProduct,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -253,7 +267,7 @@ class ProductDetailScreen extends StatelessWidget {
                             state.removeFromCart(product.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Removed ${product.name} from cart'),
+                                content: Text(l.buyerRemovedFromCart(product.name)),
                                 backgroundColor: AppColors.error,
                                 duration: const Duration(seconds: 1),
                                 behavior: SnackBarBehavior.floating,
@@ -268,9 +282,9 @@ class ProductDetailScreen extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(Icons.remove_shopping_cart, size: 20),
-                          label: const Text(
-                            'Remove from Cart',
-                            style: TextStyle(
+                          label: Text(
+                            l.buyerRemoveFromCart,
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -292,12 +306,16 @@ class ProductDetailScreen extends StatelessWidget {
                                     ),
                                   ),
                                   icon: const Icon(Icons.local_offer, size: 20),
-                                  label: const Text(
-                                    'Make Offer',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      l.buyerMakeOffer,
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -309,7 +327,7 @@ class ProductDetailScreen extends StatelessWidget {
                                     state.addToCart(product);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Added ${product.name} to cart'),
+                                        content: Text(l.buyerAddedToCart(product.name)),
                                         backgroundColor: AppColors.primary,
                                         duration: const Duration(seconds: 1),
                                         behavior: SnackBarBehavior.floating,
@@ -325,12 +343,16 @@ class ProductDetailScreen extends StatelessWidget {
                                     elevation: 2,
                                   ),
                                   icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
-                                  label: const Text(
-                                    'Add to Cart',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      l.buyerAddToCart,
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -369,14 +391,18 @@ class ProductDetailScreen extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: AppColors.onSurfaceVariant),
           const SizedBox(width: 6),
-          Text(
+          Flexible(
+            child: Text(
             text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.onSurfaceVariant,
             ),
+          ),
           ),
         ],
       ),
@@ -398,6 +424,8 @@ class ProductDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final l = ctx.l10n;
+        final unitLabel = buyerUnitLabel(l, product.unit);
         return Padding(
           padding: EdgeInsets.only(
             left: 20,
@@ -412,16 +440,19 @@ class ProductDetailScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Make an Offer',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
+                  Expanded(
+                    child: Text(
+                      l.buyerMakeAnOffer,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                   ),
                   IconButton(
+                    tooltip: l.commonClose,
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
@@ -429,15 +460,18 @@ class ProductDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Negotiate directly for ${product.name} (Listed: LKR ${product.pricePerUnit.toStringAsFixed(0)}/${product.unit})',
+                l.buyerNegotiateFor(
+                  product.name,
+                  l.buyerPricePerUnit(AppFormat.lkr(product.pricePerUnit), unitLabel),
+                ),
                 style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: quantityController,
                 decoration: InputDecoration(
-                  labelText: 'Quantity (${product.unit})',
-                  hintText: 'e.g. 50',
+                  labelText: l.buyerQuantityInUnit(unitLabel),
+                  hintText: l.buyerQuantityHint,
                   filled: true,
                   fillColor: AppColors.surfaceContainerLow,
                   border: OutlineInputBorder(
@@ -451,8 +485,8 @@ class ProductDetailScreen extends StatelessWidget {
               TextField(
                 controller: priceController,
                 decoration: InputDecoration(
-                  labelText: 'Proposed Unit Price (LKR / ${product.unit})',
-                  hintText: 'e.g. 170',
+                  labelText: l.buyerProposedUnitPriceIn(unitLabel),
+                  hintText: l.buyerPriceHint,
                   prefixText: 'LKR ',
                   filled: true,
                   fillColor: AppColors.surfaceContainerLow,
@@ -474,7 +508,7 @@ class ProductDetailScreen extends StatelessWidget {
 
                     if (qty < 1 || price <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a valid quantity and price.')),
+                        SnackBar(content: Text(l.buyerEnterValidQtyPrice)),
                       );
                       return;
                     }
@@ -492,7 +526,7 @@ class ProductDetailScreen extends StatelessWidget {
                       Navigator.of(ctx).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Offer of LKR ${price.toStringAsFixed(0)}/${product.unit} sent to farmer!'),
+                          content: Text(l.buyerOfferSent(l.buyerPricePerUnit(AppFormat.lkr(price), unitLabel))),
                           backgroundColor: AppColors.primary,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -504,9 +538,9 @@ class ProductDetailScreen extends StatelessWidget {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Submit Proposal',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  child: Text(
+                    l.buyerSubmitProposal,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

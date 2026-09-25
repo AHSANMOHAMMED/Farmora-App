@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/order_card.dart';
+import '../../../core/localization/l10n.dart';
 
 class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
@@ -9,17 +10,18 @@ class OrdersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Orders'),
+        title: Text(l.orders),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text(
-            'Track every step from farm to table.',
-            style: TextStyle(color: Colors.black54),
+          Text(
+            l.ordersTrackEveryStep,
+            style: const TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 20),
           ...state.orders.map(

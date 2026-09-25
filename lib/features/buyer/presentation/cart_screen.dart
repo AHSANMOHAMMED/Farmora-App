@@ -4,6 +4,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../providers/farmora_state.dart';
 import '../../payments/presentation/payment_method_selector.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import 'buyer_l10n.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -12,6 +15,7 @@ class CartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final cartItems = state.cartItems;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -22,9 +26,9 @@ class CartScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'My Cart',
-          style: TextStyle(
+        title: Text(
+          l.buyerCartTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -37,17 +41,17 @@ class CartScreen extends StatelessWidget {
               onPressed: () {
                 state.clearCart();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Cart cleared'),
+                  SnackBar(
+                    content: Text(l.cartCleared),
                     backgroundColor: AppColors.error,
-                    duration: Duration(seconds: 1),
+                    duration: const Duration(seconds: 1),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
-              child: const Text(
-                'Clear All',
-                style: TextStyle(
+              child: Text(
+                l.buyerCartClearAll,
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   color: AppColors.error,
                   fontWeight: FontWeight.w600,
@@ -67,9 +71,10 @@ class CartScreen extends StatelessWidget {
                     color: AppColors.outlineVariant,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Your cart is empty',
-                    style: TextStyle(
+                  Text(
+                    l.buyerCartEmptyTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -77,13 +82,17 @@ class CartScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Browse fresh produce and add items to your cart',
-                    style: TextStyle(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                    l.buyerCartEmptyHint,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
                       color: AppColors.onSurfaceVariant,
                     ),
+                  ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -95,9 +104,9 @@ class CartScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Continue Shopping',
-                      style: TextStyle(
+                    child: Text(
+                      l.buyerContinueShopping,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w600,
                       ),
@@ -175,7 +184,7 @@ class CartScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    item.product.price,
+                                    buyerProductPrice(l, item.product),
                                     style: const TextStyle(
                                       fontFamily: 'Inter',
                                       fontSize: 14,
@@ -268,10 +277,10 @@ class CartScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildFeeRow('Subtotal (${state.cartItemCount} items)',
-                          'LKR ${state.cartSubtotal.toStringAsFixed(2)}'),
+                      _buildFeeRow(l.buyerCartSubtotalItems(state.cartItemCount),
+                          AppFormat.lkr(state.cartSubtotal, decimals: 2)),
                       const SizedBox(height: 4),
-                      _buildFeeRow('Delivery fee', 'LKR ${state.cartDeliveryFee.toStringAsFixed(2)}'),
+                      _buildFeeRow(l.buyerDeliveryFee, AppFormat.lkr(state.cartDeliveryFee, decimals: 2)),
                       const SizedBox(height: 4),
                       const SizedBox(height: 4),
                       const PaymentMethodSelector(),
@@ -279,9 +288,10 @@ class CartScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total', style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700)),
+                          Flexible(child: Text(l.commonTotal, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700))),
+                          const SizedBox(width: 8),
                           Text(
-                            'LKR ${state.cartGrandTotal.toStringAsFixed(2)}',
+                            AppFormat.lkr(state.cartGrandTotal, decimals: 2),
                             style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
                           ),
                         ],
@@ -289,17 +299,17 @@ class CartScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       TextField(
                         onChanged: (v) => state.deliveryAddressDraft = v,
-                        decoration: const InputDecoration(
-                          labelText: 'Delivery address',
-                          hintText: 'Street, city, district',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l.buyerDeliveryAddress,
+                          hintText: l.buyerDeliveryAddressHint,
+                          border: const OutlineInputBorder(),
                           isDense: true,
                         ),
                         maxLines: 2,
                       ),
                       const SizedBox(height: 8),
-                      const Text('Price, stock and totals are verified when the order is placed.',
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
+                      Text(l.buyerCartVerifyNote,
+                          style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -311,8 +321,8 @@ class CartScreen extends StatelessWidget {
                                   final address = state.deliveryAddressDraft.trim();
                                   if (address.length < 5) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Enter a delivery address to place the order.'),
+                                      SnackBar(
+                                        content: Text(l.buyerEnterAddressToOrder),
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
@@ -322,7 +332,7 @@ class CartScreen extends StatelessWidget {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok ? 'Order placed successfully!' : (state.lastOrderError ?? 'Could not place order. Check address or try again.')),
+                                      content: Text(ok ? l.buyerOrderPlaced : l.buyerOrderPlaceFailed),
                                       backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
@@ -342,7 +352,9 @@ class CartScreen extends StatelessWidget {
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.check_circle_outline, size: 20),
                           label: Text(
-                            context.watch<FarmoraState>().placingOrder ? 'Placing…' : 'Place Order',
+                            context.watch<FarmoraState>().placingOrder ? l.buyerPlacingOrder : l.placeOrder,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 16,
@@ -363,7 +375,8 @@ class CartScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+        Flexible(child: Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant))),
+        const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
       ],
     );

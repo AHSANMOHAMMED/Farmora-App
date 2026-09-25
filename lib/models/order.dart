@@ -1,3 +1,5 @@
+import '../core/localization/app_format.dart';
+import '../core/localization/l10n.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
 
@@ -14,9 +16,9 @@ class PaymentMethod {
   static const payHere = 'payhere';
 
   static String label(String method) => switch (method) {
-        bankDeposit => 'Bank Deposit',
-        payHere => 'Online (PayHere)',
-        _ => 'Cash on Delivery',
+        bankDeposit => L10n.current.payMethodBankDeposit,
+        payHere => L10n.current.payMethodOnline,
+        _ => L10n.current.payMethodCod,
       };
 }
 
@@ -148,7 +150,10 @@ class FarmoraOrder {
 
   String get displayTotal {
     if (totalMinor > 0) {
-      return '$currency ${(totalMinor / 100).toStringAsFixed(2)}';
+      final amount = totalMinor / 100;
+      return currency == 'LKR'
+          ? AppFormat.lkr(amount, decimals: 2)
+          : '$currency ${amount.toStringAsFixed(2)}';
     }
     return totalAmount;
   }
@@ -199,13 +204,14 @@ class FarmoraOrder {
           paymentState == PaymentState.rejected);
 
   String get paymentStatusLabel => switch (paymentState) {
-        PaymentState.pending =>
-          isBankDeposit ? 'Awaiting deposit' : 'Cash due on delivery',
-        PaymentState.proofSubmitted => 'Receipt submitted',
-        PaymentState.paid => 'Paid',
-        PaymentState.rejected => 'Receipt rejected',
-        PaymentState.refunded => 'Refunded',
-        PaymentState.disputed => 'Disputed',
+        PaymentState.pending => isBankDeposit
+            ? L10n.current.paymentAwaitingDeposit
+            : L10n.current.paymentCashDue,
+        PaymentState.proofSubmitted => L10n.current.paymentReceiptSubmitted,
+        PaymentState.paid => L10n.current.statusPaid,
+        PaymentState.rejected => L10n.current.paymentReceiptRejected,
+        PaymentState.refunded => L10n.current.statusRefunded,
+        PaymentState.disputed => L10n.current.statusDisputed,
       };
   bool get isDisputed => disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
   bool get canReview => isCompleted && !isDisputed;

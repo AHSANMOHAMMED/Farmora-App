@@ -5,13 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/geo.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
+import 'buyer_l10n.dart';
 
 class TrackOrderScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -52,6 +54,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         : null;
     final fresh = DeliveryLocationService.isLocationFresh(_job?.locationUpdatedAt);
     final deliveryStatus = _job?.status ?? order.deliveryStatus;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -62,9 +65,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Track Order',
-          style: TextStyle(
+        title: Text(
+          l.trackOrder,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -89,15 +92,20 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'ORDER ${order.orderNumber.toUpperCase()}',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.tertiary,
+                      Expanded(
+                        child: Text(
+                          l.buyerOrderNumber(order.orderNumber.toUpperCase()),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.tertiary,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
@@ -106,7 +114,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Text(
-                          order.status.toUpperCase(),
+                          statusLabel(order.status, l),
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
@@ -131,7 +139,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Total: ${order.displayTotal}',
+                    l.buyerTotalValue(buyerOrderTotal(order)),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -149,6 +157,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 courier: courier,
                 fresh: fresh,
                 jobStatus: deliveryStatus,
+                updatedAt: _job?.locationUpdatedAt,
               ),
               const SizedBox(height: 16),
             ],
@@ -157,10 +166,10 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               progress: RouteProgressMap.progressForOrderStatus(order.status),
               pickupLabel: order.productName.isNotEmpty
                   ? order.productName
-                  : 'Farm pickup',
+                  : l.buyerFarmPickup,
               dropoffLabel: order.deliveryAddress.split('\n').first,
               statusLabel:
-                  '${order.status.toUpperCase()} • ${deliveryStatus.isNotEmpty ? deliveryStatus : 'in network'}',
+                  '${statusLabel(order.status, l)} • ${deliveryStatus.isNotEmpty ? statusLabel(deliveryStatus, l) : l.buyerInNetwork}',
               pickup: _job?.pickupLat != null && _job?.pickupLng != null
                   ? LatLng(_job!.pickupLat!, _job!.pickupLng!)
                   : null,
@@ -170,9 +179,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               courier: courier,
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Delivery Status',
-              style: TextStyle(
+            Text(
+              l.buyerDeliveryStatus,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -194,15 +203,15 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         .replaceAll('_', '');
                     final steps = <(String, String, bool)>[
                       (
-                        'Order placed',
+                        l.buyerStepOrderPlaced,
                         order.deliveryAddress.isNotEmpty
                             ? order.deliveryAddress
-                            : 'Awaiting farmer confirmation',
+                            : l.buyerAwaitingFarmerConfirmation,
                         true
                       ),
                       (
-                        'Confirmed',
-                        'Farmer accepted the order',
+                        l.statusConfirmed,
+                        l.buyerStepFarmerAccepted,
                         {
                           'confirmed',
                           'assigned',
@@ -214,13 +223,13 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         }.contains(s)
                       ),
                       (
-                        'In transit',
-                        'On the way to the buyer',
+                        l.statusInTransit,
+                        l.buyerStepOnTheWay,
                         {'intransit', 'delivered', 'completed'}.contains(s)
                       ),
                       (
-                        'Delivered',
-                        'Buyer received the produce',
+                        l.statusDelivered,
+                        l.buyerStepBuyerReceived,
                         {'delivered', 'completed'}.contains(s)
                       ),
                     ];
@@ -247,7 +256,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                       builder: (_) => ConversationsScreen(orderId: order.id)),
                 ),
                 icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                label: const Text('Message farmer / transporter'),
+                label: Text(l.messageFarmerTransporter),
               ),
             ),
           ],
@@ -330,15 +339,20 @@ class _LiveCourierCard extends StatelessWidget {
   final LatLng courier;
   final bool fresh;
   final String jobStatus;
+  final DateTime? updatedAt;
 
   const _LiveCourierCard({
     required this.courier,
     required this.fresh,
     required this.jobStatus,
+    this.updatedAt,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+    final status =
+        jobStatus.isEmpty ? l.buyerInProgress : statusLabel(jobStatus, l);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -361,9 +375,7 @@ class _LiveCourierCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  fresh
-                      ? 'Courier location is LIVE'
-                      : 'Last known courier position',
+                  fresh ? l.buyerCourierLive : l.buyerCourierLastKnown,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
@@ -372,8 +384,10 @@ class _LiveCourierCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Updated ${GeoPoint(latitude: courier.latitude, longitude: courier.longitude)}'
-                  ' • Delivery: ${jobStatus.isEmpty ? 'in progress' : jobStatus}',
+                  updatedAt != null
+                      ? l.buyerCourierUpdated(
+                          AppFormat.relative(updatedAt!), status)
+                      : l.buyerCourierDelivery(status),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,

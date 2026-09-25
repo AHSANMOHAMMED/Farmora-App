@@ -7,6 +7,8 @@ import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
+import '../../../core/localization/l10n.dart';
+import 'buyer_l10n.dart';
 
 class BuyerProductsScreen extends StatefulWidget {
   const BuyerProductsScreen({super.key});
@@ -17,6 +19,7 @@ class BuyerProductsScreen extends StatefulWidget {
 
 class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  // Stored (English) category values; labels are translated for display.
   final List<String> _categories = [
     'All',
     'Vegetables',
@@ -36,14 +39,15 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final products = state.filteredProducts;
+    final l = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Browse Produce',
-          style: TextStyle(
+        title: Text(
+          l.buyerBrowseProduce,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -54,6 +58,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
           Stack(
             children: [
               IconButton(
+                tooltip: l.buyerCartTooltip,
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CartScreen()),
                 ),
@@ -111,7 +116,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                           controller: _searchController,
                           onChanged: (val) => state.setSearchQuery(val),
                           decoration: InputDecoration(
-                            hintText: 'Search fresh produce...',
+                            hintText: l.buyerSearchProduceHint,
                             hintStyle: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 15,
@@ -124,6 +129,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                             ),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
+                                    tooltip: l.clear,
                                     icon: const Icon(Icons.clear, size: 18),
                                     onPressed: () {
                                       _searchController.clear();
@@ -143,7 +149,9 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    InkWell(
+                    Tooltip(
+                      message: l.buyerFilterTooltip,
+                      child: InkWell(
                       onTap: () => _showFilterDialog(context, state),
                       borderRadius: BorderRadius.circular(9999),
                       child: Container(
@@ -167,6 +175,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                         ),
                       ),
                     ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -176,21 +185,24 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                   children: [
                     const Icon(Icons.sort, size: 18, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 8),
-                    DropdownButton<String>(
-                      value: state.sortOrder,
-                      underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 'newest', child: Text('Newest')),
-                        DropdownMenuItem(value: 'priceAsc', child: Text('Price: low to high')),
-                        DropdownMenuItem(value: 'priceDesc', child: Text('Price: high to low')),
-                        DropdownMenuItem(value: 'name', child: Text('Name A–Z')),
-                      ],
-                      onChanged: (v) {
-                        if (v != null) state.setSortOrder(v);
-                      },
+                    Flexible(
+                      child: DropdownButton<String>(
+                        value: state.sortOrder,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        items: [
+                          DropdownMenuItem(value: 'newest', child: Text(l.newest, overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'priceAsc', child: Text(l.priceLowToHigh, overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'priceDesc', child: Text(l.priceHighToLow, overflow: TextOverflow.ellipsis)),
+                          DropdownMenuItem(value: 'name', child: Text(l.nameAz, overflow: TextOverflow.ellipsis)),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) state.setSortOrder(v);
+                        },
+                      ),
                     ),
-                    const Spacer(),
-                    Text('${products.length} items', style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                    const SizedBox(width: 8),
+                    Text(l.buyerItemsCount(products.length), style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -200,7 +212,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Chip(
-                      label: Text('Category: ${state.selectedCategory}'),
+                      label: Text(l.buyerCategoryChip(buyerCategoryLabel(l, state.selectedCategory))),
                       deleteIcon: const Icon(Icons.close, size: 16),
                       onDeleted: () => state.setSelectedCategory('All'),
                       backgroundColor: AppColors.surfaceContainerHigh,
@@ -208,13 +220,15 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                   ),
 
                 // Category chips
-                Row(
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
                   children: _categories.map((cat) {
                     final isSelected = state.selectedCategory == cat;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(cat),
+                        label: Text(buyerCategoryLabel(l, cat)),
                         selected: isSelected,
                         selectedColor: AppColors.primary,
                         checkmarkColor: Colors.white,
@@ -230,12 +244,13 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                       ),
                     );
                   }).toList(),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
                 // Product count
                 Text(
-                  '${products.length} products available',
+                  l.buyerProductsAvailable(products.length),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
@@ -246,20 +261,21 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
 
                 // Product list
                 if (products.isEmpty)
-                  const Center(
+                  Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 60),
+                      padding: const EdgeInsets.symmetric(vertical: 60),
                       child: Column(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.eco_outlined,
                             size: 64,
                             color: AppColors.outlineVariant,
                           ),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text(
-                            'No products found',
-                            style: TextStyle(
+                            l.buyerNoProductsFound,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: AppColors.onSurfaceVariant,
@@ -288,6 +304,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   }
 
   Widget _buildProductCard(BuildContext context, FarmoraState state, Product product) {
+    final l = context.l10n;
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -355,12 +372,12 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _buildStatusPill(product),
+                      _buildStatusPill(l, product),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${product.isOrganic ? "Organic" : "Convention"} • ${product.location}',
+                    '${product.isOrganic ? l.buyerOrganic : l.buyerConventional} • ${product.location}',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 13,
@@ -373,7 +390,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                   TrustBadge(trustLevel: state.trustLevelForProduct(product)),
                   const SizedBox(height: 6),
                   Text(
-                    product.price,
+                    buyerProductPrice(l, product),
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 16,
@@ -389,11 +406,12 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
             // Add to cart button
             if (product.isActive)
               IconButton(
+                tooltip: l.buyerAddToCart,
                 onPressed: () {
                   state.addToCart(product);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Added ${product.name} to cart'),
+                      content: Text(l.buyerAddedToCart(product.name)),
                       backgroundColor: AppColors.primary,
                       duration: const Duration(seconds: 1),
                       behavior: SnackBarBehavior.floating,
@@ -408,7 +426,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
     );
   }
 
-  Widget _buildStatusPill(Product product) {
+  Widget _buildStatusPill(AppLocalizations l, Product product) {
     final isEmpty = product.isEmpty;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -417,7 +435,8 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Text(
-        isEmpty ? 'OUT' : 'AVAILABLE',
+        isEmpty ? l.statusOutOfStock : l.buyerAvailable,
+        maxLines: 1,
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 10,
@@ -449,15 +468,16 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
+        final l = ctx.l10n;
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Filter by Category',
-                style: TextStyle(
+              Text(
+                l.buyerFilterByCategory,
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -471,7 +491,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                 children: _categories.map((cat) {
                   final isSelected = state.selectedCategory == cat;
                   return ChoiceChip(
-                    label: Text(cat),
+                    label: Text(buyerCategoryLabel(l, cat)),
                     selected: isSelected,
                     selectedColor: AppColors.primaryContainer,
                     labelStyle: TextStyle(

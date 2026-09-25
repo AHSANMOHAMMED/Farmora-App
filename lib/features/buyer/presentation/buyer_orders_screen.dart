@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'buyer_order_detail_screen.dart';
 import 'cart_screen.dart';
 import 'buyer_products_screen.dart';
+import 'buyer_l10n.dart';
 
 class BuyerOrdersScreen extends StatefulWidget {
   const BuyerOrdersScreen({super.key});
@@ -64,6 +65,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
           Stack(
             children: [
               IconButton(
+                tooltip: l10n.buyerCartTooltip,
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CartScreen()),
                 ),
@@ -133,13 +135,13 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildTabButton(0, 'All (${state.orders.length})'),
+                        _buildTabButton(0, l10n.buyerFilterWithCount(l10n.commonAll, state.orders.length)),
                         const SizedBox(width: 8),
-                        _buildTabButton(1, 'Active (${state.pendingOrders.length + state.acceptedOrders.length})'),
+                        _buildTabButton(1, l10n.buyerFilterWithCount(l10n.statusActive, state.pendingOrders.length + state.acceptedOrders.length)),
                         const SizedBox(width: 8),
-                        _buildTabButton(2, 'Delivered (${state.completedOrders.length})'),
+                        _buildTabButton(2, l10n.buyerFilterWithCount(l10n.statusDelivered, state.completedOrders.length)),
                         const SizedBox(width: 8),
-                        _buildTabButton(3, 'Cancelled'),
+                        _buildTabButton(3, l10n.statusCancelled),
                       ],
                     ),
                   ),
@@ -175,6 +177,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                             const SizedBox(height: 16),
                             Text(
                               l10n.noOrders,
+                              textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
@@ -182,9 +185,10 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Your marketplace orders will appear here.',
-                              style: TextStyle(
+                            Text(
+                              l10n.buyerOrdersEmptyHint,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                 fontSize: 13,
                                 color: AppColors.onSurfaceVariant,
                               ),
@@ -204,7 +208,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                                 ),
                               ),
                               icon: const Icon(Icons.storefront_rounded, size: 18),
-                              label: const Text('Explore Produce'),
+                              label: Text(l10n.exploreProduce),
                             ),
                           ],
                         ),
@@ -255,6 +259,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
 
   Widget _buildOrderCard(
       BuildContext context, FarmoraState state, FarmoraOrder order) {
+    final l = context.l10n;
     final isPending = order.isPending;
     final isCancelled = order.status.toLowerCase() == 'cancelled' || order.isDeclined;
 
@@ -289,12 +294,16 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                Expanded(
+                  child: Row(
                   children: [
                     const Icon(Icons.receipt_rounded, size: 16, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 6),
-                    Text(
-                      order.orderNumber.isNotEmpty ? order.orderNumber : 'ORDER',
+                    Flexible(
+                      child: Text(
+                      order.orderNumber.isNotEmpty ? order.orderNumber : l.buyerOrderFallback,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -302,9 +311,12 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
+                    ),
                   ],
                 ),
-                _buildStatusBadge(order.status),
+                ),
+                const SizedBox(width: 8),
+                _buildStatusBadge(l, order.status),
               ],
             ),
             const SizedBox(height: 12),
@@ -360,7 +372,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              order.deliveryAddress.isNotEmpty ? order.deliveryAddress : 'Colombo, Sri Lanka',
+                              order.deliveryAddress.isNotEmpty ? order.deliveryAddress : l.buyerAddressNotSet,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 11,
@@ -387,14 +399,14 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                 _buildMiniTag(
                   icon: Icons.shield_outlined,
                   label: order.escrowStatus.toLowerCase().contains('held')
-                      ? 'Escrow Protected'
-                      : 'Escrow Released',
+                      ? l.buyerEscrowProtected
+                      : l.buyerEscrowReleased,
                   color: const Color(0xFF2E7D32),
                   bgColor: const Color(0xFFE8F5E9),
                 ),
                 _buildMiniTag(
                   icon: Icons.payments_outlined,
-                  label: order.paymentStatus,
+                  label: order.paymentStatusLabel,
                   color: const Color(0xFF1565C0),
                   bgColor: const Color(0xFFE3F2FD),
                 ),
@@ -413,20 +425,24 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Total Amount',
-                      style: TextStyle(
+                    Text(
+                      l.buyerTotalAmount,
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 11,
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      order.totalAmount,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                      buyerOrderTotal(order),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
@@ -434,8 +450,11 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                         color: AppColors.primary,
                       ),
                     ),
+                    ),
                   ],
                 ),
+                ),
+                const SizedBox(width: 8),
                 Row(
                   children: [
                     if (isPending) ...[
@@ -451,7 +470,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Cancel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        child: Text(l.commonCancel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -474,7 +493,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
-                        isCancelled ? 'Details' : (order.isCompleted ? 'Receipt' : 'Track Order'),
+                        isCancelled ? l.buyerDetails : (order.isCompleted ? l.buyerReceipt : l.trackOrder),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -505,8 +524,11 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(
+          Flexible(
+            child: Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 11,
@@ -514,21 +536,23 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
               color: color,
             ),
           ),
+          ),
         ],
       ),
     );
   }
 
   void _confirmCancelOrder(BuildContext context, FarmoraState state, String orderId) {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Order?'),
-        content: const Text('Are you sure you want to cancel this order? Any payment held in escrow will be refunded.'),
+        title: Text(l.cancelOrder),
+        content: Text(l.buyerCancelOrderConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('No, Keep'),
+            child: Text(l.noKeep),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
@@ -536,20 +560,20 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
               state.cancelOrder(orderId);
               Navigator.of(ctx).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Order cancelled successfully'),
+                SnackBar(
+                  content: Text(l.orderCancelledSuccessfully),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
-            child: const Text('Yes, Cancel'),
+            child: Text(l.yesCancel),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(AppLocalizations l, String status) {
     Color bgColor;
     Color textColor;
     IconData icon;
@@ -597,7 +621,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
           Icon(icon, size: 13, color: textColor),
           const SizedBox(width: 4),
           Text(
-            status.toUpperCase(),
+            statusLabel(status, l),
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 10,

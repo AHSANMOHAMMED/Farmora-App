@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../l10n/app_localizations.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/offer.dart';
 import '../../../providers/farmora_state.dart';
 import 'buyer_products_screen.dart';
@@ -50,14 +51,18 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
         elevation: 0,
         title: Row(
           children: [
-            Text(
+            Flexible(
+              child: Text(
               l10n.myOffers,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
               ),
+            ),
             ),
             if (state.pendingOffersCount > 0) ...[
               const SizedBox(width: 8),
@@ -68,7 +73,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${state.pendingOffersCount} Active',
+                  l10n.buyerActiveOffersCount(state.pendingOffersCount),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -118,9 +123,9 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Direct Price Negotiation',
-                          style: TextStyle(
+                        Text(
+                          l10n.buyerNegotiationTitle,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -128,7 +133,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Propose custom prices and bulk quantities directly to local farmers.',
+                          l10n.buyerNegotiationSubtitle,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.white.withValues(alpha: 0.85),
@@ -147,15 +152,15 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildFilterPill(0, 'All (${allOffers.length})'),
+                  _buildFilterPill(0, l10n.buyerFilterWithCount(l10n.commonAll, allOffers.length)),
                   const SizedBox(width: 8),
-                  _buildFilterPill(1, 'Pending (${allOffers.where((o) => o.status == 'pending').length})'),
+                  _buildFilterPill(1, l10n.buyerFilterWithCount(l10n.statusPending, allOffers.where((o) => o.status == 'pending').length)),
                   const SizedBox(width: 8),
-                  _buildFilterPill(2, 'Countered (${allOffers.where((o) => o.status == 'countered').length})'),
+                  _buildFilterPill(2, l10n.buyerFilterWithCount(l10n.statusCountered, allOffers.where((o) => o.status == 'countered').length)),
                   const SizedBox(width: 8),
-                  _buildFilterPill(3, 'Accepted (${allOffers.where((o) => o.status == 'accepted').length})'),
+                  _buildFilterPill(3, l10n.buyerFilterWithCount(l10n.statusAccepted, allOffers.where((o) => o.status == 'accepted').length)),
                   const SizedBox(width: 8),
-                  _buildFilterPill(4, 'Declined'),
+                  _buildFilterPill(4, l10n.statusDeclined),
                 ],
               ),
             ),
@@ -182,19 +187,20 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'No Offers Found',
-                        style: TextStyle(
+                      Text(
+                        l10n.buyerNoOffersFound,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.onSurface,
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Find fresh produce in the marketplace and propose your price.',
+                      Text(
+                        l10n.buyerNoOffersHint,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+                        style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton.icon(
@@ -207,7 +213,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         icon: const Icon(Icons.storefront_rounded, size: 18),
-                        label: const Text('Make an Offer on Crops'),
+                        label: Text(l10n.makeAnOfferOnCrops),
                       ),
                     ],
                   ),
@@ -256,6 +262,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
   }
 
   Widget _buildOfferCard(BuildContext context, FarmoraState state, FarmoraOffer offer) {
+    final l = context.l10n;
+    String perKg(double price) => l.buyerPricePerUnit(AppFormat.lkr(price), l.unitKg);
     final isPending = offer.status.toLowerCase() == 'pending';
     final isCountered = offer.status.toLowerCase() == 'countered';
     final isAccepted = offer.status.toLowerCase() == 'accepted';
@@ -286,17 +294,22 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                offer.id.toUpperCase(),
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: AppColors.onSurfaceVariant,
+              Flexible(
+                child: Text(
+                  offer.id.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ),
-              _buildOfferStatusBadge(offer.status),
+              const SizedBox(width: 8),
+              _buildOfferStatusBadge(l, offer.status),
             ],
           ),
           const SizedBox(height: 12),
@@ -321,7 +334,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      offer.productName.isNotEmpty ? offer.productName : 'Agricultural Crop',
+                      offer.productName.isNotEmpty ? offer.productName : l.buyerAgriculturalCrop,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 16,
@@ -331,7 +344,9 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Requested: ${offer.proposedQuantity} kg',
+                      l.buyerOfferRequestedQty(
+                        l.buyerQuantityWithUnit(AppFormat.number(offer.proposedQuantity), l.unitKg),
+                      ),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
@@ -355,16 +370,17 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Proposed Unit Price',
-                      style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                    Text(
+                      l.buyerProposedUnitPrice,
+                      style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'LKR ${offer.proposedPrice.toStringAsFixed(0)} / kg',
+                      perKg(offer.proposedPrice),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -373,16 +389,21 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     ),
                   ],
                 ),
-                Column(
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'Total Contract Value',
-                      style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                    Text(
+                      l.buyerTotalContractValue,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'LKR ${(offer.proposedPrice * offer.proposedQuantity).toStringAsFixed(2)}',
+                      AppFormat.lkr(offer.proposedPrice * offer.proposedQuantity, decimals: 2),
+                      textAlign: TextAlign.end,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -390,6 +411,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                       ),
                     ),
                   ],
+                ),
                 ),
               ],
             ),
@@ -411,7 +433,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Farmer offered counter-proposal: LKR ${offer.proposedPrice.toStringAsFixed(0)}/kg.',
+                      l.buyerFarmerCounterProposal(perKg(offer.proposedPrice)),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -438,7 +460,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                       side: const BorderSide(color: AppColors.error),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Decline'),
+                    child: Text(l.decline),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -448,8 +470,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                       await state.acceptOffer(offer.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Counter offer accepted! Order created.'),
+                          SnackBar(
+                            content: Text(l.buyerCounterAccepted),
                             backgroundColor: AppColors.primary,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -461,7 +483,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Accept Counter'),
+                    child: Text(l.acceptCounter),
                   ),
                 ),
               ],
@@ -470,7 +492,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                OutlinedButton.icon(
+                Flexible(
+                  child: OutlinedButton.icon(
                   onPressed: () => state.cancelOffer(offer.id),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
@@ -481,7 +504,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: const Icon(Icons.close_rounded, size: 16),
-                  label: const Text('Withdraw Offer', style: TextStyle(fontSize: 12)),
+                  label: Text(l.buyerWithdrawOffer, style: const TextStyle(fontSize: 12)),
+                ),
                 ),
               ],
             ),
@@ -489,7 +513,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ElevatedButton.icon(
+                Flexible(
+                  child: ElevatedButton.icon(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()),
                   ),
@@ -502,7 +527,8 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                  label: const Text('View in Orders', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  label: Text(l.buyerViewInOrders, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
                 ),
               ],
             ),
@@ -512,7 +538,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
     );
   }
 
-  Widget _buildOfferStatusBadge(String status) {
+  Widget _buildOfferStatusBadge(AppLocalizations l, String status) {
     Color bgColor;
     Color textColor;
     IconData icon;
@@ -553,7 +579,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
           Icon(icon, size: 13, color: textColor),
           const SizedBox(width: 4),
           Text(
-            status.toUpperCase(),
+            statusLabel(status, l),
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 10,

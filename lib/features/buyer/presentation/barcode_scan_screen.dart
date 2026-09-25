@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/localization/l10n.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({super.key});
@@ -17,7 +18,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
     if (_busy || value == null) return;
     final parts = value.split('|');
     if (parts.length != 2 || parts.any((part) => part.isEmpty)) {
-      _showError('This is not a Farmora authenticity code.');
+      _showError(context.l10n.buyerNotFarmoraCode);
       return;
     }
     setState(() => _busy = true);
@@ -30,7 +31,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
       Navigator.of(context).pop(result);
     } catch (_) {
       if (mounted) {
-        _showError('Barcode could not be verified or is not assigned to you.');
+        _showError(context.l10n.buyerBarcodeVerifyFailed);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -44,8 +45,9 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify harvest')),
+      appBar: AppBar(title: Text(l.verifyHarvest)),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -64,18 +66,18 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 24,
             right: 24,
             bottom: 36,
             child: Card(
               color: Colors.black87,
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Scan the Farmora code attached to your parcel. Verification is required before escrow can be released.',
+                  l.buyerScanInstructions,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ),

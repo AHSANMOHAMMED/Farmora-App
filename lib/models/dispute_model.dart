@@ -1,3 +1,4 @@
+import '../core/localization/l10n.dart';
 import 'package:flutter/material.dart';
 
 enum DisputeStatus {
@@ -122,17 +123,17 @@ class Dispute {
   String getReasonDisplayName() {
     switch (reason) {
       case DisputeReason.damagedGoods:
-        return 'Damaged Goods';
+        return L10n.current.disputeReasonDamaged;
       case DisputeReason.wrongItems:
-        return 'Wrong Items';
+        return L10n.current.disputeReasonWrongItems;
       case DisputeReason.lateDelivery:
-        return 'Late Delivery';
+        return L10n.current.disputeReasonLate;
       case DisputeReason.qualityIssues:
-        return 'Quality Issues';
+        return L10n.current.disputeReasonQuality;
       case DisputeReason.pricingDiscrepancy:
-        return 'Pricing Discrepancy';
+        return L10n.current.disputeReasonPricing;
       case DisputeReason.other:
-        return 'Other';
+        return L10n.current.disputeReasonOther;
     }
   }
 
@@ -169,13 +170,13 @@ class Dispute {
   String getStatusDisplayName() {
     switch (status) {
       case DisputeStatus.open:
-        return 'Open';
+        return L10n.current.statusOpen;
       case DisputeStatus.underReview:
-        return 'Under Review';
+        return L10n.current.statusUnderReview;
       case DisputeStatus.resolved:
-        return 'Resolved';
+        return L10n.current.statusResolved;
       case DisputeStatus.rejected:
-        return 'Rejected';
+        return L10n.current.statusRejected;
     }
   }
 }

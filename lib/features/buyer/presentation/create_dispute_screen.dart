@@ -5,6 +5,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/dispute_model.dart';
 import '../../../models/order.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class CreateDisputeScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -34,6 +37,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -43,9 +47,9 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Create Dispute',
-          style: TextStyle(
+        title: Text(
+          l.disputeCreateTitle,
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
@@ -73,6 +77,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   }
 
   Widget _buildOrderInfo() {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -82,18 +87,18 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Order Information',
-            style: TextStyle(
+          Text(
+            l.buyerOrderInformation,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.onSurface,
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(Icons.receipt_long, 'Order #', widget.order.orderNumber),
-          _buildInfoRow(Icons.attach_money, 'Total', 'Rs. ${widget.order.total.toStringAsFixed(2)}'),
-          _buildInfoRow(Icons.calendar_today, 'Date', _formatDate(widget.order.createdAt)),
+          _buildInfoRow(Icons.receipt_long, l.buyerOrderNumberLabel, widget.order.orderNumber),
+          _buildInfoRow(Icons.attach_money, l.commonTotal, AppFormat.lkr(widget.order.total, decimals: 2)),
+          _buildInfoRow(Icons.calendar_today, l.buyerDate, _formatDate(widget.order.createdAt)),
         ],
       ),
     );
@@ -131,12 +136,13 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   }
 
   Widget _buildReasonSelection() {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Reason for Dispute',
-          style: TextStyle(
+        Text(
+          l.disputeReasonTitle,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
@@ -154,8 +160,8 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
             children: [
               for (final reason in DisputeReason.values)
                 RadioListTile<DisputeReason>(
-                  title: Text(_getReasonDisplayName(reason)),
-                  subtitle: Text(_getReasonDescription(reason)),
+                  title: Text(_getReasonDisplayName(l, reason)),
+                  subtitle: Text(_getReasonDescription(l, reason)),
                   value: reason,
                   activeColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
@@ -168,21 +174,22 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   }
 
   Widget _buildDescriptionField() {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Description',
-          style: TextStyle(
+        Text(
+          l.description,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Please provide details about your dispute',
-          style: TextStyle(
+        Text(
+          l.disputeDescriptionHelp,
+          style: const TextStyle(
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           ),
@@ -193,15 +200,15 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
           maxLines: 5,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please provide a description';
+              return l.disputeDescriptionRequired;
             }
             if (value.trim().length < 20) {
-              return 'Description must be at least 20 characters';
+              return l.disputeDescriptionTooShort(20);
             }
             return null;
           },
           decoration: InputDecoration(
-            hintText: 'Describe the issue in detail...',
+            hintText: l.disputeDescriptionHint,
             filled: true,
             fillColor: AppColors.surfaceContainerHighest,
             border: OutlineInputBorder(
@@ -215,21 +222,22 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   }
 
   Widget _buildEvidenceSection() {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Evidence (Optional)',
-          style: TextStyle(
+        Text(
+          l.disputeEvidenceTitle,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.onSurface,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Add photos to support your dispute',
-          style: TextStyle(
+        Text(
+          l.disputeEvidenceHelp,
+          style: const TextStyle(
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           ),
@@ -272,12 +280,16 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
                         top: 4,
                         right: 4,
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () {
                             setState(() {
                               _evidenceFiles.removeAt(index);
                             });
                           },
-                          child: Container(
+                          child: Semantics(
+                            button: true,
+                            label: l.disputeRemovePhoto,
+                            child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
                               color: Colors.red,
@@ -288,6 +300,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
                               color: Colors.white,
                               size: 16,
                             ),
+                          ),
                           ),
                         ),
                       ),
@@ -309,7 +322,9 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
       icon: _isPicking
           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.add_photo_alternate),
-      label: Text(_isPicking ? 'Loading photos…' : 'Add Photo (${_evidenceFiles.length}/5)'),
+      label: Text(_isPicking
+          ? context.l10n.disputeLoadingPhotos
+          : context.l10n.disputeAddPhotoCount(_evidenceFiles.length, 5)),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 48),
       ),
@@ -319,7 +334,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   Future<void> _pickEvidence() async {
     if (_evidenceFiles.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 5 images allowed')),
+        SnackBar(content: Text(context.l10n.maximum5ImagesAllowed)),
       );
       return;
     }
@@ -334,7 +349,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open photo library: $e')),
+          SnackBar(content: Text(userMessage(e, action: 'open photo library'))),
         );
       }
     } finally {
@@ -362,9 +377,9 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
                 color: Colors.white,
               ),
             )
-          : const Text(
-              'Submit Dispute',
-              style: TextStyle(
+          : Text(
+              context.l10n.disputeSubmit,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -398,7 +413,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.primary,
-            content: Text('Dispute $disputeId opened. Escrow is paused while it is reviewed.'),
+            content: Text(context.l10n.disputeOpenedEscrowPaused(disputeId)),
           ),
         );
         Navigator.of(context).pop();
@@ -408,7 +423,8 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.error,
-            content: Text('Failed to submit dispute: $error'),
+            content: Text(context.l10n.disputeSubmitFailed(
+                userMessage(error, action: 'submit dispute'))),
           ),
         );
       }
@@ -419,42 +435,42 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
     }
   }
 
-  String _getReasonDisplayName(DisputeReason reason) {
+  String _getReasonDisplayName(AppLocalizations l, DisputeReason reason) {
     switch (reason) {
       case DisputeReason.damagedGoods:
-        return 'Damaged Goods';
+        return l.disputeReasonDamaged;
       case DisputeReason.wrongItems:
-        return 'Wrong Items Delivered';
+        return l.disputeReasonWrongItems;
       case DisputeReason.lateDelivery:
-        return 'Late Delivery';
+        return l.disputeReasonLate;
       case DisputeReason.qualityIssues:
-        return 'Quality Issues';
+        return l.disputeReasonQuality;
       case DisputeReason.pricingDiscrepancy:
-        return 'Pricing Discrepancy';
+        return l.disputeReasonPricing;
       case DisputeReason.other:
-        return 'Other';
+        return l.disputeReasonOther;
     }
   }
 
-  String _getReasonDescription(DisputeReason reason) {
+  String _getReasonDescription(AppLocalizations l, DisputeReason reason) {
     switch (reason) {
       case DisputeReason.damagedGoods:
-        return 'Items arrived damaged or broken';
+        return l.disputeReasonDamagedDesc;
       case DisputeReason.wrongItems:
-        return 'Received different items than ordered';
+        return l.disputeReasonWrongItemsDesc;
       case DisputeReason.lateDelivery:
-        return 'Delivery was significantly delayed';
+        return l.disputeReasonLateDesc;
       case DisputeReason.qualityIssues:
-        return 'Product quality did not meet expectations';
+        return l.disputeReasonQualityDesc;
       case DisputeReason.pricingDiscrepancy:
-        return 'Charged differently than agreed price';
+        return l.disputeReasonPricingDesc;
       case DisputeReason.other:
-        return 'Other issue not listed above';
+        return l.disputeReasonOtherDesc;
     }
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Unknown';
-    return '${date.day}/${date.month}/${date.year}';
+    if (date == null) return context.l10n.commonUnknown;
+    return AppFormat.date(date);
   }
 }
