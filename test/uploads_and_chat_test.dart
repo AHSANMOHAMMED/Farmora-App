@@ -1,11 +1,15 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:farmora/core/localization/l10n.dart';
 import 'package:farmora/core/utils/app_errors.dart';
 import 'package:farmora/core/utils/image_upload.dart';
 import 'package:farmora/models/conversation_model.dart';
 import 'package:farmora/models/order.dart';
+import 'package:farmora/models/verification_model.dart';
 import 'package:farmora/services/payment_service.dart';
+import 'package:farmora/services/service_errors.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart' show Locale;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,7 +67,7 @@ void main() {
           describeError(
               FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied'),
               action: 'publish this product'),
-          "You don't have permission to publish this product.");
+          "You don't have permission to do this.");
       expect(
           describeError(FirebaseException(
               plugin: 'firebase_storage', code: 'unauthorized')),
@@ -72,6 +76,34 @@ void main() {
           describeError(PlatformException(code: 'photo_access_denied')),
           contains('Photo access was denied'));
       expect(describeError(const AppException('Custom')), 'Custom');
+    });
+
+    test('service rule errors keep their type and show their message', () {
+      final e = UserStateError(L10n.current.svcNotEnoughStock);
+      expect(e, isA<StateError>());
+      expect(describeError(e), 'Not enough stock.');
+      expect(describeError(UserArgumentError('Bad')), 'Bad');
+    });
+
+    test('image and service messages follow the app language', () {
+      addTearDown(() => L10n.updateLocale(const Locale('en')));
+      L10n.updateLocale(const Locale('ta'));
+      expect(
+          () => validateImageBytes(Uint8List(0)),
+          throwsA(isA<AppException>().having((e) => e.message, 'message',
+              L10n.current.errorImageEmpty)));
+      expect(L10n.current.errorImageEmpty, isNot('The selected file is empty.'));
+      expect(PaymentMethod.label(PaymentMethod.bankDeposit), 'வங்கி வைப்பு');
+      L10n.updateLocale(const Locale('si'));
+      expect(PaymentMethod.label(PaymentMethod.cod), 'බාරදීමේදී මුදල්');
+    });
+
+    test('verification document types get display names', () {
+      expect(VerificationDoc.documentTypeLabel('NIC'), 'National ID card (NIC)');
+      expect(VerificationDoc.documentTypeLabel('Vehicle Registration'),
+          'Vehicle registration');
+      expect(VerificationDoc.documentTypeLabel('Something else'),
+          'Something else');
     });
   });
 

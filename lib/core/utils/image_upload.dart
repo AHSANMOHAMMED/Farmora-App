@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:image_picker/image_picker.dart';
 
+import '../localization/l10n.dart';
 import 'app_errors.dart';
 
 /// Upper bound enforced by `storage.rules` for every image path.
@@ -75,16 +76,15 @@ String? sniffImageContentType(Uint8List b) {
 /// Throws [AppException] with a user-facing message when unusable.
 PickedImage validateImageBytes(Uint8List bytes, {String name = 'image'}) {
   if (bytes.isEmpty) {
-    throw const AppException('The selected file is empty.');
+    throw AppException(L10n.current.errorImageEmpty);
   }
   final type = sniffImageContentType(bytes);
   if (type == null) {
-    throw const AppException(
-        'Unsupported file. Please choose a JPG, PNG or WebP photo.');
+    throw AppException(L10n.current.errorImageUnsupported);
   }
   if (bytes.length > kMaxImageBytes) {
     final mb = (bytes.length / (1024 * 1024)).toStringAsFixed(1);
-    throw AppException('Image is too large ($mb MB). The limit is 5 MB.');
+    throw AppException(L10n.current.errorImageTooLarge(mb));
   }
   final safe = name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
   return PickedImage(
@@ -133,7 +133,7 @@ class ImagePickerHelper {
     final out = <PickedImage>[];
     for (final file in files) {
       if (out.length >= limit) {
-        rejected?.call('Only $limit more photo(s) can be added.');
+        rejected?.call(L10n.current.errorTooManyPhotos(limit));
         break;
       }
       try {
@@ -158,16 +158,15 @@ class ImagePickerHelper {
           code.contains('permission')) {
         throw AppException(
           code.contains('camera')
-              ? 'Camera access was denied. Allow it in your device settings.'
-              : 'Photo access was denied. Allow it in your device settings.',
+              ? L10n.current.errorCameraAccessDenied
+              : L10n.current.errorPhotoAccessDenied,
           cause: e,
         );
       }
       if (code.contains('no_available_camera')) {
-        throw AppException('No camera is available on this device.',
-            cause: e);
+        throw AppException(L10n.current.errorNoCamera, cause: e);
       }
-      throw AppException('Could not open the photo picker.', cause: e);
+      throw AppException(L10n.current.errorPickerFailed, cause: e);
     }
   }
 }
