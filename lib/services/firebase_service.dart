@@ -263,28 +263,13 @@ class FirestoreService {
     await _functions.httpsCallable('rejectOffer').call({'offerId': offerId});
   }
 
-  Future<void> updateOfferStatus(String id, String status,
-      {double? proposedPrice}) async {
+  Future<void> updateOfferStatus(String id, String status) async {
     if (status == 'accepted') {
       await acceptOffer(offerId: id);
       return;
     }
     if (status == 'rejected') {
       await rejectOffer(id);
-      return;
-    }
-    if (status == 'countered') {
-      if (proposedPrice == null || proposedPrice <= 0) {
-        throw ArgumentError('A valid counter price is required.');
-      }
-      if (!kUseCloudFunctions) {
-        await _spark.counterOffer(offerId: id, proposedPrice: proposedPrice);
-        return;
-      }
-      await _functions.httpsCallable('counterOffer').call({
-        'offerId': id,
-        'proposedPriceMinor': (proposedPrice * 100).round(),
-      });
       return;
     }
     await _db.collection('offers').doc(id).update({
@@ -342,16 +327,16 @@ class FirestoreService {
     required int quantity,
     int deliveryFeeMinor = 0,
     String? offerId,
+    String? transporterId,
     required String deliveryAddress,
-    required String idempotencyKey,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.createOrder(
         productId: productId,
         quantity: quantity,
         deliveryFeeMinor: deliveryFeeMinor,
+        transporterId: transporterId,
         deliveryAddress: deliveryAddress,
-        idempotencyKey: idempotencyKey,
       );
     }
     final result = await _functions.httpsCallable('createOrder').call({
@@ -359,8 +344,8 @@ class FirestoreService {
       'quantity': quantity,
       'deliveryFeeMinor': deliveryFeeMinor,
       'deliveryAddress': deliveryAddress,
-      'idempotencyKey': idempotencyKey,
       if (offerId != null) 'offerId': offerId,
+      if (transporterId != null) 'transporterId': transporterId,
     });
     return result.data['orderId'] as String;
   }
@@ -448,11 +433,14 @@ class FirestoreService {
     double refundPercent = 100.0,
   }) async {
     if (!kUseCloudFunctions) {
-      await _spark.resolveDispute(
-        orderId: orderId,
-        resolution: resolution,
-        adminNotes: adminNotes,
-      );
+      await _db.collection('orders').doc(orderId).update({
+        'disputeStatus': 'resolved',
+        'disputeResolution': resolution,
+        'adminNotes': adminNotes,
+        'status': resolution == 'refund_buyer' ? 'cancelled' : 'completed',
+        'paymentStatus': resolution == 'refund_buyer' ? 'refunded' : 'released',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       return;
     }
     await _functions.httpsCallable('resolveDispute').call({
@@ -529,15 +517,15 @@ class FirestoreService {
   Future<void> publishChatPublicKey(String publicKeyB64) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw StateError('Authentication required.');
-    await _db.collection('chat_public_keys').doc(uid).set({
-      'publicKey': publicKeyB64,
+    await _db.collection('users').doc(uid).update({
+      'chatPublicKey': publicKeyB64,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<String?> fetchChatPublicKey(String userId) async {
-    final snap = await _db.collection('chat_public_keys').doc(userId).get();
-    final key = snap.data()?['publicKey'];
+    final snap = await _db.collection('users').doc(userId).get();
+    final key = snap.data()?['chatPublicKey'];
     return key is String && key.isNotEmpty ? key : null;
   }
 
@@ -553,9 +541,8 @@ class FirestoreService {
     };
     if (vehicleType != null) updates['vehicleType'] = vehicleType;
     if (capacityKg != null) updates['capacityKg'] = capacityKg;
-    if (serviceDistricts != null) {
+    if (serviceDistricts != null)
       updates['serviceDistricts'] = serviceDistricts;
-    }
     await _db.collection('users').doc(uid).update(updates);
   }
 
@@ -702,9 +689,6 @@ class FirestoreService {
     required String fileName,
     String contentType = 'image/jpeg',
   }) async {
-    if (!kUseCloudFunctions) {
-      return 'https://ui-avatars.com/api/?name=Product&background=random'; // Dummy image for demo mode
-    }
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw StateError('Authentication required.');
     if (bytes.length > 5 * 1024 * 1024) {
@@ -751,25 +735,11 @@ class FirestoreService {
             .toList());
   }
 
-  Stream<List<FarmoraMessage>> messagesStream(
-    String conversationId, {
-    required String orderId,
-    required String uid,
-    int limit = 100,
-  }) {
-    if (conversationId.isEmpty || orderId.isEmpty || uid.isEmpty) {
-      return Stream.value(const <FarmoraMessage>[]);
-    }
+  Stream<List<FarmoraMessage>> messagesStream(String conversationId,
+      {int limit = 100}) {
     return _db
         .collection('messages')
-        .where(Filter.and(
-          Filter('conversationId', isEqualTo: conversationId),
-          Filter('orderId', isEqualTo: orderId),
-          Filter.or(
-            Filter('senderId', isEqualTo: uid),
-            Filter('receiverId', isEqualTo: uid),
-          ),
-        ))
+        .where('conversationId', isEqualTo: conversationId)
         .orderBy('createdAt')
         .limit(limit)
         .snapshots()
@@ -1216,15 +1186,12 @@ class FirestoreService {
             .toList());
   }
 
-  /// Streams only requested jobs or jobs already assigned to this provider.
+  /// Streams only jobs assigned to this provider.
   Stream<List<TransportJob>> jobsForTransporterStream(String transporterId,
       {int limit = 50}) {
     return _db
         .collection('transport_jobs')
-        .where(Filter.or(
-          Filter('status', isEqualTo: 'requested'),
-          Filter('transporterId', isEqualTo: transporterId),
-        ))
+        .where('transporterId', isEqualTo: transporterId)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -1271,24 +1238,57 @@ class FirestoreService {
   /// order-scoped in-app messaging, never direct details.
   Stream<List<Map<String, dynamic>>> transportersStream({int limit = 100}) {
     return _db
-        .collection('public_profiles')
+        .collection('users')
         .where('role', isEqualTo: 'transporter')
+        .where('isVerified', isEqualTo: true)
+        .where('isSuspended', isNotEqualTo: true)
         .limit(limit)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+        .map((snap) => snap.docs.map((doc) {
+              final d = doc.data();
+              return {
+                'uid': doc.id,
+                'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
+                'photoUrl': d['photoUrl'] ?? '',
+                'district': d['district'] ?? '',
+                'vehicleType': d['vehicleType'] ?? '',
+                'vehicleRegistration': d['vehicleRegistration'] ?? '',
+                'vehicleCapacity': d['vehicleCapacity'],
+                'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
+                'availabilityStatus': d['availabilityStatus'] ?? '',
+                'isVerified': d['isVerified'] == true,
+                'location': d['location'],
+                'locationUpdatedAt': d['locationUpdatedAt'],
+              };
+            }).toList());
   }
 
-  /// Public, contact-safe profile for the transporter assigned to an order.
-  /// Only presentation fields are returned; phone, email and address stay out
-  /// of the tracking UI.
-  Stream<Map<String, dynamic>?> transporterPublicProfileStream(String uid) {
-    if (uid.isEmpty) return Stream.value(null);
-    return transportersStream(limit: 500).map((profiles) {
-      for (final profile in profiles) {
-        if (profile['uid'] == uid) return profile;
-      }
-      return null;
-    });
+  Future<List<Map<String, dynamic>>> getAvailableTransporters({
+    int limit = 100,
+  }) async {
+    final snap = await _db
+        .collection('users')
+        .where('role', isEqualTo: 'transporter')
+        .limit(limit)
+        .get();
+    return snap.docs
+        .where((doc) => doc.data()['isSuspended'] != true)
+        .map((doc) {
+      final d = doc.data();
+      return {
+        'uid': doc.id,
+        'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
+        'photoUrl': d['photoUrl'] ?? '',
+        'district': d['district'] ?? '',
+        'vehicleType': d['vehicleType'] ?? '',
+        'vehicleRegistration': d['vehicleRegistration'] ?? '',
+        'vehicleCapacity': d['vehicleCapacity'],
+        'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
+        'availabilityStatus': d['availabilityStatus'] ?? '',
+        'location': d['location'],
+        'locationUpdatedAt': d['locationUpdatedAt'],
+      };
+    }).toList();
   }
 
   /// Persist the signed-in user's last known location on their profile.
@@ -1306,20 +1306,7 @@ class FirestoreService {
     await _db.collection('users').doc(uid).update({
       'location': {'lat': lat, 'lng': lng},
       'locationUpdatedAt': FieldValue.serverTimestamp(),
-      'locationSharingEnabled': true,
       if (accuracyLabel != null) 'locationAccuracy': accuracyLabel,
-    });
-  }
-
-  Future<void> clearMyLocation() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    await _db.collection('users').doc(uid).update({
-      'location': FieldValue.delete(),
-      'locationUpdatedAt': FieldValue.delete(),
-      'locationAccuracy': FieldValue.delete(),
-      'locationSharingEnabled': false,
-      'locationShareDisabledAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -1345,6 +1332,21 @@ class FirestoreService {
         .map((snap) => snap.docs
             .map((doc) => TransportJob.fromMap(doc.id, doc.data()))
             .toList());
+  }
+
+  Future<TransportJob?> getTransportJobForOrder({
+    required String orderId,
+    required String transporterId,
+  }) async {
+    final snap = await _db
+        .collection('transport_jobs')
+        .where('orderId', isEqualTo: orderId)
+        .where('transporterId', isEqualTo: transporterId)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    final doc = snap.docs.first;
+    return TransportJob.fromMap(doc.id, doc.data());
   }
 
   /// Add a verification document

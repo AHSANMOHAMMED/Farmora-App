@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -118,95 +117,98 @@ class SparkBackend {
     required String productId,
     required int quantity,
     int deliveryFeeMinor = 0,
+    String? transporterId,
     required String deliveryAddress,
-    required String idempotencyKey,
   }) async {
     final uid = _uid;
-    if (idempotencyKey.length < 16 || idempotencyKey.length > 256) {
-      throw ArgumentError('A valid idempotency key is required.');
+    final productSnap = await _db.collection('products').doc(productId).get();
+    final product = productSnap.data();
+    if (product == null) throw StateError('Product not found.');
+    final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
+    if (quantity < 1 || quantity > available) {
+      throw StateError('Not enough stock.');
     }
-    if (quantity < 1 ||
-        deliveryFeeMinor < 0 ||
-        deliveryAddress.trim().length < 5) {
-      throw ArgumentError('Invalid order details.');
-    }
-    final encodedKey = base64Url
-        .encode(utf8.encode('$uid:$idempotencyKey'))
-        .replaceAll('=', '');
-    final orderRef = _db.collection('orders').doc('idem_$encodedKey');
-    final productRef = _db.collection('products').doc(productId);
+    final priceMinor = (product['priceMinor'] as num?)?.toInt() ?? 0;
+    final subtotal = priceMinor * quantity;
+    final farmerId = product['farmerId'] as String;
     final buyer = await userDoc(uid);
-    var created = false;
-    String? farmerId;
-    String? productName;
-    await _db.runTransaction((transaction) async {
-      final prior = await transaction.get(orderRef);
-      if (prior.exists) {
-        final old = prior.data()!;
-        if (old['buyerId'] != uid ||
-            old['productId'] != productId ||
-            old['requestedQuantity'] != quantity ||
-            old['deliveryFeeMinor'] != deliveryFeeMinor ||
-            old['deliveryAddress'] != deliveryAddress.trim()) {
-          throw StateError(
-              'Idempotency key was already used for another order.');
+    final orderRef = _db.collection('orders').doc();
+    final batch = _db.batch();
+    batch.set(orderRef, {
+      'buyerId': uid,
+      'farmerId': farmerId,
+      'productId': productId,
+      'productName': product['name'] ?? '',
+      'title': '$quantity ${product['unit'] ?? 'kg'} ${product['name'] ?? ''}',
+      'quantity': '$quantity ${product['unit'] ?? 'kg'}',
+      'unit': product['unit'] ?? 'kg',
+      'items': [
+        {
+          'productId': productId,
+          'quantity': quantity,
+          'pricePerUnitMinor': priceMinor,
         }
-        farmerId = old['farmerId'] as String?;
-        productName = old['productName'] as String?;
-        return;
-      }
-      final productSnap = await transaction.get(productRef);
-      final product = productSnap.data();
-      if (product == null) throw StateError('Product not found.');
-      final available = (product['quantityAvailable'] as num?)?.toInt() ?? 0;
-      if (quantity > available) throw StateError('Not enough stock.');
-      final priceMinor = (product['priceMinor'] as num?)?.toInt() ?? 0;
-      final subtotal = priceMinor * quantity;
-      farmerId = product['farmerId'] as String?;
-      productName = product['name'] as String? ?? '';
-      transaction.set(orderRef, {
-        'buyerId': uid,
+      ],
+      'subtotalMinor': subtotal,
+      'deliveryFeeMinor': deliveryFeeMinor,
+      'totalMinor': subtotal + deliveryFeeMinor,
+      'currency': 'LKR',
+      'deliveryAddress': deliveryAddress,
+      'pickupAddress': product['location'] ?? '',
+      'location': product['location'] ?? '',
+      'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
+      'farmerName': product['farmerName'] ?? '',
+      if (transporterId != null) 'transporterId': transporterId,
+      'status': 'pending',
+      'paymentStatus': 'payment_required',
+      'escrowStatus': 'not_funded',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.update(productSnap.reference, {
+      'quantityAvailable': available - quantity,
+      'quantity':
+          '${available - quantity} ${product['unit'] ?? 'kg'} available',
+      'status': available - quantity > 0 ? 'Active' : 'Empty',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    await _notify(
+      farmerId,
+      'New order',
+      'A buyer ordered ${product['name'] ?? 'your produce'}.',
+      'order',
+      orderRef.id,
+    );
+    if (transporterId != null && transporterId.isNotEmpty) {
+      final jobRef = _db.collection('transport_jobs').doc();
+      await jobRef.set({
+        'orderId': orderRef.id,
         'farmerId': farmerId,
-        'productId': productId,
-        'productName': productName,
-        'title': '$quantity ${product['unit'] ?? 'kg'} $productName',
-        'quantity': '$quantity ${product['unit'] ?? 'kg'}',
-        'requestedQuantity': quantity,
-        'unit': product['unit'] ?? 'kg',
-        'items': [
-          {
-            'productId': productId,
-            'quantity': quantity,
-            'pricePerUnitMinor': priceMinor,
-          }
-        ],
-        'subtotalMinor': subtotal,
-        'deliveryFeeMinor': deliveryFeeMinor,
-        'totalMinor': subtotal + deliveryFeeMinor,
-        'currency': 'LKR',
-        'deliveryAddress': deliveryAddress.trim(),
+        'buyerId': uid,
+        'transporterId': transporterId,
+        'title': 'Delivery for ${product['name'] ?? 'Produce'}',
+        'route': '${product['location'] ?? 'Farm'} → $deliveryAddress',
+        'detail': '$quantity ${product['unit'] ?? 'kg'}',
+        'fee': 'LKR ${(deliveryFeeMinor / 100).toStringAsFixed(0)}',
+        'offeredFeeMinor': deliveryFeeMinor,
         'pickupAddress': product['location'] ?? '',
-        'location': product['location'] ?? '',
-        'buyerName': buyer['name'] ?? buyer['displayName'] ?? '',
-        'farmerName': product['farmerName'] ?? '',
-        'status': 'pending',
-        'paymentStatus': 'payment_required',
-        'escrowStatus': 'not_funded',
+        'dropoffAddress': deliveryAddress,
+        'pickup': product['location'] ?? '',
+        'dropoff': deliveryAddress,
+        'productName': product['name'] ?? '',
+        'quantity': '$quantity ${product['unit'] ?? 'kg'}',
+        'district': product['location'] ?? '',
+        'status': 'requested',
+        'accepted': false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      transaction.update(productRef, {
-        'quantityAvailable': available - quantity,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      created = true;
-    });
-    if (created && farmerId != null) {
       await _notify(
-        farmerId!,
-        'New order',
-        'A buyer ordered ${productName ?? 'your produce'}.',
-        'order',
+        transporterId,
+        'Delivery request',
+        'A buyer selected you for a delivery request.',
+        'logistics',
         orderRef.id,
       );
     }
@@ -219,7 +221,9 @@ class SparkBackend {
     final snap = await ref.get();
     final order = snap.data();
     if (order == null) throw StateError('Order not found.');
-    if (order['farmerId'] != uid && order['buyerId'] != uid) {
+    if (order['farmerId'] != uid &&
+        order['buyerId'] != uid &&
+        order['transporterId'] != uid) {
       throw StateError('Not allowed.');
     }
     await ref.update({
@@ -228,7 +232,7 @@ class SparkBackend {
       if (status == 'confirmed') 'confirmedAt': FieldValue.serverTimestamp(),
       if (status == 'delivered') 'deliveredAt': FieldValue.serverTimestamp(),
     });
-    if (status == 'confirmed') {
+    if (status == 'confirmed' && order['transporterId'] == null) {
       await requestTransport(orderId: orderId);
     }
     final notifyUid =
@@ -307,6 +311,10 @@ class SparkBackend {
       'updatedAt': FieldValue.serverTimestamp(),
       '${status}At': FieldValue.serverTimestamp(),
     };
+    if (job['transporterId'] != null && job['transporterId'] != uid) {
+      throw StateError(
+          'This delivery request is assigned to another transporter.');
+    }
     await ref.update(updates);
 
     // Privacy: clear the live courier position on delivery and cancellation
@@ -322,7 +330,7 @@ class SparkBackend {
     final orderId = job['orderId'] as String?;
     if (orderId == null) return;
     const map = {
-      'accepted': 'assigned',
+      'accepted': 'confirmed',
       'pickedUp': 'pickedUp',
       'inTransit': 'inTransit',
       'delivered': 'delivered',
@@ -488,6 +496,9 @@ class SparkBackend {
     });
     batch.update(productSnap.reference, {
       'quantityAvailable': available - quantity,
+      'quantity':
+          '${available - quantity} ${product['unit'] ?? 'kg'} available',
+      'status': available - quantity > 0 ? 'Active' : 'Empty',
       'updatedAt': FieldValue.serverTimestamp(),
     });
     batch.update(offerSnap.reference, {
@@ -507,46 +518,12 @@ class SparkBackend {
     final uid = _uid;
     final snap = await _db.collection('offers').doc(offerId).get();
     final offer = snap.data();
-    if (offer == null || !['pending', 'countered'].contains(offer['status'])) {
-      throw StateError('Offer cannot be changed.');
+    if (offer == null || offer['farmerId'] != uid) {
+      throw StateError('Offer not found.');
     }
-    final actor = await userDoc(uid);
-    final status = actor['role'] == 'farmer' && offer['farmerId'] == uid
-        ? 'rejected'
-        : actor['role'] == 'buyer' && offer['buyerId'] == uid
-            ? 'cancelled'
-            : null;
-    if (status == null) throw StateError('Offer participant required.');
     await snap.reference.update({
-      'status': status,
+      'status': 'rejected',
       'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> counterOffer({
-    required String offerId,
-    required double proposedPrice,
-  }) async {
-    final uid = _uid;
-    final priceMinor = (proposedPrice * 100).round();
-    if (priceMinor < 1) {
-      throw ArgumentError('A valid counter price is required.');
-    }
-    final ref = _db.collection('offers').doc(offerId);
-    await _db.runTransaction((transaction) async {
-      final snapshot = await transaction.get(ref);
-      final offer = snapshot.data();
-      if (offer == null ||
-          offer['farmerId'] != uid ||
-          !['pending', 'countered'].contains(offer['status'])) {
-        throw StateError('Offer cannot be countered.');
-      }
-      transaction.update(ref, {
-        'status': 'countered',
-        'proposedPriceMinor': priceMinor,
-        'proposedPrice': priceMinor / 100,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
     });
   }
 
@@ -606,86 +583,6 @@ class SparkBackend {
       'releasedBy': _uid,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-  }
-
-  Future<void> resolveDispute({
-    required String orderId,
-    required String resolution,
-    required String adminNotes,
-  }) async {
-    final uid = _uid;
-    final profile = await userDoc(uid);
-    if (profile['role'] != 'admin') {
-      throw StateError('Administrator access required.');
-    }
-    final refundPercent = switch (resolution) {
-      'refund_buyer' => 100,
-      'release_farmer' => 0,
-      'split_settlement' => 50,
-      _ => -1,
-    };
-    if (refundPercent < 0 || adminNotes.trim().isEmpty) {
-      throw ArgumentError('A valid decision and audit note are required.');
-    }
-    final orderRef = _db.collection('orders').doc(orderId);
-    final orderSnapshot = await orderRef.get();
-    final order = orderSnapshot.data();
-    if (order == null || order['paymentStatus'] != 'disputed') {
-      throw StateError('Order has no open dispute.');
-    }
-    final disputeId = order['disputeId'] as String?;
-    if (disputeId == null) throw StateError('Dispute record is missing.');
-    final disputeRef = _db.collection('disputes').doc(disputeId);
-    final disputeSnapshot = await disputeRef.get();
-    final dispute = disputeSnapshot.data();
-    if (dispute == null || dispute['status'] != 'open') {
-      throw StateError('Dispute is already closed.');
-    }
-    final totalMinor = (order['totalMinor'] as num?)?.toInt();
-    if (totalMinor == null || totalMinor < 0) {
-      throw StateError('Order total is invalid.');
-    }
-    final refundMinor = (totalMinor * refundPercent / 100).round();
-    final settlementMinor = totalMinor - refundMinor;
-    final paymentStatus = refundPercent == 100
-        ? 'refund_pending'
-        : refundPercent == 0
-            ? 'settlement_pending'
-            : 'split_settlement_pending';
-    final batch = _db.batch();
-    batch.update(orderRef, {
-      'status': resolution == 'refund_buyer' ? 'cancelled' : 'completed',
-      'disputeStatus': 'resolved',
-      'disputeResolution': resolution,
-      'disputeAdminNotes': adminNotes.trim(),
-      'disputeResolvedBy': uid,
-      'disputeResolvedAt': FieldValue.serverTimestamp(),
-      'refundPercent': refundPercent,
-      'refundMinor': refundMinor,
-      'settlementMinor': settlementMinor,
-      'paymentStatus': paymentStatus,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    batch.update(disputeRef, {
-      'status': 'resolved',
-      'resolution': resolution,
-      'adminNotes': adminNotes.trim(),
-      'resolvedBy': uid,
-      'resolvedAt': FieldValue.serverTimestamp(),
-      'refundPercent': refundPercent,
-      'refundMinor': refundMinor,
-      'settlementMinor': settlementMinor,
-    });
-    batch.set(_db.collection('audit_logs').doc(), {
-      'action': 'dispute_resolved',
-      'orderId': orderId,
-      'disputeId': disputeId,
-      'resolution': resolution,
-      'refundPercent': refundPercent,
-      'actorId': uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await batch.commit();
   }
 
   Future<Map<String, dynamic>> exportUserData() async {

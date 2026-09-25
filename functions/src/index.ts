@@ -28,12 +28,11 @@ const requireAuth = (context: functions.https.CallableContext): string => {
   return context.auth.uid;
 };
 
-const requireAdmin = async (context: functions.https.CallableContext): Promise<string> => {
+const requireAdmin = (context: functions.https.CallableContext): string => {
   const uid = requireAuth(context);
   if (context.auth?.token.admin !== true) {
     throw new functions.https.HttpsError("permission-denied", "Administrator access required.");
   }
-  await requireRole(uid, ["admin"]);
   return uid;
 };
 
@@ -43,8 +42,7 @@ const requireRole = async (
 ): Promise<Record<string, unknown>> => {
   const snapshot = await db.collection("users").doc(uid).get();
   const user = snapshot.data();
-  if (!user || !roles.includes(String(user.role))
-    || user.isSuspended === true || user.isDeleted === true) {
+  if (!user || !roles.includes(String(user.role)) || user.isSuspended === true) {
     throw new functions.https.HttpsError("permission-denied", "Account is not eligible.");
   }
   return user;
@@ -104,56 +102,6 @@ const notifyUser = async (
   });
   await Promise.all(removals);
 };
-
-const syncPublicTransporterProfile = async (
-  uid: string,
-  user: FirebaseFirestore.DocumentData | undefined
-): Promise<void> => {
-  const publicRef = db.collection("public_profiles").doc(uid);
-  if (!user || user.role !== "transporter" || user.isVerified !== true
-    || user.isSuspended === true || user.isDeleted === true) {
-    await publicRef.delete().catch(() => undefined);
-    return;
-  }
-  await publicRef.set({
-    uid,
-    role: "transporter",
-    isVerified: true,
-    displayName: String(user.displayName || user.name || "Transport provider").slice(0, 120),
-    photoUrl: typeof user.photoUrl === "string" ? user.photoUrl : "",
-    district: typeof user.district === "string" ? user.district : "",
-    vehicleType: typeof user.vehicleType === "string" ? user.vehicleType : "",
-    vehicleRegistration: typeof user.vehicleRegistration === "string"
-      ? user.vehicleRegistration : "",
-    vehicleCapacity: Number.isFinite(Number(user.vehicleCapacity))
-      ? Number(user.vehicleCapacity) : null,
-    vehicleCapacityUnit: user.vehicleCapacityUnit === "tons" ? "tons" : "kg",
-    serviceDistricts: Array.isArray(user.serviceDistricts)
-      ? user.serviceDistricts.filter((v: unknown) => typeof v === "string").slice(0, 25)
-      : [],
-    availabilityStatus: user.availabilityStatus === "unavailable" ? "unavailable" : "available",
-    location: user.locationSharingEnabled === true && user.location
-      ? user.location : admin.firestore.FieldValue.delete(),
-    locationUpdatedAt: user.locationSharingEnabled === true && user.location
-      ? user.locationUpdatedAt : admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-};
-
-export const syncPublicTransporterProfileOnUserChange = functions.firestore
-  .document("users/{userId}").onWrite(async (change, context) => {
-    await syncPublicTransporterProfile(context.params.userId, change.after.data());
-  });
-
-export const backfillPublicTransporterProfiles = functions.https.onCall(async (_data, context) => {
-  await requireAdmin(context);
-  const users = await db.collection("users").where("role", "==", "transporter").get();
-  for (let offset = 0; offset < users.docs.length; offset += 400) {
-    const chunk = users.docs.slice(offset, offset + 400);
-    await Promise.all(chunk.map((doc) => syncPublicTransporterProfile(doc.id, doc.data())));
-  }
-  return { processed: users.size };
-});
 
 const writeNotification = async (
   userId: string,
@@ -311,7 +259,7 @@ export const unregisterDeviceToken = functions.https.onCall(async (data, context
 });
 
 export const getPlatformSettings = functions.https.onCall(async (_data, context) => {
-  await requireAdmin(context);
+  requireAdmin(context);
   const snapshot = await db.collection("platform_settings").doc("global").get();
   return snapshot.exists
     ? snapshot.data()
@@ -319,7 +267,7 @@ export const getPlatformSettings = functions.https.onCall(async (_data, context)
 });
 
 export const updatePlatformSettings = functions.https.onCall(async (data, context) => {
-  const uid = await requireAdmin(context);
+  const uid = requireAdmin(context);
   const updates: Record<string, unknown> = {};
   if (typeof data.maintenanceMode === "boolean") updates.maintenanceMode = data.maintenanceMode;
   if (data.platformFeeBps !== undefined) {
@@ -536,10 +484,10 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   const quantity = Number(data.quantity);
   const deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
+  const transporterId = typeof data.transporterId === "string"
+    ? data.transporterId : "";
   const deliveryAddress = typeof data.deliveryAddress === "string"
     ? data.deliveryAddress.trim().slice(0, 500) : "";
-  const idempotencyKey = typeof data.idempotencyKey === "string"
-    ? data.idempotencyKey : "";
   if (!productId || !Number.isSafeInteger(quantity) || quantity < 1
     || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid order details.");
@@ -547,38 +495,27 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   if (!deliveryAddress || deliveryAddress.length < 5) {
     throw new functions.https.HttpsError("invalid-argument", "Delivery address is required.");
   }
-  if (!/^[A-Za-z0-9_:-]{16,256}$/.test(idempotencyKey)) {
-    throw new functions.https.HttpsError("invalid-argument", "A valid idempotency key is required.");
+  if (transporterId) {
+    const transporterSnap = await db.collection("users").doc(transporterId).get();
+    const transporter = transporterSnap.data();
+    if (!transporter || transporter.role !== "transporter"
+      || transporter.isSuspended === true) {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Selected transporter is unavailable.");
+    }
   }
 
   const productRef = db.collection("products").doc(productId);
-  const idempotencyRequestHash = createHash("sha256").update(JSON.stringify({
-    productId,
-    quantity,
-    deliveryFeeMinor,
-    offerId,
-    deliveryAddress,
-  })).digest("hex");
-  const idempotencyDocId = createHash("sha256")
-    .update(`${uid}:${idempotencyKey}`).digest("hex");
-  const orderRef = db.collection("orders").doc(`order_${idempotencyDocId}`);
+  const orderRef = db.collection("orders").doc();
   const offerRef = offerId ? db.collection("offers").doc(offerId) : null;
   const buyerSnap = await db.collection("users").doc(uid).get();
   const buyer = buyerSnap.data() || {};
+  let farmerIdForJob = "";
+  let productNameForJob = "";
+  let pickupForJob = "";
+  let quantityLabelForJob = "";
 
   await db.runTransaction(async (transaction) => {
-    const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists) {
-      const existing = existingOrder.data()!;
-      if (existing.buyerId !== uid
-        || existing.idempotencyRequestHash !== idempotencyRequestHash) {
-        throw new functions.https.HttpsError(
-          "already-exists",
-          "Idempotency key was already used for a different order."
-        );
-      }
-      return;
-    }
     const productSnapshot = await transaction.get(productRef);
     const product = productSnapshot.data();
     const available = Number(product?.quantityAvailable);
@@ -621,8 +558,14 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     const quantityLabel = `${orderQuantity} ${unit}`;
     transaction.update(productRef, {
       quantityAvailable: available - orderQuantity,
+      quantity: `${available - orderQuantity} ${unit} available`,
+      status: available - orderQuantity > 0 ? "Active" : "Empty",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    farmerIdForJob = String(product.farmerId || "");
+    productNameForJob = productName;
+    pickupForJob = String(product.location || "Farm pickup");
+    quantityLabelForJob = quantityLabel;
     transaction.create(orderRef, {
       buyerId: uid,
       farmerId: product.farmerId,
@@ -643,15 +586,47 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       buyerName: String(buyer.displayName || buyer.name || "Buyer"),
       buyerCompany: String(buyer.district || ""),
       status: "pending",
+      ...(transporterId ? { transporterId } : {}),
       paymentStatus: "payment_required",
       escrowStatus: "not_funded",
-      requestedQuantity: quantity,
-      idempotencyRequestHash,
       ...(offerId ? { offerId } : {}),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   });
+  if (transporterId) {
+    const jobRef = db.collection("transport_jobs").doc();
+    await jobRef.set({
+      orderId: orderRef.id,
+      farmerId: farmerIdForJob,
+      buyerId: uid,
+      transporterId,
+      title: `Delivery for ${productNameForJob}`,
+      route: `${pickupForJob} → ${deliveryAddress}`,
+      detail: quantityLabelForJob,
+      fee: `LKR ${(deliveryFeeMinor / 100).toFixed(0)}`,
+      offeredFeeMinor: deliveryFeeMinor,
+      pickupAddress: pickupForJob,
+      dropoffAddress: deliveryAddress,
+      pickup: pickupForJob,
+      dropoff: deliveryAddress,
+      productName: productNameForJob,
+      quantity: quantityLabelForJob,
+      status: "requested",
+      accepted: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await db.collection("notifications").add({
+      userId: transporterId,
+      title: "Delivery request",
+      body: "A buyer selected you for a delivery request.",
+      type: "logistics",
+      referenceId: orderRef.id,
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
   return { orderId: orderRef.id };
 });
 
@@ -748,6 +723,8 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
       : String(offer.deliveryAddress || "");
     transaction.update(productRef, {
       quantityAvailable: available - orderQuantity,
+      quantity: `${available - orderQuantity} ${unit} available`,
+      status: available - orderQuantity > 0 ? "Active" : "Empty",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     transaction.update(offerRef, {
@@ -796,7 +773,7 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
 
 export const rejectOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  const actor = await requireRole(uid, ["farmer", "buyer"]);
+  await requireRole(uid, ["farmer"]);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
   if (!offerId) {
     throw new functions.https.HttpsError("invalid-argument", "offerId is required.");
@@ -804,53 +781,20 @@ export const rejectOffer = functions.https.onCall(async (data, context) => {
   const offerRef = db.collection("offers").doc(offerId);
   const snapshot = await offerRef.get();
   const offer = snapshot.data();
-  if (!offer || !["pending", "countered"].includes(String(offer.status))) {
-    throw new functions.https.HttpsError("failed-precondition", "Offer cannot be changed.");
+  if (!offer || offer.farmerId !== uid || offer.status !== "pending") {
+    throw new functions.https.HttpsError("failed-precondition", "Offer cannot be rejected.");
   }
-  const status = actor.role === "farmer" && offer.farmerId === uid
-    ? "rejected"
-    : actor.role === "buyer" && offer.buyerId === uid ? "cancelled" : "";
-  if (!status) throw new functions.https.HttpsError("permission-denied", "Only an offer participant can cancel or reject it.");
   await offerRef.update({
-    status,
+    status: "rejected",
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   await writeNotification(
-    String(status === "rejected" ? offer.buyerId : offer.farmerId),
-    status === "rejected" ? "Offer Rejected" : "Offer Cancelled",
-    status === "rejected" ? "Your offer was rejected by the farmer." : "The buyer cancelled the offer.",
+    String(offer.buyerId),
+    "Offer Rejected",
+    "Your offer was rejected by the farmer.",
     "offer",
     offerId
   );
-  return { success: true };
-});
-
-export const counterOffer = functions.https.onCall(async (data, context) => {
-  const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
-  const offerId = typeof data.offerId === "string" ? data.offerId : "";
-  const proposedPriceMinor = Number(data.proposedPriceMinor);
-  if (!offerId || !Number.isSafeInteger(proposedPriceMinor)
-    || proposedPriceMinor < 1 || proposedPriceMinor > 1000000000) {
-    throw new functions.https.HttpsError("invalid-argument", "A valid counter price is required.");
-  }
-  const offerRef = db.collection("offers").doc(offerId);
-  let buyerId = "";
-  await db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(offerRef);
-    const offer = snapshot.data();
-    if (!offer || offer.farmerId !== uid || !["pending", "countered"].includes(String(offer.status))) {
-      throw new functions.https.HttpsError("failed-precondition", "Offer cannot be countered.");
-    }
-    buyerId = String(offer.buyerId || "");
-    transaction.update(offerRef, {
-      status: "countered",
-      proposedPriceMinor,
-      proposedPrice: proposedPriceMinor / 100,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-  if (buyerId) await writeNotification(buyerId, "Counter offer received", "The farmer proposed a new price.", "offer", offerId);
   return { success: true };
 });
 
@@ -1098,23 +1042,33 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
     || !transitions[currentStatus]?.includes(requestedStatus)) {
     throw new functions.https.HttpsError("failed-precondition", "Invalid transport transition.");
   }
-  await db.runTransaction(async (transaction) => {
-    transaction.update(ref, {
-      status: requestedStatus,
+  await ref.update({
+    // Keep the existing transport_jobs vocabulary stable for other clients.
+    status: requestedStatus,
+    transporterId: uid,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    [`${requestedStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
+    ...(requestedStatus === "cancelled" && reason
+      ? { cancellationReason: reason }
+      : {}),
+  });
+  if (requestedStatus === "accepted" && job.orderId) {
+    await db.collection("orders").doc(String(job.orderId)).update({
+      status: "confirmed",
       transporterId: uid,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      [`${requestedStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
-      ...(requestedStatus === "cancelled" && reason ? { cancellationReason: reason } : {}),
+      confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-
-    if (requestedStatus === "delivered" && job.deliveryFeeMinor) {
-      const transporterRef = db.collection("users").doc(uid);
-      const amount = job.deliveryFeeMinor / 100.0;
-      transaction.update(transporterRef, {
-        availableBalance: admin.firestore.FieldValue.increment(amount)
-      });
+    if (job.buyerId) {
+      await writeNotification(
+        String(job.buyerId),
+        "Order confirmed",
+        "Your selected transporter accepted the delivery request.",
+        "order",
+        String(job.orderId)
+      );
     }
-  });
+  }
   return { success: true };
 });
 
@@ -1367,20 +1321,9 @@ export const payHereWebhook = functions.https.onRequest(async (request, response
     // Status 2 = success (paid)
     if (statusCode === "2") {
       const orderRef = db.collection("orders").doc(orderId);
-      let alreadyPaid = false;
-      let orderData: any = null;
-
-      await db.runTransaction(async (transaction) => {
-        const orderSnap = await transaction.get(orderRef);
-        if (!orderSnap.exists) return;
-        
-        orderData = orderSnap.data();
-        if (orderData?.paymentStatus === "paid") {
-          alreadyPaid = true;
-          return; // Idempotency check: already processed
-        }
-
-        transaction.update(orderRef, {
+      const orderSnap = await orderRef.get();
+      if (orderSnap.exists) {
+        await orderRef.update({
           paymentStatus: "paid",
           escrowStatus: "held",
           paymentMethod: "payhere",
@@ -1389,16 +1332,16 @@ export const payHereWebhook = functions.https.onRequest(async (request, response
           paidAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-      });
-
-      if (!alreadyPaid && orderData?.farmerId) {
-        await writeNotification(
-          String(orderData.farmerId),
-          "Payment received",
-          `PayHere payment confirmed for ${orderData.productName || "an order"}.`,
-          "order",
-          orderId
-        );
+        const order = orderSnap.data();
+        if (order?.farmerId) {
+          await writeNotification(
+            String(order.farmerId),
+            "Payment received",
+            `PayHere payment confirmed for ${order.productName || "an order"}.`,
+            "order",
+            orderId
+          );
+        }
       }
     }
 
@@ -1410,104 +1353,31 @@ export const payHereWebhook = functions.https.onRequest(async (request, response
 });
 
 export const releaseEscrow = functions.https.onCall(async (data, context) => {
-  const uid = await requireAdmin(context);
+  const uid = requireAdmin(context);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
-  const orderRef = db.collection("orders").doc(orderId);
-
-  await db.runTransaction(async (transaction) => {
-    const orderSnap = await transaction.get(orderRef);
-    const order = orderSnap.data();
-    if (!order || order.status !== "delivered" || order.paymentStatus !== "paid" || order.disputeId) {
-      throw new functions.https.HttpsError("failed-precondition", "Order is not eligible for payout.");
-    }
-    const farmerId = order.farmerId;
-    if (!farmerId) throw new functions.https.HttpsError("internal", "Order has no farmerId.");
-    
-    const settlementMinor = typeof order.settlementMinor === "number" ? order.settlementMinor : Number(order.totalMinor || 0);
-    const settlementMajor = settlementMinor / 100;
-
-    const farmerRef = db.collection("users").doc(farmerId);
-    const auditRef = db.collection("audit_logs").doc();
-
-    transaction.update(orderRef, {
-      escrowStatus: "released",
-      paymentStatus: "released",
-      releasedBy: uid,
-      releasedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    transaction.set(farmerRef, {
-      availableBalance: admin.firestore.FieldValue.increment(settlementMajor),
-      totalEarnings: admin.firestore.FieldValue.increment(settlementMajor)
-    }, { merge: true });
-
-    transaction.create(auditRef, {
-      action: "escrow_release",
-      orderId,
-      farmerId,
-      amount: settlementMajor,
-      actorId: uid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+  const ref = db.collection("orders").doc(orderId);
+  const snapshot = await ref.get();
+  const order = snapshot.data();
+  if (!order || order.status !== "delivered" || order.paymentStatus !== "paid" || order.disputeId) {
+    throw new functions.https.HttpsError("failed-precondition", "Order is not eligible for payout.");
+  }
+  await ref.update({
+    escrowStatus: "released",
+    paymentStatus: "released",
+    releasedBy: uid,
+    releasedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-
+  await db.collection("audit_logs").add({
+    action: "escrow_release",
+    orderId,
+    actorId: uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
   return { success: true };
 });
 
-export const requestWithdrawal = functions.https.onCall(async (data, context) => {
-  const uid = requireAuth(context);
-  const amount = Number(data.amount);
-  const bankName = typeof data.bankName === "string" ? data.bankName : "";
-  const accountNumber = typeof data.accountNumber === "string" ? data.accountNumber : "";
-  const payoutMethod = typeof data.payoutMethod === "string" ? data.payoutMethod : "CEFT";
-
-  if (!amount || amount <= 0 || !bankName || !accountNumber) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid withdrawal parameters.");
-  }
-
-  const farmerRef = db.collection("users").doc(uid);
-  const settlementRef = db.collection("settlements").doc();
-
-  await db.runTransaction(async (transaction) => {
-    const farmerSnap = await transaction.get(farmerRef);
-    const farmer = farmerSnap.data();
-    if (!farmer) throw new functions.https.HttpsError("not-found", "User not found.");
-
-    const availableBalance = typeof farmer.availableBalance === "number" ? farmer.availableBalance : 0;
-    if (availableBalance < amount) {
-      throw new functions.https.HttpsError("failed-precondition", "Insufficient balance.");
-    }
-
-    const fee = amount * 0.05; // 5% commission as defined in client
-    const netAmount = amount - fee;
-
-    transaction.update(farmerRef, {
-      availableBalance: admin.firestore.FieldValue.increment(-amount)
-    });
-
-    const role = farmer.role || "farmer";
-    transaction.create(settlementRef, {
-      orderId: "WITHDRAWAL-" + Date.now(),
-      orderNumber: "WD-" + String(Date.now()).slice(7),
-      recipientId: uid,
-      recipientName: farmer.displayName || farmer.businessName || farmer.name || "User",
-      recipientRole: role,
-      bankName,
-      accountNumber,
-      grossAmount: amount,
-      platformFee: fee,
-      netAmount,
-      payoutMethod,
-      status: "pending",
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  });
-
-  return { success: true, settlementId: settlementRef.id };
-});
-
 export const reviewVerification = functions.https.onCall(async (data, context) => {
-  const uid = await requireAdmin(context);
+  const uid = requireAdmin(context);
   const documentId = typeof data.documentId === "string" ? data.documentId : "";
   const status = data.status === "approved" || data.status === "rejected" ? data.status : "";
   if (!documentId || !status) throw new functions.https.HttpsError("invalid-argument", "Invalid verification decision.");
@@ -1651,96 +1521,10 @@ export const openDispute = functions.https.onCall(async (data, context) => {
   return { disputeId: disputeRef.id };
 });
 
-export const resolveDispute = functions.https.onCall(async (data, context) => {
-  const adminId = await requireAdmin(context);
-  const orderId = typeof data.orderId === "string" ? data.orderId.trim() : "";
-  const resolution = typeof data.resolution === "string" ? data.resolution : "";
-  const adminNotes = typeof data.adminNotes === "string"
-    ? data.adminNotes.trim().slice(0, 2000) : "";
-  const refundPercent = resolution === "refund_buyer" ? 100
-    : resolution === "release_farmer" ? 0
-      : resolution === "split_settlement" ? 50 : -1;
-  if (!orderId || refundPercent < 0 || !adminNotes) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Order, valid outcome, and audit notes are required."
-    );
-  }
-
-  const orderRef = db.collection("orders").doc(orderId);
-  await db.runTransaction(async (transaction) => {
-    const orderSnapshot = await transaction.get(orderRef);
-    const order = orderSnapshot.data();
-    if (!order) {
-      throw new functions.https.HttpsError("not-found", "Order not found.");
-    }
-    if (order.paymentStatus !== "disputed" || !order.disputeId) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Order has no open payment dispute."
-      );
-    }
-    const disputeRef = db.collection("disputes").doc(String(order.disputeId));
-    const disputeSnapshot = await transaction.get(disputeRef);
-    const dispute = disputeSnapshot.data();
-    if (!dispute || dispute.orderId !== orderId || dispute.status !== "open") {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "The linked dispute is already closed or invalid."
-      );
-    }
-
-    const totalMinor = Number(order.totalMinor);
-    if (!Number.isSafeInteger(totalMinor) || totalMinor < 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Order total is invalid.");
-    }
-    const refundMinor = Math.round(totalMinor * refundPercent / 100);
-    const settlementMinor = totalMinor - refundMinor;
-    const paymentStatus = refundPercent === 100 ? "refund_pending"
-      : refundPercent === 0 ? "settlement_pending" : "split_settlement_pending";
-    const resolvedAt = admin.firestore.FieldValue.serverTimestamp();
-
-    transaction.update(orderRef, {
-      status: resolution === "refund_buyer" ? "cancelled" : "completed",
-      disputeStatus: "resolved",
-      disputeResolution: resolution,
-      disputeAdminNotes: adminNotes,
-      disputeResolvedBy: adminId,
-      disputeResolvedAt: resolvedAt,
-      refundPercent,
-      refundMinor,
-      settlementMinor,
-      paymentStatus,
-      updatedAt: resolvedAt,
-    });
-    transaction.update(disputeRef, {
-      status: "resolved",
-      resolution,
-      adminNotes,
-      resolvedBy: adminId,
-      resolvedAt,
-      refundPercent,
-      refundMinor,
-      settlementMinor,
-    });
-    transaction.create(db.collection("audit_logs").doc(), {
-      action: "dispute_resolved",
-      orderId,
-      disputeId: order.disputeId,
-      resolution,
-      refundPercent,
-      actorId: adminId,
-      createdAt: resolvedAt,
-    });
-  });
-
-  return { success: true, orderId, resolution, refundPercent };
-});
-
 // ─── Admin: seed Sri Lankan marketplace data (Admin SDK only) ──────
 // Attaches products/orders/jobs to REAL users by role (or explicit IDs).
 export const seedDatabase = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
+  requireAdmin(context);
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   const findUidByRole = async (role: string): Promise<string | null> => {
@@ -1753,29 +1537,19 @@ export const seedDatabase = functions.https.onCall(async (data, context) => {
     return (verified || docs[0])?.id || null;
   };
 
-  let farmerId = (typeof data?.farmerId === "string" && data.farmerId) || await findUidByRole("farmer");
-  let buyerId = (typeof data?.buyerId === "string" && data.buyerId) || await findUidByRole("buyer");
-  let transporterId = (typeof data?.transporterId === "string" && data.transporterId) || await findUidByRole("transporter");
+  const farmerId = (typeof data?.farmerId === "string" && data.farmerId)
+    || await findUidByRole("farmer");
+  const buyerId = (typeof data?.buyerId === "string" && data.buyerId)
+    || await findUidByRole("buyer");
+  const transporterId = (typeof data?.transporterId === "string" && data.transporterId)
+    || await findUidByRole("transporter");
 
-  if (!farmerId) {
-    farmerId = "farmer_demo_1";
-    await db.collection("users").doc(farmerId).set({
-      id: farmerId, authUid: farmerId, role: "farmer", name: "Demo Farmer", displayName: "Demo Farmer", phone: "0770000001", isVerified: true, isSuspended: false, district: "Nuwara Eliya", createdAt: now, updatedAt: now
-    }, { merge: true });
-  }
-  
-  if (!buyerId) {
-    buyerId = "buyer_demo_1";
-    await db.collection("users").doc(buyerId).set({
-      id: buyerId, authUid: buyerId, role: "buyer", name: "Demo Buyer", displayName: "Demo Buyer", phone: "0770000002", isVerified: true, isSuspended: false, district: "Colombo", createdAt: now, updatedAt: now
-    }, { merge: true });
-  }
-  
-  if (!transporterId) {
-    transporterId = "transporter_demo_1";
-    await db.collection("users").doc(transporterId).set({
-      id: transporterId, authUid: transporterId, role: "transporter", name: "Demo Transporter", displayName: "Demo Transporter", phone: "0770000003", isVerified: true, isSuspended: false, district: "Gampaha", vehicleType: "Truck", vehicleCapacity: 5000, vehicleCapacityUnit: "kg", isApprovedTransporter: true, createdAt: now, updatedAt: now
-    }, { merge: true });
+  if (!farmerId || !buyerId) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Register at least one farmer and one buyer first, then seed. "
+        + "Optionally pass farmerId/buyerId/transporterId."
+    );
   }
 
   const farmerSnap = await db.collection("users").doc(farmerId).get();
@@ -2104,7 +1878,7 @@ export const seedDatabase = functions.https.onCall(async (data, context) => {
 });
 
 export const setUserSuspended = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
+  requireAdmin(context);
   const userId = typeof data.userId === "string" ? data.userId.trim() : "";
   const suspended = data.suspended === true;
   if (!userId) {
@@ -2128,7 +1902,7 @@ export const setUserSuspended = functions.https.onCall(async (data, context) => 
   return { success: true, userId, isSuspended: suspended };
 });
 
-export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1GB" }).https.onCall(async (_data, context) => {
+export const deleteAccount = functions.https.onCall(async (_data, context) => {
   const uid = requireAuth(context);
   const userRef = db.collection("users").doc(uid);
 
@@ -2139,14 +1913,6 @@ export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1
     photoUrl: admin.firestore.FieldValue.delete(),
     email: admin.firestore.FieldValue.delete(),
     address: admin.firestore.FieldValue.delete(),
-    district: admin.firestore.FieldValue.delete(),
-    country: admin.firestore.FieldValue.delete(),
-    location: admin.firestore.FieldValue.delete(),
-    latitude: admin.firestore.FieldValue.delete(),
-    longitude: admin.firestore.FieldValue.delete(),
-    locationSharingEnabled: false,
-    vehicleRegistration: admin.firestore.FieldValue.delete(),
-    chatPublicKey: admin.firestore.FieldValue.delete(),
     deviceTokens: admin.firestore.FieldValue.delete(),
     notificationPreferences: admin.firestore.FieldValue.delete(),
     isSuspended: true,
@@ -2155,154 +1921,36 @@ export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  const processOwnedRecords = async (
-    collectionName: string,
-    field: string,
-    action: (batch: FirebaseFirestore.WriteBatch, doc: FirebaseFirestore.QueryDocumentSnapshot) => void,
-    arrayContains = false
-  ): Promise<void> => {
-    let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
-    while (true) {
-      let query: FirebaseFirestore.Query = db.collection(collectionName);
-      query = arrayContains
-        ? query.where(field, "array-contains", uid)
-        : query.where(field, "==", uid);
-      query = query.limit(400);
-      if (cursor) query = query.startAfter(cursor);
-      const page = await query.get();
-      if (page.empty) return;
-      const batch = db.batch();
-      for (const doc of page.docs) action(batch, doc);
-      await batch.commit();
-      cursor = page.docs[page.docs.length - 1];
-    }
-  };
+  // Remove device tokens subcollection
+  const tokens = await userRef.collection("device_tokens").get();
+  await Promise.all(tokens.docs.map((d) => d.ref.delete()));
 
-  const tokenDocs = await userRef.collection("device_tokens").get();
-  for (let offset = 0; offset < tokenDocs.docs.length; offset += 400) {
-    const batch = db.batch();
-    for (const doc of tokenDocs.docs.slice(offset, offset + 400)) batch.delete(doc.ref);
-    await batch.commit();
-  }
-
-  // Keep financial order records, but remove direct contact details.
-  await processOwnedRecords("orders", "buyerId", (batch, doc) => batch.update(doc.ref, {
-    buyerId: "deleted-user",
-    buyerName: "Deleted User",
-    buyerCompany: "",
-    buyerAvatar: admin.firestore.FieldValue.delete(),
-    buyerPhone: admin.firestore.FieldValue.delete(),
-    deliveryAddress: "[redacted]",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("orders", "farmerId", (batch, doc) => batch.update(doc.ref, {
-    farmerId: "deleted-user",
-    farmerName: "Deleted User",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("orders", "transporterId", (batch, doc) => batch.update(doc.ref, {
-    transporterId: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-
-  const productIds: string[] = [];
-  await processOwnedRecords("products", "farmerId", (batch, doc) => {
-    productIds.push(doc.id);
-    batch.update(doc.ref, {
-    status: "Deleted",
-    farmerId: "deleted-user",
-    name: "[deleted]",
-    description: "",
-    location: "",
-    imagePath: admin.firestore.FieldValue.delete(),
-    media: [],
-    imageUrls: [],
-    images: [],
-    videoPath: admin.firestore.FieldValue.delete(),
-    videoUrl: admin.firestore.FieldValue.delete(),
-    qrCode: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-
-  // Remove personal content and account-scoped records. Keep financial and
-  // dispute records only where needed for audit, with identifying text scrubbed.
-  for (const field of ["ownerId", "farmerId"]) {
-    await processOwnedRecords("verification_docs", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  for (const field of ["buyerId", "farmerId"]) {
-    await processOwnedRecords("offers", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  for (const field of ["senderId", "recipientId", "receiverId"]) {
-    await processOwnedRecords("messages", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  await processOwnedRecords("notifications", "userId", (batch, doc) => batch.delete(doc.ref));
-  await processOwnedRecords("reviews", "reviewerId", (batch, doc) => batch.delete(doc.ref));
-  await processOwnedRecords("reviews", "subjectId", (batch, doc) => batch.update(doc.ref, {
-    subjectId: "deleted-user",
-    subjectName: "Deleted User",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("disputes", "openedBy", (batch, doc) => batch.update(doc.ref, {
-    openedBy: "deleted-user",
-    reason: "[redacted]",
-    evidenceImages: [],
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("conversations", "participantIds", (batch, doc) => batch.update(doc.ref, {
-    participantIds: admin.firestore.FieldValue.arrayRemove(uid),
-    unreadCounts: admin.firestore.FieldValue.delete(),
-    lastMessage: "",
-    lastMessageAt: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }), true);
-  await processOwnedRecords("transport_jobs", "transporterId", (batch, doc) => batch.update(doc.ref, {
-    transporterId: admin.firestore.FieldValue.delete(),
-    courierLat: admin.firestore.FieldValue.delete(),
-    courierLng: admin.firestore.FieldValue.delete(),
-    locationUpdatedAt: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  for (const field of ["createdBy", "farmerId", "buyerId"]) {
-    await processOwnedRecords("transport_jobs", field, (batch, doc) => batch.update(doc.ref, {
-      farmerId: admin.firestore.FieldValue.delete(),
-      buyerId: admin.firestore.FieldValue.delete(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  // Scrub PII from orders where user is buyer/farmer/transporter
+  const roles = ["buyerId", "farmerId", "transporterId"] as const;
+  for (const field of roles) {
+    const snap = await db.collection("orders").where(field, "==", uid).limit(100).get();
+    await Promise.all(snap.docs.map((doc) => {
+      const updates: Record<string, unknown> = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (field === "buyerId") {
+        updates.buyerName = "Deleted User";
+        updates.buyerCompany = "";
+        updates.deliveryAddress = "[redacted]";
+      }
+      return doc.ref.update(updates);
     }));
   }
-  await processOwnedRecords("settlements", "recipientId", (batch, doc) => batch.update(doc.ref, {
-    bankName: admin.firestore.FieldValue.delete(),
-    accountNumber: admin.firestore.FieldValue.delete(),
+
+  // Soft-delete owned products
+  const products = await db.collection("products").where("farmerId", "==", uid).limit(100).get();
+  await Promise.all(products.docs.map((doc) => doc.ref.update({
+    status: "Deleted",
+    name: "[deleted]",
+    description: "",
+    media: [],
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-
-  await Promise.all([
-    db.collection("public_profiles").doc(uid).delete().catch(() => undefined),
-    db.collection("chat_public_keys").doc(uid).delete().catch(() => undefined),
-  ]);
-
-  // Remove account-owned uploads, including profile, listing and KYC media.
-  const bucket = admin.storage().bucket();
-  for (const prefix of [
-    `users/${uid}/`,
-    `product_images/${uid}/`,
-    `product_videos/${uid}/`,
-    `verification/${uid}/`,
-    `disputes/${uid}/`,
-  ]) {
-    const [files] = await bucket.getFiles({ prefix });
-    for (let offset = 0; offset < files.length; offset += 100) {
-      await Promise.all(files.slice(offset, offset + 100)
-        .map((file) => file.delete({ ignoreNotFound: true })));
-    }
-  }
-  for (const productId of productIds) {
-    const [files] = await bucket.getFiles({ prefix: `products/${productId}/` });
-    for (let offset = 0; offset < files.length; offset += 100) {
-      await Promise.all(files.slice(offset, offset + 100)
-        .map((file) => file.delete({ ignoreNotFound: true })));
-    }
-  }
+  })));
 
   await auth.deleteUser(uid);
   return { success: true };
@@ -2311,47 +1959,14 @@ export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1
 export const exportUserData = functions.https.onCall(async (_data, context) => {
   const uid = requireAuth(context);
 
-  const [
-    userSnap,
-    buyerOrders,
-    farmerOrders,
-    transporterOrders,
-    products,
-    verificationDocs,
-    buyerOffers,
-    farmerOffers,
-    openedDisputes,
-    sentMessages,
-    receivedMessages,
-    legacyReceivedMessages,
-    notifications,
-    authoredReviews,
-    receivedReviews,
-    conversations,
-    transporterJobs,
-    createdJobs,
-    settlements,
-  ] = await Promise.all([
+  const [userSnap, buyerOrders, farmerOrders, transporterOrders, products, verificationDocs] =
+    await Promise.all([
       db.collection("users").doc(uid).get(),
       db.collection("orders").where("buyerId", "==", uid).limit(200).get(),
       db.collection("orders").where("farmerId", "==", uid).limit(200).get(),
       db.collection("orders").where("transporterId", "==", uid).limit(200).get(),
       db.collection("products").where("farmerId", "==", uid).limit(200).get(),
       db.collection("verification_docs").where("ownerId", "==", uid).limit(100).get(),
-      db.collection("offers").where("buyerId", "==", uid).limit(200).get(),
-      db.collection("offers").where("farmerId", "==", uid).limit(200).get(),
-      db.collection("disputes").where("openedBy", "==", uid).limit(100).get(),
-      db.collection("messages").where("senderId", "==", uid).limit(500).get(),
-      db.collection("messages").where("recipientId", "==", uid).limit(500).get(),
-      db.collection("messages").where("receiverId", "==", uid).limit(500).get(),
-      db.collection("notifications").where("userId", "==", uid).limit(500).get(),
-      db.collection("reviews").where("reviewerId", "==", uid).limit(200).get(),
-      db.collection("reviews").where("subjectId", "==", uid).limit(200).get(),
-      db.collection("conversations").where("participantIds", "array-contains", uid)
-        .limit(200).get(),
-      db.collection("transport_jobs").where("transporterId", "==", uid).limit(200).get(),
-      db.collection("transport_jobs").where("createdBy", "==", uid).limit(200).get(),
-      db.collection("settlements").where("recipientId", "==", uid).limit(200).get(),
     ]);
 
   // Also collect verification docs keyed by farmerId for older records
@@ -2371,16 +1986,6 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
       verificationMap.set(doc.id, { id: doc.id, ...doc.data() });
     }
   }
-
-  const asRecords = (snapshots: FirebaseFirestore.QuerySnapshot[]) => {
-    const records = new Map<string, Record<string, unknown>>();
-    for (const snapshot of snapshots) {
-      for (const doc of snapshot.docs) {
-        records.set(doc.id, { id: doc.id, ...doc.data() });
-      }
-    }
-    return Array.from(records.values());
-  };
 
   const serialize = (value: unknown): unknown => {
     if (value === null || value === undefined) return value;
@@ -2403,14 +2008,5 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
     orders: Array.from(orderMap.values()),
     products: products.docs.map((d) => ({ id: d.id, ...d.data() })),
     verificationDocs: Array.from(verificationMap.values()),
-    offers: asRecords([buyerOffers, farmerOffers]),
-    disputes: asRecords([openedDisputes]),
-    messages: asRecords([sentMessages, receivedMessages, legacyReceivedMessages]),
-    notifications: asRecords([notifications]),
-    authoredReviews: asRecords([authoredReviews]),
-    reviewsAboutUser: asRecords([receivedReviews]),
-    conversations: asRecords([conversations]),
-    transportJobs: asRecords([transporterJobs, createdJobs]),
-    settlements: asRecords([settlements]),
   });
 });
