@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
-import '../domain/collection_job.dart';
 
 class TransporterEarningsScreen extends StatelessWidget {
   const TransporterEarningsScreen({super.key});
@@ -10,18 +11,19 @@ class TransporterEarningsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<TransporterController>();
-    const currency = 'Rs. ';
-    
+    final l10n = context.l10n;
+    String money(double amount) => AppFormat.lkr(amount, decimals: 2);
+
     final completed = controller.completedJobs;
     double total = 0;
     double month = 0;
     double week = 0;
     final now = DateTime.now();
-    
+
     for (final job in completed) {
       final amount = (job.deliveryFeeMinor ?? 0) / 100;
       total += amount;
-      
+
       final date = job.completedAt ?? job.updatedAt;
       if (date.year == now.year && date.month == now.month) {
         month += amount;
@@ -30,15 +32,16 @@ class TransporterEarningsScreen extends StatelessWidget {
         week += amount;
       }
     }
-    
+
     final recent = completed.reversed.take(5).toList();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Earnings'),
+        title: Text(l10n.earnings),
         actions: [
           IconButton(
+            tooltip: l10n.notifications,
             onPressed: () {},
             icon: const Icon(Icons.notifications_none_rounded),
           ),
@@ -47,64 +50,61 @@ class TransporterEarningsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         children: [
-          _EarningsHero(
-              amount: '$currency${total.toStringAsFixed(2)}'),
+          _EarningsHero(amount: money(total)),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _MetricCard(
-                  label: 'This month',
-                  value: '$currency${month.toStringAsFixed(2)}',
+                  label: l10n.transporterThisMonth,
+                  value: money(month),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  label: 'This week',
-                  value: '$currency${week.toStringAsFixed(2)}',
+                  label: l10n.transporterThisWeek,
+                  value: money(week),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Recent Transactions',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Text(
+            l10n.transporterRecentTransactions,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           if (recent.isEmpty)
-            const _EmptyState(
+            _EmptyState(
               icon: Icons.receipt_long_outlined,
-              message: 'No earnings yet',
+              message: l10n.transporterNoEarningsYet,
             )
           else
-            ...recent.map(
-              (job) {
-                final amount = (job.deliveryFeeMinor ?? 0) / 100;
-                final dateStr = (job.completedAt ?? job.updatedAt).toString().split(' ')[0];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(Icons.local_shipping_outlined,
-                          color: AppColors.primary),
-                    ),
-                    title: Text(job.produceName,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: Text(dateStr),
-                    trailing: Text(
-                      '+ $currency${amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+            ...recent.map((job) {
+              final amount = (job.deliveryFeeMinor ?? 0) / 100;
+              final dateStr = AppFormat.date(job.completedAt ?? job.updatedAt);
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.primaryLight,
+                    child: Icon(Icons.local_shipping_outlined,
+                        color: AppColors.primary),
+                  ),
+                  title: Text(job.produceName,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text(dateStr),
+                  trailing: Text(
+                    '+ ${money(amount)}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                );
-              }
-            ),
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -129,8 +129,9 @@ class _EarningsHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total Earnings',
-                    style: TextStyle(color: AppColors.onPrimaryContainer)),
+                Text(context.l10n.transporterTotalEarnings,
+                    style:
+                        const TextStyle(color: AppColors.onPrimaryContainer)),
                 const SizedBox(height: 6),
                 Text(amount,
                     style: const TextStyle(
@@ -138,8 +139,9 @@ class _EarningsHero extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: AppColors.onPrimaryContainer)),
                 const SizedBox(height: 4),
-                const Text('This month',
-                    style: TextStyle(color: AppColors.onPrimaryContainer)),
+                Text(context.l10n.transporterThisMonth,
+                    style:
+                        const TextStyle(color: AppColors.onPrimaryContainer)),
               ],
             ),
           ),

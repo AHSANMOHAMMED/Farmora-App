@@ -20,8 +20,7 @@ class AvailableJobsScreen extends StatelessWidget {
         .toSet();
     final capacity = state.capacityKg > 0 ? state.capacityKg : null;
 
-    final requested =
-        state.jobs.where((j) => j.status == 'requested').toList();
+    final requested = state.jobs.where((j) => j.status == 'requested').toList();
 
     int score(TransportJob j) {
       var s = 0;
@@ -71,13 +70,13 @@ class AvailableJobsScreen extends StatelessWidget {
         ),
       ),
       body: !state.isVerified
-          ? const Center(
+          ? Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Verify your transporter account to see available jobs.',
+                  l10n.transporterVerifyToSeeJobs,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                  style: const TextStyle(color: AppColors.onSurfaceVariant),
                 ),
               ),
             )
@@ -88,7 +87,8 @@ class AvailableJobsScreen extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: jobs.length + 1,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return Padding(

@@ -6,6 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/geo.dart';
 import '../../../core/utils/firebase_values.dart';
 import '../../../models/user_role.dart';
@@ -34,7 +36,7 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
   Position? _myPosition;
   String _search = '';
   bool _locating = false;
-  String? _locationError;
+  _LocationProblem? _locationError;
 
   @override
   void initState() {
@@ -66,8 +68,7 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
           if (mounted) {
             setState(() {
               _locating = false;
-              _locationError =
-                  'Location permission is off — showing all transporters without distances.';
+              _locationError = _LocationProblem.permissionOff;
             });
           }
           return;
@@ -78,8 +79,7 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
         if (mounted) {
           setState(() {
             _locating = false;
-            _locationError =
-                'Device location is off — showing all transporters without distances.';
+            _locationError = _LocationProblem.deviceOff;
           });
         }
         return;
@@ -101,7 +101,7 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
       if (mounted) {
         setState(() {
           _locating = false;
-          _locationError = 'Could not get your location. Distances hidden.';
+          _locationError = _LocationProblem.failed;
         });
       }
     }
@@ -144,6 +144,7 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
     final state = context.watch<FarmoraState>();
     final isVerifiedUser = state.isVerified;
     final entries = _sorted;
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -154,9 +155,9 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Nearby Transporters',
-          style: TextStyle(
+        title: Text(
+          l10n.transporterNearbyTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -171,10 +172,11 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by name or district…',
+                hintText: l10n.transporterSearchNameDistrict,
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: _search.isNotEmpty
                     ? IconButton(
+                        tooltip: l10n.transporterClearSearch,
                         icon: const Icon(Icons.close_rounded),
                         onPressed: () {
                           _searchController.clear();
@@ -201,21 +203,27 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                TextButton.icon(
-                  onPressed: _locating ? null : _locateMe,
-                  icon: _locating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.my_location_rounded, size: 16),
-                  label: Text(_myPosition == null
-                      ? 'Use my location'
-                      : 'Location set — sorted by distance'),
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: _locating ? null : _locateMe,
+                    icon: _locating
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.my_location_rounded, size: 16),
+                    label: Text(
+                      _myPosition == null
+                          ? l10n.transporterUseMyLocation
+                          : l10n.transporterLocationSet,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
-                  '${entries.length} providers',
+                  l10n.transporterProvidersCount(entries.length),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -241,9 +249,16 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _locationError!,
-                        style: const TextStyle(
-                            fontFamily: 'Inter', fontSize: 11),
+                        switch (_locationError!) {
+                          _LocationProblem.permissionOff =>
+                            l10n.transporterLocationPermissionOff,
+                          _LocationProblem.deviceOff =>
+                            l10n.transporterDeviceLocationOff,
+                          _LocationProblem.failed =>
+                            l10n.transporterLocationFailed,
+                        },
+                        style:
+                            const TextStyle(fontFamily: 'Inter', fontSize: 11),
                       ),
                     ),
                   ],
@@ -252,11 +267,11 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
             ),
           Expanded(
             child: entries.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'No transport providers found yet. Check back soon — new providers join after admin verification.',
+                        l10n.transporterNoProviders,
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -280,6 +295,8 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
   }
 }
 
+enum _LocationProblem { permissionOff, deviceOff, failed }
+
 class _TransporterEntry {
   final Map<String, dynamic> data;
   final double? distanceKm;
@@ -293,8 +310,8 @@ class _TransporterCard extends StatelessWidget {
   const _TransporterCard({required this.entry, required this.canChat});
 
   String get _initials {
-    final name = (entry.data['displayName'] ?? entry.data['name'] ?? '?')
-        .toString();
+    final name =
+        (entry.data['displayName'] ?? entry.data['name'] ?? '?').toString();
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -305,7 +322,9 @@ class _TransporterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = entry.data;
-    final name = (t['displayName'] ?? t['name'] ?? 'Transporter').toString();
+    final l10n = context.l10n;
+    final name =
+        (t['displayName'] ?? t['name'] ?? l10n.roleTransporter).toString();
     final district = (t['district'] ?? '').toString();
     final vehicle = (t['vehicleType'] ?? '').toString();
     final registration = (t['vehicleRegistration'] ?? '').toString();
@@ -333,10 +352,10 @@ class _TransporterCard extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                backgroundImage: t['photoUrl'] != null &&
-                        t['photoUrl'].toString().isNotEmpty
-                    ? NetworkImage(t['photoUrl'].toString())
-                    : null,
+                backgroundImage:
+                    t['photoUrl'] != null && t['photoUrl'].toString().isNotEmpty
+                        ? NetworkImage(t['photoUrl'].toString())
+                        : null,
                 child: (t['photoUrl'] ?? '').toString().isEmpty
                     ? Text(
                         _initials,
@@ -424,7 +443,20 @@ class _TransporterCard extends StatelessWidget {
                       registration.isNotEmpty
                           ? '$vehicle · $registration'
                           : vehicle,
-                    if (capacity != null) 'Capacity: $capacity $capacityUnit',
+                    if (capacity != null)
+                      l10n.transporterCapacityLine(
+                        l10n.transporterCapacityAmount(
+                          capacity is num
+                              ? AppFormat.number(capacity,
+                                  decimals: capacity % 1 == 0 ? 0 : 1)
+                              : capacity.toString(),
+                          capacityUnit == 'tons'
+                              ? l10n.transporterUnitTons
+                              : capacityUnit == 'kg'
+                                  ? l10n.unitKg
+                                  : capacityUnit,
+                        ),
+                      ),
                   ].join(' • '),
                   style: const TextStyle(
                     fontFamily: 'Inter',
@@ -447,7 +479,9 @@ class _TransporterCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        available ? 'Available' : 'Busy',
+                        available
+                            ? l10n.transporterAvailable
+                            : l10n.transporterBusy,
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 10,
@@ -460,8 +494,7 @@ class _TransporterCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Tooltip(
-                      message: 'Messaging is order-scoped: open an order and '
-                          'tap Message to reach this provider directly.',
+                      message: l10n.transporterConnectTooltip,
                       child: OutlinedButton.icon(
                         onPressed: canChat
                             ? () => Navigator.of(context).push(
@@ -470,10 +503,9 @@ class _TransporterCard extends StatelessWidget {
                                   ),
                                 )
                             : null,
-                        icon:
-                            const Icon(Icons.chat_bubble_outline, size: 14),
-                        label: const Text('Connect',
-                            style: TextStyle(
+                        icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                        label: Text(l10n.transporterConnect,
+                            style: const TextStyle(
                                 fontFamily: 'Inter', fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,

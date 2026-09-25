@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_format.dart';
+import '../../../../core/localization/l10n.dart';
 import '../../application/job_suitability.dart';
 import '../../domain/collection_job.dart';
 import 'job_score_badge.dart';
@@ -34,7 +34,8 @@ class CollectionJobCard extends StatelessWidget {
     final isCompleted = job.status == CollectionJobStatus.completed;
     final displayDate =
         isCompleted ? (job.completedAt ?? job.updatedAt) : job.collectionDate;
-    final date = DateFormat('EEE, d MMM • h:mm a').format(displayDate);
+    final l10n = context.l10n;
+    final date = AppFormat.dateTime(displayDate);
     return Card(
       margin: EdgeInsets.zero,
       color: AppColors.surfaceContainerLowest,
@@ -102,7 +103,9 @@ class CollectionJobCard extends StatelessWidget {
               if (job.deliveryFeeMinor != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Delivery fee: Rs. ${(job.deliveryFeeMinor! / 100).toStringAsFixed(0)}',
+                  l10n.jobDeliveryFeeLine(
+                    AppFormat.lkr(job.deliveryFeeMinor! / 100),
+                  ),
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
@@ -113,7 +116,7 @@ class CollectionJobCard extends StatelessWidget {
               _RouteLine(
                 icon: Icons.trip_origin_rounded,
                 iconColor: AppColors.primary,
-                label: 'Pickup',
+                label: l10n.jobPickupLabel,
                 value: job.pickupLocation,
               ),
               Container(
@@ -125,7 +128,7 @@ class CollectionJobCard extends StatelessWidget {
               _RouteLine(
                 icon: Icons.location_on_rounded,
                 iconColor: AppColors.secondary,
-                label: 'Deliver',
+                label: l10n.jobDeliverLabel,
                 value: job.deliveryLocation,
               ),
               const SizedBox(height: 12),
@@ -136,7 +139,9 @@ class CollectionJobCard extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
-                      isCompleted ? 'Completed $date' : 'Collect $date',
+                      isCompleted
+                          ? l10n.jobCompletedOn(date)
+                          : l10n.jobCollectOn(date),
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.onSurfaceVariant,
@@ -152,7 +157,11 @@ class CollectionJobCard extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: onViewDetails,
-                      child: const Text('View details'),
+                      child: Text(
+                        l10n.commonViewDetails,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   if (actionLabel != null) ...[
@@ -169,7 +178,11 @@ class CollectionJobCard extends StatelessWidget {
                               )
                             : Icon(actionIcon ?? Icons.arrow_forward_rounded,
                                 size: 18),
-                        label: Text(actionLabel!),
+                        label: Text(
+                          actionLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ],
@@ -203,13 +216,16 @@ class _RouteLine extends StatelessWidget {
       children: [
         Icon(icon, size: 17, color: iconColor),
         const SizedBox(width: 9),
-        SizedBox(
-          width: 48,
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 48, maxWidth: 110),
           child: Text(
             label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             value,

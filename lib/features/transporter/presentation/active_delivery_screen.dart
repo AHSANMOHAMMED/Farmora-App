@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/delivery_location_service.dart';
@@ -34,7 +36,9 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     super.initState();
     _liveJob = widget.job;
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (widget.job.orderId != null && widget.job.orderId!.isNotEmpty && uid.isNotEmpty) {
+    if (widget.job.orderId != null &&
+        widget.job.orderId!.isNotEmpty &&
+        uid.isNotEmpty) {
       // The assigned transporter always reads their own job; fall back to a
       // direct doc subscription is unnecessary — transporterId scope suffices.
       _jobSub = _service.jobsByTransporterStream(uid).listen((jobs) {
@@ -71,8 +75,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok
-          ? 'Live location sharing is ON. Customers on this order can see you.'
-          : 'Location permission denied — enable it in Settings to share live location.'),
+          ? context.l10n.jobLiveSharingStarted
+          : context.l10n.jobLocationPermissionDenied),
       backgroundColor: ok ? AppColors.primary : AppColors.error,
     ));
   }
@@ -86,10 +90,9 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     setState(() => _pushing = false);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(pos != null
-          ? 'Location updated.'
-          : 'Could not get a GPS fix. Try again outdoors.'),
-      backgroundColor:
-          pos != null ? AppColors.primary : AppColors.error,
+          ? context.l10n.jobLocationUpdated
+          : context.l10n.jobNoGpsFix),
+      backgroundColor: pos != null ? AppColors.primary : AppColors.error,
     ));
   }
 
@@ -119,17 +122,17 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       if (context.mounted) Navigator.of(context).pop();
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not update delivery: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(context.l10n.jobCouldNotUpdateDelivery(
+                userMessage(error, action: 'update delivery')))));
       }
     }
   }
 
   void _callParty() async {
     // Phone numbers stay private — direct users to in-app chat instead.
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text(
-          'Calls go through the app: open chat to reach the farmer or buyer. Phone numbers stay private.'),
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(context.l10n.jobCallsPrivate),
     ));
   }
 
@@ -141,17 +144,22 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final destination = job.dropoff ?? job.route;
     final steps = [
-      ('Accepted', job.status != 'requested'),
-      ('Picked up', ['pickedUp', 'inTransit', 'delivered'].contains(job.status)),
-      ('In transit', ['inTransit', 'delivered'].contains(job.status)),
-      ('Delivered', job.status == 'delivered'),
+      (l10n.statusAccepted, job.status != 'requested'),
+      (
+        l10n.statusPickedUp,
+        ['pickedUp', 'inTransit', 'delivered'].contains(job.status)
+      ),
+      (l10n.statusInTransit, ['inTransit', 'delivered'].contains(job.status)),
+      (l10n.statusDelivered, job.status == 'delivered'),
     ];
     final courier = job.hasCourierLocation
         ? LatLng(job.courierLat!, job.courierLng!)
         : null;
-    final fresh = DeliveryLocationService.isLocationFresh(job.locationUpdatedAt);
+    final fresh =
+        DeliveryLocationService.isLocationFresh(job.locationUpdatedAt);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -162,9 +170,9 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Active Delivery',
-          style: TextStyle(
+        title: Text(
+          l10n.jobActiveDeliveryTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -173,12 +181,12 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Messages',
+            tooltip: l10n.messages,
             onPressed: _openChat,
             icon: const Icon(Icons.chat_bubble_outline),
           ),
           IconButton(
-            tooltip: 'Notifications',
+            tooltip: l10n.notifications,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             ),
@@ -222,7 +230,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Text(
-                          job.status.toUpperCase(),
+                          statusLabel(job.status).toUpperCase(),
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
@@ -240,7 +248,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Destination: $destination',
+                          l10n.jobDestinationLine(destination),
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
@@ -252,7 +260,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   ),
                   if (job.fee.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text('Fee: ${job.fee}',
+                    Text(l10n.jobFeeLine(job.fee),
                         style: const TextStyle(fontFamily: 'Inter')),
                   ],
                 ],
@@ -276,7 +284,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               progress: RouteProgressMap.progressForJobStatus(job.status),
               pickupLabel: job.pickup ?? job.route,
               dropoffLabel: job.dropoff ?? job.detail,
-              statusLabel: '${job.title} • ${job.status.toUpperCase()}',
+              statusLabel:
+                  '${job.title} • ${statusLabel(job.status).toUpperCase()}',
               pickup: job.pickupLat != null && job.pickupLng != null
                   ? LatLng(job.pickupLat!, job.pickupLng!)
                   : null,
@@ -286,9 +295,9 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               courier: courier,
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Delivery Status',
-              style: TextStyle(
+            Text(
+              l10n.jobDeliveryStatusTitle,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -306,7 +315,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   for (var i = 0; i < steps.length; i++)
                     _buildTimelineStep(
                       steps[i].$1,
-                      steps[i].$2 ? 'Done' : 'Pending',
+                      steps[i].$2 ? l10n.jobStepDone : l10n.statusPending,
                       steps[i].$2,
                       i < steps.length - 1 && steps[i].$2,
                       isLast: i == steps.length - 1,
@@ -321,7 +330,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _callParty,
                     icon: const Icon(Icons.phone_outlined, size: 16),
-                    label: const Text('Call'),
+                    label: Text(l10n.call),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -329,7 +338,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _openChat,
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                    label: const Text('Chat'),
+                    label: Text(l10n.chat),
                   ),
                 ),
               ],
@@ -342,7 +351,8 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               padding: const EdgeInsets.all(16),
               child: FilledButton(
                 onPressed: () => _transition(context, job.nextStatuses.first),
-                child: Text('Mark ${job.nextStatuses.first}'),
+                child: Text(
+                    l10n.jobMarkStatus(statusLabel(job.nextStatuses.first))),
               ),
             )
           : null,
@@ -419,6 +429,7 @@ class _LiveSharingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canShare = isActive;
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -446,10 +457,10 @@ class _LiveSharingCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   sharing
-                      ? 'Live location sharing ON'
+                      ? l10n.jobLiveSharingOn
                       : (canShare
-                          ? 'Share live location'
-                          : 'Location sharing unavailable for this job state'),
+                          ? l10n.jobShareLiveLocation
+                          : l10n.jobSharingUnavailable),
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
@@ -467,7 +478,7 @@ class _LiveSharingCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    fresh ? 'LIVE' : 'STALE',
+                    fresh ? l10n.jobLiveBadge : l10n.jobStaleBadge,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
@@ -479,9 +490,7 @@ class _LiveSharingCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            sharing
-                ? 'The farmer and buyer on this order can see your position in real time. Sharing stops automatically after delivery.'
-                : 'While a delivery is accepted and in progress you can broadcast your GPS position so the farmer and buyer can track you live.',
+            sharing ? l10n.jobSharingOnHelp : l10n.jobSharingOffHelp,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
@@ -500,12 +509,15 @@ class _LiveSharingCard extends StatelessWidget {
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2))
                         : Icon(sharing
                             ? Icons.refresh_rounded
                             : Icons.play_arrow_rounded),
-                    label: Text(sharing ? 'Restart' : 'Start sharing'),
+                    label: Text(
+                      sharing ? l10n.jobRestartSharing : l10n.jobStartSharing,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -516,10 +528,13 @@ class _LiveSharingCard extends StatelessWidget {
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2))
+                            child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.upload_rounded, size: 16),
-                    label: const Text('Update now'),
+                    label: Text(
+                      l10n.jobUpdateNow,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ],

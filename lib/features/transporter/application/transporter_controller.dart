@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+
 import '../data/collection_job_repository.dart';
 import '../data/transporter_account_repository.dart';
 import '../domain/collection_job.dart';
@@ -80,8 +83,7 @@ class TransporterController extends ChangeNotifier {
 
   /// Best-fit score (0–100) for an open job, based on the transporter's
   /// vehicle capacity and the job's collection-date urgency.
-  JobSuitability suitabilityFor(CollectionJob job) =>
-      _scorer.score(job);
+  JobSuitability suitabilityFor(CollectionJob job) => _scorer.score(job);
 
   /// Returns true when the transporter has reported an issue for [jobId]
   /// (this session or persisted from a previous one).
@@ -124,20 +126,17 @@ class TransporterController extends ChangeNotifier {
       );
 
   int get thisWeekEarningsMinor => completedJobs
-      .where((job) =>
-          (job.completedAt ?? job.updatedAt)
-              .isAfter(DateTime.now().subtract(const Duration(days: 7))))
+      .where((job) => (job.completedAt ?? job.updatedAt)
+          .isAfter(DateTime.now().subtract(const Duration(days: 7))))
       .fold(0, (sum, job) => sum + (job.deliveryFeeMinor ?? 0));
 
-  int get todayEarningsMinor => completedJobs
-      .where((job) {
+  int get todayEarningsMinor => completedJobs.where((job) {
         final date = job.completedAt ?? job.updatedAt;
         final now = DateTime.now();
         return date.year == now.year &&
             date.month == now.month &&
             date.day == now.day;
-      })
-      .fold(0, (sum, job) => sum + (job.deliveryFeeMinor ?? 0));
+      }).fold(0, (sum, job) => sum + (job.deliveryFeeMinor ?? 0));
 
   List<String> get locationOptions {
     final values = unfilteredAvailableJobs
@@ -341,13 +340,11 @@ class TransporterController extends ChangeNotifier {
   Future<TransporterActionResult> acceptJob(String jobId) async {
     final localJob = jobById(jobId);
     if (providerId.isEmpty) {
-      return const TransporterActionResult.failure(
-        'Please sign in again to accept this job.',
-      );
+      return TransporterActionResult.failure(L10n.current.jobSignInToAccept);
     }
     if (localJob == null || localJob.status != CollectionJobStatus.open) {
-      return const TransporterActionResult.failure(
-        'This job is no longer available.',
+      return TransporterActionResult.failure(
+        L10n.current.jobNoLongerAvailable,
       );
     }
     try {
@@ -358,13 +355,13 @@ class TransporterController extends ChangeNotifier {
       _replaceJob(updated);
       _addLocalNotification(
         type: TransporterNotificationType.accepted,
-        title: 'Job accepted successfully',
-        message: '${updated.produceName} has been added to your active jobs.',
+        title: L10n.current.jobAcceptedNotifTitle,
+        message: L10n.current.jobAcceptedNotifBody(updated.produceName),
         jobId: updated.id,
       );
       notifyListeners();
-      return const TransporterActionResult.success(
-        'Job accepted and added to My Jobs.',
+      return TransporterActionResult.success(
+        L10n.current.jobAcceptedAddedToMyJobs,
       );
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
@@ -392,9 +389,7 @@ class TransporterController extends ChangeNotifier {
     String description = '',
   }) async {
     if (jobById(jobId) == null || !activeJobs.any((job) => job.id == jobId)) {
-      return const TransporterActionResult.failure(
-        'Only active deliveries can have an issue reported.',
-      );
+      return TransporterActionResult.failure(L10n.current.jobIssueOnlyActive);
     }
     try {
       await _repository.reportIssue(
@@ -404,8 +399,8 @@ class TransporterController extends ChangeNotifier {
         description: description,
       );
       _reportedIssues.add(jobId);
-      return const TransporterActionResult.success(
-        'Issue reported. Farmora support will follow up shortly.',
+      return TransporterActionResult.success(
+        L10n.current.jobIssueReportedSuccess,
       );
     } catch (error) {
       // Keep the issue visible locally even if persistence fails.
@@ -419,8 +414,10 @@ class TransporterController extends ChangeNotifier {
     required int stars,
     String comment = '',
   }) async {
-    if (stars < 1 || stars > 5 || !completedJobs.any((job) => job.id == jobId)) {
-      return const TransporterActionResult.failure('Please select a valid rating.');
+    if (stars < 1 ||
+        stars > 5 ||
+        !completedJobs.any((job) => job.id == jobId)) {
+      return TransporterActionResult.failure(L10n.current.jobInvalidRating);
     }
     try {
       await _repository.rateDelivery(
@@ -430,17 +427,15 @@ class TransporterController extends ChangeNotifier {
         comment: comment,
       );
       _ratings[jobId] = (stars: stars, comment: comment.trim());
-      return const TransporterActionResult.success('Thank you for your feedback.');
+      return TransporterActionResult.success(L10n.current.jobThanksFeedback);
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
     }
   }
 
   Future<TransporterActionResult> _transitionJob(
-    String jobId,
-    CollectionJobStatus nextStatus,
-    {String? reason}
-  ) async {
+      String jobId, CollectionJobStatus nextStatus,
+      {String? reason}) async {
     try {
       final updated = await _repository.updateStatus(
         jobId: jobId,
@@ -452,18 +447,20 @@ class TransporterController extends ChangeNotifier {
       if (nextStatus == CollectionJobStatus.completed) {
         _addLocalNotification(
           type: TransporterNotificationType.completed,
-          title: 'Delivery completed',
-          message: '${updated.produceName} was delivered successfully.',
+          title: L10n.current.jobDeliveryCompletedNotifTitle,
+          message: L10n.current.jobDeliveryCompletedNotifBody(
+            updated.produceName,
+          ),
           jobId: updated.id,
         );
       }
       notifyListeners();
       return TransporterActionResult.success(
         switch (nextStatus) {
-          CollectionJobStatus.collected => 'Pickup confirmed.',
-          CollectionJobStatus.inTransit => 'Delivery started.',
-          CollectionJobStatus.cancelled => 'Job cancelled.',
-          _ => 'Delivery completed successfully.',
+          CollectionJobStatus.collected => L10n.current.jobPickupConfirmed,
+          CollectionJobStatus.inTransit => L10n.current.jobDeliveryStarted,
+          CollectionJobStatus.cancelled => L10n.current.jobCancelledMessage,
+          _ => L10n.current.jobDeliveryCompletedSuccess,
         },
       );
     } catch (error) {
@@ -515,7 +512,9 @@ class TransporterController extends ChangeNotifier {
         vehicleDescription: vehicleDescription,
         isAvailable: value,
       );
-      return const TransporterActionResult.success('Availability updated.');
+      return TransporterActionResult.success(
+        L10n.current.transporterAvailabilityUpdated,
+      );
     } catch (error) {
       isAvailable = previous;
       notifyListeners();
@@ -533,13 +532,13 @@ class TransporterController extends ChangeNotifier {
     required String description,
   }) async {
     if (name.trim().isEmpty || phone.trim().isEmpty) {
-      return const TransporterActionResult.failure(
-        'Name and phone number are required.',
+      return TransporterActionResult.failure(
+        L10n.current.transporterNamePhoneRequired,
       );
     }
     if (registration.trim().isEmpty) {
-      return const TransporterActionResult.failure(
-        'Vehicle registration number is required.',
+      return TransporterActionResult.failure(
+        L10n.current.transporterRegistrationRequired,
       );
     }
     try {
@@ -553,8 +552,8 @@ class TransporterController extends ChangeNotifier {
         vehicleDescription: description.trim(),
         isAvailable: isAvailable,
       );
-      return const TransporterActionResult.success(
-        'Profile updated successfully.',
+      return TransporterActionResult.success(
+        L10n.current.transporterProfileUpdated,
       );
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
@@ -600,9 +599,10 @@ class TransporterController extends ChangeNotifier {
       (vehicleCapacityUnit == 'tons' ? 1000 : 1);
 
   void _updateScorer() {
-    final capacityKg = (vehicleCapacity ?? 0) *
-        (vehicleCapacityUnit == 'tons' ? 1000 : 1);
-    _scorer = JobSuitabilityScorer(vehicleCapacityKg: capacityKg > 0 ? capacityKg : null);
+    final capacityKg =
+        (vehicleCapacity ?? 0) * (vehicleCapacityUnit == 'tons' ? 1000 : 1);
+    _scorer = JobSuitabilityScorer(
+        vehicleCapacityKg: capacityKg > 0 ? capacityKg : null);
   }
 
   double _capacityInKg(CollectionJob job) {
@@ -645,12 +645,10 @@ class TransporterController extends ChangeNotifier {
     );
   }
 
+  /// Localized, user-safe message for [error] (never the raw exception).
   String _friendlyError(Object error) {
     if (error is CollectionJobException) return error.message;
-    final message = error.toString().replaceFirst('Exception: ', '');
-    return message.isEmpty
-        ? 'Something went wrong. Please try again.'
-        : message;
+    return describeError(error);
   }
 
   @override

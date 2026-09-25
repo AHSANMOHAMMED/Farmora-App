@@ -1,3 +1,5 @@
+import '../../../core/localization/l10n.dart';
+
 enum CollectionJobStatus {
   open,
   accepted,
@@ -7,12 +9,12 @@ enum CollectionJobStatus {
   cancelled;
 
   String get label => switch (this) {
-        CollectionJobStatus.open => 'Open',
-        CollectionJobStatus.accepted => 'Accepted',
-        CollectionJobStatus.collected => 'Collected',
-        CollectionJobStatus.inTransit => 'In transit',
-        CollectionJobStatus.completed => 'Completed',
-        CollectionJobStatus.cancelled => 'Cancelled',
+        CollectionJobStatus.open => L10n.current.statusOpen,
+        CollectionJobStatus.accepted => L10n.current.statusAccepted,
+        CollectionJobStatus.collected => L10n.current.statusCollected,
+        CollectionJobStatus.inTransit => L10n.current.statusInTransit,
+        CollectionJobStatus.completed => L10n.current.statusCompleted,
+        CollectionJobStatus.cancelled => L10n.current.statusCancelled,
       };
 
   String get apiValue => switch (this) {
@@ -43,15 +45,22 @@ enum CollectionJobStatus {
 /// [label] is human readable, [at] is when the step happened and [isDone]
 /// marks completed steps. Pending steps are rendered greyed out.
 enum CollectionJobTimelineStep {
-  created('Job created', null),
-  accepted('Accepted', CollectionJobStatus.accepted),
-  collected('Collected', CollectionJobStatus.collected),
-  inTransit('In Transit', CollectionJobStatus.inTransit),
-  delivered('Delivered', CollectionJobStatus.completed);
+  created(null),
+  accepted(CollectionJobStatus.accepted),
+  collected(CollectionJobStatus.collected),
+  inTransit(CollectionJobStatus.inTransit),
+  delivered(CollectionJobStatus.completed);
 
-  const CollectionJobTimelineStep(this.label, this.status);
+  const CollectionJobTimelineStep(this.status);
 
-  final String label;
+  /// Display label in the current app language.
+  String get label => switch (this) {
+        CollectionJobTimelineStep.created => L10n.current.jobTimelineCreated,
+        CollectionJobTimelineStep.accepted => L10n.current.statusAccepted,
+        CollectionJobTimelineStep.collected => L10n.current.statusCollected,
+        CollectionJobTimelineStep.inTransit => L10n.current.statusInTransit,
+        CollectionJobTimelineStep.delivered => L10n.current.statusDelivered,
+      };
 
   /// The job status that completes this step, or null for [created].
   final CollectionJobStatus? status;
@@ -202,16 +211,19 @@ class CollectionJob {
       farmerId: map['farmerId']?.toString() ?? '',
       buyerId: map['buyerId']?.toString() ?? '',
       logisticsProviderId: map['logisticsProviderId']?.toString(),
-      produceName: map['produceName']?.toString() ?? 'Unknown produce',
+      produceName:
+          map['produceName']?.toString() ?? L10n.current.jobUnknownProduce,
       quantity: (map['quantity'] as num?)?.toDouble() ?? 0,
       unit: map['unit']?.toString() ?? 'kg',
-      pickupLocation: map['pickupLocation']?.toString() ?? 'Not provided',
-      deliveryLocation: map['deliveryLocation']?.toString() ?? 'Not provided',
+      pickupLocation:
+          map['pickupLocation']?.toString() ?? L10n.current.jobNotProvided,
+      deliveryLocation:
+          map['deliveryLocation']?.toString() ?? L10n.current.jobNotProvided,
       collectionDate: readDate('collectionDate'),
       notes: map['notes']?.toString(),
-      farmerName: map['farmerName']?.toString() ?? 'Farmer',
+      farmerName: map['farmerName']?.toString() ?? L10n.current.roleFarmer,
       farmerPhone: map['farmerPhone']?.toString() ?? '',
-      buyerName: map['buyerName']?.toString() ?? 'Buyer',
+      buyerName: map['buyerName']?.toString() ?? L10n.current.roleBuyer,
       buyerPhone: map['buyerPhone']?.toString() ?? '',
       status: CollectionJobStatus.fromValue(map['status']?.toString()),
       createdAt: readDate('createdAt'),

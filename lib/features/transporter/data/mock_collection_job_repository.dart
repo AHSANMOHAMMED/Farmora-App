@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../core/localization/l10n.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
 
@@ -58,13 +59,11 @@ class MockCollectionJobRepository implements CollectionJobRepository {
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     final index = _jobs.indexWhere((job) => job.id == jobId);
-    if (index < 0) throw const CollectionJobException('Job not found.');
+    if (index < 0) throw CollectionJobException(L10n.current.jobNotFound);
     final job = _jobs[index];
     if (job.status != CollectionJobStatus.open ||
         job.logisticsProviderId != null) {
-      throw const CollectionJobException(
-        'This job has already been accepted by another provider.',
-      );
+      throw CollectionJobException(L10n.current.jobAlreadyAccepted);
     }
     final now = DateTime.now();
     _jobs[index] = job.copyWith(
@@ -86,26 +85,25 @@ class MockCollectionJobRepository implements CollectionJobRepository {
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     final index = _jobs.indexWhere((job) => job.id == jobId);
-    if (index < 0) throw const CollectionJobException('Job not found.');
+    if (index < 0) throw CollectionJobException(L10n.current.jobNotFound);
     final job = _jobs[index];
     if (job.logisticsProviderId != logisticsProviderId) {
-      throw const CollectionJobException('You are not assigned to this job.');
+      throw CollectionJobException(L10n.current.jobNotAssigned);
     }
 
     final allowed = switch (job.status) {
-      CollectionJobStatus.accepted =>
-        status == CollectionJobStatus.collected ||
-        status == CollectionJobStatus.cancelled,
+      CollectionJobStatus.accepted => status == CollectionJobStatus.collected ||
+          status == CollectionJobStatus.cancelled,
       CollectionJobStatus.collected =>
         status == CollectionJobStatus.inTransit ||
-        status == CollectionJobStatus.completed ||
-        status == CollectionJobStatus.cancelled,
+            status == CollectionJobStatus.completed ||
+            status == CollectionJobStatus.cancelled,
       CollectionJobStatus.inTransit => status == CollectionJobStatus.completed,
       _ => false,
     };
     if (!allowed) {
       throw CollectionJobException(
-        'Cannot change ${job.status.label} to ${status.label}.',
+        L10n.current.jobCannotChangeStatus(job.status.label, status.label),
       );
     }
 
@@ -136,7 +134,7 @@ class MockCollectionJobRepository implements CollectionJobRepository {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     final job = _find(jobId);
     if (job.logisticsProviderId != logisticsProviderId) {
-      throw const CollectionJobException('You are not assigned to this job.');
+      throw CollectionJobException(L10n.current.jobNotAssigned);
     }
     _issues[jobId] = JobIssueReport(
       jobId: jobId,
@@ -158,10 +156,10 @@ class MockCollectionJobRepository implements CollectionJobRepository {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     final job = _find(jobId);
     if (job.logisticsProviderId != logisticsProviderId) {
-      throw const CollectionJobException('You are not assigned to this job.');
+      throw CollectionJobException(L10n.current.jobNotAssigned);
     }
     if (stars < 1 || stars > 5) {
-      throw const CollectionJobException('Please select a valid rating.');
+      throw CollectionJobException(L10n.current.jobInvalidRating);
     }
     _ratings[jobId] = JobDeliveryRating(
       jobId: jobId,
@@ -187,7 +185,7 @@ class MockCollectionJobRepository implements CollectionJobRepository {
     try {
       return _jobs.firstWhere((job) => job.id == id);
     } on StateError {
-      throw const CollectionJobException('Job not found.');
+      throw CollectionJobException(L10n.current.jobNotFound);
     }
   }
 

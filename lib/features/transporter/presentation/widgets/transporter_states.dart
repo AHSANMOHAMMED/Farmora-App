@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/l10n.dart';
 
 class TransporterEmptyState extends StatelessWidget {
   final IconData icon;
@@ -71,9 +72,9 @@ class TransporterErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return TransporterEmptyState(
       icon: Icons.cloud_off_outlined,
-      title: 'Could not load jobs',
+      title: context.l10n.transporterCouldNotLoadJobs,
       message: message,
-      actionLabel: 'Try again',
+      actionLabel: context.l10n.commonRetry,
       onAction: onRetry,
     );
   }

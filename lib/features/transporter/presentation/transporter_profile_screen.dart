@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../providers/farmora_state.dart';
 import '../../auth/presentation/welcome_screen.dart';
 import '../application/transporter_controller.dart';
@@ -13,9 +15,10 @@ class TransporterProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(l10n.profile)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
         children: [
@@ -60,11 +63,11 @@ class TransporterProfileScreen extends StatelessWidget {
                 color:
                     state.isAvailable ? AppColors.primary : AppColors.textMuted,
               ),
-              title: const Text('Availability',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              title: Text(l10n.availability,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(state.isAvailable
-                  ? 'Available for new jobs'
-                  : 'Unavailable for new jobs'),
+                  ? l10n.transporterAvailableForNewJobs
+                  : l10n.transporterUnavailableForNewJobs),
             ),
           ),
           const SizedBox(height: 8),
@@ -72,9 +75,9 @@ class TransporterProfileScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading:
                 const Icon(Icons.edit_note_rounded, color: AppColors.primary),
-            title: const Text('Manage vehicle',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text('Type, registration and load capacity'),
+            title: Text(l10n.transporterManageVehicle,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(l10n.transporterManageVehicleHint),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -83,8 +86,9 @@ class TransporterProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Vehicle information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          Text(l10n.transporterVehicleInfo,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Card(
             margin: EdgeInsets.zero,
@@ -95,14 +99,14 @@ class TransporterProfileScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.local_shipping_outlined,
                       color: AppColors.primary),
-                  title: const Text('Vehicle type'),
+                  title: Text(l10n.vehicleType),
                   subtitle: Text(state.vehicleType),
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(
                   leading:
                       const Icon(Icons.pin_outlined, color: AppColors.primary),
-                  title: const Text('Registration number'),
+                  title: Text(l10n.transporterRegistrationNumber),
                   subtitle: Text(state.vehicleRegistration),
                 ),
                 if (state.vehicleCapacity != null) ...[
@@ -110,9 +114,12 @@ class TransporterProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.scale_outlined,
                         color: AppColors.primary),
-                    title: const Text('Maximum capacity'),
+                    title: Text(l10n.transporterMaxCapacity),
                     subtitle: Text(
-                      '${state.vehicleCapacity!.toStringAsFixed(0)} ${state.vehicleCapacityUnit}',
+                      l10n.transporterCapacityAmount(
+                        AppFormat.number(state.vehicleCapacity!),
+                        _unitLabel(l10n, state.vehicleCapacityUnit),
+                      ),
                     ),
                   ),
                 ],
@@ -121,7 +128,7 @@ class TransporterProfileScreen extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.notes_outlined,
                         color: AppColors.primary),
-                    title: const Text('Description'),
+                    title: Text(l10n.description),
                     subtitle: Text(state.vehicleDescription),
                   ),
                 ],
@@ -138,8 +145,8 @@ class TransporterProfileScreen extends StatelessWidget {
                 ListTile(
                   leading:
                       const Icon(Icons.edit_outlined, color: AppColors.primary),
-                  title: const Text('Edit profile',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(l10n.editProfile,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -150,8 +157,8 @@ class TransporterProfileScreen extends StatelessWidget {
                 ListTile(
                   leading:
                       const Icon(Icons.logout_rounded, color: AppColors.error),
-                  title: const Text('Logout',
-                      style: TextStyle(
+                  title: Text(l10n.logOut,
+                      style: const TextStyle(
                           fontWeight: FontWeight.w700, color: AppColors.error)),
                   onTap: () => _logout(context),
                 ),
@@ -162,6 +169,13 @@ class TransporterProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  static String _unitLabel(AppLocalizations l10n, String unit) =>
+      switch (unit) {
+        'tons' => l10n.transporterUnitTons,
+        'kg' => l10n.unitKg,
+        _ => unit,
+      };
 
   static String _initials(String name) {
     final parts = name
@@ -176,9 +190,9 @@ class TransporterProfileScreen extends StatelessWidget {
   Future<void> _logout(BuildContext context) async {
     final confirmed = await confirmTransporterAction(
       context,
-      title: 'Log out?',
-      message: 'You will need to sign in again to manage collection jobs.',
-      confirmLabel: 'Log out',
+      title: context.l10n.transporterLogoutConfirmTitle,
+      message: context.l10n.transporterLogoutConfirmMessage,
+      confirmLabel: context.l10n.logOut,
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
@@ -238,56 +252,61 @@ class _EditTransporterProfileScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Edit profile')),
+      appBar: AppBar(title: Text(l10n.editProfile)),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _field(_name, 'Full name', Icons.person_outline_rounded),
+            _field(
+                _name, l10n.transporterFullName, Icons.person_outline_rounded),
             const SizedBox(height: 12),
-            _field(_phone, 'Phone number', Icons.phone_outlined,
+            _field(_phone, l10n.transporterPhoneNumber, Icons.phone_outlined,
                 keyboardType: TextInputType.phone),
             const SizedBox(height: 22),
-            const Text(
-              'Vehicle information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            Text(
+              l10n.transporterVehicleInfo,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
-            _field(_vehicle, 'Vehicle type', Icons.local_shipping_outlined),
+            _field(_vehicle, l10n.vehicleType, Icons.local_shipping_outlined),
             const SizedBox(height: 12),
-            _field(_registration, 'Registration number', Icons.pin_outlined),
+            _field(_registration, l10n.transporterRegistrationNumber,
+                Icons.pin_outlined),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _capacityUnit,
-              decoration: const InputDecoration(
-                labelText: 'Capacity unit',
-                prefixIcon: Icon(Icons.scale_outlined),
+              decoration: InputDecoration(
+                labelText: l10n.transporterCapacityUnit,
+                prefixIcon: const Icon(Icons.scale_outlined),
               ),
-              items: const [
-                DropdownMenuItem(value: 'kg', child: Text('Kilograms (kg)')),
-                DropdownMenuItem(value: 'tons', child: Text('Tons')),
+              items: [
+                DropdownMenuItem(
+                    value: 'kg', child: Text(l10n.transporterUnitKilograms)),
+                DropdownMenuItem(
+                    value: 'tons', child: Text(l10n.transporterUnitTonsOption)),
               ],
               onChanged: (value) =>
                   setState(() => _capacityUnit = value ?? 'kg'),
             ),
             const SizedBox(height: 12),
-            _field(_capacity, 'Maximum load capacity',
+            _field(_capacity, l10n.transporterMaxLoadCapacity,
                 Icons.fitness_center_outlined,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 )),
             const SizedBox(height: 12),
-            _field(_description, 'Vehicle description (optional)',
+            _field(_description, l10n.transporterVehicleDescriptionOptional,
                 Icons.notes_outlined,
                 required: false),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('Save changes'),
+              label: Text(l10n.transporterSaveChanges),
             ),
           ],
         ),
@@ -308,7 +327,7 @@ class _EditTransporterProfileScreenState
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
       validator: required
           ? (value) => value == null || value.trim().isEmpty
-              ? '$label is required'
+              ? context.l10n.transporterFieldRequired(label)
               : null
           : null,
     );

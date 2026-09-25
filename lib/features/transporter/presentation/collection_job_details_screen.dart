@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'widgets/job_status_chip.dart';
@@ -28,15 +29,16 @@ class _CollectionJobDetailsScreenState
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
+    final l10n = context.l10n;
     final job = state.jobById(widget.jobId);
     if (job == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Job details')),
+        appBar: AppBar(title: Text(l10n.jobDetails)),
         body: TransporterEmptyState(
           icon: Icons.error_outline_rounded,
-          title: 'Job unavailable',
-          message: 'This job may have been removed. Return to the jobs list.',
-          actionLabel: 'Go back',
+          title: l10n.jobUnavailableTitle,
+          message: l10n.jobUnavailableMessage,
+          actionLabel: l10n.jobGoBack,
           onAction: () => Navigator.maybePop(context),
         ),
       );
@@ -44,24 +46,24 @@ class _CollectionJobDetailsScreenState
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: Text('Job #${job.id}')),
+      appBar: AppBar(title: Text(l10n.jobNumberTitle(job.id))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
           _JobHero(job: job),
           const SizedBox(height: 14),
           _Section(
-            title: 'Job timeline',
+            title: l10n.jobTimelineTitle,
             children: [JobTimeline(job: job)],
           ),
           if (job.logisticsProviderId == state.providerId &&
               state.vehicleCapacity != null) ...[
             const SizedBox(height: 14),
             _Section(
-              title: 'Vehicle suitability',
+              title: l10n.jobVehicleSuitability,
               children: [
                 Text(
-                  _capacityText(state, job),
+                  _capacityText(l10n, state, job),
                   style: TextStyle(
                     color: _isSuitable(state, job)
                         ? AppColors.primary
@@ -74,34 +76,33 @@ class _CollectionJobDetailsScreenState
           ],
           const SizedBox(height: 18),
           _Section(
-            title: 'Collection route',
+            title: l10n.jobCollectionRoute,
             children: [
               _DetailRow(
                 icon: Icons.trip_origin_rounded,
-                label: 'Pickup',
+                label: l10n.jobPickupLabel,
                 value: job.pickupLocation,
               ),
               _DetailRow(
                 icon: Icons.location_on_rounded,
-                label: 'Delivery',
+                label: l10n.jobDeliveryLabel,
                 value: job.deliveryLocation,
               ),
               _DetailRow(
                 icon: Icons.calendar_month_outlined,
-                label: 'Collection',
-                value: DateFormat('EEEE, d MMMM yyyy • h:mm a')
-                    .format(job.collectionDate),
+                label: l10n.jobCollectionLabel,
+                value: AppFormat.dateTime(job.collectionDate),
               ),
             ],
           ),
           const SizedBox(height: 14),
           _Section(
-            title: 'Collection notes',
+            title: l10n.jobCollectionNotes,
             children: [
               Text(
                 job.notes?.trim().isNotEmpty == true
                     ? job.notes!
-                    : 'No special collection instructions were provided.',
+                    : l10n.jobNoNotes,
                 style: const TextStyle(
                   color: AppColors.onSurfaceVariant,
                   height: 1.45,
@@ -113,7 +114,7 @@ class _CollectionJobDetailsScreenState
           if (job.logisticsProviderId == state.providerId &&
               job.status != CollectionJobStatus.open) ...[
             _Section(
-              title: 'Contacts',
+              title: l10n.jobContacts,
               children: [
                 _ContactRow(
                   icon: Icons.agriculture_outlined,
@@ -134,7 +135,7 @@ class _CollectionJobDetailsScreenState
             ),
             const SizedBox(height: 14),
             _Section(
-              title: 'Navigation',
+              title: l10n.jobNavigation,
               children: [
                 Wrap(
                   spacing: 8,
@@ -143,12 +144,12 @@ class _CollectionJobDetailsScreenState
                     OutlinedButton.icon(
                       onPressed: () => _openLocation(job.pickupLocation),
                       icon: const Icon(Icons.trip_origin_rounded),
-                      label: const Text('View pickup'),
+                      label: Text(l10n.jobViewPickup),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => _openLocation(job.deliveryLocation),
                       icon: const Icon(Icons.navigation_outlined),
-                      label: const Text('Navigate to delivery'),
+                      label: Text(l10n.navigateToDelivery),
                     ),
                   ],
                 ),
@@ -158,19 +159,18 @@ class _CollectionJobDetailsScreenState
           if (job.completedAt != null) ...[
             const SizedBox(height: 14),
             _Section(
-              title: 'Completion',
+              title: l10n.jobCompletion,
               children: [
                 _DetailRow(
                   icon: Icons.task_alt_rounded,
-                  label: 'Delivered',
-                  value: DateFormat('d MMM yyyy • h:mm a')
-                      .format(job.completedAt!),
+                  label: l10n.statusDelivered,
+                  value: AppFormat.dateTime(job.completedAt!),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             _Section(
-              title: 'Transaction feedback',
+              title: l10n.jobTransactionFeedback,
               children: [
                 if (state.ratingFor(job.id) != null) ...[
                   Row(
@@ -178,16 +178,14 @@ class _CollectionJobDetailsScreenState
                       for (var i = 0; i < state.ratingFor(job.id)!.stars; i++)
                         const Icon(Icons.star_rounded,
                             size: 22, color: Colors.amber),
-                      for (var i = state.ratingFor(job.id)!.stars;
-                          i < 5;
-                          i++)
+                      for (var i = state.ratingFor(job.id)!.stars; i < 5; i++)
                         const Icon(Icons.star_outline_rounded,
                             size: 22, color: Colors.amber),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           state.ratingFor(job.id)!.comment.isEmpty
-                              ? 'Rated'
+                              ? l10n.jobRated
                               : state.ratingFor(job.id)!.comment,
                           style: const TextStyle(
                             color: AppColors.onSurfaceVariant,
@@ -202,8 +200,8 @@ class _CollectionJobDetailsScreenState
                   onPressed: () => _rateDelivery(context, state, job),
                   icon: const Icon(Icons.star_outline_rounded),
                   label: Text(state.ratingFor(job.id) != null
-                      ? 'Update rating'
-                      : 'Rate this transaction'),
+                      ? l10n.jobUpdateRating
+                      : l10n.jobRateTransaction),
                 ),
               ],
             ),
@@ -212,17 +210,19 @@ class _CollectionJobDetailsScreenState
               job.status.isActive) ...[
             const SizedBox(height: 14),
             _Section(
-              title: 'Delivery support',
+              title: l10n.jobDeliverySupport,
               children: [
                 if (state.hasReportedIssue(job.id)) ...[
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.report_rounded, size: 18, color: Colors.orange),
-                      SizedBox(width: 8),
+                      const Icon(Icons.report_rounded,
+                          size: 18, color: Colors.orange),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Issue reported — Farmora support is following up.',
-                          style: TextStyle(color: AppColors.onSurfaceVariant),
+                          l10n.jobIssueReportedNote,
+                          style: const TextStyle(
+                              color: AppColors.onSurfaceVariant),
                         ),
                       ),
                     ],
@@ -233,8 +233,8 @@ class _CollectionJobDetailsScreenState
                   onPressed: () => _reportIssue(context, state, job),
                   icon: const Icon(Icons.report_problem_outlined),
                   label: Text(state.hasReportedIssue(job.id)
-                      ? 'Report another issue'
-                      : 'Report an issue'),
+                      ? l10n.jobReportAnotherIssue
+                      : l10n.jobReportIssue),
                 ),
               ],
             ),
@@ -250,28 +250,29 @@ class _CollectionJobDetailsScreenState
     TransporterController state,
     CollectionJob job,
   ) {
+    final l10n = context.l10n;
     String? label;
     IconData icon = Icons.check_rounded;
     VoidCallback? action;
     if (job.status == CollectionJobStatus.open) {
-      label = 'Accept Job';
+      label = l10n.jobAcceptJobButton;
       icon = Icons.assignment_turned_in_outlined;
       action = () => _accept(context, state, job);
     } else if (job.logisticsProviderId == state.providerId &&
         job.status == CollectionJobStatus.accepted) {
-      label = 'Mark as Collected';
+      label = l10n.jobMarkAsCollected;
       icon = Icons.inventory_2_outlined;
       action = () => _updateStatus(context, state, job,
           nextStatus: CollectionJobStatus.collected);
     } else if (job.logisticsProviderId == state.providerId &&
         job.status == CollectionJobStatus.collected) {
-      label = 'Start Delivery';
+      label = l10n.jobStartDeliveryButton;
       icon = Icons.local_shipping_outlined;
       action = () => _updateStatus(context, state, job,
           nextStatus: CollectionJobStatus.inTransit);
     } else if (job.logisticsProviderId == state.providerId &&
         job.status == CollectionJobStatus.inTransit) {
-      label = 'Confirm Delivery';
+      label = l10n.jobConfirmDeliveryButton;
       icon = Icons.task_alt_rounded;
       action = () => _updateStatus(context, state, job,
           nextStatus: CollectionJobStatus.completed);
@@ -302,7 +303,11 @@ class _CollectionJobDetailsScreenState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Icon(icon),
-              label: Text(label),
+              label: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (job.logisticsProviderId == state.providerId &&
                 (job.status == CollectionJobStatus.accepted ||
@@ -314,12 +319,12 @@ class _CollectionJobDetailsScreenState
                       ? null
                       : () => _updateStatus(context, state, job,
                           nextStatus: CollectionJobStatus.completed),
-                  child: const Text('Complete Delivery'),
+                  child: Text(l10n.jobCompleteDeliveryButton),
                 ),
               if (job.status == CollectionJobStatus.accepted)
                 TextButton(
                   onPressed: _busy ? null : () => _cancel(context, state, job),
-                  child: const Text('Cancel job'),
+                  child: Text(l10n.jobCancelJobButton),
                 ),
             ],
           ],
@@ -335,10 +340,13 @@ class _CollectionJobDetailsScreenState
   ) async {
     final confirmed = await confirmTransporterAction(
       context,
-      title: 'Accept this job?',
-      message:
-          'You will be responsible for collecting ${job.quantityLabel} of ${job.produceName} and delivering it to ${job.deliveryLocation}.',
-      confirmLabel: 'Accept job',
+      title: context.l10n.jobAcceptConfirmTitle,
+      message: context.l10n.jobAcceptConfirmMessage(
+        job.quantityLabel,
+        job.produceName,
+        job.deliveryLocation,
+      ),
+      confirmLabel: context.l10n.jobAcceptConfirmAction,
     );
     if (!confirmed || !context.mounted) return;
     setState(() => _busy = true);
@@ -354,24 +362,24 @@ class _CollectionJobDetailsScreenState
     CollectionJob job, {
     required CollectionJobStatus nextStatus,
   }) async {
+    final l10n = context.l10n;
     final confirmed = await confirmTransporterAction(
       context,
       title: switch (nextStatus) {
-        CollectionJobStatus.collected => 'Confirm pickup?',
-        CollectionJobStatus.inTransit => 'Start delivery?',
-        _ => 'Confirm delivery?',
+        CollectionJobStatus.collected => l10n.jobConfirmPickupTitle,
+        CollectionJobStatus.inTransit => l10n.jobStartDeliveryTitle,
+        _ => l10n.jobConfirmDeliveryTitle,
       },
       message: switch (nextStatus) {
-        CollectionJobStatus.collected =>
-          'Have you collected this produce from the farmer?',
+        CollectionJobStatus.collected => l10n.jobConfirmPickupMessage,
         CollectionJobStatus.inTransit =>
-          'Start the delivery to ${job.deliveryLocation}?',
-        _ => 'Confirm that the produce reached ${job.deliveryLocation}.',
+          l10n.jobStartDeliveryMessage(job.deliveryLocation),
+        _ => l10n.jobConfirmDeliveryMessage(job.deliveryLocation),
       },
       confirmLabel: switch (nextStatus) {
-        CollectionJobStatus.collected => 'Mark collected',
-        CollectionJobStatus.inTransit => 'Start delivery',
-        _ => 'Complete delivery',
+        CollectionJobStatus.collected => l10n.jobMarkCollectedAction,
+        CollectionJobStatus.inTransit => l10n.jobStartDeliveryAction,
+        _ => l10n.jobCompleteDeliveryAction,
       },
     );
     if (!confirmed || !context.mounted) return;
@@ -388,20 +396,23 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _cancel(BuildContext context, TransporterController state,
       CollectionJob job) async {
+    final l10n = context.l10n;
+    // Stored reason values stay English; only the labels are translated.
+    final reasons = [
+      ('Vehicle breakdown', l10n.jobCancelReasonBreakdown),
+      ('Emergency', l10n.jobCancelReasonEmergency),
+      ('Unable to reach pickup location', l10n.jobCancelReasonUnreachable),
+      ('Other', l10n.jobReasonOther),
+    ];
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
-        title: const Text('Why are you cancelling?'),
+        title: Text(l10n.jobCancelReasonTitle),
         children: [
-          for (final value in [
-            'Vehicle breakdown',
-            'Emergency',
-            'Unable to reach pickup location',
-            'Other',
-          ])
+          for (final (value, label) in reasons)
             SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, value),
-              child: Text(value),
+              child: Text(label),
             ),
         ],
       ),
@@ -409,9 +420,9 @@ class _CollectionJobDetailsScreenState
     if (reason == null || !context.mounted) return;
     final confirmed = await confirmTransporterAction(
       context,
-      title: 'Cancel this job?',
-      message: 'This cancellation will be recorded for ${job.produceName}.',
-      confirmLabel: 'Cancel job',
+      title: l10n.jobCancelConfirmTitle,
+      message: l10n.jobCancelConfirmMessage(job.produceName),
+      confirmLabel: l10n.jobCancelJobButton,
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
@@ -424,6 +435,8 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _reportIssue(BuildContext context, TransporterController state,
       CollectionJob job) async {
+    final l10n = context.l10n;
+    // Stored reason values stay English; only the labels are translated.
     const reasons = [
       'Vehicle Problem',
       'Farmer Unavailable',
@@ -433,6 +446,15 @@ class _CollectionJobDetailsScreenState
       'Produce/Quantity Issue',
       'Other',
     ];
+    final reasonLabels = {
+      'Vehicle Problem': l10n.jobIssueVehicleProblem,
+      'Farmer Unavailable': l10n.jobIssueFarmerUnavailable,
+      'Buyer Unavailable': l10n.jobIssueBuyerUnavailable,
+      'Incorrect Pickup Location': l10n.jobIssueWrongPickup,
+      'Incorrect Delivery Location': l10n.jobIssueWrongDelivery,
+      'Produce/Quantity Issue': l10n.jobIssueProduceQuantity,
+      'Other': l10n.jobReasonOther,
+    };
     final result = await showDialog<(String, String)>(
       context: context,
       builder: (dialogContext) {
@@ -440,17 +462,21 @@ class _CollectionJobDetailsScreenState
         final description = TextEditingController();
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: const Text('Report an issue'),
+            title: Text(l10n.jobReportIssue),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: selected,
+                    isExpanded: true,
                     items: reasons
                         .map((reason) => DropdownMenuItem(
                               value: reason,
-                              child: Text(reason),
+                              child: Text(
+                                reasonLabels[reason] ?? reason,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ))
                         .toList(),
                     onChanged: (value) =>
@@ -460,8 +486,8 @@ class _CollectionJobDetailsScreenState
                   TextField(
                     controller: description,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                        labelText: 'Description (optional)'),
+                    decoration:
+                        InputDecoration(labelText: l10n.jobDescriptionOptional),
                   ),
                 ],
               ),
@@ -469,12 +495,12 @@ class _CollectionJobDetailsScreenState
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: () =>
                     Navigator.pop(dialogContext, (selected, description.text)),
-                child: const Text('Submit'),
+                child: Text(l10n.commonSubmit),
               ),
             ],
           ),
@@ -493,13 +519,14 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _rateDelivery(BuildContext context, TransporterController state,
       CollectionJob job) async {
+    final l10n = context.l10n;
     var stars = 5;
     final comment = TextEditingController();
     final result = await showDialog<(int, String)>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Rate this transaction'),
+          title: Text(l10n.jobRateTransaction),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -518,8 +545,8 @@ class _CollectionJobDetailsScreenState
               TextField(
                 controller: comment,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Comment (optional)',
+                decoration: InputDecoration(
+                  labelText: l10n.jobCommentOptional,
                 ),
               ),
             ],
@@ -527,12 +554,12 @@ class _CollectionJobDetailsScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(l10n.commonCancel),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.pop(dialogContext, (stars, comment.text)),
-              child: const Text('Submit'),
+              child: Text(l10n.commonSubmit),
             ),
           ],
         ),
@@ -573,10 +600,14 @@ class _CollectionJobDetailsScreenState
     return jobKg <= vehicleKg;
   }
 
-  String _capacityText(TransporterController state, CollectionJob job) =>
+  String _capacityText(
+    AppLocalizations l10n,
+    TransporterController state,
+    CollectionJob job,
+  ) =>
       _isSuitable(state, job)
-          ? 'Suitable for your vehicle'
-          : 'Load may exceed your vehicle capacity';
+          ? l10n.jobSuitableForVehicle
+          : l10n.jobMayExceedCapacity;
 }
 
 class _JobHero extends StatelessWidget {
@@ -620,7 +651,10 @@ class _JobHero extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Order ${job.orderId ?? 'not linked'}  •  Produce post ${job.producePostId ?? 'not linked'}',
+            context.l10n.jobOrderAndPostRefs(
+              job.orderId ?? context.l10n.jobNotLinked,
+              job.producePostId ?? context.l10n.jobNotLinked,
+            ),
             style: const TextStyle(
                 fontSize: 12, color: AppColors.onSurfaceVariant),
           ),
@@ -676,12 +710,16 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.primary, size: 21),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 72,
-            child:
-                Text(label, style: const TextStyle(color: AppColors.textMuted)),
+          Flexible(
+            flex: 2,
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.textMuted)),
           ),
+          const SizedBox(width: 8),
           Expanded(
+            flex: 5,
             child: Text(value,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
@@ -715,7 +753,7 @@ class _ContactRow extends StatelessWidget {
         ),
         if (phone.isNotEmpty) ...[
           IconButton(
-            tooltip: 'Call',
+            tooltip: context.l10n.call,
             onPressed: onCall,
             icon: const Icon(Icons.call_outlined),
           ),
@@ -731,7 +769,7 @@ class _ContactRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(phone.isEmpty ? 'Phone not provided' : phone,
+              Text(phone.isEmpty ? context.l10n.jobPhoneNotProvided : phone,
                   style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ],
           ),

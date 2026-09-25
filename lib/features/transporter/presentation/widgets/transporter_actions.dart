@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/localization/l10n.dart';
 import '../../application/transporter_controller.dart';
 
 Future<bool> confirmTransporterAction(
@@ -17,7 +18,7 @@ Future<bool> confirmTransporterAction(
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Not now'),
+              child: Text(context.l10n.jobNotNow),
             ),
             FilledButton(
               style: destructive

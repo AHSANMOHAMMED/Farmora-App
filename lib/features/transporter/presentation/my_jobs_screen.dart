@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_details_screen.dart';
@@ -22,17 +23,19 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
+    final l10n = context.l10n;
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         backgroundColor: AppColors.surface,
         appBar: AppBar(
-          title: const Text('My Jobs'),
-          bottom: const TabBar(
+          title: Text(l10n.transporterMyJobsTitle),
+          bottom: TabBar(
+            isScrollable: false,
             tabs: [
-              Tab(text: 'Active'),
-              Tab(text: 'Completed'),
-              Tab(text: 'Cancelled'),
+              Tab(text: l10n.statusActive),
+              Tab(text: l10n.statusCompleted),
+              Tab(text: l10n.statusCancelled),
             ],
           ),
         ),
@@ -40,20 +43,20 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           children: [
             _JobList(
               jobs: state.activeJobs,
-              emptyTitle: 'No active jobs',
-              emptyMessage: 'Jobs you accept will appear here.',
+              emptyTitle: l10n.transporterNoActiveJobs,
+              emptyMessage: l10n.transporterNoActiveJobsHint,
               busyJobId: _busyJobId,
               actionFor: (job) => switch (job.status) {
-                CollectionJobStatus.accepted => const _JobAction(
-                    label: 'Confirm pickup',
+                CollectionJobStatus.accepted => _JobAction(
+                    label: l10n.jobConfirmPickupAction,
                     icon: Icons.inventory_2_outlined,
                   ),
-                CollectionJobStatus.collected => const _JobAction(
-                    label: 'Start delivery',
+                CollectionJobStatus.collected => _JobAction(
+                    label: l10n.jobStartDeliveryAction,
                     icon: Icons.local_shipping_outlined,
                   ),
-                CollectionJobStatus.inTransit => const _JobAction(
-                    label: 'Confirm delivery',
+                CollectionJobStatus.inTransit => _JobAction(
+                    label: l10n.jobConfirmDeliveryAction,
                     icon: Icons.task_alt_rounded,
                   ),
                 _ => null,
@@ -62,14 +65,14 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
             ),
             _JobList(
               jobs: state.completedJobs,
-              emptyTitle: 'No completed deliveries',
-              emptyMessage: 'Your delivery history will appear here.',
+              emptyTitle: l10n.transporterNoCompletedDeliveries,
+              emptyMessage: l10n.transporterNoCompletedHint,
               busyJobId: _busyJobId,
             ),
             _JobList(
               jobs: state.cancelledJobs,
-              emptyTitle: 'No cancelled jobs',
-              emptyMessage: 'Cancelled assigned jobs will appear here.',
+              emptyTitle: l10n.transporterNoCancelledJobs,
+              emptyMessage: l10n.transporterNoCancelledHint,
               busyJobId: _busyJobId,
             ),
           ],
@@ -87,21 +90,22 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
       CollectionJobStatus.collected => CollectionJobStatus.inTransit,
       _ => CollectionJobStatus.completed,
     };
+    final l10n = context.l10n;
     final confirmed = await confirmTransporterAction(
       context,
       title: nextStatus == CollectionJobStatus.collected
-          ? 'Confirm pickup?'
+          ? l10n.jobConfirmPickupTitle
           : nextStatus == CollectionJobStatus.inTransit
-              ? 'Start delivery?'
-              : 'Confirm delivery?',
+              ? l10n.jobStartDeliveryTitle
+              : l10n.jobConfirmDeliveryTitle,
       message: nextStatus == CollectionJobStatus.collected
-          ? 'Have you collected this produce from the farmer?'
-          : 'Continue this delivery to ${job.deliveryLocation}?',
+          ? l10n.jobConfirmPickupMessage
+          : l10n.jobContinueDeliveryMessage(job.deliveryLocation),
       confirmLabel: nextStatus == CollectionJobStatus.collected
-          ? 'Confirm pickup'
+          ? l10n.jobConfirmPickupAction
           : nextStatus == CollectionJobStatus.inTransit
-              ? 'Start delivery'
-              : 'Confirm delivery',
+              ? l10n.jobStartDeliveryAction
+              : l10n.jobConfirmDeliveryAction,
     );
     if (!confirmed || !mounted) return;
     setState(() => _busyJobId = job.id);

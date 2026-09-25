@@ -1,11 +1,9 @@
+import '../../../core/utils/app_errors.dart';
 import '../domain/collection_job.dart';
 
-class CollectionJobException implements Exception {
-  final String message;
-  const CollectionJobException(this.message);
-
-  @override
-  String toString() => message;
+/// A job failure with a localized, user-facing [message].
+class CollectionJobException extends AppException {
+  const CollectionJobException(super.message);
 }
 
 /// An issue reported by a transporter for an active job.

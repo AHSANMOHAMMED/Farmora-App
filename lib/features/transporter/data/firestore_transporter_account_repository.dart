@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/localization/l10n.dart';
 import '../domain/transporter_notification.dart';
 import '../domain/transporter_profile.dart';
 import 'transporter_account_repository.dart';
@@ -21,7 +22,9 @@ class FirestoreTransporterAccountRepository
     return _firestore.collection('users').doc(providerId).snapshots().map(
       (document) {
         final data = document.data();
-        if (data == null) throw StateError('Transporter profile was not found.');
+        if (data == null) {
+          throw StateError('Transporter profile was not found.');
+        }
         return TransporterProfile.fromMap(document.id, data);
       },
     );
@@ -40,7 +43,8 @@ class FirestoreTransporterAccountRepository
               return TransporterNotification(
                 id: document.id,
                 type: _type(data['type']?.toString()),
-                title: data['title']?.toString() ?? 'Farmora update',
+                title: data['title']?.toString() ??
+                    L10n.current.jobNotificationFallbackTitle,
                 message: data['body']?.toString() ?? '',
                 createdAt: _date(data['createdAt']) ?? DateTime.now(),
                 jobId: data['jobId']?.toString(),
@@ -99,11 +103,12 @@ class FirestoreTransporterAccountRepository
   TransporterNotificationType _type(String? value) {
     return switch (value) {
       'job_accepted' || 'accepted' => TransporterNotificationType.accepted,
-      'collection_reminder' || 'reminder' =>
+      'collection_reminder' ||
+      'reminder' =>
         TransporterNotificationType.reminder,
-      'job_cancelled' || 'cancelled' =>
-        TransporterNotificationType.cancelled,
-      'delivery_completed' || 'completed' =>
+      'job_cancelled' || 'cancelled' => TransporterNotificationType.cancelled,
+      'delivery_completed' ||
+      'completed' =>
         TransporterNotificationType.completed,
       _ => TransporterNotificationType.newJob,
     };

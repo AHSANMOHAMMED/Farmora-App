@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import '../domain/transporter_notification.dart';
 import 'collection_job_details_screen.dart';
@@ -15,23 +16,24 @@ class TransporterNotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
     final notifications = state.notifications;
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(l10n.notifications),
         actions: [
           if (state.unreadNotificationCount > 0)
             TextButton(
               onPressed: state.markAllNotificationsRead,
-              child: const Text('Mark all read'),
+              child: Text(l10n.transporterMarkAllRead),
             ),
         ],
       ),
       body: notifications.isEmpty
-          ? const TransporterEmptyState(
+          ? TransporterEmptyState(
               icon: Icons.notifications_none_rounded,
-              title: 'No notifications',
-              message: 'Job updates and reminders will appear here.',
+              title: l10n.transporterNoNotifications,
+              message: l10n.transporterNotificationsHint,
             )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
@@ -41,6 +43,9 @@ class TransporterNotificationsScreen extends StatelessWidget {
                 final notification = notifications[index];
                 return _NotificationTile(
                   notification: notification,
+                  produceName: notification.jobId == null
+                      ? null
+                      : state.jobById(notification.jobId!)?.produceName,
                   onTap: () {
                     state.markNotificationRead(notification.id);
                     if (notification.jobId != null &&
@@ -63,9 +68,34 @@ class TransporterNotificationsScreen extends StatelessWidget {
 
 class _NotificationTile extends StatelessWidget {
   final TransporterNotification notification;
+  final String? produceName;
   final VoidCallback onTap;
 
-  const _NotificationTile({required this.notification, required this.onTap});
+  const _NotificationTile({
+    required this.notification,
+    required this.onTap,
+    this.produceName,
+  });
+
+  /// Notifications created on this device are re-worded in the current
+  /// language; server notifications are shown as stored.
+  (String, String) _text(AppLocalizations l10n) {
+    final produce = produceName;
+    if (!notification.id.startsWith('local-') || produce == null) {
+      return (notification.title, notification.message);
+    }
+    return switch (notification.type) {
+      TransporterNotificationType.accepted => (
+          l10n.jobAcceptedNotifTitle,
+          l10n.jobAcceptedNotifBody(produce),
+        ),
+      TransporterNotificationType.completed => (
+          l10n.jobDeliveryCompletedNotifTitle,
+          l10n.jobDeliveryCompletedNotifBody(produce),
+        ),
+      _ => (notification.title, notification.message),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +121,7 @@ class _NotificationTile extends StatelessWidget {
           AppColors.primary
         ),
     };
+    final (title, message) = _text(context.l10n);
     return Material(
       color: notification.isRead
           ? AppColors.surfaceContainerLowest
@@ -117,7 +148,7 @@ class _NotificationTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            notification.title,
+                            title,
                             style: TextStyle(
                               fontWeight: notification.isRead
                                   ? FontWeight.w600
@@ -137,13 +168,13 @@ class _NotificationTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      notification.message,
+                      message,
                       style: const TextStyle(color: AppColors.onSurfaceVariant),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      DateFormat('d MMM • h:mm a')
-                          .format(notification.createdAt),
+                      '${AppFormat.dayMonth(notification.createdAt)} • '
+                      '${AppFormat.time(notification.createdAt)}',
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textMuted),
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 import '../../messaging/presentation/conversations_screen.dart';
@@ -14,6 +15,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l10n = context.l10n;
     final linkedOrder = job.orderId == null
         ? null
         : state.orders.where((o) => o.id == job.orderId).firstOrNull;
@@ -27,9 +29,9 @@ class TransportRequestDetailScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Request Details',
-          style: TextStyle(
+        title: Text(
+          l10n.transporterRequestDetailsTitle,
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -39,7 +41,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
         actions: [
           if (job.orderId != null && job.orderId!.isNotEmpty)
             IconButton(
-              tooltip: 'Message',
+              tooltip: l10n.transporterMessage,
               icon: const Icon(Icons.chat_bubble_outline),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -48,7 +50,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
               ),
             ),
           IconButton(
-            tooltip: 'Notifications',
+            tooltip: l10n.notifications,
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
@@ -75,7 +77,9 @@ class TransportRequestDetailScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          job.title.isNotEmpty ? job.title : 'Transport job',
+                          job.title.isNotEmpty
+                              ? job.title
+                              : l10n.jobTransportJobFallback,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 20,
@@ -112,7 +116,10 @@ class TransportRequestDetailScreen extends StatelessWidget {
                         child: Text(
                           job.route.isNotEmpty
                               ? job.route
-                              : '${job.pickup ?? 'Pickup'} → ${job.dropoff ?? 'Dropoff'}',
+                              : l10n.jobRouteLine(
+                                  job.pickup ?? l10n.jobPickupLabel,
+                                  job.dropoff ?? l10n.jobDropoffLabel,
+                                ),
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
@@ -135,7 +142,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
                   if (job.district != null && job.district!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'District: ${job.district}',
+                      l10n.transporterDistrictLine(job.district!),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         color: AppColors.onSurfaceVariant,
@@ -145,7 +152,8 @@ class TransportRequestDetailScreen extends StatelessWidget {
                   if ((job.weightKg ?? job.capacityKg) != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Load: ${job.weightKg ?? job.capacityKg} kg',
+                      l10n.transporterLoadLine(
+                          '${job.weightKg ?? job.capacityKg}'),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         color: AppColors.onSurfaceVariant,
@@ -156,9 +164,9 @@ class TransportRequestDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Job Details',
-              style: TextStyle(
+            Text(
+              l10n.jobDetails,
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -183,9 +191,9 @@ class TransportRequestDetailScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Linked Order ID',
-                            style: TextStyle(
+                          Text(
+                            l10n.transporterLinkedOrderId,
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 12,
                               color: AppColors.onSurfaceVariant,
@@ -221,7 +229,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Status: ${job.status}',
+                          l10n.transporterStatusLine(statusLabel(job.status)),
                           style: const TextStyle(
                               fontFamily: 'Inter', fontWeight: FontWeight.bold),
                         ),
@@ -237,16 +245,17 @@ class TransportRequestDetailScreen extends StatelessWidget {
                           )
                         else if (job.pickup != null || job.dropoff != null)
                           Text(
-                            'Pickup: ${job.pickup ?? '—'} · Dropoff: ${job.dropoff ?? '—'}',
+                            l10n.transporterPickupDropoffLine(
+                                job.pickup ?? '—', job.dropoff ?? '—'),
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               color: AppColors.onSurfaceVariant,
                             ),
                           ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Contact via in-app messaging — phone numbers stay private.',
-                          style: TextStyle(
+                        Text(
+                          l10n.transporterContactPrivate,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
                             color: AppColors.onSurfaceVariant,
@@ -281,6 +290,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final l10n = context.l10n;
     if (!job.accepted && job.status == 'requested') {
       return FilledButton(
         onPressed: () {
@@ -294,9 +304,9 @@ class TransportRequestDetailScreen extends StatelessWidget {
           ),
           backgroundColor: AppColors.primary,
         ),
-        child: const Text(
-          'Accept Request',
-          style: TextStyle(
+        child: Text(
+          l10n.transporterAcceptRequest,
+          style: const TextStyle(
               fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.bold),
         ),
       );
@@ -314,7 +324,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: const Text('Mark as Picked Up'),
+        child: Text(l10n.transporterMarkPickedUp),
       );
     }
 
@@ -330,7 +340,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: const Text('Mark as In Transit'),
+        child: Text(l10n.transporterMarkInTransit),
       );
     }
 
@@ -346,7 +356,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: const Text('Mark as Delivered'),
+        child: Text(l10n.transporterMarkDelivered),
       );
     }
 
@@ -358,7 +368,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
       ),
-      child: Text(job.status.toUpperCase()),
+      child: Text(statusLabel(job.status).toUpperCase()),
     );
   }
 }

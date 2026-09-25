@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/localization/l10n.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
 
@@ -106,7 +107,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     try {
       final document = await _jobs.doc(id).get();
       if (!document.exists) {
-        throw const CollectionJobException('Job not found.');
+        throw CollectionJobException(L10n.current.jobNotFound);
       }
       return _fromDocument(document);
     } on CollectionJobException {
@@ -152,7 +153,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         await _transition(jobId, 'cancelled', reason: reason);
       } else {
         throw CollectionJobException(
-          'Unsupported status update: ${status.label}.',
+          L10n.current.jobUnsupportedStatus(status.label),
         );
       }
       return await getJob(jobId);
@@ -165,7 +166,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     }
   }
 
-  Future<void> _transition(String jobId, String status, {String? reason}) async {
+  Future<void> _transition(String jobId, String status,
+      {String? reason}) async {
     await _functions.httpsCallable('transitionTransport').call<void>({
       'jobId': jobId,
       'status': status,
@@ -201,7 +203,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     String comment = '',
   }) async {
     if (stars < 1 || stars > 5) {
-      throw const CollectionJobException('Please select a valid rating.');
+      throw CollectionJobException(L10n.current.jobInvalidRating);
     }
     try {
       await _ratings.doc(jobId).set({
@@ -224,8 +226,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       if (data == null) return null;
       return JobIssueReport(
         jobId: jobId,
-        logisticsProviderId:
-            data['logisticsProviderId']?.toString() ?? '',
+        logisticsProviderId: data['logisticsProviderId']?.toString() ?? '',
         reason: data['reason']?.toString() ?? '',
         description: data['description']?.toString() ?? '',
         reportedAt: _date(data['reportedAt']) ?? DateTime.now(),
@@ -243,8 +244,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       if (data == null) return null;
       return JobDeliveryRating(
         jobId: jobId,
-        logisticsProviderId:
-            data['logisticsProviderId']?.toString() ?? '',
+        logisticsProviderId: data['logisticsProviderId']?.toString() ?? '',
         stars: (data['stars'] as num?)?.toInt() ?? 0,
         comment: data['comment']?.toString() ?? '',
         ratedAt: _date(data['ratedAt']) ?? DateTime.now(),
@@ -273,13 +273,14 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       produceName: _text(
         data,
         ['produceName', 'productName', 'title'],
-        fallback: 'Produce collection',
+        fallback: L10n.current.jobProduceCollectionFallback,
       ),
       quantity: _number(data, ['quantity', 'cargoWeightKg']),
       unit: _text(data, ['unit'], fallback: 'kg'),
-      pickupLocation: pickup.isEmpty ? 'Pickup location not provided' : pickup,
+      pickupLocation:
+          pickup.isEmpty ? L10n.current.jobPickupNotProvided : pickup,
       deliveryLocation:
-          delivery.isEmpty ? 'Delivery location not provided' : delivery,
+          delivery.isEmpty ? L10n.current.jobDeliveryNotProvided : delivery,
       collectionDate: _date(data['collectionDate']) ??
           _date(data['pickupTime']) ??
           createdAt,
@@ -287,20 +288,19 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       farmerName: _text(
         data,
         ['farmerName', 'pickupContactName'],
-        fallback: 'Farmer details unavailable',
+        fallback: L10n.current.jobFarmerDetailsUnavailable,
       ),
       farmerPhone: _text(data, ['farmerPhone', 'pickupContactPhone']),
       buyerName: _text(
         data,
         ['buyerName', 'deliveryContactName'],
-        fallback: 'Buyer details unavailable',
+        fallback: L10n.current.jobBuyerDetailsUnavailable,
       ),
       buyerPhone: _text(data, ['buyerPhone', 'deliveryContactPhone']),
       status: status,
       createdAt: createdAt,
       updatedAt: _date(data['updatedAt']) ?? createdAt,
-      completedAt:
-          _date(data['completedAt']) ?? _date(data['deliveredAt']),
+      completedAt: _date(data['completedAt']) ?? _date(data['deliveredAt']),
       collectedAt: _date(data['collectedAt']) ?? _date(data['pickedUpAt']),
       inTransitAt: _date(data['inTransitAt']),
       acceptedAt:
@@ -312,14 +312,16 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   CollectionJobStatus _status(String? value) {
     return switch (value) {
-      'requested' || 'pending' || 'open' || 'OPEN' =>
-        CollectionJobStatus.open,
+      'requested' || 'pending' || 'open' || 'OPEN' => CollectionJobStatus.open,
       'accepted' || 'ACCEPTED' => CollectionJobStatus.accepted,
-      'pickedUp' || 'collected' || 'COLLECTED' =>
-        CollectionJobStatus.collected,
-      'inTransit' || 'in_transit' || 'IN_TRANSIT' =>
+      'pickedUp' || 'collected' || 'COLLECTED' => CollectionJobStatus.collected,
+      'inTransit' ||
+      'in_transit' ||
+      'IN_TRANSIT' =>
         CollectionJobStatus.inTransit,
-      'delivered' || 'completed' || 'COMPLETED' =>
+      'delivered' ||
+      'completed' ||
+      'COMPLETED' =>
         CollectionJobStatus.completed,
       'cancelled' || 'CANCELLED' => CollectionJobStatus.cancelled,
       _ => CollectionJobStatus.open,
@@ -372,24 +374,23 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   }
 
   String _functionMessage(FirebaseFunctionsException error) {
+    final l = L10n.current;
     return switch (error.code) {
-      'unauthenticated' => 'Please sign in again to continue.',
-      'permission-denied' => 'Your transporter account cannot update this job.',
-      'not-found' => 'This collection job no longer exists.',
-      'failed-precondition' =>
-        'This job was updated by someone else. Refresh and try again.',
-      _ => error.message ?? 'Could not update the collection job.',
+      'unauthenticated' => l.errorSignInAgain,
+      'permission-denied' => l.jobNoPermissionUpdate,
+      'not-found' => l.jobNoLongerExists,
+      'failed-precondition' => l.jobUpdatedElsewhere,
+      _ => l.jobCouldNotUpdate,
     };
   }
 
   String _firebaseMessage(FirebaseException error) {
+    final l = L10n.current;
     return switch (error.code) {
-      'permission-denied' =>
-        'You do not have permission to view these collection jobs.',
-      'unavailable' => 'The database is temporarily unavailable.',
-      'failed-precondition' =>
-        'A required Firestore index is not deployed yet.',
-      _ => error.message ?? 'Could not load collection jobs.',
+      'permission-denied' => l.jobNoPermissionView,
+      'unavailable' => l.jobDatabaseUnavailable,
+      'failed-precondition' => l.jobServiceNotReady,
+      _ => l.jobCouldNotLoad,
     };
   }
 }

@@ -1,3 +1,4 @@
+import '../../../core/localization/l10n.dart';
 import '../domain/collection_job.dart';
 
 /// Result of scoring a job against a transporter's vehicle.
@@ -47,13 +48,13 @@ class JobSuitabilityScorer {
     } else if (loadKg > capacity) {
       capacityScore = 0;
       capacityFit = false;
-      warning = 'Load exceeds vehicle capacity';
+      warning = L10n.current.jobWarnLoadExceeds;
     } else {
       final usage = loadKg / capacity; // 0..1
       // Best (60 pts) when the load uses 50–100% of capacity.
       capacityScore = usage >= 0.5 ? 60 : 60 * (usage / 0.5);
       if (loadKg > 0 && usage < 0.2) {
-        warning = 'Small load for your vehicle';
+        warning = L10n.current.jobWarnSmallLoad;
       }
     }
 
@@ -92,6 +93,7 @@ class JobSuitabilityScorer {
     return [for (final entry in scored) entry.job];
   }
 
-  double _loadInKg(CollectionJob job) =>
-      job.unit.toLowerCase().contains('ton') ? job.quantity * 1000 : job.quantity;
+  double _loadInKg(CollectionJob job) => job.unit.toLowerCase().contains('ton')
+      ? job.quantity * 1000
+      : job.quantity;
 }

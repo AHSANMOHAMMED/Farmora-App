@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import 'collection_job_details_screen.dart';
 import 'widgets/collection_job_card.dart';
@@ -23,6 +25,7 @@ class LogisticsDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
     final nearby = state.unfilteredAvailableJobs.take(3).toList();
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -47,7 +50,7 @@ class LogisticsDashboardScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _SummaryCard(
-                      label: 'Available',
+                      label: l10n.transporterSummaryAvailable,
                       value: state.unfilteredAvailableJobs.length,
                       icon: Icons.work_outline_rounded,
                       color: AppColors.statusPendingText,
@@ -57,7 +60,7 @@ class LogisticsDashboardScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _SummaryCard(
-                      label: 'Active',
+                      label: l10n.statusActive,
                       value: state.activeJobs.length,
                       icon: Icons.local_shipping_outlined,
                       color: const Color(0xFF1565C0),
@@ -67,7 +70,7 @@ class LogisticsDashboardScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _SummaryCard(
-                      label: 'Completed',
+                      label: l10n.statusCompleted,
                       value: state.completedJobs.length,
                       icon: Icons.task_alt_rounded,
                       color: AppColors.primary,
@@ -84,15 +87,14 @@ class LogisticsDashboardScreen extends StatelessWidget {
               const SizedBox(height: 26),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Nearby available jobs',
-                      style:
-                          TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+                      l10n.transporterNearbyJobs,
+                      style: const TextStyle(
+                          fontSize: 19, fontWeight: FontWeight.w800),
                     ),
                   ),
-                  TextButton(
-                      onPressed: onBrowseJobs, child: const Text('See all')),
+                  TextButton(onPressed: onBrowseJobs, child: Text(l10n.seeAll)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -109,9 +111,9 @@ class LogisticsDashboardScreen extends StatelessWidget {
               else if (nearby.isEmpty)
                 TransporterEmptyState(
                   icon: Icons.route_outlined,
-                  title: 'No open jobs nearby',
-                  message: 'Pull down to refresh or check again shortly.',
-                  actionLabel: 'Refresh',
+                  title: l10n.transporterNoOpenJobsNearby,
+                  message: l10n.transporterPullToRefresh,
+                  actionLabel: l10n.transporterRefresh,
                   onAction: () => state.loadJobs(refresh: true),
                 )
               else
@@ -156,8 +158,8 @@ class _DashboardHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Good day,',
-                  style: TextStyle(color: AppColors.textMuted)),
+              Text(context.l10n.transporterGoodDay,
+                  style: const TextStyle(color: AppColors.textMuted)),
               Text(
                 name,
                 maxLines: 1,
@@ -165,8 +167,8 @@ class _DashboardHeader extends StatelessWidget {
                 style:
                     const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
-              const Text('Keep Sri Lanka’s harvest moving',
-                  style: TextStyle(color: AppColors.onSurfaceVariant)),
+              Text(context.l10n.transporterTagline,
+                  style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ],
           ),
         ),
@@ -174,6 +176,7 @@ class _DashboardHeader extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             IconButton.filledTonal(
+              tooltip: context.l10n.notifications,
               onPressed: onNotifications,
               icon: const Icon(Icons.notifications_none_rounded),
             ),
@@ -234,14 +237,16 @@ class _AvailabilityBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  available ? 'Available for jobs' : 'Currently unavailable',
+                  available
+                      ? context.l10n.transporterAvailableForJobs
+                      : context.l10n.transporterCurrentlyUnavailable,
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w800),
                 ),
                 Text(
                   available
-                      ? 'Ready to claim collections'
-                      : 'New jobs remain visible',
+                      ? context.l10n.transporterReadyToClaim
+                      : context.l10n.transporterJobsStillVisible,
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: .82), fontSize: 12),
                 ),
@@ -290,6 +295,7 @@ class _SummaryCard extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(label,
+                    maxLines: 1,
                     style: const TextStyle(
                         fontSize: 12, color: AppColors.textMuted)),
               ),
@@ -308,7 +314,7 @@ class _EarningsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String money(int minor) => 'Rs. ${(minor / 100).toStringAsFixed(0)}';
+    String money(int minor) => AppFormat.lkr(minor / 100);
     return Card(
       margin: EdgeInsets.zero,
       elevation: 0,
@@ -319,14 +325,16 @@ class _EarningsStrip extends StatelessWidget {
           children: [
             const Icon(Icons.payments_outlined, color: AppColors.primary),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text('Earnings',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
+            Expanded(
+              child: Text(context.l10n.earnings,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
             ),
             Text(
-              'Today ${money(state.todayEarningsMinor)}\n'
-              'Week ${money(state.thisWeekEarningsMinor)}\n'
-              'Total ${money(state.totalEarningsMinor)}',
+              context.l10n.transporterEarningsSummary(
+                money(state.todayEarningsMinor),
+                money(state.thisWeekEarningsMinor),
+                money(state.totalEarningsMinor),
+              ),
               textAlign: TextAlign.right,
               style: const TextStyle(
                   color: AppColors.primary, fontWeight: FontWeight.w700),

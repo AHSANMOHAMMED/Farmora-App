@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/job_card.dart';
@@ -13,7 +14,8 @@ class TransporterDashboardScreen extends StatelessWidget {
   const TransporterDashboardScreen({super.key});
 
   double _feeToLkr(TransportJob job) {
-    final digits = RegExp(r'[\d.]+').allMatches(job.fee).map((m) => m.group(0)!);
+    final digits =
+        RegExp(r'[\d.]+').allMatches(job.fee).map((m) => m.group(0)!);
     if (digits.isEmpty) return 0;
     return double.tryParse(digits.first) ?? 0;
   }
@@ -72,7 +74,7 @@ class TransporterDashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'LKR ${earnings.toStringAsFixed(2)}',
+                      AppFormat.lkr(earnings, decimals: 2),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 32,
@@ -82,7 +84,7 @@ class TransporterDashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${completed.length} ${l10n.delivered.toLowerCase()}',
+                      l10n.transporterDeliveredCount(completed.length),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,

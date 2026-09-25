@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_format.dart';
+import '../../../../core/localization/l10n.dart';
 import '../../domain/collection_job.dart';
 
 /// Visual step-by-step status history for a job.
@@ -37,7 +37,9 @@ class JobTimeline extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Job cancelled${job.notes == null ? '' : ' — see notes below'}',
+                  job.notes == null
+                      ? context.l10n.jobCancelledNote
+                      : context.l10n.jobCancelledSeeNotes,
                   style: const TextStyle(
                     color: Colors.redAccent,
                     fontWeight: FontWeight.w700,
@@ -79,7 +81,8 @@ class _TimelineTile extends StatelessWidget {
             child: Column(
               children: [
                 if (!isFirst)
-                  Container(width: 2, height: 8, color: AppColors.outlineVariant),
+                  Container(
+                      width: 2, height: 8, color: AppColors.outlineVariant),
                 Container(
                   width: 18,
                   height: 18,
@@ -125,7 +128,7 @@ class _TimelineTile extends StatelessWidget {
                   ),
                   if (at != null)
                     Text(
-                      DateFormat('d MMM yyyy • h:mm a').format(at!),
+                      AppFormat.dateTime(at!),
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_details_screen.dart';
@@ -33,10 +34,10 @@ class _LogisticsAvailableJobsScreenState
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Available Jobs'),
+        title: Text(context.l10n.transporterAvailableJobsTitle),
         actions: [
           IconButton(
-            tooltip: 'Refresh jobs',
+            tooltip: context.l10n.transporterRefreshJobs,
             onPressed:
                 state.isRefreshing ? null : () => state.loadJobs(refresh: true),
             icon: state.isRefreshing
@@ -94,8 +95,19 @@ class _Filters extends StatelessWidget {
     required this.onClear,
   });
 
+  /// Display label for a filter option; the "all" sentinels stay English
+  /// inside the controller and are translated only here.
+  static String _optionLabel(AppLocalizations l10n, String value) =>
+      switch (value) {
+        'All locations' => l10n.transporterAllLocations,
+        'All destinations' => l10n.transporterAllDestinations,
+        'All produce' => l10n.transporterAllProduce,
+        _ => value,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final hasFilters = state.searchQuery.isNotEmpty ||
         state.selectedLocation != 'All locations' ||
         state.selectedDelivery != 'All destinations' ||
@@ -113,11 +125,12 @@ class _Filters extends StatelessWidget {
             onChanged: state.updateSearch,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search produce or location',
+              hintText: l10n.transporterSearchJobsHint,
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: searchController.text.isEmpty
                   ? null
                   : IconButton(
+                      tooltip: l10n.transporterClearSearch,
                       onPressed: () {
                         searchController.clear();
                         state.updateSearch('');
@@ -134,14 +147,15 @@ class _Filters extends StatelessWidget {
                   key: ValueKey(state.selectedLocation),
                   initialValue: state.selectedLocation,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Pickup area',
-                    prefixIcon: Icon(Icons.location_on_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.transporterPickupArea,
+                    prefixIcon: const Icon(Icons.location_on_outlined),
                   ),
                   items: state.locationOptions
                       .map((value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value, overflow: TextOverflow.ellipsis),
+                            child: Text(_optionLabel(l10n, value),
+                                overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
                   onChanged: state.updateLocation,
@@ -153,14 +167,15 @@ class _Filters extends StatelessWidget {
                   key: ValueKey(state.selectedProduce),
                   initialValue: state.selectedProduce,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Produce',
-                    prefixIcon: Icon(Icons.eco_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.transporterProduceLabel,
+                    prefixIcon: const Icon(Icons.eco_outlined),
                   ),
                   items: state.produceOptions
                       .map((value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value, overflow: TextOverflow.ellipsis),
+                            child: Text(_optionLabel(l10n, value),
+                                overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
                   onChanged: state.updateProduce,
@@ -176,14 +191,15 @@ class _Filters extends StatelessWidget {
                   key: ValueKey(state.selectedDelivery),
                   initialValue: state.selectedDelivery,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Destination',
-                    prefixIcon: Icon(Icons.flag_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.transporterDestinationLabel,
+                    prefixIcon: const Icon(Icons.flag_outlined),
                   ),
                   items: state.deliveryOptions
                       .map((value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value, overflow: TextOverflow.ellipsis),
+                            child: Text(_optionLabel(l10n, value),
+                                overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
                   onChanged: state.updateDelivery,
@@ -195,19 +211,21 @@ class _Filters extends StatelessWidget {
                   key: ValueKey(state.selectedStatus),
                   initialValue: state.selectedStatus,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    prefixIcon: Icon(Icons.filter_alt_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.status,
+                    prefixIcon: const Icon(Icons.filter_alt_outlined),
                   ),
                   items: [
-                    const DropdownMenuItem<CollectionJobStatus>(
+                    DropdownMenuItem<CollectionJobStatus>(
                       value: null,
-                      child: Text('All statuses'),
+                      child: Text(l10n.transporterAllStatuses,
+                          overflow: TextOverflow.ellipsis),
                     ),
                     ...CollectionJobStatus.values.map(
                       (status) => DropdownMenuItem(
                         value: status,
-                        child: Text(status.label),
+                        child:
+                            Text(status.label, overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ],
@@ -225,27 +243,27 @@ class _Filters extends StatelessWidget {
                   icon: const Icon(Icons.calendar_today_outlined, size: 18),
                   label: Text(
                     state.selectedDate == null
-                        ? 'Any collection date'
-                        : DateFormat('d MMM yyyy').format(state.selectedDate!),
+                        ? l10n.transporterAnyCollectionDate
+                        : AppFormat.date(state.selectedDate!),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
               if (hasFilters) ...[
                 const SizedBox(width: 8),
-                TextButton(onPressed: onClear, child: const Text('Clear')),
+                TextButton(onPressed: onClear, child: Text(l10n.clear)),
               ],
             ],
           ),
-        if (state.vehicleCapacity != null)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            value: state.suitableOnly,
-            onChanged: (value) => state.updateSuitableOnly(value ?? false),
-            title: const Text('Suitable for my vehicle'),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
+          if (state.vehicleCapacity != null)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: state.suitableOnly,
+              onChanged: (value) => state.updateSuitableOnly(value ?? false),
+              title: Text(l10n.transporterSuitableForMyVehicle),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
         ],
       ),
     );
@@ -272,9 +290,9 @@ class _JobsBody extends StatelessWidget {
     if (jobs.isEmpty) {
       return TransporterEmptyState(
         icon: Icons.search_off_rounded,
-        title: 'No matching jobs',
-        message: 'Try changing your filters or pull down to refresh.',
-        actionLabel: 'Clear filters',
+        title: context.l10n.transporterNoMatchingJobs,
+        message: context.l10n.transporterNoMatchingJobsHint,
+        actionLabel: context.l10n.transporterClearFilters,
         onAction: state.clearFilters,
       );
     }
@@ -288,7 +306,7 @@ class _JobsBody extends StatelessWidget {
         itemBuilder: (context, index) {
           if (index == 0) {
             return Text(
-              '${jobs.length} open ${jobs.length == 1 ? 'job' : 'jobs'}',
+              context.l10n.transporterOpenJobsCount(jobs.length),
               style: const TextStyle(
                 color: AppColors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
