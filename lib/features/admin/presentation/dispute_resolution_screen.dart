@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -15,8 +16,27 @@ class DisputeResolutionScreen extends StatefulWidget {
 class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
   String _selectedFilter = 'Open';
 
+  String _filterLabel(AppLocalizations l, String filter) => switch (filter) {
+        'Open' => l.statusOpen,
+        'Resolved' => l.statusResolved,
+        _ => l.commonAll,
+      };
+
+  String _emptyLabel(AppLocalizations l) => switch (_selectedFilter) {
+        'Open' => l.adminDisputeNoneOpen,
+        'Resolved' => l.adminDisputeNoneResolved,
+        _ => l.adminDisputeNoneAll,
+      };
+
+  String _escrowStatusLabel(AppLocalizations l, String raw) => switch (raw) {
+        'released' => l.adminDisputeStatusReleased,
+        'settled_split' => l.adminDisputeStatusSplit,
+        _ => statusLabel(raw, l),
+      };
+
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final allOrders = state.orders;
     final disputedOrders = allOrders
@@ -35,9 +55,9 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text(
-          'Dispute & Escrow Arbitrator',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          l.adminDisputeTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
@@ -49,13 +69,14 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+            child: Wrap(
+              runSpacing: 8,
               children: ['Open', 'Resolved', 'All'].map((tab) {
                 final isSelected = _selectedFilter == tab;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
-                    label: Text(tab),
+                    label: Text(_filterLabel(l, tab)),
                     selected: isSelected,
                     onSelected: (_) => setState(() => _selectedFilter = tab),
                     selectedColor: AppColors.primary,
@@ -83,7 +104,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                                 AppColors.textSecondary.withValues(alpha: 0.5)),
                         const SizedBox(height: 12),
                         Text(
-                          'No $_selectedFilter disputes.',
+                          _emptyLabel(l),
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 15,
                             color: AppColors.textSecondary,
@@ -109,6 +131,7 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
 
   Widget _buildDisputeCard(
       BuildContext context, FarmoraOrder order, FarmoraState state) {
+    final l = context.l10n;
     final isResolved = order.paymentStatus == 'refunded' ||
         order.paymentStatus == 'released' ||
         order.paymentStatus == 'settled_split';
@@ -132,7 +155,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                Expanded(
+                  child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -144,7 +168,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        isResolved ? 'RESOLVED' : 'DISPUTED',
+                        (isResolved ? l.statusResolved : l.statusDisputed)
+                            .toUpperCase(),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -155,17 +180,23 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      order.orderNumber.isNotEmpty
-                          ? order.orderNumber
-                          : order.id,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        order.orderNumber.isNotEmpty
+                            ? order.orderNumber
+                            : order.id,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                ),
+                const SizedBox(width: 8),
                 Text(
                   order.displayTotal,
                   style: const TextStyle(
@@ -183,7 +214,7 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Dispute Reference: ${order.disputeId}',
+              l.adminDisputeReference(order.disputeId ?? ''),
               style:
                   const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
@@ -195,22 +226,21 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Buyer Claim Reason',
-                    style: TextStyle(
+                    l.adminDisputeClaimReason,
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Produce quality damaged upon delivery or missing quantity mismatch.',
-                    style:
-                        TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    l.adminDisputeDefaultReason,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                   ),
                 ],
               ),
@@ -219,15 +249,19 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Escrow Status: ${order.paymentStatus}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                Expanded(
+                  child: Text(
+                    l.adminDisputeEscrowStatus(
+                        _escrowStatusLabel(l, order.paymentStatus)),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
                 ),
+                const SizedBox(width: 8),
                 if (!isResolved)
                   FilledButton.icon(
                     icon: const Icon(Icons.gavel_rounded, size: 16),
-                    label: const Text('Arbitrate'),
+                    label: Text(l.adminDisputeArbitrate),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       visualDensity: VisualDensity.compact,
@@ -236,14 +270,15 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                         _showArbitrationModal(context, order, state),
                   )
                 else
-                  const Row(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_rounded,
+                      const Icon(Icons.check_circle_rounded,
                           color: Colors.green, size: 16),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        'Settled',
-                        style: TextStyle(
+                        l.statusSettled,
+                        style: const TextStyle(
                           fontSize: 12,
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
@@ -261,9 +296,10 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
 
   void _showArbitrationModal(
       BuildContext context, FarmoraOrder order, FarmoraState state) {
+    final l = context.l10n;
     String resolution = 'refund_buyer';
-    final notesCtrl = TextEditingController(
-        text: 'Inspected photographic evidence and verified delivery log.');
+    final notesCtrl =
+        TextEditingController(text: l.adminDisputeDefaultNotes);
 
     showModalBottomSheet(
       context: context,
@@ -287,52 +323,53 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Arbitrate Dispute',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      l.adminDisputeArbitrateTitle,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
+                    tooltip: l.commonClose,
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Order: ${order.orderNumber} · Amount: ${order.displayTotal}',
+                l.adminDisputeOrderAmount(order.orderNumber, order.displayTotal),
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Select Arbitration Outcome',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              Text(
+                l.adminDisputeSelectOutcome,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 8),
               RadioGroup<String>(
                 groupValue: resolution,
                 onChanged: (v) =>
                     setModalState(() => resolution = v ?? 'refund_buyer'),
-                child: const Column(
+                child: Column(
                   children: [
                     RadioListTile<String>(
-                      title: Text('Full Refund to Buyer (100%)'),
-                      subtitle:
-                          Text('Return locked escrow to buyer. Cancel order.'),
+                      title: Text(l.adminDisputeRefundTitle),
+                      subtitle: Text(l.adminDisputeRefundSubtitle),
                       value: 'refund_buyer',
                       activeColor: AppColors.primary,
                     ),
                     RadioListTile<String>(
-                      title: Text('Release to Farmer (100%)'),
-                      subtitle:
-                          Text('Dismiss dispute. Payout full funds to farmer.'),
+                      title: Text(l.adminDisputeReleaseTitle),
+                      subtitle: Text(l.adminDisputeReleaseSubtitle),
                       value: 'release_farmer',
                       activeColor: AppColors.primary,
                     ),
                     RadioListTile<String>(
-                      title: Text('Split Settlement (50% / 50%)'),
-                      subtitle:
-                          Text('Partial refund to buyer, remainder to farmer.'),
+                      title: Text(l.adminDisputeSplitTitle),
+                      subtitle: Text(l.adminDisputeSplitSubtitle),
                       value: 'split_settlement',
                       activeColor: AppColors.primary,
                     ),
@@ -343,9 +380,9 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               TextField(
                 controller: notesCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Admin Audit Notes',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.adminDisputeNotesLabel,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 18),
@@ -355,9 +392,8 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                   onPressed: () async {
                     if (notesCtrl.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Add audit notes before resolving this dispute.'),
+                        SnackBar(
+                          content: Text(l.adminDisputeNotesRequired),
                         ),
                       );
                       return;
@@ -371,16 +407,14 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Dispute decision recorded.')),
+                          SnackBar(content: Text(l.adminDisputeRecorded)),
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Could not resolve the dispute. Try again.')),
+                          SnackBar(
+                              content: Text(l.adminDisputeResolveFailed)),
                         );
                       }
                     }
@@ -389,7 +423,7 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                     backgroundColor: AppColors.primary,
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: const Text('Record Dispute Decision'),
+                  child: Text(l.adminDisputeRecordDecision),
                 ),
               ),
             ],

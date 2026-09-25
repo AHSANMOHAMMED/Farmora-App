@@ -4,6 +4,7 @@ import '../../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 
 class LogisticsManagementScreen extends StatefulWidget {
   const LogisticsManagementScreen({super.key});
@@ -42,7 +43,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final l = ctx.l10n;
         final color = _statusColor(job.status);
+        final load = job.weightKg != null
+            ? l.adminLogisticsWeightKg('${job.weightKg}')
+            : (job.detail.isNotEmpty
+                ? job.detail
+                : l.adminLogisticsStandardCrates);
         return Padding(
           padding: EdgeInsets.fromLTRB(
             24,
@@ -75,26 +82,31 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      job.status.toUpperCase(),
+                      statusLabel(job.status, l).toUpperCase(),
                       style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.bold,
                           fontSize: 12),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    job.id,
-                    style: TextStyle(
-                        fontFamily: 'monospace',
-                        color: Colors.grey.shade600,
-                        fontSize: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      job.id,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontFamily: 'monospace',
+                          color: Colors.grey.shade600,
+                          fontSize: 12),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
               Text(
-                job.route.isNotEmpty ? job.route : 'Supply Corridor Dispatch',
+                job.route.isNotEmpty ? job.route : l.adminLogisticsDefaultRoute,
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -102,13 +114,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
               ),
               const SizedBox(height: 8),
               if (job.orderId != null && job.orderId!.isNotEmpty) ...[
-                Text('Linked Order: ${job.orderId}',
+                Text(l.adminLogisticsLinkedOrder(job.orderId!),
                     style:
                         TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                 const SizedBox(height: 4),
               ],
               Text(
-                  'Cargo Load: ${job.weightKg != null ? "${job.weightKg} kg" : (job.detail.isNotEmpty ? job.detail : "Standard Agricultural Crates")}',
+                  l.adminLogisticsCargoLoad(load),
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
               // Live courier GPS panel for active hauls.
               if (job.hasCourierLocation) ...[
@@ -146,8 +158,12 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                         child: Text(
                           DeliveryLocationService.isLocationFresh(
                                   job.locationUpdatedAt)
-                              ? 'Driver GPS LIVE — ${job.courierLat!.toStringAsFixed(4)}, ${job.courierLng!.toStringAsFixed(4)}'
-                              : 'Last known driver GPS: ${job.courierLat!.toStringAsFixed(4)}, ${job.courierLng!.toStringAsFixed(4)}',
+                              ? l.adminLogisticsGpsLive(
+                                  job.courierLat!.toStringAsFixed(4),
+                                  job.courierLng!.toStringAsFixed(4))
+                              : l.adminLogisticsGpsLast(
+                                  job.courierLat!.toStringAsFixed(4),
+                                  job.courierLng!.toStringAsFixed(4)),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -163,10 +179,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Transporter Fee:',
-                      style: TextStyle(fontSize: 14)),
+                  Expanded(
+                    child: Text(l.adminLogisticsFee,
+                        style: const TextStyle(fontSize: 14)),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    job.fee.isNotEmpty ? job.fee : 'Not set',
+                    job.fee.isNotEmpty ? job.fee : l.adminLogisticsNotSet,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -175,19 +194,20 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Transit Milestones',
-                  style: TextStyle(
+              Text(l.adminLogisticsMilestones,
+                  style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                       color: AppColors.textSecondary)),
               const SizedBox(height: 8),
-              _buildMilestoneRow('Job requested', true),
+              _buildMilestoneRow(l.adminLogisticsMilestoneRequested, true),
               _buildMilestoneRow(
-                'Pickup confirmed',
+                l.adminLogisticsMilestonePickup,
                 const {'pickedUp', 'inTransit', 'delivered'}
                     .contains(job.status),
               ),
-              _buildMilestoneRow('Delivery completed', job.isDelivered),
+              _buildMilestoneRow(
+                  l.adminLogisticsMilestoneDelivered, job.isDelivered),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -199,7 +219,7 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                         borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('Close'),
+                  child: Text(l.commonClose),
                 ),
               ),
             ],
@@ -222,13 +242,15 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
             color: isCompleted ? const Color(0xFF2E7D32) : Colors.grey,
           ),
           const SizedBox(width: 8),
-          Text(
+          Expanded(
+            child: Text(
             title,
             style: TextStyle(
               fontSize: 13,
               color: isCompleted ? AppColors.textPrimary : Colors.grey,
               fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
             ),
+          ),
           ),
         ],
       ),
@@ -237,6 +259,7 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
 
     // Compute fleet metrics
@@ -276,8 +299,8 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                   children: [
                     Expanded(
                       child: _FleetKpiCard(
-                        title: 'Active In-Transit',
-                        value: '$activeShipments hauls',
+                        title: l.adminLogisticsActiveInTransit,
+                        value: l.adminLogisticsHauls(activeShipments),
                         icon: Icons.local_shipping_rounded,
                         color: const Color(0xFF1B6BD8),
                       ),
@@ -285,8 +308,8 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _FleetKpiCard(
-                        title: 'Awaiting Pickup',
-                        value: '$requestedShipments jobs',
+                        title: l.adminLogisticsAwaitingPickup,
+                        value: l.adminLogisticsJobs(requestedShipments),
                         icon: Icons.pending_actions_rounded,
                         color: const Color(0xFFF57C00),
                       ),
@@ -294,8 +317,8 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: _FleetKpiCard(
-                        title: 'Delivered',
-                        value: '$completedShipments trips',
+                        title: l.statusDelivered,
+                        value: l.adminLogisticsTrips(completedShipments),
                         icon: Icons.verified_rounded,
                         color: const Color(0xFF2E7D32),
                       ),
@@ -308,13 +331,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('all', 'All Fleet Jobs ($totalJobs)'),
+                      _buildFilterChip('all', l.adminLogisticsAllJobs(totalJobs)),
                       const SizedBox(width: 6),
-                      _buildFilterChip('active', 'Active In-Transit'),
+                      _buildFilterChip('active', l.adminLogisticsActiveInTransit),
                       const SizedBox(width: 6),
-                      _buildFilterChip('requested', 'Requested'),
+                      _buildFilterChip('requested', l.statusRequested),
                       const SizedBox(width: 6),
-                      _buildFilterChip('completed', 'Delivered'),
+                      _buildFilterChip('completed', l.statusDelivered),
                     ],
                   ),
                 ),
@@ -334,11 +357,13 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                           Icon(Icons.local_shipping_outlined,
                               size: 64, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
-                          const Text('No Fleet Hauls Found',
-                              style: TextStyle(
+                          Text(l.adminLogisticsEmptyTitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text('No transport routes match the selected filter.',
+                          Text(l.adminLogisticsEmptyHint,
+                              textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey.shade600)),
                         ],
                       ),
@@ -368,7 +393,8 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Container(
+                                    Flexible(
+                                      child: Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
@@ -376,7 +402,10 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        job.status.toUpperCase(),
+                                        statusLabel(job.status, l)
+                                            .toUpperCase(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           color: color,
                                           fontWeight: FontWeight.bold,
@@ -384,20 +413,32 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      job.orderId ?? job.id,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      job.fee.isNotEmpty ? job.fee : 'Not set',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2E7D32),
-                                          fontSize: 14),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        job.orderId ?? job.id,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        job.fee.isNotEmpty
+                                            ? job.fee
+                                            : l.adminLogisticsNotSet,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.end,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF2E7D32),
+                                            fontSize: 14),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -411,7 +452,7 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                       child: Text(
                                         job.route.isNotEmpty
                                             ? job.route
-                                            : 'Central Supply Corridor',
+                                            : l.adminLogisticsCentralCorridor,
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14),
@@ -425,17 +466,21 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                     Icon(Icons.scale_rounded,
                                         size: 16, color: Colors.grey.shade600),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      job.weightKg != null
-                                          ? '${job.weightKg} kg load'
-                                          : (job.detail.isNotEmpty
-                                              ? job.detail
-                                              : '500 kg capacity'),
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade700),
+                                    Expanded(
+                                      child: Text(
+                                        job.weightKg != null
+                                            ? l.adminLogisticsKgLoad(
+                                                '${job.weightKg}')
+                                            : (job.detail.isNotEmpty
+                                                ? job.detail
+                                                : l.adminLogisticsCapacity),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700),
+                                      ),
                                     ),
-                                    const Spacer(),
                                     const Icon(Icons.chevron_right_rounded,
                                         color: Colors.grey),
                                   ],

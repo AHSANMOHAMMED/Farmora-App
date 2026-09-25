@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/verification_model.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
@@ -9,7 +11,8 @@ class VerificationReviewScreen extends StatefulWidget {
   const VerificationReviewScreen({super.key});
 
   @override
-  State<VerificationReviewScreen> createState() => _VerificationReviewScreenState();
+  State<VerificationReviewScreen> createState() =>
+      _VerificationReviewScreenState();
 }
 
 class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
@@ -21,8 +24,8 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
     final verificationDocs = state.verificationDocs;
 
     final filteredDocs = verificationDocs.where((doc) {
-      return _filterStatus == 'all' || 
-             doc.status.name.toLowerCase() == _filterStatus;
+      return _filterStatus == 'all' ||
+          doc.status.name.toLowerCase() == _filterStatus;
     }).toList();
 
     return Scaffold(
@@ -54,21 +57,21 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
           ),
         ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Verification Review',
-            style: TextStyle(
+            context.l10n.adminVerificationTitle,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppColors.onSurface,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'Review and approve farmer verification documents',
-            style: TextStyle(
+            context.l10n.adminVerificationSubtitle,
+            style: const TextStyle(
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
             ),
@@ -79,23 +82,25 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
   }
 
   Widget _buildFilters() {
-    return Container(
+    final l = context.l10n;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          _buildFilterChip('All', _filterStatus == 'all', () {
+          _buildFilterChip(l.commonAll, _filterStatus == 'all', () {
             setState(() => _filterStatus = 'all');
           }),
           const SizedBox(width: 8),
-          _buildFilterChip('Pending', _filterStatus == 'pending', () {
+          _buildFilterChip(l.statusPending, _filterStatus == 'pending', () {
             setState(() => _filterStatus = 'pending');
           }),
           const SizedBox(width: 8),
-          _buildFilterChip('Approved', _filterStatus == 'approved', () {
+          _buildFilterChip(l.statusApproved, _filterStatus == 'approved', () {
             setState(() => _filterStatus = 'approved');
           }),
           const SizedBox(width: 8),
-          _buildFilterChip('Rejected', _filterStatus == 'rejected', () {
+          _buildFilterChip(l.statusRejected, _filterStatus == 'rejected', () {
             setState(() => _filterStatus = 'rejected');
           }),
         ],
@@ -112,40 +117,47 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
       checkmarkColor: AppColors.onPrimaryContainer,
       backgroundColor: AppColors.surfaceContainerHighest,
       labelStyle: TextStyle(
-        color: isSelected ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
+        color: isSelected
+            ? AppColors.onPrimaryContainer
+            : AppColors.onSurfaceVariant,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: AppColors.outlineVariant,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No verification requests',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurfaceVariant,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: AppColors.outlineVariant,
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Verification requests will appear here when farmers submit documents',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.adminVerificationEmptyTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.adminVerificationEmptyMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -193,7 +205,7 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          doc.title,
+                          doc.displayTitle,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -202,7 +214,7 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          doc.description,
+                          doc.displayDescription,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.onSurfaceVariant,
@@ -300,17 +312,17 @@ class _VerificationReviewScreenState extends State<VerificationReviewScreen> {
       case VerificationStatus.pending:
         backgroundColor = AppColors.surfaceContainerHighest;
         textColor = AppColors.onSurfaceVariant;
-        label = 'Pending';
+        label = context.l10n.statusPending;
         break;
       case VerificationStatus.approved:
         backgroundColor = AppColors.primaryContainer;
         textColor = AppColors.onPrimaryContainer;
-        label = 'Approved';
+        label = context.l10n.statusApproved;
         break;
       case VerificationStatus.rejected:
         backgroundColor = AppColors.errorContainer;
         textColor = AppColors.onErrorContainer;
-        label = 'Rejected';
+        label = context.l10n.statusRejected;
         break;
     }
 
@@ -361,7 +373,8 @@ class _VerificationDetailSheet extends StatefulWidget {
   const _VerificationDetailSheet({required this.doc});
 
   @override
-  State<_VerificationDetailSheet> createState() => _VerificationDetailSheetState();
+  State<_VerificationDetailSheet> createState() =>
+      _VerificationDetailSheetState();
 }
 
 class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
@@ -400,7 +413,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.title,
+                      doc.displayTitle,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -408,7 +421,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                       ),
                     ),
                     Text(
-                      doc.description,
+                      doc.displayDescription,
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.onSurfaceVariant,
@@ -424,18 +437,20 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Status
           _buildStatusChip(doc.status),
           const SizedBox(height: 16),
-          
+
           // Document info
           if (doc.fileName != null) ...[
-            _buildDetailRow(Icons.description, 'File Name', doc.fileName!),
+            _buildDetailRow(Icons.description,
+                context.l10n.adminVerificationFileName, doc.fileName!),
             if (doc.fileSizeInfo != null)
-              _buildDetailRow(Icons.storage, 'File Size', doc.fileSizeInfo!),
+              _buildDetailRow(Icons.storage,
+                  context.l10n.adminVerificationFileSize, doc.fileSizeInfo!),
           ],
-          
+
           if (doc.errorMessage != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -463,12 +478,12 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
               ),
             ),
           ],
-          
+
           if (doc.hasFrontBack) ...[
             const SizedBox(height: 16),
-            const Text(
-              'Document Images',
-              style: TextStyle(
+            Text(
+              context.l10n.adminVerificationImages,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppColors.onSurface,
@@ -478,36 +493,39 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
             Row(
               children: [
                 Expanded(
-                  child: _buildImagePreview('Front', doc.frontImage),
+                  child: _buildImagePreview(
+                      context.l10n.adminVerificationFront, doc.frontImage),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildImagePreview('Back', doc.backImage),
+                  child: _buildImagePreview(
+                      context.l10n.adminVerificationBack, doc.backImage),
                 ),
               ],
             ),
           ] else if (doc.imagePreview != null) ...[
             const SizedBox(height: 16),
-            const Text(
-              'Document Preview',
-              style: TextStyle(
+            Text(
+              context.l10n.adminVerificationPreview,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppColors.onSurface,
               ),
             ),
             const SizedBox(height: 8),
-            _buildImagePreview('Document', doc.imagePreview),
+            _buildImagePreview(
+                context.l10n.adminVerificationDocument, doc.imagePreview),
           ],
-          
+
           const SizedBox(height: 24),
-          
+
           // Review actions
           if (canReview) ...[
             if (_isRejecting) ...[
-              const Text(
-                'Rejection Reason',
-                style: TextStyle(
+              Text(
+                context.l10n.adminVerificationRejectionReason,
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: AppColors.onSurface,
@@ -518,7 +536,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                 controller: _rejectionReasonController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Please provide a reason for rejection...',
+                  hintText: context.l10n.adminVerificationRejectionHint,
                   filled: true,
                   fillColor: AppColors.surfaceContainerHighest,
                   border: OutlineInputBorder(
@@ -529,7 +547,6 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
               ),
               const SizedBox(height: 12),
             ],
-            
             Row(
               children: [
                 Expanded(
@@ -547,7 +564,13 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                             ),
                           )
                         : const Icon(Icons.check_circle),
-                    label: Text(_isApproving ? 'Approving...' : 'Approve'),
+                    label: Text(
+                      _isApproving
+                          ? context.l10n.adminVerificationApproving
+                          : context.l10n.adminVerificationApprove,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -564,7 +587,13 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                     icon: _isRejecting
                         ? const Icon(Icons.close)
                         : const Icon(Icons.cancel),
-                    label: Text(_isRejecting ? 'Cancel' : 'Reject'),
+                    label: Text(
+                      _isRejecting
+                          ? context.l10n.commonCancel
+                          : context.l10n.adminVerificationReject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
@@ -573,7 +602,6 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                 ),
               ],
             ),
-            
             if (_isRejecting) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -583,7 +611,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                       ? null
                       : () => _handleReject(),
                   icon: const Icon(Icons.block),
-                  label: const Text('Confirm Rejection'),
+                  label: Text(context.l10n.adminVerificationConfirmRejection),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.error,
                     foregroundColor: Colors.white,
@@ -614,15 +642,17 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                         : AppColors.onErrorContainer,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    doc.status == VerificationStatus.approved
-                        ? 'This document has been approved'
-                        : 'This document has been rejected',
-                    style: TextStyle(
-                      color: doc.status == VerificationStatus.approved
-                          ? AppColors.onPrimaryContainer
-                          : AppColors.onErrorContainer,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      doc.status == VerificationStatus.approved
+                          ? context.l10n.adminVerificationDocApproved
+                          : context.l10n.adminVerificationDocRejected,
+                      style: TextStyle(
+                        color: doc.status == VerificationStatus.approved
+                            ? AppColors.onPrimaryContainer
+                            : AppColors.onErrorContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -643,17 +673,17 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
       case VerificationStatus.pending:
         backgroundColor = AppColors.surfaceContainerHighest;
         textColor = AppColors.onSurfaceVariant;
-        label = 'Pending Review';
+        label = context.l10n.adminVerificationPendingReview;
         break;
       case VerificationStatus.approved:
         backgroundColor = AppColors.primaryContainer;
         textColor = AppColors.onPrimaryContainer;
-        label = 'Approved';
+        label = context.l10n.statusApproved;
         break;
       case VerificationStatus.rejected:
         backgroundColor = AppColors.errorContainer;
         textColor = AppColors.onErrorContainer;
-        label = 'Rejected';
+        label = context.l10n.statusRejected;
         break;
     }
 
@@ -696,11 +726,13 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
         children: [
           Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -766,7 +798,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
 
   Future<void> _handleApprove() async {
     setState(() => _isApproving = true);
-    
+
     try {
       await FirestoreService().reviewVerificationDoc(
         documentId: widget.doc.id,
@@ -775,14 +807,14 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
 
       if (mounted) {
         context.read<FarmoraState>().updateVerificationDoc(
-          widget.doc.id,
-          status: VerificationStatus.approved,
-        );
-        
+              widget.doc.id,
+              status: VerificationStatus.approved,
+            );
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             backgroundColor: AppColors.primary,
-            content: Text('Verification document approved successfully'),
+            content: Text(context.l10n.adminVerificationApprovedSnack),
           ),
         );
         Navigator.pop(context);
@@ -792,7 +824,8 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.error,
-            content: Text('Failed to approve: $error'),
+            content: Text(context.l10n.adminVerificationApproveFailed(
+                userMessage(error, action: 'approve verification document'))),
           ),
         );
       }
@@ -808,7 +841,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
     if (reason.isEmpty) return;
 
     setState(() => _isRejecting = true);
-    
+
     try {
       await FirestoreService().reviewVerificationDoc(
         documentId: widget.doc.id,
@@ -817,15 +850,15 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
 
       if (mounted) {
         context.read<FarmoraState>().updateVerificationDoc(
-          widget.doc.id,
-          status: VerificationStatus.rejected,
-          errorMessage: reason,
-        );
-        
+              widget.doc.id,
+              status: VerificationStatus.rejected,
+              errorMessage: reason,
+            );
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             backgroundColor: AppColors.error,
-            content: Text('Verification document rejected'),
+            content: Text(context.l10n.adminVerificationRejectedSnack),
           ),
         );
         Navigator.pop(context);
@@ -835,7 +868,8 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.error,
-            content: Text('Failed to reject: $error'),
+            content: Text(context.l10n.adminVerificationRejectFailed(
+                userMessage(error, action: 'reject verification document'))),
           ),
         );
       }

@@ -3,6 +3,18 @@ import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../models/settlement_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import '../../../models/user_role.dart';
+
+/// Display label for a raw recipient role ('farmer', 'transporter', ...).
+String _roleLabel(String raw) {
+  for (final r in Role.values) {
+    if (r.name == raw.toLowerCase()) return r.label;
+  }
+  return raw;
+}
 
 class SettlementManagementScreen extends StatefulWidget {
   const SettlementManagementScreen({super.key});
@@ -32,88 +44,99 @@ class _SettlementManagementScreenState
 
   void _showApproveDialog(BuildContext context, SettlementPayout settlement) {
     final referenceController = TextEditingController();
+    final l = context.l10n;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Record completed bank transfer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Disburse funds for ${settlement.orderNumber} to:'),
-            const SizedBox(height: 8),
-            const Text(
-              'Transfer the funds through your bank first, then enter its real confirmation reference.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: referenceController,
-              maxLength: 100,
-              decoration: const InputDecoration(
-                labelText: 'Bank confirmation reference',
-                border: OutlineInputBorder(),
+        title: Text(l.adminSettlementRecordTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.adminSettlementDisburseFor(settlement.orderNumber)),
+              const SizedBox(height: 8),
+              Text(
+                l.adminSettlementTransferHint,
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
+              const SizedBox(height: 8),
+              TextField(
+                controller: referenceController,
+                maxLength: 100,
+                decoration: InputDecoration(
+                  labelText: l.adminSettlementReferenceLabel,
+                  border: const OutlineInputBorder(),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                      'Recipient: ${settlement.recipientName} (${settlement.recipientRole})',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Bank: ${settlement.bankName}'),
-                  Text('Account: ${settlement.accountNumber}'),
-                  const Divider(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Gross Order:'),
-                      Text('LKR ${settlement.grossAmount.toStringAsFixed(2)}'),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Platform Fee (5%):',
-                          style: TextStyle(color: Colors.grey)),
-                      Text('- LKR ${settlement.platformFee.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Net Payout:',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text(
-                        'LKR ${settlement.netAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
-                            fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        l.adminSettlementRecipient(settlement.recipientName,
+                            _roleLabel(settlement.recipientRole)),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(l.adminSettlementBank(settlement.bankName)),
+                    Text(l.adminSettlementAccount(settlement.accountNumber)),
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: Text(l.adminSettlementGrossOrder)),
+                        Text(
+                            AppFormat.lkr(settlement.grossAmount, decimals: 2)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(l.adminSettlementPlatformFee,
+                              style: const TextStyle(color: Colors.grey)),
+                        ),
+                        Text(
+                            '- ${AppFormat.lkr(settlement.platformFee, decimals: 2)}',
+                            style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(l.adminSettlementNetPayout,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        Text(
+                          AppFormat.lkr(settlement.netAmount, decimals: 2),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E7D32),
+                              fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -122,9 +145,7 @@ class _SettlementManagementScreenState
               final reference = referenceController.text.trim();
               if (reference.length < 4) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content:
-                          Text('Enter the actual bank transfer reference.')),
+                  SnackBar(content: Text(l.adminSettlementEnterReference)),
                 );
                 return;
               }
@@ -138,7 +159,9 @@ class _SettlementManagementScreenState
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text('Could not record transfer: $error')),
+                        content: Text(l.adminSettlementRecordFailed(userMessage(
+                            error,
+                            action: 'record settlement transfer')))),
                   );
                 }
                 return;
@@ -147,14 +170,14 @@ class _SettlementManagementScreenState
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                        'Transfer reference recorded for ${settlement.recipientName}.'),
+                        l.adminSettlementRecorded(settlement.recipientName)),
                     backgroundColor: const Color(0xFF2E7D32),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               }
             },
-            child: const Text('Record Transfer'),
+            child: Text(l.adminSettlementRecordTransfer),
           ),
         ],
       ),
@@ -162,26 +185,27 @@ class _SettlementManagementScreenState
   }
 
   void _showHoldDialog(BuildContext context, SettlementPayout settlement) {
-    final reasonCtrl = TextEditingController(
-        text:
-            'Suspected bank detail mismatch; flagged for manual compliance review.');
+    final l = context.l10n;
+    final reasonCtrl =
+        TextEditingController(text: l.adminSettlementHoldDefaultReason);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Place Settlement On Hold'),
+        title: Text(l.adminSettlementHoldTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-                'Hold disbursement of LKR ${settlement.netAmount.toStringAsFixed(2)} for ${settlement.recipientName}.'),
+            Text(l.adminSettlementHoldMessage(
+                AppFormat.lkr(settlement.netAmount, decimals: 2),
+                settlement.recipientName)),
             const SizedBox(height: 12),
             TextField(
               controller: reasonCtrl,
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: 'Compliance Hold Reason',
+                labelText: l.adminSettlementHoldReasonLabel,
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -191,7 +215,7 @@ class _SettlementManagementScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -204,15 +228,14 @@ class _SettlementManagementScreenState
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                        'Settlement ${settlement.id} placed on compliance hold.'),
+                    content: Text(l.adminSettlementHoldApplied(settlement.id)),
                     backgroundColor: const Color(0xFFD32F2F),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               }
             },
-            child: const Text('Apply Hold'),
+            child: Text(l.adminSettlementApplyHold),
           ),
         ],
       ),
@@ -223,8 +246,7 @@ class _SettlementManagementScreenState
       BuildContext context, List<SettlementPayout> settlements) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-            'Exported bank wire batch manifest (${settlements.length} disbursements) for CEFT/SLIP processing.'),
+        content: Text(context.l10n.adminSettlementExported(settlements.length)),
         backgroundColor: const Color(0xFF1B6BD8),
         behavior: SnackBarBehavior.floating,
       ),
@@ -234,6 +256,7 @@ class _SettlementManagementScreenState
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
+    final l = context.l10n;
 
     // Calculate Treasury Metrics
     double totalSettled = 0.0;
@@ -271,8 +294,8 @@ class _SettlementManagementScreenState
                   children: [
                     Expanded(
                       child: _TreasuryKpiCard(
-                        title: 'Disbursed To Date',
-                        amount: 'LKR ${totalSettled.toStringAsFixed(0)}',
+                        title: l.adminSettlementKpiDisbursed,
+                        amount: AppFormat.lkr(totalSettled),
                         icon: Icons.check_circle_outline_rounded,
                         color: const Color(0xFF2E7D32),
                       ),
@@ -280,8 +303,8 @@ class _SettlementManagementScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: _TreasuryKpiCard(
-                        title: 'Pending In Vault',
-                        amount: 'LKR ${pendingAmount.toStringAsFixed(0)}',
+                        title: l.adminSettlementKpiPending,
+                        amount: AppFormat.lkr(pendingAmount),
                         icon: Icons.hourglass_top_rounded,
                         color: const Color(0xFFF57C00),
                       ),
@@ -293,8 +316,8 @@ class _SettlementManagementScreenState
                   children: [
                     Expanded(
                       child: _TreasuryKpiCard(
-                        title: 'Platform Fees Kept',
-                        amount: 'LKR ${feesRetained.toStringAsFixed(0)}',
+                        title: l.adminSettlementKpiFees,
+                        amount: AppFormat.lkr(feesRetained),
                         icon: Icons.account_balance_rounded,
                         color: const Color(0xFF1B6BD8),
                       ),
@@ -302,8 +325,8 @@ class _SettlementManagementScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: _TreasuryKpiCard(
-                        title: 'Held Flagged',
-                        amount: '$onHoldCount payouts',
+                        title: l.adminSettlementKpiHeld,
+                        amount: l.adminSettlementPayoutsCount(onHoldCount),
                         icon: Icons.flag_rounded,
                         color: const Color(0xFFD32F2F),
                       ),
@@ -320,15 +343,21 @@ class _SettlementManagementScreenState
                         child: Row(
                           children: [
                             _buildFilterChip(
-                                'all', 'All (${state.settlements.length})'),
+                                'all',
+                                l.adminSettlementFilterAll(
+                                    state.settlements.length)),
                             const SizedBox(width: 6),
-                            _buildFilterChip('pending', 'Pending'),
+                            _buildFilterChip(
+                                'pending', statusLabel('pending', l)),
                             const SizedBox(width: 6),
-                            _buildFilterChip('processing', 'Processing'),
+                            _buildFilterChip(
+                                'processing', statusLabel('processing', l)),
                             const SizedBox(width: 6),
-                            _buildFilterChip('settled', 'Settled'),
+                            _buildFilterChip(
+                                'settled', statusLabel('settled', l)),
                             const SizedBox(width: 6),
-                            _buildFilterChip('on_hold', 'On Hold'),
+                            _buildFilterChip(
+                                'on_hold', statusLabel('on_hold', l)),
                           ],
                         ),
                       ),
@@ -338,8 +367,8 @@ class _SettlementManagementScreenState
                       onPressed: () =>
                           _exportBankBatchManifest(context, filtered),
                       icon: const Icon(Icons.download_rounded, size: 16),
-                      label: const Text('Export Wire CSV',
-                          style: TextStyle(fontSize: 12)),
+                      label: Text(l.adminSettlementExportCsv,
+                          style: const TextStyle(fontSize: 12)),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(
@@ -366,11 +395,17 @@ class _SettlementManagementScreenState
                           Icon(Icons.account_balance_wallet_outlined,
                               size: 64, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
-                          const Text('No Settlements Found',
-                              style: TextStyle(
+                          Text(l.adminSettlementEmptyTitle,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text('No payout records match "$_selectedStatus".',
+                          Text(
+                              l.adminSettlementEmptyMessage(
+                                  _selectedStatus == 'all'
+                                      ? l.commonAll
+                                      : statusLabel(_selectedStatus, l)),
+                              textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey.shade600)),
                         ],
                       ),
@@ -396,33 +431,49 @@ class _SettlementManagementScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      s.status.toUpperCase(),
-                                      style: TextStyle(
-                                        color: color,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                color.withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            statusLabel(s.status, l)
+                                                .toUpperCase(),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: color,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          s.orderNumber,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    s.orderNumber,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'LKR ${s.netAmount.toStringAsFixed(2)}',
+                                    AppFormat.lkr(s.netAmount, decimals: 2),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 17,
@@ -437,11 +488,15 @@ class _SettlementManagementScreenState
                                   Icon(Icons.account_circle_outlined,
                                       size: 16, color: Colors.grey.shade600),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    s.recipientName,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13),
+                                  Flexible(
+                                    child: Text(
+                                      s.recipientName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13),
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   Container(
@@ -452,7 +507,7 @@ class _SettlementManagementScreenState
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      s.recipientRole.toUpperCase(),
+                                      _roleLabel(s.recipientRole).toUpperCase(),
                                       style: const TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
@@ -467,11 +522,14 @@ class _SettlementManagementScreenState
                                   Icon(Icons.account_balance_outlined,
                                       size: 16, color: Colors.grey.shade600),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    '${s.bankName} · Acc: ${s.accountNumber}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700),
+                                  Expanded(
+                                    child: Text(
+                                      l.adminSettlementBankAccount(
+                                          s.bankName, s.accountNumber),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade700),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -481,11 +539,18 @@ class _SettlementManagementScreenState
                                   Icon(Icons.currency_exchange_rounded,
                                       size: 14, color: Colors.grey.shade500),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    'Gross: LKR ${s.grossAmount.toStringAsFixed(2)} | Fee (5%): LKR ${s.platformFee.toStringAsFixed(2)} | Method: ${s.payoutMethod}',
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade600),
+                                  Expanded(
+                                    child: Text(
+                                      l.adminSettlementBreakdown(
+                                          AppFormat.lkr(s.grossAmount,
+                                              decimals: 2),
+                                          AppFormat.lkr(s.platformFee,
+                                              decimals: 2),
+                                          s.payoutMethod),
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade600),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -499,7 +564,8 @@ class _SettlementManagementScreenState
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    'Bank Ref: ${s.transactionReference}',
+                                    l.adminSettlementBankRef(
+                                        s.transactionReference!),
                                     style: TextStyle(
                                         fontSize: 11,
                                         color: Colors.green.shade800,
@@ -524,7 +590,8 @@ class _SettlementManagementScreenState
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          'Hold Reason: ${s.holdReason}',
+                                          l.adminSettlementHoldReason(
+                                              s.holdReason!),
                                           style: const TextStyle(
                                               fontSize: 12, color: Colors.red),
                                         ),
@@ -546,7 +613,10 @@ class _SettlementManagementScreenState
                                         icon: const Icon(
                                             Icons.check_circle_outline_rounded,
                                             size: 16),
-                                        label: const Text('Approve & Wire'),
+                                        label: Text(
+                                            l.adminSettlementApproveWire,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis),
                                         style: FilledButton.styleFrom(
                                           backgroundColor:
                                               const Color(0xFF2E7D32),
@@ -573,7 +643,7 @@ class _SettlementManagementScreenState
                                             borderRadius:
                                                 BorderRadius.circular(10)),
                                       ),
-                                      child: const Text('Hold Payout'),
+                                      child: Text(l.adminSettlementHoldPayout),
                                     ),
                                   ] else if (s.status == 'on_hold') ...[
                                     Expanded(
@@ -585,16 +655,18 @@ class _SettlementManagementScreenState
                                           if (context.mounted) {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'Disbursement resumed for wire processing.')),
+                                              SnackBar(
+                                                  content: Text(l
+                                                      .adminSettlementResumed)),
                                             );
                                           }
                                         },
                                         icon: const Icon(Icons.replay_rounded,
                                             size: 16),
-                                        label:
-                                            const Text('Resolve Hold & Resume'),
+                                        label: Text(
+                                            l.adminSettlementResolveHold,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis),
                                         style: FilledButton.styleFrom(
                                           backgroundColor:
                                               const Color(0xFF1B6BD8),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../../models/review_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 
 class ReviewManagementScreen extends StatefulWidget {
   const ReviewManagementScreen({super.key});
@@ -29,10 +30,11 @@ class _ReviewManagementScreenState extends State<ReviewManagementScreen> {
 
     final pendingCount = allReviews.where((r) => r.status == ReviewStatus.pending).length;
     final lowRatingCount = allReviews.where((r) => r.rating <= 2).length;
+    final l = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Review & Feedback Moderation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(l.adminReviewsTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: Column(
         children: [
@@ -42,15 +44,15 @@ class _ReviewManagementScreenState extends State<ReviewManagementScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                _buildFilterChip('all', 'All (${allReviews.length})'),
+                _buildFilterChip('all', l.adminReviewsFilterAll(allReviews.length)),
                 const SizedBox(width: 8),
-                _buildFilterChip('pending', 'Pending ($pendingCount)', badgeColor: Colors.orange),
+                _buildFilterChip('pending', l.adminReviewsFilterPending(pendingCount), badgeColor: Colors.orange),
                 const SizedBox(width: 8),
-                _buildFilterChip('approved', 'Approved'),
+                _buildFilterChip('approved', l.statusApproved),
                 const SizedBox(width: 8),
-                _buildFilterChip('rejected', 'Flagged / Rejected'),
+                _buildFilterChip('rejected', l.adminReviewsFilterFlagged),
                 const SizedBox(width: 8),
-                _buildFilterChip('low_rating', 'Low Rating ($lowRatingCount)', badgeColor: Colors.red),
+                _buildFilterChip('low_rating', l.adminReviewsFilterLowRating(lowRatingCount), badgeColor: Colors.red),
               ],
             ),
           ),
@@ -65,7 +67,10 @@ class _ReviewManagementScreenState extends State<ReviewManagementScreen> {
                       children: [
                         Icon(Icons.rate_review_outlined, size: 54, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
-                        const Text('No reviews found for this filter', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(l.adminReviewsEmpty, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                        ),
                       ],
                     ),
                   )
@@ -109,6 +114,7 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<FarmoraState>();
+    final l = context.l10n;
 
     return Card(
       elevation: 0,
@@ -141,22 +147,24 @@ class _ReviewCard extends StatelessWidget {
                     children: [
                       Text(
                         review.reviewerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Reviewed: ${review.subjectName}',
+                        l.adminReviewsReviewed(review.subjectName),
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                       if (review.orderNumber.isNotEmpty)
                         Text(
-                          'Order: ${review.orderNumber}',
+                          l.adminReviewsOrder(review.orderNumber),
                           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                         ),
                     ],
                   ),
                 ),
-                _buildStatusChip(review.status),
+                _buildStatusChip(review),
               ],
             ),
 
@@ -198,7 +206,7 @@ class _ReviewCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Admin Note: ${review.moderationNote}',
+                        l.adminReviewsAdminNote(review.moderationNote!),
                         style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.textSecondary),
                       ),
                     ),
@@ -212,19 +220,20 @@ class _ReviewCard extends StatelessWidget {
             const SizedBox(height: 8),
 
             // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 TextButton.icon(
                   icon: const Icon(Icons.edit_note_rounded, size: 16),
-                  label: const Text('Add Note', style: TextStyle(fontSize: 12)),
+                  label: Text(l.adminReviewsAddNote, style: const TextStyle(fontSize: 12)),
                   onPressed: () => _showAddNoteDialog(context, review, state),
                 ),
                 const SizedBox(width: 4),
                 if (review.status != ReviewStatus.approved)
                   FilledButton.tonalIcon(
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                    label: const Text('Approve', style: TextStyle(fontSize: 12)),
+                    label: Text(l.adminReviewsApprove, style: const TextStyle(fontSize: 12)),
                     onPressed: () async {
                       await state.moderateReview(
                         reviewId: review.id,
@@ -233,7 +242,7 @@ class _ReviewCard extends StatelessWidget {
                       );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Review approved and visible publicly.')),
+                          SnackBar(content: Text(l.adminReviewsApprovedSnack)),
                         );
                       }
                     },
@@ -242,7 +251,7 @@ class _ReviewCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.flag_outlined, size: 16, color: Colors.orange),
-                    label: const Text('Flag', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                    label: Text(l.adminReviewsFlag, style: const TextStyle(fontSize: 12, color: Colors.orange)),
                     onPressed: () async {
                       await state.moderateReview(
                         reviewId: review.id,
@@ -251,7 +260,7 @@ class _ReviewCard extends StatelessWidget {
                       );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Review flagged and hidden.')),
+                          SnackBar(content: Text(l.adminReviewsFlaggedSnack)),
                         );
                       }
                     },
@@ -260,19 +269,19 @@ class _ReviewCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
-                  tooltip: 'Delete Review',
+                  tooltip: l.adminReviewsDeleteTooltip,
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Delete Review?'),
-                        content: const Text('This will permanently delete this feedback entry from the platform.'),
+                        title: Text(l.adminReviewsDeleteTitle),
+                        content: Text(l.adminReviewsDeleteMessage),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.commonCancel)),
                           FilledButton(
                             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
                             onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete'),
+                            child: Text(l.commonDelete),
                           ),
                         ],
                       ),
@@ -281,7 +290,7 @@ class _ReviewCard extends StatelessWidget {
                       await state.deleteReview(reviewId: review.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Review permanently removed.')),
+                          SnackBar(content: Text(l.adminReviewsDeletedSnack)),
                         );
                       }
                     }
@@ -295,26 +304,23 @@ class _ReviewCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip(ReviewStatus status) {
+  Widget _buildStatusChip(Review review) {
     Color bg;
     Color fg;
-    String text;
+    final text = review.getStatusDisplayName();
 
-    switch (status) {
+    switch (review.status) {
       case ReviewStatus.approved:
         bg = Colors.green.shade50;
         fg = Colors.green.shade800;
-        text = 'Approved';
         break;
       case ReviewStatus.rejected:
         bg = Colors.red.shade50;
         fg = Colors.red.shade800;
-        text = 'Rejected';
         break;
       case ReviewStatus.pending:
         bg = Colors.orange.shade50;
         fg = Colors.orange.shade800;
-        text = 'Pending';
         break;
     }
 
@@ -333,20 +339,21 @@ class _ReviewCard extends StatelessWidget {
 
   void _showAddNoteDialog(BuildContext context, Review review, FarmoraState state) {
     final ctrl = TextEditingController(text: review.moderationNote ?? '');
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Admin Moderation Note'),
+        title: Text(l.adminReviewsNoteTitle),
         content: TextField(
           controller: ctrl,
           maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Enter internal audit note or reasoning...',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l.adminReviewsNoteHint,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -357,11 +364,11 @@ class _ReviewCard extends StatelessWidget {
               );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Audit note saved.')),
+                  SnackBar(content: Text(l.adminReviewsNoteSaved)),
                 );
               }
             },
-            child: const Text('Save Note'),
+            child: Text(l.adminReviewsSaveNote),
           ),
         ],
       ),

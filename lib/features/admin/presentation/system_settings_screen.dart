@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../services/firebase_service.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import 'market_price_management_screen.dart';
 import 'broadcast_advisory_screen.dart';
 import 'dispute_resolution_screen.dart';
@@ -52,7 +54,10 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Settings update failed: $error')),
+          SnackBar(
+            content: Text(context.l10n.adminSettingsUpdateFailed(
+                userMessage(error, action: 'update platform settings'))),
+          ),
         );
       }
     }
@@ -77,12 +82,12 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.pop(context, int.tryParse(controller.text)),
-            child: const Text('Save'),
+            child: Text(context.l10n.commonSave),
           ),
         ],
       ),
@@ -95,17 +100,17 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
   Widget build(BuildContext context) {
     final feeBps = (_settings['platformFeeBps'] as num? ?? 0).toInt();
     final timeout = (_settings['sessionTimeoutMinutes'] as num? ?? 60).toInt();
+    final l = context.l10n;
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Platform Settings',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(l.adminSettingsTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           SwitchListTile(
-            title: const Text('Maintenance Mode'),
-            subtitle: const Text(
-                'Disable access to the platform for all non-admin users.'),
+            title: Text(l.adminSettingsMaintenanceMode),
+            subtitle: Text(l.adminSettingsMaintenanceSubtitle),
             value: _settings['maintenanceMode'] == true,
             onChanged: _loading
                 ? null
@@ -113,22 +118,22 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           ),
           const Divider(),
           ListTile(
-            title: const Text('Fee Configuration'),
-            subtitle: Text('Current: ${feeBps / 100}%'),
+            title: Text(l.adminSettingsFeeTitle),
+            subtitle: Text(l.adminSettingsFeeCurrent('${feeBps / 100}')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _editNumber(
-              title: 'Platform fee (basis points)',
+              title: l.adminSettingsFeeDialogTitle,
               key: 'platformFeeBps',
               value: feeBps,
             ),
           ),
           const Divider(),
           ListTile(
-            title: const Text('Security Policies'),
-            subtitle: Text('Session timeout: $timeout minutes'),
+            title: Text(l.adminSettingsSecurityTitle),
+            subtitle: Text(l.adminSettingsSessionTimeout(timeout)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _editNumber(
-              title: 'Session timeout (minutes)',
+              title: l.adminSettingsSessionDialogTitle,
               key: 'sessionTimeoutMinutes',
               value: timeout,
             ),
@@ -136,8 +141,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.trending_up_rounded, color: AppColors.primary),
-            title: const Text('Market Price Intelligence'),
-            subtitle: const Text('Configure Sri Lankan wholesale Pola benchmark rates'),
+            title: Text(l.adminSettingsMarketPriceTitle),
+            subtitle: Text(l.adminSettingsMarketPriceSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -147,8 +152,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.campaign_rounded, color: Color(0xFFE65100)),
-            title: const Text('Broadcast Advisories & Weather Alerts'),
-            subtitle: const Text('Push emergency and operational notices to users'),
+            title: Text(l.adminSettingsBroadcastTitle),
+            subtitle: Text(l.adminSettingsBroadcastSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -158,8 +163,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.gavel_rounded, color: Color(0xFF6A1B9A)),
-            title: const Text('Dispute & Escrow Arbitrator Desk'),
-            subtitle: const Text('Inspect claims and trigger escrow payouts'),
+            title: Text(l.adminSettingsDisputeTitle),
+            subtitle: Text(l.adminSettingsDisputeSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -169,8 +174,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.verified_user_rounded, color: Color(0xFF1B6BD8)),
-            title: const Text('Farmer & Transporter KYC Verification'),
-            subtitle: const Text('Review national identity, land permits, and driving licenses'),
+            title: Text(l.adminSettingsKycTitle),
+            subtitle: Text(l.adminSettingsKycSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -180,8 +185,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.insights_rounded, color: Color(0xFF1B6BD8)),
-            title: const Text('Platform Analytics & Insights'),
-            subtitle: const Text('GMV, volume flow, regional distribution, and export reports'),
+            title: Text(l.adminSettingsAnalyticsTitle),
+            subtitle: Text(l.adminSettingsAnalyticsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -191,8 +196,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.rate_review_rounded, color: Colors.amber),
-            title: const Text('Review & Feedback Moderation'),
-            subtitle: const Text('Moderate buyer and farmer ratings, audit notes, and flags'),
+            title: Text(l.adminReviewsTitle),
+            subtitle: Text(l.adminSettingsReviewsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -202,8 +207,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.cloud_sync_rounded, color: Colors.teal),
-            title: const Text('Firebase & Server Control'),
-            subtitle: const Text('Maintenance mode, service latency, version enforcement, and cache ops'),
+            title: Text(l.adminServerTitle),
+            subtitle: Text(l.adminSettingsServerSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -213,8 +218,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF2E7D32)),
-            title: const Text('Treasury & Bank Wire Settlements'),
-            subtitle: const Text('Farmer & transporter CEFT/SLIP payouts, escrow release, and wire manifests'),
+            title: Text(l.adminSettingsTreasuryTitle),
+            subtitle: Text(l.adminSettingsTreasurySubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -224,8 +229,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF1B6BD8)),
-            title: const Text('Fleet & Supply Chain Dispatch Radar'),
-            subtitle: const Text('Real-time tracking of active hauls, transit checkpoints, and driver loads'),
+            title: Text(l.adminSettingsFleetTitle),
+            subtitle: Text(l.adminSettingsFleetSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -235,8 +240,8 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.shield_rounded, color: Color(0xFF5E35B1)),
-            title: const Text('Compliance & Security Audit Trail'),
-            subtitle: const Text('Tamper-proof event logs for admin actions, security alerts, and exports'),
+            title: Text(l.adminSettingsAuditTitle),
+            subtitle: Text(l.adminSettingsAuditSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -245,31 +250,27 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
           ),
           const Divider(),
           ListTile(
-            title: const Text('Seed Sri Lankan marketplace'),
-            subtitle: const Text(
-              'Requires registered farmer + buyer. Attaches real LKR produce, '
-              'orders and jobs to those accounts.',
-            ),
+            title: Text(l.adminSettingsSeedTitle),
+            subtitle: Text(l.adminSettingsSeedSubtitle),
             trailing: const Icon(Icons.add_box),
             onTap: () async {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Seeding Sri Lankan marketplace…')),
+                SnackBar(content: Text(l.adminServerSeeding)),
               );
               try {
                 await FirestoreService().seedDatabase();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Seeded. Sign in as farmer/buyer/transporter to see data.',
-                      ),
-                    ),
+                    SnackBar(content: Text(l.adminSettingsSeeded)),
                   );
                 }
               } catch (error) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Seed failed: $error')),
+                    SnackBar(
+                      content: Text(l.adminSettingsSeedFailed(
+                          userMessage(error, action: 'seed marketplace data'))),
+                    ),
                   );
                 }
               }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../models/market_price_index.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -24,8 +26,20 @@ class _MarketPriceManagementScreenState
     'Grains'
   ];
 
+  /// Display name for a category value (stored values stay English).
+  String _categoryLabel(AppLocalizations l, String category) =>
+      switch (category.toLowerCase()) {
+        'all' => l.commonAll,
+        'vegetables' => l.vegetables,
+        'fruits' => l.fruits,
+        'spices' => l.spices,
+        'grains' => l.grains,
+        _ => category,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final allPrices = state.marketPrices;
     final filtered = _selectedCategory == 'All'
@@ -38,9 +52,9 @@ class _MarketPriceManagementScreenState
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text(
-          'Market Price Intelligence',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          l.adminMarketTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
@@ -49,7 +63,7 @@ class _MarketPriceManagementScreenState
           IconButton(
             icon:
                 const Icon(Icons.add_circle_outline, color: AppColors.primary),
-            tooltip: 'Add Commodity Rate',
+            tooltip: l.adminMarketAddTooltip,
             onPressed: () => _showAddPriceDialog(context, state),
           ),
         ],
@@ -67,28 +81,28 @@ class _MarketPriceManagementScreenState
                 color: AppColors.primary.withValues(alpha: 0.3),
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                CircleAvatar(
+                const CircleAvatar(
                   backgroundColor: AppColors.primary,
                   radius: 20,
                   child: Icon(Icons.analytics_rounded,
                       color: Colors.white, size: 20),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sri Lankan Pola Wholesale Benchmark',
-                        style: TextStyle(
+                        l.adminMarketBenchmarkTitle,
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 14),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Benchmark rates reference Dambulla, Pettah, and regional economic centers to guide buyer offers and farmer listings.',
-                        style: TextStyle(
+                        l.adminMarketBenchmarkBody,
+                        style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
@@ -108,7 +122,7 @@ class _MarketPriceManagementScreenState
                 return Padding(
                   padding: const EdgeInsets.only(right: 8, bottom: 8),
                   child: FilterChip(
-                    label: Text(cat),
+                    label: Text(_categoryLabel(l, cat)),
                     selected: isSelected,
                     onSelected: (_) => setState(() => _selectedCategory = cat),
                     selectedColor: AppColors.primary,
@@ -137,10 +151,10 @@ class _MarketPriceManagementScreenState
           // Price list
           Expanded(
             child: filtered.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No commodity rates found.',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      l.adminMarketEmpty,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )
                 : ListView.builder(
@@ -160,6 +174,7 @@ class _MarketPriceManagementScreenState
 
   Widget _buildPriceCard(
       BuildContext context, MarketPriceIndex item, FarmoraState state) {
+    final l = context.l10n;
     IconData trendIcon;
     Color trendColor;
     String trendLabel;
@@ -168,17 +183,17 @@ class _MarketPriceManagementScreenState
       case 'up':
         trendIcon = Icons.trending_up_rounded;
         trendColor = Colors.red.shade700;
-        trendLabel = 'Price Rising';
+        trendLabel = l.adminMarketTrendRising;
         break;
       case 'down':
         trendIcon = Icons.trending_down_rounded;
         trendColor = Colors.green.shade700;
-        trendLabel = 'Price Softening';
+        trendLabel = l.adminMarketTrendSoftening;
         break;
       default:
         trendIcon = Icons.trending_flat_rounded;
         trendColor = Colors.blueGrey;
-        trendLabel = 'Stable';
+        trendLabel = l.adminMarketTrendStable;
     }
 
     return Card(
@@ -211,7 +226,8 @@ class _MarketPriceManagementScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${item.district} Economic Center · ${item.category}',
+                        l.adminMarketCenterCategory(
+                            item.district, _categoryLabel(l, item.category)),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -220,6 +236,7 @@ class _MarketPriceManagementScreenState
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -251,25 +268,34 @@ class _MarketPriceManagementScreenState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildPriceMetric('Wholesale Range',
-                    'LKR ${item.minPricePerKg.toStringAsFixed(0)} - ${item.maxPricePerKg.toStringAsFixed(0)} / kg'),
-                _buildPriceMetric('Avg Benchmark',
-                    'LKR ${item.averagePricePerKg.toStringAsFixed(0)} / kg',
-                    isPrimary: true),
+                Expanded(
+                  child: _buildPriceMetric(
+                      l.adminMarketWholesaleRange,
+                      l.adminMarketRangePerKg(
+                          AppFormat.lkr(item.minPricePerKg),
+                          AppFormat.number(item.maxPricePerKg))),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildPriceMetric(l.adminMarketAvgBenchmark,
+                      l.adminMarketPricePerKg(
+                          AppFormat.lkr(item.averagePricePerKg)),
+                      isPrimary: true),
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.edit_outlined,
                           size: 20, color: AppColors.primary),
-                      tooltip: 'Update Rates',
+                      tooltip: l.adminMarketUpdateTooltip,
                       onPressed: () =>
                           _showEditPriceDialog(context, item, state),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded,
                           size: 20, color: AppColors.error),
-                      tooltip: 'Delete Benchmark',
+                      tooltip: l.adminMarketDeleteTooltip,
                       onPressed: () =>
                           _confirmDeletePrice(context, item, state),
                     ),
@@ -285,19 +311,17 @@ class _MarketPriceManagementScreenState
 
   void _confirmDeletePrice(
       BuildContext context, MarketPriceIndex item, FarmoraState state) {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Delete ${item.cropName}?'),
-        content: Text(
-          'This removes the ${item.district} benchmark from the marketplace. '
-          'Farmers and buyers will no longer see this reference rate.',
-        ),
+        title: Text(l.adminMarketDeleteTitle(item.cropName)),
+        content: Text(l.adminMarketDeleteBody(item.district)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
@@ -305,10 +329,10 @@ class _MarketPriceManagementScreenState
               Navigator.pop(ctx);
               state.removeMarketPrice(item.id);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Deleted ${item.cropName} benchmark')),
+                SnackBar(content: Text(l.adminMarketDeleted(item.cropName))),
               );
             },
-            child: const Text('Delete'),
+            child: Text(l.commonDelete),
           ),
         ],
       ),
@@ -321,6 +345,8 @@ class _MarketPriceManagementScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style:
                 const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         const SizedBox(height: 2),
@@ -343,6 +369,7 @@ class _MarketPriceManagementScreenState
     final maxCtrl =
         TextEditingController(text: item.maxPricePerKg.toStringAsFixed(0));
     String trend = item.trend;
+    final l = context.l10n;
 
     showDialog(
       context: context,
@@ -350,38 +377,44 @@ class _MarketPriceManagementScreenState
         builder: (ctx, setDialogState) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Edit ${item.cropName} Benchmark'),
+          title: Text(l.adminMarketEditTitle(item.cropName)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: minCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Min Price (LKR/kg)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.adminMarketMinPriceKg,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: maxCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Max Price (LKR/kg)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.adminMarketMaxPriceKg,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: trend,
-                decoration: const InputDecoration(
-                  labelText: 'Market Trend',
-                  border: OutlineInputBorder(),
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l.adminMarketTrendLabel,
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'up', child: Text('Rising (↑)')),
-                  DropdownMenuItem(value: 'stable', child: Text('Stable (→)')),
-                  DropdownMenuItem(value: 'down', child: Text('Softening (↓)')),
+                items: [
+                  DropdownMenuItem(
+                      value: 'up', child: Text(l.adminMarketTrendRisingOption)),
+                  DropdownMenuItem(
+                      value: 'stable',
+                      child: Text(l.adminMarketTrendStableOption)),
+                  DropdownMenuItem(
+                      value: 'down',
+                      child: Text(l.adminMarketTrendSofteningOption)),
                 ],
                 onChanged: (v) => setDialogState(() => trend = v ?? 'stable'),
               ),
@@ -390,7 +423,7 @@ class _MarketPriceManagementScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l.commonCancel),
             ),
             FilledButton(
               onPressed: () {
@@ -406,10 +439,10 @@ class _MarketPriceManagementScreenState
                 );
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Updated ${item.cropName} rate')),
+                  SnackBar(content: Text(l.adminMarketUpdated(item.cropName))),
                 );
               },
-              child: const Text('Save'),
+              child: Text(l.commonSave),
             ),
           ],
         ),
@@ -424,6 +457,7 @@ class _MarketPriceManagementScreenState
     final maxCtrl = TextEditingController(text: '200');
     String category = 'Vegetables';
     String trend = 'stable';
+    final l = context.l10n;
 
     showDialog(
       context: context,
@@ -431,41 +465,45 @@ class _MarketPriceManagementScreenState
         builder: (ctx, setDialogState) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add Commodity Pola Rate'),
+          title: Text(l.adminMarketAddTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Crop / Commodity Name',
-                    hintText: 'e.g. Red Dambulla Onions',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.adminMarketCropName,
+                    hintText: l.adminMarketCropHint,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: districtCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Economic Center / District',
-                    hintText: 'e.g. Dambulla, Pettah, Jaffna',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.adminMarketDistrict,
+                    hintText: l.adminMarketDistrictHint,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: category,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: l.category,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'Vegetables', child: Text('Vegetables')),
-                    DropdownMenuItem(value: 'Fruits', child: Text('Fruits')),
-                    DropdownMenuItem(value: 'Spices', child: Text('Spices')),
-                    DropdownMenuItem(value: 'Grains', child: Text('Grains')),
+                  items: [
+                    for (final value in const [
+                      'Vegetables',
+                      'Fruits',
+                      'Spices',
+                      'Grains'
+                    ])
+                      DropdownMenuItem(
+                          value: value, child: Text(_categoryLabel(l, value))),
                   ],
                   onChanged: (v) =>
                       setDialogState(() => category = v ?? 'Vegetables'),
@@ -477,9 +515,9 @@ class _MarketPriceManagementScreenState
                       child: TextField(
                         controller: minCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Min Price',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l.adminMarketMinPrice,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
@@ -488,9 +526,9 @@ class _MarketPriceManagementScreenState
                       child: TextField(
                         controller: maxCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Max Price',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l.adminMarketMaxPrice,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
@@ -502,7 +540,7 @@ class _MarketPriceManagementScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l.commonCancel),
             ),
             FilledButton(
               onPressed: () {
@@ -525,10 +563,11 @@ class _MarketPriceManagementScreenState
                 );
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Added ${nameCtrl.text.trim()} rate')),
+                  SnackBar(
+                      content: Text(l.adminMarketAdded(nameCtrl.text.trim()))),
                 );
               },
-              child: const Text('Add Rate'),
+              child: Text(l.adminMarketAddRate),
             ),
           ],
         ),

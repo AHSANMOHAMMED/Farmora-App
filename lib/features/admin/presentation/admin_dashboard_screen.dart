@@ -14,41 +14,45 @@ import 'settlement_management_screen.dart';
 import 'logistics_management_screen.dart';
 import 'audit_log_screen.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return DefaultTabController(
       length: 11,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'Admin Operations Control',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          title: Text(
+            l.adminDashTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           ),
           backgroundColor: Colors.white,
           foregroundColor: AppColors.textPrimary,
           elevation: 0.5,
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             tabs: [
-              Tab(text: 'Overview', icon: Icon(Icons.dashboard_rounded, size: 20)),
-              Tab(text: 'Analytics', icon: Icon(Icons.insights_rounded, size: 20)),
-              Tab(text: 'Users & Access', icon: Icon(Icons.people_alt_rounded, size: 20)),
-              Tab(text: 'Reviews', icon: Icon(Icons.rate_review_rounded, size: 20)),
-              Tab(text: 'Treasury & Payouts', icon: Icon(Icons.account_balance_wallet_rounded, size: 20)),
-              Tab(text: 'Disputes & Escrow', icon: Icon(Icons.gavel_rounded, size: 20)),
-              Tab(text: 'Fleet Dispatch', icon: Icon(Icons.local_shipping_rounded, size: 20)),
-              Tab(text: 'Market Rates', icon: Icon(Icons.trending_up_rounded, size: 20)),
-              Tab(text: 'Audit Trail', icon: Icon(Icons.shield_rounded, size: 20)),
-              Tab(text: 'Firebase & Server', icon: Icon(Icons.cloud_sync_rounded, size: 20)),
-              Tab(text: 'Advisories', icon: Icon(Icons.campaign_rounded, size: 20)),
+              Tab(text: l.adminDashTabOverview, icon: const Icon(Icons.dashboard_rounded, size: 20)),
+              Tab(text: l.adminDashTabAnalytics, icon: const Icon(Icons.insights_rounded, size: 20)),
+              Tab(text: l.adminDashTabUsers, icon: const Icon(Icons.people_alt_rounded, size: 20)),
+              Tab(text: l.adminDashTabReviews, icon: const Icon(Icons.rate_review_rounded, size: 20)),
+              Tab(text: l.adminDashTabTreasury, icon: const Icon(Icons.account_balance_wallet_rounded, size: 20)),
+              Tab(text: l.adminDashTabDisputes, icon: const Icon(Icons.gavel_rounded, size: 20)),
+              Tab(text: l.adminDashTabFleet, icon: const Icon(Icons.local_shipping_rounded, size: 20)),
+              Tab(text: l.adminDashTabMarket, icon: const Icon(Icons.trending_up_rounded, size: 20)),
+              Tab(text: l.adminDashTabAudit, icon: const Icon(Icons.shield_rounded, size: 20)),
+              Tab(text: l.adminDashTabServer, icon: const Icon(Icons.cloud_sync_rounded, size: 20)),
+              Tab(text: l.adminDashTabAdvisories, icon: const Icon(Icons.campaign_rounded, size: 20)),
             ],
           ),
         ),
@@ -77,6 +81,7 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final recentActivities = state.transactions.take(5).toList();
 
@@ -101,9 +106,9 @@ class _OverviewTab extends StatelessWidget {
             children: [
               Expanded(
                 child: _KpiCard(
-                  title: 'Platform GMV',
-                  value: 'LKR ${platformGmv.toStringAsFixed(0)}',
-                  subtitle: '${state.orders.length} total trades',
+                  title: l.adminDashGmv,
+                  value: AppFormat.lkr(platformGmv),
+                  subtitle: l.adminDashTotalTrades(state.orders.length),
                   icon: Icons.monetization_on_rounded,
                   color: const Color(0xFF1B6BD8),
                 ),
@@ -111,9 +116,9 @@ class _OverviewTab extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _KpiCard(
-                  title: 'Platform Cut (5%)',
-                  value: 'LKR ${platformCommission.toStringAsFixed(0)}',
-                  subtitle: 'Earned commission',
+                  title: l.adminDashPlatformCut,
+                  value: AppFormat.lkr(platformCommission),
+                  subtitle: l.adminDashEarnedCommission,
                   icon: Icons.savings_rounded,
                   color: const Color(0xFF2E7D32),
                 ),
@@ -125,9 +130,9 @@ class _OverviewTab extends StatelessWidget {
             children: [
               Expanded(
                 child: _KpiCard(
-                  title: 'Escrow Locked',
-                  value: 'LKR ${escrowHeld.toStringAsFixed(0)}',
-                  subtitle: 'Pending buyer delivery',
+                  title: l.adminDashEscrowLocked,
+                  value: AppFormat.lkr(escrowHeld),
+                  subtitle: l.adminDashPendingBuyerDelivery,
                   icon: Icons.lock_clock_rounded,
                   color: const Color(0xFFE65100),
                 ),
@@ -135,9 +140,9 @@ class _OverviewTab extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _KpiCard(
-                  title: 'Registered Users',
-                  value: '${state.users.length}',
-                  subtitle: '${state.verificationDocs.where((d) => d.status.toString().contains('pending')).length} pending KYC',
+                  title: l.adminDashRegisteredUsers,
+                  value: AppFormat.number(state.users.length),
+                  subtitle: l.adminDashPendingKyc(state.verificationDocs.where((d) => d.status.toString().contains('pending')).length),
                   icon: Icons.supervised_user_circle_rounded,
                   color: const Color(0xFF6A1B9A),
                 ),
@@ -148,9 +153,9 @@ class _OverviewTab extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Quick Action Hub
-          const Text(
-            'Quick Operations Hub',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          Text(
+            l.adminDashQuickHub,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
           Row(
@@ -158,7 +163,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.insights_rounded,
-                  label: 'Analytics',
+                  label: l.adminDashTabAnalytics,
                   color: const Color(0xFF1B6BD8),
                   onTap: () => Navigator.push(
                     context,
@@ -170,7 +175,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.rate_review_rounded,
-                  label: 'Reviews',
+                  label: l.adminDashTabReviews,
                   color: Colors.amber.shade800,
                   onTap: () => Navigator.push(
                     context,
@@ -182,7 +187,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.cloud_sync_rounded,
-                  label: 'Server Ops',
+                  label: l.adminDashServerOps,
                   color: Colors.teal.shade700,
                   onTap: () => Navigator.push(
                     context,
@@ -198,7 +203,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.verified_user_rounded,
-                  label: 'Review KYC',
+                  label: l.adminDashReviewKyc,
                   color: AppColors.primary,
                   onTap: () => Navigator.push(
                     context,
@@ -210,7 +215,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.trending_up_rounded,
-                  label: 'Pola Rates',
+                  label: l.adminDashPolaRates,
                   color: const Color(0xFF2E7D32),
                   onTap: () => Navigator.push(
                     context,
@@ -222,7 +227,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.campaign_rounded,
-                  label: 'Broadcast',
+                  label: l.adminDashBroadcast,
                   color: const Color(0xFFE65100),
                   onTap: () => Navigator.push(
                     context,
@@ -238,7 +243,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.account_balance_wallet_rounded,
-                  label: 'Treasury Payouts',
+                  label: l.adminDashTreasuryPayouts,
                   color: const Color(0xFF2E7D32),
                   onTap: () => Navigator.push(
                     context,
@@ -250,7 +255,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.local_shipping_rounded,
-                  label: 'Fleet Dispatch',
+                  label: l.adminDashTabFleet,
                   color: const Color(0xFF1B6BD8),
                   onTap: () => Navigator.push(
                     context,
@@ -262,7 +267,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.shield_rounded,
-                  label: 'Audit Trail',
+                  label: l.adminDashTabAudit,
                   color: const Color(0xFF5E35B1),
                   onTap: () => Navigator.push(
                     context,
@@ -276,16 +281,16 @@ class _OverviewTab extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Escrow Release Section
-          const Text('Escrow Releases',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(l.adminDashEscrowReleases,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           _EscrowReleaseSection(),
 
           const SizedBox(height: 24),
 
           // Recent Activities
-          const Text('Recent Platform Activities',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(l.adminDashRecentActivities,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           Card(
             elevation: 0,
@@ -295,10 +300,10 @@ class _OverviewTab extends StatelessWidget {
             ),
             color: Colors.white,
             child: recentActivities.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(20),
+                ? Padding(
+                    padding: const EdgeInsets.all(20),
                     child: Center(
-                      child: Text('No recent activities.', style: TextStyle(color: AppColors.textSecondary)),
+                      child: Text(l.adminDashNoRecentActivities, style: const TextStyle(color: AppColors.textSecondary)),
                     ),
                   )
                 : ListView.separated(
@@ -316,12 +321,12 @@ class _OverviewTab extends StatelessWidget {
                             child: Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 20),
                           ),
                           title: Text(
-                            'Order ${tx.orderNumber} completed',
+                            l.adminDashOrderCompleted(tx.orderNumber),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           subtitle: Text(tx.date, style: const TextStyle(fontSize: 12)),
                           trailing: Text(
-                            'LKR ${tx.amount.toStringAsFixed(0)}',
+                            AppFormat.lkr(tx.amount),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
@@ -342,6 +347,7 @@ class _OverviewTab extends StatelessWidget {
 class _EscrowReleaseSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final eligible = state.orders
         .where((o) =>
@@ -358,11 +364,11 @@ class _EscrowReleaseSection extends StatelessWidget {
           side: const BorderSide(color: AppColors.outlineVariant),
         ),
         color: Colors.white,
-        child: const Padding(
-          padding: EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Text(
-            'No delivered orders pending escrow release at this time.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            l.adminDashNoEscrowPending,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
         ),
       );
@@ -385,20 +391,23 @@ class _EscrowReleaseSection extends StatelessWidget {
                 o.productName.isNotEmpty ? o.productName : o.title,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              subtitle: Text('${o.orderNumber} · ${o.displayTotal} · Delivered'),
+              subtitle: Text('${o.orderNumber} · ${o.displayTotal} · ${l.statusDelivered}'),
               trailing: FilledButton(
                 onPressed: () async {
                   try {
                     await FirestoreService().releaseEscrow(orderId: o.id);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Escrow released to farmer successfully')),
+                        SnackBar(content: Text(l.adminDashEscrowReleased)),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Release failed: $e')),
+                        SnackBar(
+                          content: Text(l.adminDashReleaseFailed(
+                              userMessage(e, action: 'release escrow'))),
+                        ),
                       );
                     }
                   }
@@ -407,7 +416,7 @@ class _EscrowReleaseSection extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   visualDensity: VisualDensity.compact,
                 ),
-                child: const Text('Release'),
+                child: Text(l.release),
               ),
             ),
           ),
@@ -447,20 +456,27 @@ class _KpiCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: color.withValues(alpha: 0.9),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color.withValues(alpha: 0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              const SizedBox(width: 4),
               Icon(icon, color: color, size: 20),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -470,6 +486,8 @@ class _KpiCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color.withValues(alpha: 0.75),
               fontSize: 11,
@@ -512,6 +530,9 @@ class _QuickActionButton extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

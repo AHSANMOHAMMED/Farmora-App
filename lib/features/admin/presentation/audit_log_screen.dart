@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../models/audit_log_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../models/user_role.dart';
 
 class AuditLogScreen extends StatefulWidget {
   const AuditLogScreen({super.key});
@@ -34,6 +37,26 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     }
   }
 
+  String _severityLabel(AppLocalizations l, String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return l.adminAuditSeverityCritical;
+      case 'warning':
+        return l.adminAuditSeverityWarning;
+      case 'info':
+        return l.adminAuditSeverityInfo;
+      default:
+        return severity;
+    }
+  }
+
+  String _roleLabel(String raw) {
+    for (final role in Role.values) {
+      if (role.name == raw.toLowerCase()) return role.label;
+    }
+    return raw;
+  }
+
   IconData _actionIcon(String actionType) {
     if (actionType.contains('ESCROW') || actionType.contains('SETTLEMENT')) {
       return Icons.account_balance_wallet_rounded;
@@ -61,6 +84,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final l = ctx.l10n;
         final color = _severityColor(log.severity);
         return Padding(
           padding: EdgeInsets.fromLTRB(
@@ -94,7 +118,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                       border: Border.all(color: color.withValues(alpha:0.3)),
                     ),
                     child: Text(
-                      log.severity.toUpperCase(),
+                      _severityLabel(l, log.severity).toUpperCase(),
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.bold,
@@ -102,14 +126,19 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
                     log.id,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.grey.shade600,
                       fontFamily: 'monospace',
                       fontSize: 12,
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -124,7 +153,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Target: ${log.targetEntity} (${log.targetId})',
+                l.adminAuditTarget(log.targetEntity, log.targetId),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -132,9 +161,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                 ),
               ),
               const Divider(height: 28),
-              const Text(
-                'Audit Event Details',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+              Text(
+                l.adminAuditEventDetails,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 6),
               Container(
@@ -157,10 +186,10 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Actor / Operator', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(l.adminAuditActor, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         const SizedBox(height: 2),
                         Text(
-                          '${log.actorName} (${log.actorRole})',
+                          l.adminAuditActorValue(log.actorName, _roleLabel(log.actorRole)),
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ],
@@ -170,10 +199,10 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Recorded Timestamp', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(l.adminAuditRecordedAt, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         const SizedBox(height: 2),
                         Text(
-                          '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}',
+                          AppFormat.dateTime(log.timestamp),
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ],
@@ -187,7 +216,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                 child: FilledButton.icon(
                   onPressed: () => Navigator.pop(ctx),
                   icon: const Icon(Icons.check_rounded),
-                  label: const Text('Close'),
+                  label: Text(l.commonClose),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -205,7 +234,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   void _exportAuditLogCsv(BuildContext context, List<AuditLog> logs) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Exported ${logs.length} audit trail records to compliance CSV archive.'),
+        content: Text(context.l10n.adminAuditExported(logs.length)),
         backgroundColor: const Color(0xFF2E7D32),
         behavior: SnackBarBehavior.floating,
       ),
@@ -214,6 +243,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final query = _searchCtrl.text.trim().toLowerCase();
 
@@ -250,7 +280,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                       child: TextField(
                         controller: _searchCtrl,
                         decoration: InputDecoration(
-                          hintText: 'Search audit logs (action, entity ID, actor)...',
+                          hintText: l.adminAuditSearchHint,
                           prefixIcon: const Icon(Icons.search_rounded),
                           suffixIcon: _searchCtrl.text.isNotEmpty
                               ? IconButton(
@@ -269,7 +299,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
-                      tooltip: 'Export CSV Audit Trail',
+                      tooltip: l.adminAuditExportTooltip,
                       icon: const Icon(Icons.file_download_outlined),
                       onPressed: () => _exportAuditLogCsv(context, filteredLogs),
                     ),
@@ -281,13 +311,13 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('all', 'All Severity (${state.auditLogs.length})'),
+                      _buildFilterChip('all', l.adminAuditAllSeverity(state.auditLogs.length)),
                       const SizedBox(width: 6),
-                      _buildFilterChip('info', 'Info', color: const Color(0xFF1976D2)),
+                      _buildFilterChip('info', l.adminAuditSeverityInfo, color: const Color(0xFF1976D2)),
                       const SizedBox(width: 6),
-                      _buildFilterChip('warning', 'Warning', color: const Color(0xFFF57C00)),
+                      _buildFilterChip('warning', l.adminAuditSeverityWarning, color: const Color(0xFFF57C00)),
                       const SizedBox(width: 6),
-                      _buildFilterChip('critical', 'Critical', color: const Color(0xFFD32F2F)),
+                      _buildFilterChip('critical', l.adminAuditSeverityCritical, color: const Color(0xFFD32F2F)),
                     ],
                   ),
                 ),
@@ -297,17 +327,17 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildCategoryChip('all', 'All Modules'),
+                      _buildCategoryChip('all', l.adminAuditAllModules),
                       const SizedBox(width: 6),
-                      _buildCategoryChip('order', 'Orders & Escrow'),
+                      _buildCategoryChip('order', l.adminAuditModuleOrders),
                       const SizedBox(width: 6),
-                      _buildCategoryChip('user', 'Users'),
+                      _buildCategoryChip('user', l.users),
                       const SizedBox(width: 6),
-                      _buildCategoryChip('settlement', 'Settlements'),
+                      _buildCategoryChip('settlement', l.adminAuditModuleSettlements),
                       const SizedBox(width: 6),
-                      _buildCategoryChip('review', 'Reviews'),
+                      _buildCategoryChip('review', l.adminDashTabReviews),
                       const SizedBox(width: 6),
-                      _buildCategoryChip('platform', 'System & Server'),
+                      _buildCategoryChip('platform', l.adminAuditModuleSystem),
                     ],
                   ),
                 ),
@@ -326,13 +356,15 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                         children: [
                           Icon(Icons.security_outlined, size: 64, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
-                          const Text(
-                            'No Audit Events Found',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          Text(
+                            l.adminAuditEmptyTitle,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Try changing filters or search terms.',
+                            l.adminAuditEmptyHint,
+                            textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade600),
                           ),
                         ],
@@ -394,7 +426,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              log.severity.toUpperCase(),
+                                              _severityLabel(l, log.severity).toUpperCase(),
                                               style: TextStyle(
                                                 color: color,
                                                 fontWeight: FontWeight.bold,
@@ -416,15 +448,18 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                                         children: [
                                           Icon(Icons.person_outline, size: 14, color: Colors.grey.shade600),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            log.actorName,
-                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                          Expanded(
+                                            child: Text(
+                                              log.actorName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                            ),
                                           ),
-                                          const Spacer(),
                                           Icon(Icons.schedule_rounded, size: 14, color: Colors.grey.shade600),
                                           const SizedBox(width: 4),
                                           Text(
-                                            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}',
+                                            AppFormat.time(log.timestamp),
                                             style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                                           ),
                                         ],

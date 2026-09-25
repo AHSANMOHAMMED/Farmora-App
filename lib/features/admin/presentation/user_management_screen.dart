@@ -2,7 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
+import '../../../models/user_role.dart';
 import 'verification_review_screen.dart';
+
+/// Display label for a raw role value stored in Firestore.
+String _roleLabel(String raw) {
+  for (final r in Role.values) {
+    if (r.name == raw.toLowerCase()) return r.label;
+  }
+  return raw;
+}
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -26,6 +36,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
     final query = _searchCtrl.text.trim().toLowerCase();
+    final l = context.l10n;
 
     final filteredUsers = state.users.where((user) {
       final name = (user['name'] ?? '').toString().toLowerCase();
@@ -59,7 +70,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Management & Access Control', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(l.adminUsersTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: Column(
         children: [
@@ -69,7 +80,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Search by name, phone, email, or user ID...',
+                hintText: l.adminUsersSearchHint,
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
@@ -93,20 +104,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
-                _buildRoleChip('all', 'All Roles (${state.users.length})'),
+                _buildRoleChip('all', l.adminUsersAllRoles(state.users.length)),
                 const SizedBox(width: 8),
-                _buildRoleChip('farmer', 'Farmers', color: AppColors.primary),
+                _buildRoleChip('farmer', l.adminUsersFarmers, color: AppColors.primary),
                 const SizedBox(width: 8),
-                _buildRoleChip('buyer', 'Buyers', color: const Color(0xFF1B6BD8)),
+                _buildRoleChip('buyer', l.adminUsersBuyers, color: const Color(0xFF1B6BD8)),
                 const SizedBox(width: 8),
-                _buildRoleChip('transporter', 'Transporters', color: const Color(0xFFE65100)),
+                _buildRoleChip('transporter', l.adminUsersTransporters, color: const Color(0xFFE65100)),
                 const SizedBox(width: 8),
-                _buildRoleChip('admin', 'Admins', color: const Color(0xFF6A1B9A)),
+                _buildRoleChip('admin', l.adminUsersAdmins, color: const Color(0xFF6A1B9A)),
                 const SizedBox(width: 12),
                 Container(width: 1, height: 24, color: AppColors.outlineVariant),
                 const SizedBox(width: 12),
                 FilterChip(
-                  label: const Text('Verified Only'),
+                  label: Text(l.adminUsersVerifiedOnly),
                   selected: _selectedStatus == 'verified',
                   onSelected: (val) {
                     setState(() => _selectedStatus = val ? 'verified' : 'all');
@@ -114,7 +125,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ),
                 const SizedBox(width: 8),
                 FilterChip(
-                  label: const Text('Suspended'),
+                  label: Text(l.statusSuspended),
                   selected: _selectedStatus == 'suspended',
                   onSelected: (val) {
                     setState(() => _selectedStatus = val ? 'suspended' : 'all');
@@ -135,7 +146,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       children: [
                         Icon(Icons.person_search_rounded, size: 54, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
-                        const Text('No users match your criteria.', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(l.adminUsersEmpty, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                        ),
                       ],
                     ),
                   )
@@ -174,12 +188,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUserActionSheet(BuildContext context, Map<String, dynamic> user, FarmoraState state) {
+    final l = context.l10n;
     final uid = (user['uid'] ?? user['id'] ?? '').toString();
-    final name = (user['name'] ?? 'Unknown User').toString();
+    final name = (user['name'] ?? l.adminUsersUnknownUser).toString();
     final role = (user['role'] ?? 'farmer').toString();
-    final phone = (user['phone'] ?? 'Not provided').toString();
-    final email = (user['email'] ?? 'Not provided').toString();
-    final district = (user['district'] ?? 'Sri Lanka').toString();
+    final phone = (user['phone'] ?? l.adminUsersNotProvided).toString();
+    final email = (user['email'] ?? l.adminUsersNotProvided).toString();
+    final district = (user['district'] ?? l.adminUsersDefaultDistrict).toString();
     final verified = user['isVerified'] == true;
     final suspended = user['isSuspended'] == true;
 
@@ -227,8 +242,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ],
                           ],
                         ),
-                        Text('Role: ${role.toUpperCase()} · District: $district', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        Text('UID: $uid', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(l.adminUsersRoleDistrict(_roleLabel(role), district), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(l.adminUsersUid(uid), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -239,7 +254,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const Divider(),
               const SizedBox(height: 10),
 
-              const Text('Administrative Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(l.adminUsersActionsTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 12),
 
               // Verify / Unverify Action
@@ -249,14 +264,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   verified ? Icons.cancel_outlined : Icons.verified_user_rounded,
                   color: verified ? Colors.orange : Colors.blue,
                 ),
-                title: Text(verified ? 'Revoke Verified Badge' : 'Grant Verified Badge'),
-                subtitle: Text(verified ? 'Remove trust badge from marketplace listings' : 'Mark user as officially verified partner'),
+                title: Text(verified ? l.adminUsersRevokeBadge : l.adminUsersGrantBadge),
+                subtitle: Text(verified ? l.adminUsersRevokeBadgeSubtitle : l.adminUsersGrantBadgeSubtitle),
                 onTap: () async {
                   Navigator.pop(bCtx);
                   await state.setUserVerified(userId: uid, verified: !verified);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(!verified ? 'User verified successfully' : 'Verification badge revoked')),
+                      SnackBar(content: Text(!verified ? l.adminUsersVerifiedSnack : l.adminUsersRevokedSnack)),
                     );
                   }
                 },
@@ -269,14 +284,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   suspended ? Icons.lock_open_rounded : Icons.block_rounded,
                   color: suspended ? Colors.green : AppColors.error,
                 ),
-                title: Text(suspended ? 'Lift User Suspension' : 'Suspend User Account'),
-                subtitle: Text(suspended ? 'Allow user to trade and sign in' : 'Block user from logging in or accepting orders'),
+                title: Text(suspended ? l.adminUsersLiftSuspension : l.adminUsersSuspend),
+                subtitle: Text(suspended ? l.adminUsersLiftSuspensionSubtitle : l.adminUsersSuspendSubtitle),
                 onTap: () async {
                   Navigator.pop(bCtx);
                   await state.setUserSuspended(uid, !suspended);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(suspended ? 'User account restored' : 'User account suspended')),
+                      SnackBar(content: Text(suspended ? l.adminUsersRestoredSnack : l.adminUsersSuspendedSnack)),
                     );
                   }
                 },
@@ -286,8 +301,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.switch_account_rounded, color: AppColors.primary),
-                title: const Text('Change User Role'),
-                subtitle: Text('Current: ${role.toUpperCase()}'),
+                title: Text(l.adminUsersChangeRole),
+                subtitle: Text(l.adminUsersCurrentRole(_roleLabel(role))),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(bCtx);
@@ -299,8 +314,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.document_scanner_rounded, color: Color(0xFF6A1B9A)),
-                title: const Text('Inspect KYC Verification Documents'),
-                subtitle: const Text('National Identity Card, Land Deeds, Driving License'),
+                title: Text(l.adminUsersInspectKyc),
+                subtitle: Text(l.adminUsersInspectKycSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(bCtx);
@@ -314,7 +329,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Contact: $phone · $email',
+                  l.adminUsersContact(phone, email),
+                  textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ),
@@ -327,41 +343,42 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _showChangeRoleDialog(BuildContext context, String uid, String name, String currentRole, FarmoraState state) {
     String selected = currentRole.toLowerCase();
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dCtx, setDialogState) => AlertDialog(
-          title: Text('Change Role for $name'),
+          title: Text(l.adminUsersChangeRoleFor(name)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               RadioGroup<String>(
                 groupValue: selected,
                 onChanged: (v) => setDialogState(() => selected = v ?? selected),
-                child: const Column(
+                child: Column(
                   children: [
-                    RadioListTile<String>(value: 'farmer', title: Text('Farmer (Grower/Producer)')),
-                    RadioListTile<String>(value: 'buyer', title: Text('Buyer (Wholesaler/Retailer)')),
-                    RadioListTile<String>(value: 'transporter', title: Text('Transporter (Logistics Provider)')),
-                    RadioListTile<String>(value: 'admin', title: Text('Admin (Platform Operations)')),
+                    RadioListTile<String>(value: 'farmer', title: Text(l.adminUsersRoleFarmerOption)),
+                    RadioListTile<String>(value: 'buyer', title: Text(l.adminUsersRoleBuyerOption)),
+                    RadioListTile<String>(value: 'transporter', title: Text(l.adminUsersRoleTransporterOption)),
+                    RadioListTile<String>(value: 'admin', title: Text(l.adminUsersRoleAdminOption)),
                   ],
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 await state.updateUserRole(userId: uid, role: selected);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Updated $name role to ${selected.toUpperCase()}')),
+                    SnackBar(content: Text(l.adminUsersRoleUpdated(name, _roleLabel(selected)))),
                   );
                 }
               },
-              child: const Text('Confirm Role Change'),
+              child: Text(l.adminUsersConfirmRoleChange),
             ),
           ],
         ),
@@ -378,9 +395,10 @@ class _UserListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = (user['name'] ?? 'Unknown User').toString();
+    final l = context.l10n;
+    final name = (user['name'] ?? l.adminUsersUnknownUser).toString();
     final role = (user['role'] ?? 'farmer').toString();
-    final district = (user['district'] ?? 'Sri Lanka').toString();
+    final district = (user['district'] ?? l.adminUsersDefaultDistrict).toString();
     final phone = (user['phone'] ?? '').toString();
     final verified = user['isVerified'] == true;
     final suspended = user['isSuspended'] == true;
@@ -433,7 +451,7 @@ class _UserListCard extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          '${role.toUpperCase()} · $district${phone.isNotEmpty ? ' · $phone' : ''}',
+          '${_roleLabel(role).toUpperCase()} · $district${phone.isNotEmpty ? ' · $phone' : ''}',
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
         trailing: Row(
@@ -446,7 +464,7 @@ class _UserListCard extends StatelessWidget {
                   color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text('Suspended', style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
+                child: Text(l.statusSuspended, style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
               )
             else
               Container(
@@ -455,7 +473,7 @@ class _UserListCard extends StatelessWidget {
                   color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text('Active', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+                child: Text(l.statusActive, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
               ),
             const SizedBox(width: 4),
             const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textSecondary),

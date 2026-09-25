@@ -2,12 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_format.dart';
+import '../../../core/localization/l10n.dart';
 
 class PlatformAnalyticsScreen extends StatelessWidget {
   const PlatformAnalyticsScreen({super.key});
 
+  /// Display name for a product category (stored values stay English).
+  static String _categoryLabel(AppLocalizations l, String category) =>
+      switch (category.toLowerCase()) {
+        '' => l.adminAnalyticsUncategorized,
+        'vegetables' => l.vegetables,
+        'fruits' => l.fruits,
+        'spices' => l.spices,
+        'grains' => l.grains,
+        _ => category,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
 
     // Calculate Financial metrics
@@ -50,9 +64,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
     final categories = <String, int>{};
     final regions = <String, int>{};
     for (final product in state.products.where((product) => product.isActive)) {
-      final category = product.category.trim().isEmpty
-          ? 'Uncategorized'
-          : product.category.trim();
+      final category = _categoryLabel(l, product.category.trim());
       categories.update(category, (count) => count + 1, ifAbsent: () => 1);
       final region = product.location.trim();
       if (region.isNotEmpty) {
@@ -62,16 +74,16 @@ class PlatformAnalyticsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Platform Analytics & Insights',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(l.adminAnalyticsTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
           IconButton(
             icon: const Icon(Icons.download_rounded),
-            tooltip: 'Export Report',
+            tooltip: l.adminAnalyticsExportTooltip,
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Report export is not available yet.'),
+                SnackBar(
+                  content: Text(l.adminAnalyticsExportUnavailable),
                 ),
               );
             },
@@ -105,22 +117,25 @@ class PlatformAnalyticsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.insights_rounded, color: Colors.white, size: 22),
-                    SizedBox(width: 8),
-                    Text(
-                      'Gross Merchandise Value (GMV)',
-                      style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500),
+                    const Icon(Icons.insights_rounded,
+                        color: Colors.white, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.adminAnalyticsGmv,
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'LKR ${totalGmv.toStringAsFixed(0)}',
+                  AppFormat.lkr(totalGmv),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -129,18 +144,21 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
                     Text(
-                      'Est. commission (${state.commissionRate}%): LKR ${platformCut.toStringAsFixed(0)}',
+                      l.adminAnalyticsEstCommission(
+                          '${state.commissionRate}', AppFormat.lkr(platformCut)),
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Avg Deal: LKR ${avgOrderSize.toStringAsFixed(0)}',
+                      l.adminAnalyticsAvgDeal(AppFormat.lkr(avgOrderSize)),
                       style:
                           const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
@@ -157,9 +175,9 @@ class PlatformAnalyticsScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricCard(
-                  title: 'Paid, unfinished',
-                  value: 'LKR ${escrowLocked.toStringAsFixed(0)}',
-                  subtitle: 'Order value; provider balance unverified',
+                  title: l.adminAnalyticsPaidUnfinished,
+                  value: AppFormat.lkr(escrowLocked),
+                  subtitle: l.adminAnalyticsPaidUnfinishedHint,
                   icon: Icons.shield_outlined,
                   color: const Color(0xFFE65100),
                 ),
@@ -167,10 +185,10 @@ class PlatformAnalyticsScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricCard(
-                  title: 'Order Fulfillment',
+                  title: l.adminAnalyticsFulfillment,
                   value:
                       '${state.orders.isNotEmpty ? ((completedCount / state.orders.length) * 100).toStringAsFixed(0) : '0'}%',
-                  subtitle: '$completedCount delivered safely',
+                  subtitle: l.adminAnalyticsDeliveredSafely(completedCount),
                   icon: Icons.check_circle_outline_rounded,
                   color: const Color(0xFF2E7D32),
                 ),
@@ -181,17 +199,17 @@ class PlatformAnalyticsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Product listing distribution by region
-          const Text(
-            'Active Listings by Product Location',
-            style: TextStyle(
+          Text(
+            l.adminAnalyticsByLocation,
+            style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
                 color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Counts are based on the currently loaded active listings.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            l.adminAnalyticsLoadedNote,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           Card(
@@ -204,9 +222,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: regions.isEmpty
-                    ? const [
-                        Text('No active listings with a location are loaded.')
-                      ]
+                    ? [Text(l.adminAnalyticsNoLocationListings)]
                     : (regions.entries.toList()
                           ..sort((a, b) => b.value.compareTo(a.value)))
                         .take(5)
@@ -220,8 +236,8 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                                         state.products
                                             .where((p) => p.isActive)
                                             .length,
-                                volume:
-                                    '${entry.value} active ${entry.value == 1 ? 'listing' : 'listings'}',
+                                volume: l.adminAnalyticsActiveListings(
+                                    entry.value),
                               ),
                             ))
                         .toList(),
@@ -232,16 +248,16 @@ class PlatformAnalyticsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Active listings by category
-          const Text(
-            'Active Listings by Category',
-            style: TextStyle(
+          Text(
+            l.adminAnalyticsByCategory,
+            style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
                 color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
           if (categories.isEmpty)
-            const Text('No active listings are loaded.')
+            Text(l.adminAnalyticsNoListings)
           else
             Wrap(
               spacing: 8,
@@ -254,8 +270,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                           title: entry.key,
                           percent:
                               '${(entry.value / categories.values.fold<int>(0, (sum, count) => sum + count) * 100).toStringAsFixed(0)}%',
-                          sample:
-                              '${entry.value} active ${entry.value == 1 ? 'listing' : 'listings'}',
+                          sample: l.adminAnalyticsActiveListings(entry.value),
                           icon: Icons.eco_rounded,
                           color: AppColors.primary,
                         ),
@@ -266,9 +281,9 @@ class PlatformAnalyticsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // User Ecosystem Demographics
-          const Text(
-            'Registered Marketplace Ecosystem',
-            style: TextStyle(
+          Text(
+            l.adminAnalyticsEcosystem,
+            style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
                 color: AppColors.textPrimary),
@@ -285,25 +300,31 @@ class PlatformAnalyticsScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _DemographicItem(
-                      label: 'Farmers',
-                      count: farmerCount,
-                      icon: Icons.agriculture_rounded,
-                      color: AppColors.primary),
+                  Expanded(
+                    child: _DemographicItem(
+                        label: l.adminAnalyticsFarmers,
+                        count: farmerCount,
+                        icon: Icons.agriculture_rounded,
+                        color: AppColors.primary),
+                  ),
                   Container(
                       width: 1, height: 40, color: AppColors.outlineVariant),
-                  _DemographicItem(
-                      label: 'Buyers',
-                      count: buyerCount,
-                      icon: Icons.storefront_rounded,
-                      color: const Color(0xFF1B6BD8)),
+                  Expanded(
+                    child: _DemographicItem(
+                        label: l.adminAnalyticsBuyers,
+                        count: buyerCount,
+                        icon: Icons.storefront_rounded,
+                        color: const Color(0xFF1B6BD8)),
+                  ),
                   Container(
                       width: 1, height: 40, color: AppColors.outlineVariant),
-                  _DemographicItem(
-                      label: 'Transporters',
-                      count: transporterCount,
-                      icon: Icons.local_shipping_rounded,
-                      color: const Color(0xFFE65100)),
+                  Expanded(
+                    child: _DemographicItem(
+                        label: l.adminAnalyticsTransporters,
+                        count: transporterCount,
+                        icon: Icons.local_shipping_rounded,
+                        color: const Color(0xFFE65100)),
+                  ),
                 ],
               ),
             ),
@@ -312,9 +333,9 @@ class PlatformAnalyticsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Escrow & Quality Health
-          const Text(
-            'Trading Trust & Dispute Ratio',
-            style: TextStyle(
+          Text(
+            l.adminAnalyticsTrust,
+            style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
                 color: AppColors.textPrimary),
@@ -333,8 +354,11 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Dispute Arbitration Rate',
-                          style: TextStyle(fontSize: 13)),
+                      Expanded(
+                        child: Text(l.adminAnalyticsDisputeRate,
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '${state.orders.isNotEmpty ? ((disputedCount / state.orders.length) * 100).toStringAsFixed(1) : '0.0'}%',
                         style: const TextStyle(
@@ -356,14 +380,22 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Active In-Transit Escrow Orders: $inTransitCount',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
-                      Text('Resolved Orders: $completedCount',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Expanded(
+                        child: Text(
+                            l.adminAnalyticsInTransitOrders(inTransitCount),
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                            l.adminAnalyticsResolvedOrders(completedCount),
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary)),
+                      ),
                     ],
                   ),
                 ],
@@ -412,10 +444,14 @@ class _MetricCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 4),
             Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     fontSize: 16, fontWeight: FontWeight.bold, color: color)),
             const SizedBox(height: 2),
@@ -448,9 +484,13 @@ class _RegionBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(name,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Expanded(
+              child: Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
             Text('${(share * 100).toInt()}%',
                 style:
                     const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
@@ -504,6 +544,9 @@ class _CategoryPill extends StatelessWidget {
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 6),
           Text(title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style:
                   const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
           Text(percent,
@@ -538,9 +581,12 @@ class _DemographicItem extends StatelessWidget {
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(height: 6),
-        Text('$count',
+        Text(AppFormat.number(count),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         Text(label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style:
                 const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],

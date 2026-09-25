@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../providers/farmora_state.dart';
 
 class BroadcastAdvisoryScreen extends StatefulWidget {
@@ -18,40 +19,39 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
   String _priority = 'normal';
   bool _sending = false;
 
-  final List<Map<String, String>> _templates = [
-    {
-      'title': 'Heavy Monsoon Rainfall Warning',
-      'message':
-          'Department of Meteorology warns of heavy rainfall across Nuwara Eliya and Badulla districts. Expect transport delays along mountain corridors.',
-      'role': 'all',
-      'priority': 'emergency',
-    },
-    {
-      'title': 'Dambulla Pola Festive Market Schedule',
-      'message':
-          'Dambulla Dedicated Economic Center will operate special extended trading hours this weekend. Transporters are advised to book loading bays early.',
-      'role': 'farmer',
-      'priority': 'important',
-    },
-    {
-      'title': 'Fertilizer & Pesticide Subsidy Advisory',
-      'message':
-          'Agrarian Services Department has updated certified organic fertilizer distribution centers across Central and Southern provinces.',
-      'role': 'farmer',
-      'priority': 'normal',
-    },
-  ];
+  /// Ready-made advisories, written in the admin's current language.
+  List<Map<String, String>> _templates(AppLocalizations l) => [
+        {
+          'title': l.adminBroadcastTplRainTitle,
+          'message': l.adminBroadcastTplRainMessage,
+          'role': 'all',
+          'priority': 'emergency',
+        },
+        {
+          'title': l.adminBroadcastTplPolaTitle,
+          'message': l.adminBroadcastTplPolaMessage,
+          'role': 'farmer',
+          'priority': 'important',
+        },
+        {
+          'title': l.adminBroadcastTplSubsidyTitle,
+          'message': l.adminBroadcastTplSubsidyMessage,
+          'role': 'farmer',
+          'priority': 'normal',
+        },
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = context.watch<FarmoraState>();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text(
-          'Broadcast Advisories & Alerts',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          l.adminBroadcastTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
@@ -63,15 +63,15 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Quick Advisory Templates
-            const Text(
-              'Quick AgriTech Templates',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Text(
+              l.adminBroadcastTemplates,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _templates.map((tmpl) {
+                children: _templates(l).map((tmpl) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: ActionChip(
@@ -111,9 +111,9 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Compose Announcement',
-                      style: TextStyle(
+                    Text(
+                      l.adminBroadcastCompose,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -122,22 +122,21 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _titleCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Advisory Headline',
-                        hintText: 'e.g. Flash Flood Alert in Nuwara Eliya',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.campaign_outlined),
+                      decoration: InputDecoration(
+                        labelText: l.adminBroadcastHeadline,
+                        hintText: l.adminBroadcastHeadlineHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.campaign_outlined),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _messageCtrl,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Detailed Message',
-                        hintText:
-                            'Provide actionable details for farmers, buyers, or transporters...',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l.adminBroadcastMessage,
+                        hintText: l.adminBroadcastMessageHint,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -146,20 +145,24 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _targetRole,
-                            decoration: const InputDecoration(
-                              labelText: 'Target Audience',
-                              border: OutlineInputBorder(),
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: l.adminBroadcastAudience,
+                              border: const OutlineInputBorder(),
                             ),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: 'all', child: Text('All Users')),
-                              DropdownMenuItem(
-                                  value: 'farmer', child: Text('Farmers Only')),
-                              DropdownMenuItem(
-                                  value: 'buyer', child: Text('Buyers Only')),
-                              DropdownMenuItem(
-                                  value: 'transporter',
-                                  child: Text('Transporters Only')),
+                            items: [
+                              for (final (value, label) in [
+                                ('all', l.allUsers),
+                                ('farmer', l.adminBroadcastFarmersOnly),
+                                ('buyer', l.adminBroadcastBuyersOnly),
+                                ('transporter', l.adminBroadcastTransportersOnly),
+                              ])
+                                DropdownMenuItem(
+                                  value: value,
+                                  child: Text(label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
                             ],
                             onChanged: (v) =>
                                 setState(() => _targetRole = v ?? 'all'),
@@ -169,19 +172,23 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _priority,
-                            decoration: const InputDecoration(
-                              labelText: 'Priority Level',
-                              border: OutlineInputBorder(),
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: l.adminBroadcastPriority,
+                              border: const OutlineInputBorder(),
                             ),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: 'normal', child: Text('Normal (Info)')),
-                              DropdownMenuItem(
-                                  value: 'important',
-                                  child: Text('Important')),
-                              DropdownMenuItem(
-                                  value: 'emergency',
-                                  child: Text('🚨 Emergency Alert')),
+                            items: [
+                              for (final (value, label) in [
+                                ('normal', l.adminBroadcastPriorityNormal),
+                                ('important', l.important),
+                                ('emergency', l.adminBroadcastPriorityEmergency),
+                              ])
+                                DropdownMenuItem(
+                                  value: value,
+                                  child: Text(label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
                             ],
                             onChanged: (v) =>
                                 setState(() => _priority = v ?? 'normal'),
@@ -203,9 +210,14 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                                 ),
                               )
                             : const Icon(Icons.send_rounded),
-                        label: Text(_sending
-                            ? 'Broadcasting...'
-                            : 'Send Broadcast Notification'),
+                        label: Text(
+                          _sending
+                              ? l.adminBroadcastSending
+                              : l.adminBroadcastSend,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: _priority == 'emergency'
                               ? Colors.red.shade700
@@ -221,9 +233,9 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                                 if (_titleCtrl.text.trim().isEmpty ||
                                     _messageCtrl.text.trim().isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Please enter both title and message.'),
+                                    SnackBar(
+                                      content:
+                                          Text(l.adminBroadcastMissingFields),
                                     ),
                                   );
                                   return;
@@ -240,9 +252,8 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
 
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Advisory successfully broadcasted to users!'),
+                                    SnackBar(
+                                      content: Text(l.adminBroadcastSent),
                                     ),
                                   );
                                   _titleCtrl.clear();
