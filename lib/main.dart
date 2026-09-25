@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'core/services/error_reporter.dart';
+import 'core/localization/language_prefs.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 
@@ -67,6 +69,7 @@ export 'features/profile/presentation/language_picker.dart';
 export 'core/widgets/farmora_logo.dart';
 export 'features/splash/presentation/splash_screen.dart';
 export 'features/onboarding/presentation/onboarding_screen.dart';
+export 'features/onboarding/presentation/language_selection_screen.dart';
 export 'features/auth/presentation/login_screen.dart';
 export 'features/auth/presentation/role_selection_screen.dart';
 export 'features/auth/presentation/register_screen.dart';
@@ -102,7 +105,24 @@ void main() async {
     }
   }
 
-  runApp(const FarmoraApp());
+  _registerFontLicense();
+
+  // The saved language is read before the first frame so splash, onboarding
+  // and login already show in it. Null on first launch → language picker.
+  final languageCode = await LanguagePrefs.load();
+
+  runApp(FarmoraApp(initialLanguageCode: languageCode));
+}
+
+/// Lists the bundled Noto fonts' SIL OFL licence on the licences page.
+void _registerFontLicense() {
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(
+      const ['Noto Sans Tamil', 'Noto Sans Sinhala'],
+      text,
+    );
+  });
 }
 
 Future<void> _activateAppCheck() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
+import '../localization/l10n.dart';
 import '../../features/farmer/presentation/account_verification_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../providers/farmora_state.dart';
@@ -43,39 +44,47 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              if (showBack) ...[
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
-                  onPressed: onBack ?? () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                ),
-                const SizedBox(width: 8),
-              ] else ...[
-                Image.asset(
-                  'assets/images/farmora_logo.png',
-                  height: 32,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.eco_rounded,
-                    color: AppColors.primary,
-                    size: 32,
+          Expanded(
+            child: Row(
+              children: [
+                if (showBack) ...[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: AppColors.onSurface),
+                    onPressed: onBack ?? () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
+                  ),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  Image.asset(
+                    'assets/images/farmora_logo.png',
+                    height: 32,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.eco_rounded,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
               ],
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
+            ),
           ),
           Row(
             children: [
@@ -86,10 +95,13 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
                     clipBehavior: Clip.none,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded, color: AppColors.onSurface),
+                        tooltip: context.l10n.notifications,
+                        icon: const Icon(Icons.notifications_none_rounded,
+                            color: AppColors.onSurface),
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen()),
                           );
                         },
                       ),
@@ -123,29 +135,35 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
                 },
               ),
               const SizedBox(width: 4),
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const AccountVerificationScreen(),
+              Semantics(
+                button: true,
+                label: context.l10n.widgetVerificationStatus,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AccountVerificationScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.outlineVariant, width: 1.5),
                     ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.outlineVariant, width: 1.5),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/farmer_headshot.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const CircleAvatar(
-                        backgroundColor: AppColors.surfaceContainerHigh,
-                        child: Icon(Icons.person, color: AppColors.primary, size: 20),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/farmer_headshot.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const CircleAvatar(
+                          backgroundColor: AppColors.surfaceContainerHigh,
+                          child: Icon(Icons.person,
+                              color: AppColors.primary, size: 20),
+                        ),
                       ),
                     ),
                   ),

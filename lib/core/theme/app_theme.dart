@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 class AppTheme {
+  /// Bundled Noto fonts used when the primary font has no Tamil / Sinhala
+  /// glyphs (always the case on web). Every text style inherits this through
+  /// the theme and DefaultTextStyle; styles that replace the default style
+  /// outright (button / app bar text styles) list it explicitly.
+  static const fontFamilyFallback = <String>[
+    'NotoSansTamil',
+    'NotoSansSinhala'
+  ];
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -29,6 +38,7 @@ class AppTheme {
         outlineVariant: AppColors.outlineVariant,
       ),
       fontFamily: 'Inter',
+      fontFamilyFallback: fontFamilyFallback,
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontSize: 32,
@@ -77,7 +87,7 @@ class AppTheme {
           letterSpacing: 0.05,
           color: AppColors.onSurfaceVariant,
         ),
-      ),
+      ).apply(fontFamilyFallback: fontFamilyFallback),
       cardTheme: CardThemeData(
         color: AppColors.surfaceContainerLowest,
         elevation: 0,
@@ -89,14 +99,17 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceContainerLowest,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant, width: 1),
+          borderSide:
+              const BorderSide(color: AppColors.outlineVariant, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.outlineVariant, width: 1),
+          borderSide:
+              const BorderSide(color: AppColors.outlineVariant, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -107,6 +120,7 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
         hintStyle: TextStyle(
+          fontFamilyFallback: fontFamilyFallback,
           color: AppColors.onSurfaceVariant.withValues(alpha: 0.6),
           fontSize: 14,
         ),
@@ -121,6 +135,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -135,6 +150,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -147,6 +163,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamilyFallback: fontFamilyFallback,
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.primary,
