@@ -144,7 +144,7 @@ void main() {
       });
     });
 
-    test('links the slip and marks it for review (no client notification)',
+    test('links the slip, marks it for review and notifies the farmer (Spark)',
         () async {
       await buyerService.submitPaymentProof(
         orderId: 'o1',
@@ -156,9 +156,11 @@ void main() {
       expect(order.paymentState, PaymentState.proofSubmitted);
       expect(order.proofImageUrl, 'https://storage/slip.jpg');
       expect(order.canReviewProof, isTrue);
-      // The farmer is notified by the onOrderPaymentStatusChanged trigger.
+      // Spark: the buyer's client notifies the farmer (with Cloud Functions
+      // the onOrderPaymentStatusChanged trigger does it instead).
       final notes = await db.collection('notifications').get();
-      expect(notes.docs, isEmpty);
+      expect(notes.docs, hasLength(1));
+      expect(notes.docs.single.data()['userId'], 'farmer1');
     });
 
     test('farmer can then confirm it', () async {

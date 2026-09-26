@@ -67,6 +67,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<BankDetails>? _bankDetailsSub;
   StreamSubscription<List<Dispute>>? _disputesSub;
   StreamSubscription<List<FarmoraConversation>>? _conversationsSub;
+  StreamSubscription<Map<String, dynamic>?>? _profileSub;
   String? _fcmToken;
   _AppLifecycleHook? _lifecycleHook;
   bool _ordersLoading = false;
@@ -468,7 +469,7 @@ class FarmoraState extends ChangeNotifier {
       _checkoutAttemptFingerprint = fingerprint;
       _checkoutAttemptKey = List.generate(
         4,
-        (_) => random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0'),
+        (_) => random.nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0'),
       ).join();
     }
     if (_lastOrderKey == fingerprint &&
@@ -751,6 +752,41 @@ class FarmoraState extends ChangeNotifier {
       _flushingOutbox = false;
     }
     return sent;
+  }
+
+  /// Live account-state gate: an admin suspending / deleting the account
+  /// signs the user out with a message (on Spark there is no server-side
+  /// Auth disable). Also keeps [isVerified] current after admin review.
+  void _watchOwnProfile(String uid) {
+    _profileSub?.cancel();
+    _profileSub = _firestoreService.userProfileStream(uid).listen(
+      (profile) {
+        if (profile == null || _currentUserId != uid) return;
+        if (profile['isDeleted'] == true || profile['isSuspended'] == true) {
+          signOut(
+            reason: profile['isDeleted'] == true
+                ? 'This account has been deleted.'
+                : 'This account has been suspended. Contact Farmora support.',
+          );
+          return;
+        }
+        final verified = profile['isVerified'] == true;
+        if (verified != isVerified) {
+          isVerified = verified;
+          notifyListeners();
+        }
+      },
+      onError: (Object e) => debugPrint('Profile watch skipped: $e'),
+    );
+  }
+
+  /// Transporters publish their public discovery card (Spark mode).
+  Future<void> _syncTransporterCard() async {
+    try {
+      await _firestoreService.syncMyTransporterProfile();
+    } catch (e) {
+      debugPrint('Transporter card sync skipped: $e');
+    }
   }
 
   /// Publishes this device's chat public key so peers can encrypt to it
@@ -1399,6 +1435,8 @@ class FarmoraState extends ChangeNotifier {
       _loadPlatformSettings();
       _lifecycleHook ??= _AppLifecycleHook.attach(_onAppResumed);
       _publishChatKey();
+      _watchOwnProfile(uid);
+      if (accountRole == Role.transporter) _syncTransporterCard();
       flushChatOutbox();
     } catch (_) {
       await FirebaseAuth.instance.signOut();
@@ -1673,6 +1711,8 @@ class FarmoraState extends ChangeNotifier {
     _bankDetailsSub?.cancel();
     _disputesSub?.cancel();
     _conversationsSub?.cancel();
+    _profileSub?.cancel();
+    _profileSub = null;
     _myBankDetails = BankDetails.empty;
   }
 

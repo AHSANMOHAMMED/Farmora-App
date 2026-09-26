@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/config/app_backend.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../services/firebase_service.dart';
 import '../domain/transporter_notification.dart';
 import '../domain/transporter_profile.dart';
 import 'transporter_account_repository.dart';
@@ -116,6 +118,21 @@ class FirestoreTransporterAccountRepository
     required bool isAvailable,
     List<String>? serviceDistricts,
   }) async {
+    if (!kUseCloudFunctions) {
+      // Spark: validated users-doc write + public card refresh.
+      await FirestoreService().updateTransporterProfile(
+        displayName: name,
+        phone: phone,
+        vehicleType: vehicleType,
+        vehicleRegistration: vehicleRegistration,
+        vehicleCapacity: vehicleCapacity,
+        vehicleCapacityUnit: vehicleCapacityUnit,
+        vehicleDescription: vehicleDescription,
+        availabilityStatus: isAvailable ? 'available' : 'unavailable',
+        serviceDistricts: serviceDistricts,
+      );
+      return;
+    }
     await _functions.httpsCallable('updateTransporterProfile').call<void>({
       'displayName': name,
       'phone': phone,
@@ -131,6 +148,12 @@ class FirestoreTransporterAccountRepository
 
   @override
   Future<void> updateAvailability(bool isAvailable) async {
+    if (!kUseCloudFunctions) {
+      await FirestoreService().updateTransporterProfile(
+        availabilityStatus: isAvailable ? 'available' : 'unavailable',
+      );
+      return;
+    }
     await _functions.httpsCallable('updateTransporterProfile').call<void>({
       'availabilityStatus': isAvailable ? 'available' : 'unavailable',
     });

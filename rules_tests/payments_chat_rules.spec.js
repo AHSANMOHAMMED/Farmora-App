@@ -1,13 +1,10 @@
 // Firestore + Storage rules for the Spark-mode flows: checkout (COD / bank
 // deposit), deposit-slip submission, farmer confirmation, product images and
 // order chat. Run with the emulators:
-//   npx firebase emulators:exec --only firestore,storage "npx mocha payments_chat_rules.spec.js"
-const {
-  assertFails,
-  assertSucceeds,
-  initializeTestEnvironment,
-} = require('@firebase/rules-unit-testing');
-const fs = require('fs');
+//   firebase emulators:exec --config firebase.emulators.json --only firestore,storage \
+//     --project demo-farmora "cd rules_tests && npm test"
+const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
+const { getEnv } = require('./helpers');
 const {
   doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs,
   serverTimestamp, deleteField, deleteDoc,
@@ -19,25 +16,7 @@ const ORDER = 'order1';
 const SLIP_URL = 'https://firebasestorage.googleapis.com/v0/b/x/o/slip';
 const CONVO = 'o_order1_buyer1_farmer1';
 
-before(async () => {
-  env = await initializeTestEnvironment({
-    // Must match the emulator project so Storage rules' firestore.get() sees
-    // the seeded documents.
-    projectId: 'demo-farmora',
-    firestore: {
-      host: '127.0.0.1',
-      port: 8080,
-      rules: fs.readFileSync('../firestore.rules', 'utf8'),
-    },
-    storage: {
-      host: '127.0.0.1',
-      port: 9199,
-      rules: fs.readFileSync('../storage.rules', 'utf8'),
-    },
-  });
-});
-
-after(async () => env && env.cleanup());
+before(async () => { env = await getEnv(); });
 
 async function seed(orderOverrides = {}) {
   await env.clearFirestore();
@@ -71,12 +50,12 @@ async function seed(orderOverrides = {}) {
 const db = (uid) => env.authenticatedContext(uid).firestore();
 const storage = (uid) => env.authenticatedContext(uid).storage();
 
-// Orders, offers and products are created by Cloud Functions (createOrder,
-// acceptOffer, createProduct …); clients can no longer write them directly.
-describe('checkout (server-owned)', () => {
+// Spark checkout writes are validated field by field (see
+// spark_flows.spec.js); an order missing the priced items is rejected.
+describe('checkout', () => {
   beforeEach(() => seed());
 
-  it('buyer cannot create an order directly', async () => {
+  it('buyer cannot create an unpriced order', async () => {
     await assertFails(setDoc(doc(db('buyer1'), 'orders', 'new1'), {
       buyerId: 'buyer1', farmerId: 'farmer1', productId: 'prod1', status: 'pending',
       totalMinor: 105000, paymentMethod: 'cod', paymentStatus: 'payment_required',
@@ -116,9 +95,12 @@ describe('checkout (server-owned)', () => {
 describe('bank details', () => {
   beforeEach(() => seed());
 
-  it('only the owner (or an admin) can read payout details', async () => {
+  it('deposit details are readable by signed-in users, written by the owner', async () => {
     await assertSucceeds(getDoc(doc(db('farmer1'), 'bank_details', 'farmer1')));
-    await assertFails(getDoc(doc(db('buyer1'), 'bank_details', 'farmer1')));
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'bank_details', 'farmer1')));
+    await assertFails(setDoc(doc(db('buyer1'), 'bank_details', 'farmer1'), {
+      farmerId: 'farmer1', bankName: 'X', branch: 'Y', accountHolderName: 'Z', accountNumber: '11111111',
+    }));
   });
 
   it('farmer can save their own payout account', async () => {
@@ -212,9 +194,15 @@ describe('order chat', () => {
     });
   }
 
-  it('a missing conversation can be checked but not created by clients', async () => {
+  it('a missing conversation can be checked; only order parties create it', async () => {
     await assertSucceeds(getDoc(doc(db('buyer1'), 'conversations', CONVO)));
-    await assertFails(setDoc(doc(db('buyer1'), 'conversations', CONVO), {
+    await assertFails(setDoc(doc(db('stranger'), 'conversations', 'o_order1_farmer1_stranger'), {
+      orderId: ORDER, participantIds: ['farmer1', 'stranger'],
+    }));
+    await assertFails(setDoc(doc(db('buyer1'), 'conversations', 'o_order1_buyer1_buyer2'), {
+      orderId: ORDER, participantIds: ['buyer1', 'buyer2'],
+    }));
+    await assertSucceeds(setDoc(doc(db('buyer1'), 'conversations', CONVO), {
       orderId: ORDER, participantIds: ['buyer1', 'farmer1'],
     }));
   });
@@ -233,18 +221,37 @@ describe('order chat', () => {
       'unreadCounts.farmer1': 0, 'lastReadAt.farmer1': serverTimestamp(),
     }));
     await assertFails(updateDoc(doc(db('farmer1'), 'conversations', CONVO), {
-      'unreadCounts.buyer1': 0,
+      'unreadCounts.buyer1': 5,
     }));
     await assertFails(updateDoc(doc(db('farmer1'), 'conversations', CONVO), {
       lastMessage: 'spoofed',
     }));
   });
 
-  it('messages are written only by the sendMessage function', async () => {
+  it('participants write well-formed messages; others cannot', async () => {
     await seedConvo();
-    await assertFails(setDoc(doc(db('buyer1'), 'messages', 'x1'), {
+    const msg = (uid, peer) => ({
+      orderId: ORDER, conversationId: CONVO, participantIds: ['buyer1', 'farmer1'],
+      senderId: uid, receiverId: peer, recipientId: peer, type: 'text',
+      ciphertext: 'farmora3:' + 'x'.repeat(40), createdAt: serverTimestamp(),
+    });
+    await assertSucceeds(setDoc(doc(db('buyer1'), 'messages', 'x1'), msg('buyer1', 'farmer1')));
+    await assertFails(setDoc(doc(db('stranger'), 'messages', 'x2'), msg('stranger', 'farmer1')));
+    // Missing createdAt / type is rejected.
+    await assertFails(setDoc(doc(db('buyer1'), 'messages', 'x3'), {
       orderId: ORDER, conversationId: CONVO, senderId: 'buyer1',
       participantIds: ['buyer1', 'farmer1'], ciphertext: 'farmora3:' + 'x'.repeat(40),
+    }));
+    // Payment receipt photos must be the buyer's own slip for this order.
+    const { ciphertext: _c, ...photo } = msg('buyer1', 'farmer1');
+    await assertSucceeds(setDoc(doc(db('buyer1'), 'messages', 'x4'), {
+      ...photo, type: 'image', attachmentUrl: SLIP_URL,
+      attachmentPath: `payment_slips/${ORDER}/buyer1_1.jpg`, attachmentKind: 'payment_proof',
+    }));
+    const { ciphertext: _d, ...farmerPhoto } = msg('farmer1', 'buyer1');
+    await assertFails(setDoc(doc(db('farmer1'), 'messages', 'x5'), {
+      ...farmerPhoto, type: 'image', attachmentUrl: SLIP_URL,
+      attachmentPath: `payment_slips/${ORDER}/farmer1_1.jpg`, attachmentKind: 'payment_proof',
     }));
   });
 
@@ -272,12 +279,15 @@ describe('order chat', () => {
   });
 });
 
-describe('server-owned collections', () => {
+describe('forgery checks', () => {
   beforeEach(() => seed());
 
-  it('transporter profiles are readable but never client-written', async () => {
+  it('transporter profiles are readable; only the owner writes their own', async () => {
     await assertSucceeds(getDoc(doc(db('buyer1'), 'transporter_profiles', 'trans1')));
-    await assertFails(setDoc(doc(db('trans1'), 'transporter_profiles', 'trans1'), {
+    await assertFails(setDoc(doc(db('buyer1'), 'transporter_profiles', 'trans1'), {
+      isVerified: true,
+    }));
+    await assertSucceeds(setDoc(doc(db('trans1'), 'transporter_profiles', 'trans1'), {
       isVerified: true,
     }));
   });
@@ -290,7 +300,7 @@ describe('server-owned collections', () => {
       openedBy: 'buyer1', reason: 'x',
     }));
     await assertFails(setDoc(doc(db('farmer1'), 'settlements', 's1'), {
-      recipientId: 'farmer1', recipientRole: 'farmer', status: 'pending',
+      recipientId: 'farmer1', recipientRole: 'farmer', status: 'settled',
       grossAmount: 100, platformFee: 1, netAmount: 99, bankName: 'BOC',
       accountNumber: '12345678', payoutMethod: 'CEFT',
     }));

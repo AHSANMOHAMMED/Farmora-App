@@ -2,17 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../core/config/app_backend.dart';
 import '../core/localization/l10n.dart';
 import '../models/bank_details.dart';
 import '../models/order.dart';
 import 'service_errors.dart';
+import 'spark_backend.dart';
 
 /// Farmer-direct payments (Cash on Delivery / Bank Deposit).
 ///
 /// Every transition runs in a transaction that re-checks who the caller is and
 /// what state the order is in; `firestore.rules` enforces the same constraints
 /// server-side. Notifications for payment changes are written by the
-/// `onOrderPaymentStatusChanged` Cloud Function trigger, not by the client.
+/// `onOrderPaymentStatusChanged` Cloud Function trigger in Cloud Functions
+/// mode; on the Spark plan the acting client writes them (best effort).
 class PaymentService {
   PaymentService({
     FirebaseFirestore? db,
@@ -47,9 +50,14 @@ class PaymentService {
     return BankDetails.fromMap(snap.data());
   }
 
-  /// Checkout: whether [farmerId] accepts bank deposits. Buyers cannot read
-  /// `bank_details`, so this goes through `getFarmerBankDetails {farmerId}`.
+  /// Checkout: whether [farmerId] accepts bank deposits. Spark reads
+  /// `bank_details` directly (readable by signed-in users: deposit
+  /// instructions); Cloud Functions mode asks `getFarmerBankDetails`.
   Future<bool> farmerAcceptsBankDeposit(String farmerId) async {
+    if (!kUseCloudFunctions) {
+      final snap = await _bankRef(farmerId).get();
+      return SparkBackend.usableBank(snap.data()) != null;
+    }
     final result = await _functions
         .httpsCallable('getFarmerBankDetails')
         .call({'farmerId': farmerId});
@@ -63,6 +71,11 @@ class PaymentService {
   Future<BankDetails> bankDetailsForOrder(FarmoraOrder order) async {
     final snapshot = order.bankDetailsSnapshot;
     if (snapshot != null && snapshot.isComplete) return snapshot;
+    if (!kUseCloudFunctions) {
+      if (order.farmerId.isEmpty) return BankDetails.empty;
+      final bank = SparkBackend.usableBank((await _bankRef(order.farmerId).get()).data());
+      return bank == null ? BankDetails.empty : BankDetails.fromMap(bank);
+    }
     final result = await _functions
         .httpsCallable('getFarmerBankDetails')
         .call({'orderId': order.id});
@@ -122,7 +135,34 @@ class PaymentService {
         'proofSubmittedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-    });
+      return order;
+    }).then((order) => _notifySpark(
+          order.farmerId,
+          'Payment proof submitted',
+          'The buyer uploaded a bank deposit slip. Please verify it.',
+          orderId,
+        ));
+  }
+
+  /// Spark only: the other party's in-app payment notification (the
+  /// `onOrderPaymentStatusChanged` trigger does this with Cloud Functions).
+  Future<void> _notifySpark(
+      String userId, String title, String body, String orderId) async {
+    if (kUseCloudFunctions || userId.isEmpty) return;
+    try {
+      await _db.collection('notifications').add({
+        'userId': userId,
+        'title': title,
+        'body': body,
+        'type': 'payment',
+        'referenceId': orderId,
+        'orderId': orderId,
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Best effort: the payment change itself already succeeded.
+    }
   }
 
   // ── Farmer confirmations ─────────────────────────────────
@@ -184,7 +224,7 @@ class PaymentService {
   }) async {
     final uid = _uid;
     final ref = _db.collection('orders').doc(orderId);
-    await _db.runTransaction((tx) async {
+    final order = await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final data = snap.data();
       if (data == null) throw UserStateError(L10n.current.svcOrderNotFound);
@@ -196,6 +236,17 @@ class PaymentService {
         'paymentConfirmedBy': uid,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      return order;
     });
+    final rejected = update['paymentStatus'] == 'rejected';
+    await _notifySpark(
+      order.buyerId,
+      rejected ? 'Payment proof rejected' : 'Payment confirmed',
+      rejected
+          ? 'The farmer rejected your deposit slip: ${update['rejectionReason']}. '
+              'Please upload a new slip.'
+          : 'Your payment for ${order.title.isEmpty ? 'your order' : order.title} was confirmed.',
+      orderId,
+    );
   }
 }

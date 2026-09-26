@@ -78,10 +78,12 @@ export 'features/auth/presentation/login_screen.dart';
 export 'features/auth/presentation/role_selection_screen.dart';
 export 'features/auth/presentation/register_screen.dart';
 
-const _useFirebaseEmulators = bool.fromEnvironment(
-  'USE_FIREBASE_EMULATORS',
-  defaultValue: false,
-);
+/// `--dart-define=FIREBASE_EMULATOR=true` (or the older
+/// `USE_FIREBASE_EMULATORS=true`) attaches Auth / Firestore / Storage (and
+/// Functions) to the local emulators from firebase.emulators.json and skips
+/// App Check. Without it the app talks to the configured project.
+const _useFirebaseEmulators = bool.fromEnvironment('FIREBASE_EMULATOR') ||
+    bool.fromEnvironment('USE_FIREBASE_EMULATORS');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

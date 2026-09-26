@@ -103,6 +103,15 @@ class FirestoreService {
   }
 
   // ── Users ─────────────────────────────────────────────────
+  /// The signed-in user's own profile document (null while missing).
+  Stream<Map<String, dynamic>?> userProfileStream(String uid) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.data());
+  }
+
   Stream<List<Map<String, dynamic>>> usersStream({int limit = 100}) {
     return _db.collection('users').limit(limit).snapshots().map((snap) =>
         snap.docs.map((doc) => {'uid': doc.id, ...doc.data()}).toList());
@@ -218,7 +227,8 @@ class FirestoreService {
   /// Update a product
   Future<void> updateProduct(String id, Map<String, dynamic> data) async {
     if (!kUseCloudFunctions) {
-      throw StateError('Product updates require the trusted backend.');
+      await _spark.updateProduct(id, data);
+      return;
     }
     final result = await _functions.httpsCallable('updateProduct').call({
       'productId': id,
@@ -232,7 +242,8 @@ class FirestoreService {
   /// Delete a product
   Future<void> deleteProduct(String id) async {
     if (!kUseCloudFunctions) {
-      throw StateError('Product deletion requires the trusted backend.');
+      await _spark.deleteProduct(id);
+      return;
     }
     await _functions.httpsCallable('deleteProduct').call({'productId': id});
   }
@@ -314,6 +325,9 @@ class FirestoreService {
       return _spark.acceptOffer(
         offerId: offerId,
         deliveryFeeMinor: deliveryFeeMinor,
+        deliveryAddress: deliveryAddress,
+        paymentMethod: paymentMethod,
+        transporterId: transporterId,
       );
     }
     final result = await _functions.httpsCallable('acceptOffer').call({
@@ -511,6 +525,8 @@ class FirestoreService {
       'isVerified': verified,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    // Spark: keep the public transporter card's `isVerified` in step.
+    if (!kUseCloudFunctions) await _spark.syncTransporterProfileAsAdmin(userId);
   }
 
   /// Admin: change [userId]'s role (users doc + custom claims) via
@@ -525,6 +541,10 @@ class FirestoreService {
     required String uid,
     required String role,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.adminSetUserRole(uid: uid, role: role);
+      return;
+    }
     await _functions
         .httpsCallable('adminSetUserRole')
         .call({'uid': uid, 'role': role});
@@ -532,6 +552,10 @@ class FirestoreService {
 
   /// Admin: soft-delete an account (disabled + flagged deleted).
   Future<void> adminDeleteUser(String uid) async {
+    if (!kUseCloudFunctions) {
+      await _spark.adminDeleteUser(uid);
+      return;
+    }
     await _functions.httpsCallable('adminDeleteUser').call({'uid': uid});
   }
 
@@ -550,6 +574,14 @@ class FirestoreService {
     required String resolution,
     required String adminNotes,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.resolveDispute(
+        orderId: orderId,
+        resolution: resolution,
+        adminNotes: adminNotes,
+      );
+      return;
+    }
     await _functions.httpsCallable('resolveDispute').call({
       'orderId': orderId,
       'resolution': resolution,
@@ -564,6 +596,10 @@ class FirestoreService {
     required String body,
     required String audience,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.broadcastAdvisory(
+          title: title, body: body, audience: audience);
+    }
     final result = await _functions.httpsCallable('broadcastAdvisory').call({
       'title': title,
       'body': body,
@@ -616,6 +652,14 @@ class FirestoreService {
     required String accountNumber,
     String payoutMethod = 'CEFT',
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.requestWithdrawal(
+        amount: amount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        payoutMethod: payoutMethod,
+      );
+    }
     final result = await _functions.httpsCallable('requestWithdrawal').call({
       'amount': amount,
       'bankName': bankName,
@@ -691,7 +735,19 @@ class FirestoreService {
       if (serviceDistricts != null) 'serviceDistricts': serviceDistricts,
     };
     if (payload.isEmpty) return;
+    if (!kUseCloudFunctions) {
+      await _spark.updateTransporterProfile(payload);
+      return;
+    }
     await _functions.httpsCallable('updateTransporterProfile').call(payload);
+  }
+
+  /// Spark: the signed-in transporter (re)publishes their public card in
+  /// `transporter_profiles/{uid}` (sign-in, profile / availability saves).
+  /// No-op for other roles and in Cloud Functions mode.
+  Future<void> syncMyTransporterProfile() async {
+    if (kUseCloudFunctions) return;
+    await _spark.syncMyTransporterProfile();
   }
 
   /// Public transporter card (`transporter_profiles/{id}`), readable by any
@@ -778,7 +834,7 @@ class FirestoreService {
   Future<void> transitionTransport(String jobId, String status,
       {String? reason}) async {
     if (!kUseCloudFunctions) {
-      await _spark.transitionTransport(jobId, status);
+      await _spark.transitionTransport(jobId, status, reason: reason);
       return;
     }
     await _functions.httpsCallable('transitionTransport').call({
@@ -794,6 +850,10 @@ class FirestoreService {
 
   /// Farmer cancels a still-`requested` transport request.
   Future<void> cancelTransportRequest(String jobId) async {
+    if (!kUseCloudFunctions) {
+      await _spark.cancelTransportRequest(jobId);
+      return;
+    }
     await _functions
         .httpsCallable('cancelTransportRequest')
         .call({'jobId': jobId});
@@ -802,6 +862,10 @@ class FirestoreService {
   /// Farmer confirms the goods were handed to the transporter
   /// (sets `farmerHandedOverAt`; no status change).
   Future<void> confirmHandover(String orderId) async {
+    if (!kUseCloudFunctions) {
+      await _spark.confirmHandover(orderId);
+      return;
+    }
     await _functions
         .httpsCallable('confirmHandover')
         .call({'orderId': orderId});
@@ -813,6 +877,9 @@ class FirestoreService {
     String? farmerId,
     String? orderId,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.getFarmerBankDetails(farmerId: farmerId, orderId: orderId);
+    }
     final result = await _functions.httpsCallable('getFarmerBankDetails').call({
       if (farmerId != null) 'farmerId': farmerId,
       if (orderId != null) 'orderId': orderId,
@@ -1231,6 +1298,14 @@ class FirestoreService {
     DateTime? harvestDate,
   }) async {
     if (!kUseCloudFunctions) {
+      String? oldVideo;
+      if (!clearVideo && videoPath != null) {
+        try {
+          final current =
+              await _db.collection('products').doc(productId).get();
+          oldVideo = current.data()?['videoPath']?.toString();
+        } catch (_) {}
+      }
       await _spark.setProductMedia(
         productId: productId,
         videoPath: videoPath,
@@ -1239,6 +1314,19 @@ class FirestoreService {
         harvestStatus: harvestStatus,
         harvestDate: harvestDate,
       );
+      // The function deletes a replaced video; here the owner client does.
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (oldVideo != null &&
+          oldVideo.isNotEmpty &&
+          oldVideo != videoPath &&
+          uid != null &&
+          oldVideo.startsWith('product_videos/$uid/')) {
+        try {
+          await _storage.ref(oldVideo).delete();
+        } catch (e) {
+          debugPrint('Old product video delete skipped: $e');
+        }
+      }
       return;
     }
     try {
@@ -1469,6 +1557,15 @@ class FirestoreService {
     String? holdReason,
     bool clearHoldReason = false,
   }) async {
+    if (!kUseCloudFunctions) {
+      await _spark.updateSettlementStatus(
+        settlementId,
+        status: status,
+        transactionReference: transactionReference,
+        holdReason: holdReason,
+      );
+      return;
+    }
     await _functions.httpsCallable('updateSettlementStatus').call({
       'settlementId': settlementId,
       'status': status,
@@ -1549,7 +1646,11 @@ class FirestoreService {
     String? reason,
   }) async {
     if (!kUseCloudFunctions) {
-      await _spark.reviewVerification(documentId: documentId, status: status);
+      await _spark.reviewVerification(
+        documentId: documentId,
+        status: status,
+        reason: reason,
+      );
       return;
     }
     await _functions.httpsCallable('reviewVerification').call({
@@ -1769,9 +1870,15 @@ class FirestoreService {
   Future<List<Map<String, dynamic>>> listAvailableTransporters({
     String? district,
   }) async {
-    final result = await _functions.httpsCallable('listAvailableTransporters')
-        .call({if (district != null && district.isNotEmpty) 'district': district});
-    final data = result.data;
+    final Object? data;
+    if (!kUseCloudFunctions) {
+      data = await _spark.listAvailableTransporters(district: district);
+    } else {
+      final result = await _functions
+          .httpsCallable('listAvailableTransporters')
+          .call({if (district != null && district.isNotEmpty) 'district': district});
+      data = result.data;
+    }
     final list = data is List
         ? data
         : (data is Map ? (data['transporters'] as List? ?? const []) : const []);

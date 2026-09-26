@@ -7,6 +7,7 @@ import '../../../core/localization/l10n.dart';
 import '../../../core/config/app_backend.dart';
 import '../../../services/firebase_service.dart';
 import 'package:flutter/foundation.dart';
+import '../../../services/service_errors.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
 import 'mock_collection_job_repository.dart';
@@ -194,6 +195,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       return await getJob(jobId);
     } on FirebaseFunctionsException catch (error) {
       throw CollectionJobException(_functionMessage(error));
+    } on UserStateError catch (error) {
+      throw CollectionJobException(error.message);
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_writeMessage(error));
     }
   }
 
@@ -207,6 +212,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       _targeted.remove(jobId);
     } on FirebaseFunctionsException catch (error) {
       throw CollectionJobException(_functionMessage(error));
+    } on UserStateError catch (error) {
+      throw CollectionJobException(error.message);
+    } on FirebaseException catch (error) {
+      throw CollectionJobException(_writeMessage(error));
     }
   }
 
@@ -241,15 +250,22 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       rethrow;
     } on FirebaseFunctionsException catch (error) {
       throw CollectionJobException(_functionMessage(error));
+    } on UserStateError catch (error) {
+      throw CollectionJobException(error.message);
     } on FirebaseException catch (error) {
-      throw CollectionJobException(_firebaseMessage(error));
+      throw CollectionJobException(_writeMessage(error));
     }
   }
 
+  /// Routes a transition to the backend: the `transitionTransport` callable
+  /// (Cloud Functions mode) or [FirestoreService.transitionTransport] →
+  /// SparkBackend (Spark). Both keep the reason / decline / cancel
+  /// semantics: `declined` releases a targeted request to everyone and
+  /// `cancelled` (before pickup) reopens the job.
   Future<void> _transition(String jobId, String status,
       {String? reason}) async {
     if (!kUseCloudFunctions) {
-      await FirestoreService().transitionTransport(jobId, status);
+      await FirestoreService().transitionTransport(jobId, status, reason: reason);
       return;
     }
     await _functions.httpsCallable('transitionTransport').call<void>({
@@ -479,6 +495,19 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       'permission-denied' => l.jobNoPermissionUpdate,
       'not-found' => l.jobNoLongerExists,
       'failed-precondition' => l.jobUpdatedElsewhere,
+      _ => l.jobCouldNotUpdate,
+    };
+  }
+
+  /// Spark writes are validated by firestore.rules: a denied transition
+  /// means the job was claimed or changed by someone else.
+  String _writeMessage(FirebaseException error) {
+    final l = L10n.current;
+    return switch (error.code) {
+      'permission-denied' || 'failed-precondition' || 'aborted' =>
+        l.jobUpdatedElsewhere,
+      'not-found' => l.jobNoLongerExists,
+      'unavailable' => l.jobDatabaseUnavailable,
       _ => l.jobCouldNotUpdate,
     };
   }
