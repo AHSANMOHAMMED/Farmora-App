@@ -12,9 +12,9 @@ service cloud.firestore {
         request.auth.token.admin == true
         || (userExists(request.auth.uid)
           && userDoc(request.auth.uid).role == 'admin'
-          && userDoc(request.auth.uid).isVerified == true
-          && userDoc(request.auth.uid).isSuspended != true
-          && userDoc(request.auth.uid).isDeleted != true)
+          && userDoc(request.auth.uid).get('isVerified', false) == true
+          && userDoc(request.auth.uid).get('isSuspended', false) != true
+          && userDoc(request.auth.uid).get('isDeleted', false) != true)
       );
     }
     function roleIs(r) {
