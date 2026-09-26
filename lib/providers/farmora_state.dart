@@ -1,4 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
+import 'package:cloud_firestore/cloud_firestore.dart'
+    show FirebaseFirestore, SetOptions, Timestamp;
 import 'package:cloud_functions/cloud_functions.dart'
     show FirebaseFunctionsException;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -67,6 +68,7 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<BankDetails>? _bankDetailsSub;
   StreamSubscription<List<Dispute>>? _disputesSub;
   StreamSubscription<List<FarmoraConversation>>? _conversationsSub;
+  StreamSubscription<Map<String, dynamic>>? _userDocSub;
   String? _fcmToken;
   _AppLifecycleHook? _lifecycleHook;
   bool _ordersLoading = false;
@@ -102,6 +104,10 @@ class FarmoraState extends ChangeNotifier {
   String farmName = '';
   String farmSize = '';
   List<String> mainCrops = [];
+
+  /// True once the farmer has completed their farm profile (farmName, district,
+  /// mainCrops). Stored as `profileComplete` on the user doc.
+  bool profileComplete = false;
 
   /// When the account was created (users/{uid}.createdAt); null if unknown.
   DateTime? memberSince;
@@ -897,6 +903,34 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Marks the farmer profile as complete; writes `profileComplete: true`
+  /// to Firestore and updates local state immediately.
+  Future<void> markProfileComplete({
+    required String farmName,
+    required String farmSize,
+    required String district,
+    required List<String> mainCrops,
+  }) async {
+    if (_currentUserId.isEmpty) return;
+    final data = <String, dynamic>{
+      'profileComplete': true,
+      'farmName': farmName.trim(),
+      'farmSize': farmSize.trim(),
+      'district': district.trim(),
+      'mainCrops': mainCrops.map((c) => c.trim()).where((c) => c.isNotEmpty).toList(),
+    };
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUserId)
+        .set(data, SetOptions(merge: true));
+    profileComplete = true;
+    this.farmName = farmName.trim();
+    this.farmSize = farmSize.trim();
+    this.district = district.trim();
+    this.mainCrops = mainCrops;
+    notifyListeners();
+  }
+
   void setSearchQuery(String query) {
     searchQuery = query;
     notifyListeners();
@@ -1258,53 +1292,28 @@ class FarmoraState extends ChangeNotifier {
     required List<int> bytes,
     required String fileName,
   }) async {
-    final result = await _firestoreService.uploadProductVideo(
+    if (_currentUserId.isEmpty) return null;
+    return _firestoreService.uploadProductVideo(
       productId: productId,
       bytes: Uint8List.fromList(bytes),
       fileName: fileName,
     );
-    final idx = _products.indexWhere((p) => p.id == productId);
-    if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(
-        videoUrl: result['url'],
-        videoPath: result['path'],
-        harvestStatus: HarvestStatus.harvested,
-        harvestDate: DateTime.now(),
-      );
-      notifyListeners();
-    }
-    return result;
   }
 
   /// Removes the product's harvest video.
   Future<void> deleteHarvestVideo(Product product) async {
+    _requireSignedIn();
     await _firestoreService.deleteProductVideo(
       productId: product.id,
       storagePath: product.videoPath,
       downloadUrl: product.videoUrl,
     );
-    final idx = _products.indexWhere((p) => p.id == product.id);
-    if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(
-        videoUrl: null,
-        videoPath: null,
-      );
-      notifyListeners();
-    }
   }
 
   /// Generates the product QR via `generateProductQr`. Returns the payload.
   Future<String?> generateQrForProduct(String productId) async {
-    final payload =
-        await _firestoreService.generateProductQr(productId: productId);
-    final idx = _products.indexWhere((p) => p.id == productId);
-    if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(
-        qrCode: payload,
-      );
-      notifyListeners();
-    }
-    return payload;
+    if (_currentUserId.isEmpty) return null;
+    return _firestoreService.generateProductQr(productId: productId);
   }
 
   Future<void> deliverOrderAndCleanupVideo({
@@ -1409,6 +1418,29 @@ class FarmoraState extends ChangeNotifier {
       return;
     }
     final isAdmin = role == Role.admin;
+
+    // Real-time listener on the current user's own doc — catches admin
+    // approval (isVerified: true) and profile completion automatically.
+    _userDocSub?.cancel();
+    _userDocSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((s) => s.data() ?? <String, dynamic>{})
+        .listen(
+      (data) {
+        if (data.isEmpty) return;
+        final wasVerified = isVerified;
+        final wasProfileComplete = profileComplete;
+        isVerified = data['isVerified'] == true;
+        profileComplete = data['profileComplete'] == true;
+        if (isVerified != wasVerified ||
+            profileComplete != wasProfileComplete) {
+          notifyListeners();
+        }
+      },
+      onError: (_) {},
+    );
 
     // Subscribe to products stream
     _productsSub?.cancel();
@@ -1673,6 +1705,7 @@ class FarmoraState extends ChangeNotifier {
     _bankDetailsSub?.cancel();
     _disputesSub?.cancel();
     _conversationsSub?.cancel();
+    _userDocSub?.cancel();
     _myBankDetails = BankDetails.empty;
   }
 
@@ -1904,6 +1937,7 @@ class FarmoraState extends ChangeNotifier {
     photoUrl = (profile['photoUrl'] ?? '').toString();
     phone = (profile['phone'] ?? '').toString();
     isVerified = profile['isVerified'] == true;
+    profileComplete = profile['profileComplete'] == true;
     vehicleType = (profile['vehicleType'] ?? '').toString();
     capacityKg = (profile['capacityKg'] as num?)?.toInt() ?? 0;
     serviceDistricts = (profile['serviceDistricts'] as List? ?? [])

@@ -42,6 +42,7 @@ import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
 import 'widgets/platform_gate_views.dart';
 import '../../auth/presentation/session_actions.dart';
+import '../../auth/presentation/farmer_profile_completion_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -136,9 +137,16 @@ class _HomeScreenState extends State<HomeScreen>
 
     final l10n = context.l10n;
 
-    // Farmers and transporters trade only once verified; buyers are not
-    // gated (they can still submit documents from their profile).
-    final isUnverified = (role == Role.farmer || role == Role.transporter) &&
+    // Farmers need profile completion before accessing their dashboard.
+    if (role == Role.farmer && state.profileLoaded && !state.profileComplete) {
+      return const FarmerProfileCompletionScreen();
+    }
+
+    // Farmers and transporters trade only once verified; buyers also need
+    // admin verification before accessing the marketplace.
+    final isUnverified = (role == Role.farmer ||
+            role == Role.transporter ||
+            role == Role.buyer) &&
         !state.isVerified;
     if (isUnverified) {
       screens = [

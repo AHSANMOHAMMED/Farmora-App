@@ -1197,28 +1197,18 @@ class FirestoreService {
   }
 
   /// Generates the product QR (`farmora://product/<id>`) through the
-  /// Generates the product QR (`farmora://product/<id>`) through the
   /// `generateProductQr` callable (owner farmer). [farmerId] is ignored and
   /// kept for existing callers. Returns the QR payload.
   Future<String> generateProductQr({
     required String productId,
     String? farmerId,
   }) async {
-    if (!kUseCloudFunctions) {
-      return _spark.generateProductQr(productId);
-    }
-    try {
-      final result = await _functions
-          .httpsCallable('generateProductQr')
-          .call({'productId': productId})
-          .timeout(const Duration(seconds: 10));
-      final data = result.data;
-      final qr = data is Map ? data['qrCode']?.toString() : null;
-      return qr ?? 'farmora://product/$productId';
-    } catch (e) {
-      debugPrint('Cloud Function generateProductQr fallback to Spark: $e');
-      return _spark.generateProductQr(productId);
-    }
+    final result = await _functions
+        .httpsCallable('generateProductQr')
+        .call({'productId': productId});
+    final data = result.data;
+    final qr = data is Map ? data['qrCode']?.toString() : null;
+    return qr ?? 'farmora://product/$productId';
   }
 
   /// Owner farmer: update only the given media fields of a product.
@@ -1230,37 +1220,14 @@ class FirestoreService {
     String? harvestStatus,
     DateTime? harvestDate,
   }) async {
-    if (!kUseCloudFunctions) {
-      await _spark.setProductMedia(
-        productId: productId,
-        videoPath: videoPath,
-        videoUrl: videoUrl,
-        clearVideo: clearVideo,
-        harvestStatus: harvestStatus,
-        harvestDate: harvestDate,
-      );
-      return;
-    }
-    try {
-      await _functions.httpsCallable('setProductMedia').call({
-        'productId': productId,
-        if (videoPath != null) 'videoPath': videoPath,
-        if (videoUrl != null) 'videoUrl': videoUrl,
-        if (clearVideo) 'clearVideo': true,
-        if (harvestStatus != null) 'harvestStatus': harvestStatus,
-        if (harvestDate != null) 'harvestDate': harvestDate.toIso8601String(),
-      }).timeout(const Duration(seconds: 10));
-    } catch (e) {
-      debugPrint('Cloud Function setProductMedia fallback to Spark: $e');
-      await _spark.setProductMedia(
-        productId: productId,
-        videoPath: videoPath,
-        videoUrl: videoUrl,
-        clearVideo: clearVideo,
-        harvestStatus: harvestStatus,
-        harvestDate: harvestDate,
-      );
-    }
+    await _functions.httpsCallable('setProductMedia').call({
+      'productId': productId,
+      if (videoPath != null) 'videoPath': videoPath,
+      if (videoUrl != null) 'videoUrl': videoUrl,
+      if (clearVideo) 'clearVideo': true,
+      if (harvestStatus != null) 'harvestStatus': harvestStatus,
+      if (harvestDate != null) 'harvestDate': harvestDate.toIso8601String(),
+    });
   }
 
   /// Upload harvest video for a product and return download URL + storage path.
@@ -1270,36 +1237,32 @@ class FirestoreService {
     required String fileName,
     String contentType = 'video/mp4',
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'farmer_demo_1';
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     if (bytes.length > 100 * 1024 * 1024) {
       throw UserStateError(L10n.current.svcVideoTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final path =
         'product_videos/$uid/${productId}_${DateTime.now().millisecondsSinceEpoch}_$safeName';
-
-    String url = '';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    final url = await ref.getDownloadURL();
     try {
-      final ref = _storage.ref(path);
-      await ref
-          .putData(bytes, SettableMetadata(contentType: contentType))
-          .timeout(const Duration(seconds: 12));
-      url = await ref.getDownloadURL().timeout(const Duration(seconds: 8));
-    } catch (e) {
-      debugPrint('Storage putData fallback due to CORS/timeout: $e');
-      // Resilient fallback: authentic agricultural produce harvest video preview URL
-      url =
-          'https://assets.mixkit.co/videos/preview/mixkit-farmer-hands-holding-freshly-harvested-organic-vegetables-41221-large.mp4';
+      await setProductMedia(
+        productId: productId,
+        videoPath: path,
+        videoUrl: url,
+        harvestStatus: 'harvested',
+        harvestDate: DateTime.now(),
+      );
+    } catch (_) {
+      // Don't leave an orphaned upload behind when the product update fails.
+      try {
+        await ref.delete();
+      } catch (_) {}
+      rethrow;
     }
-
-    await setProductMedia(
-      productId: productId,
-      videoPath: path,
-      videoUrl: url,
-      harvestStatus: 'harvested',
-      harvestDate: DateTime.now(),
-    );
-
     return {'path': path, 'url': url};
   }
 
@@ -1311,17 +1274,12 @@ class FirestoreService {
   }) async {
     try {
       if (storagePath != null && storagePath.isNotEmpty) {
-        await _storage
-            .ref(storagePath)
-            .delete()
-            .timeout(const Duration(seconds: 5));
+        await _storage.ref(storagePath).delete();
       } else if (downloadUrl != null && downloadUrl.isNotEmpty) {
-        await _storage
-            .refFromURL(downloadUrl)
-            .delete()
-            .timeout(const Duration(seconds: 5));
+        await _storage.refFromURL(downloadUrl).delete();
       }
     } catch (e) {
+      // A missing file must not block clearing the product fields.
       debugPrint('Product video delete skipped: $e');
     }
     await setProductMedia(productId: productId, clearVideo: true);
