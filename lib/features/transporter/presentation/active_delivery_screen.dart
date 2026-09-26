@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/navigation/app_navigator.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/transport_job.dart';
@@ -171,9 +172,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   }
 
   Future<void> _openChat() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ConversationsScreen()),
-    );
+    await AppNavigator.push(context, const ConversationsScreen());
   }
 
   @override
