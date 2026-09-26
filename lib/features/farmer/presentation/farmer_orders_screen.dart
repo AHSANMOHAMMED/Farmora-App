@@ -209,14 +209,19 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
             borderRadius: BorderRadius.circular(9999),
           ),
           alignment: Alignment.center,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+              ),
             ),
           ),
         ),
@@ -305,12 +310,15 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           ],
                         ),
                       ),
-                      Text(
-                        '${order.displayNumber} · ${order.createdAt.millisecondsSinceEpoch > 0 ? AppFormat.relative(order.createdAt) : order.timestamp}',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: AppColors.onSurfaceVariant,
+                      Flexible(
+                        child: Text(
+                          '${order.displayNumber} · ${order.createdAt.millisecondsSinceEpoch > 0 ? AppFormat.relative(order.createdAt) : order.timestamp}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
