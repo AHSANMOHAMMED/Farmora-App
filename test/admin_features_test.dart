@@ -9,9 +9,10 @@ void main() {
     setUp(() => state = FarmoraState());
     tearDown(() => state.dispose());
 
-    test('does not expose seeded users, settlements, or audits',
+    test('does not expose seeded users, market data, settlements, or audits',
         () {
       expect(state.users, isEmpty);
+      expect(state.marketPrices, isEmpty);
       expect(state.settlements, isEmpty);
       expect(state.auditLogs, isEmpty);
       expect(state.signedIn, isFalse);

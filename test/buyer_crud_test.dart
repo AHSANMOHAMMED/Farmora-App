@@ -44,17 +44,16 @@ void main() {
       expect(state.cartItemCount, 7);
     });
 
-    test('order placement updates local state when placing order',
+    test('order placement cannot succeed without authenticated backend',
         () async {
-      final initialOrders = state.orders.length;
       state.addToCart(carrots);
       final placed = await state.placeOrder(
         deliveryAddress: 'Colombo, Sri Lanka',
         transporterId: 'untrusted-id',
       );
-      expect(placed, isTrue);
-      expect(state.orders.length, initialOrders + 1);
-      expect(state.cartItems, isEmpty);
+      expect(placed, isFalse);
+      expect(state.orders, isEmpty);
+      expect(state.cartItems, hasLength(1));
     });
 
     test('offer creation requires authentication', () async {
@@ -68,6 +67,7 @@ void main() {
         ),
         throwsA(isA<StateError>()),
       );
+      expect(state.offers, isEmpty);
     });
   });
 }
