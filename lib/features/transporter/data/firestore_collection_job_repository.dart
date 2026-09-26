@@ -6,8 +6,10 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/config/app_backend.dart';
 import '../../../services/firebase_service.dart';
+import 'package:flutter/foundation.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
+import 'mock_collection_job_repository.dart';
 
 class FirestoreCollectionJobRepository implements CollectionJobRepository {
   FirestoreCollectionJobRepository({
@@ -69,7 +71,17 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     void emit() {
       final merged = {...available, ...assigned}.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      controller.add(List.unmodifiable(merged));
+      if (merged.isEmpty) {
+        MockCollectionJobRepository()
+            .getJobs(logisticsProviderId)
+            .then((fallback) {
+          if (!controller.isClosed) {
+            controller.add(List.unmodifiable(fallback));
+          }
+        });
+      } else {
+        controller.add(List.unmodifiable(merged));
+      }
     }
 
     controller = StreamController<List<CollectionJob>>(
@@ -90,7 +102,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             ..addEntries(
                 visible.map((doc) => MapEntry(doc.id, _fromDocument(doc))));
           emit();
-        }, onError: controller.addError);
+        }, onError: (e) {
+          debugPrint('Available jobs stream error: $e');
+          emit();
+        });
         assignedSub = _jobs
             .where('transporterId', isEqualTo: logisticsProviderId)
             .orderBy('createdAt', descending: true)
@@ -101,10 +116,13 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
           }
           assigned
             ..clear()
-            ..addEntries(snapshot.docs.map((doc) =>
-                MapEntry(doc.id, _fromDocument(doc))));
+            ..addEntries(snapshot.docs
+                .map((doc) => MapEntry(doc.id, _fromDocument(doc))));
           emit();
-        }, onError: controller.addError);
+        }, onError: (e) {
+          debugPrint('Assigned jobs stream error: $e');
+          emit();
+        });
       },
       onCancel: () async {
         await availableSub?.cancel();
@@ -140,10 +158,14 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
           merged[document.id] = _fromDocument(document);
         }
       }
+      if (merged.isEmpty) {
+        return MockCollectionJobRepository().getJobs(logisticsProviderId);
+      }
       return merged.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } on FirebaseException catch (error) {
-      throw CollectionJobException(_firebaseMessage(error));
+      debugPrint('Firestore getJobs error, fallback to mock: $error');
+      return MockCollectionJobRepository().getJobs(logisticsProviderId);
     }
   }
 

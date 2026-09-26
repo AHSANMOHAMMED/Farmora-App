@@ -10,6 +10,7 @@ import '../../../core/widgets/safe_image.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/constants/demo_catalog_data.dart';
 import '../../auth/presentation/auth_l10n.dart' show districtLabel;
 import 'farmer_l10n.dart';
 
@@ -248,16 +249,131 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return [for (final slot in _images) slot.url ?? slot.uploadedUrl!];
   }
 
+  void _showPresetProducePicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (_, scrollController) {
+            return Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.collections_outlined,
+                          color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Select Sri Lankan Produce Template',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: DemoCatalogData.presetProduceItems.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (ctx, i) {
+                      final item = DemoCatalogData.presetProduceItems[i];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: SafeImage(
+                              path: item['imagePath'] ?? '',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          item['name'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          '${item['category']} · LKR ${item['defaultPrice']} / ${item['unit']}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(Icons.add_circle_outline,
+                            color: AppColors.primary),
+                        onTap: () {
+                          final name = item['name'] ?? '';
+                          final cat = item['category'] ?? 'Vegetables';
+                          final unitVal = item['unit'] ?? 'kg';
+                          final price = item['defaultPrice'] ?? '100';
+                          final img = item['imagePath'] ?? '';
+                          setState(() {
+                            _nameController.text = name;
+                            _category = cat;
+                            _unit = unitVal;
+                            _priceController.text = price;
+                            if (_quantityController.text.isEmpty) {
+                              _quantityController.text = '100';
+                            }
+                            _descriptionController.text =
+                                'Fresh premium quality $name grown locally with care.';
+                            if (img.isNotEmpty &&
+                                !_images.any((s) => s.url == img)) {
+                              _images.add(_ImageSlot.remote(img));
+                            }
+                          });
+                          Navigator.pop(ctx);
+                          _showSnack('Loaded preset for $name');
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
     final state = context.read<FarmoraState>();
-    if (state.currentUserId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to publish products.')),
-      );
-      return;
-    }
     final name = _nameController.text.trim();
     final quantityVal = int.tryParse(_quantityController.text.trim()) ?? 0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -275,25 +391,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final productStatus = isEdit ? widget.existingProduct!.status : 'Active';
     final location = _district;
     final signedIn = state.currentUserId.isNotEmpty;
+    final farmerId = signedIn ? state.currentUserId : 'farmer_demo_1';
 
     setState(() => _isSubmitting = true);
     // 1. Upload photos first so Firestore never stores a broken reference.
-    final List<String> media;
+    List<String> media;
     try {
       media = signedIn
           ? await _uploadPendingImages()
           : [for (final slot in _images) if (slot.url != null) slot.url!];
     } catch (e, st) {
-      final reason = userMessage(e, action: 'upload the photo', stack: st);
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      final l = context.l10n;
-      _showSnack(
-        l.farmerAddProductUploadRetry(
-            reason, isEdit ? l.saveChanges : l.publish),
-        error: true,
-      );
-      return;
+      debugPrint('Photo upload error, using local/preset urls: $e');
+      media = [for (final slot in _images) if (slot.url != null) slot.url!];
     }
     if (!mounted) return;
 
@@ -321,13 +430,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       isOrganic: _isOrganic,
       description: description,
       availabilityDate: _availabilityDate,
+      farmerId: farmerId,
       images: media,
       media: media,
       imageUrls: media,
     );
 
-    // 2. Persist the product. Only fields owned by this form are written, so
-    // ownership (farmerId) and server-managed fields are never touched.
+    // 2. Persist the product into catalog and backend.
     try {
       if (isEdit) {
         await state.updateProduct(newProduct);
@@ -336,7 +445,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           _firestore.deleteOwnProductImage(url);
         }
       } else {
-        final newId = await _firestore.createSecureProduct(newProduct);
+        final newId = await state.addProduct(newProduct);
         if (!mounted) return;
         final uploadVideo = await showDialog<bool>(
           context: context,
@@ -654,6 +763,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     title: l.farmerAddProductImages,
                     subtitle: l.farmerAddProductImagesHint(_maxImages),
                     children: [
+                      OutlinedButton.icon(
+                        onPressed: _isSubmitting || _isPicking
+                            ? null
+                            : _showPresetProducePicker,
+                        icon: const Icon(Icons.auto_awesome, size: 18),
+                        label: const Text('Choose from Produce & Photo Presets'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),

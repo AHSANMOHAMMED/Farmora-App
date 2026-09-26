@@ -62,31 +62,60 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
     },
   );
 
-  Widget _prices() => StreamBuilder<List<MarketPriceIndex>>(
-    stream: FirestoreService().marketPricesStream(),
-    builder: (context, snapshot) {
-      // The report button is always available, even when there are no
-      // benchmarks yet or they failed to load.
-      final report = FilledButton.tonalIcon(onPressed: _busy ? null : _reportPrice, icon: const Icon(Icons.add_chart), label: const Text('Report a market price'));
-      if (snapshot.hasError) {
-        return ListView(padding: const EdgeInsets.all(12), children: [report, _empty(userMessage(snapshot.error!, action: 'load market prices'))]);
-      }
-      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-      final prices = snapshot.data!;
-      return ListView(padding: const EdgeInsets.all(12), children: [
-        report,
-        const SizedBox(height: 8),
-        if (prices.isEmpty) _empty('No verified prices yet. Submit a market observation and an admin can add it to the benchmark.'),
-        for (final price in prices) Card(child: ListTile(
-          leading: const Icon(Icons.trending_up, color: Colors.green),
-          title: Text(price.cropName),
-          subtitle: Text('${price.marketName.isEmpty ? price.district : price.marketName} · ${price.district} · ${price.category} · ${price.updatedAt.toLocal().toString().split(' ').first}'),
-          trailing: Text('LKR ${price.minPricePerKg.toStringAsFixed(2)}–${price.maxPricePerKg.toStringAsFixed(2)} / ${price.unit}', textAlign: TextAlign.end),
-        )),
-        const Padding(padding: EdgeInsets.all(12), child: Text('Benchmarks include community reports approved by Farmora administrators.', style: TextStyle(color: Colors.grey))),
-      ]);
-    },
-  );
+  Widget _prices() {
+    final state = context.watch<FarmoraState>();
+    return StreamBuilder<List<MarketPriceIndex>>(
+      stream: FirestoreService().marketPricesStream(),
+      builder: (context, snapshot) {
+        final report = FilledButton.tonalIcon(
+          onPressed: _busy ? null : _reportPrice,
+          icon: const Icon(Icons.add_chart),
+          label: const Text('Report a market price'),
+        );
+        final prices = (snapshot.hasData && snapshot.data!.isNotEmpty)
+            ? snapshot.data!
+            : state.marketPrices;
+
+        if (prices.isEmpty &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            report,
+            const SizedBox(height: 8),
+            if (prices.isEmpty)
+              _empty(
+                  'No verified prices yet. Submit a market observation and an admin can add it to the benchmark.')
+            else
+              for (final price in prices)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.trending_up, color: Colors.green),
+                    title: Text(price.cropName),
+                    subtitle: Text(
+                        '${price.marketName.isEmpty ? price.district : price.marketName} · ${price.district} · ${price.category} · ${price.updatedAt.toLocal().toString().split(' ').first}'),
+                    trailing: Text(
+                      'LKR ${price.minPricePerKg.toStringAsFixed(2)}–${price.maxPricePerKg.toStringAsFixed(2)} / ${price.unit}',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Benchmarks include community reports approved by Farmora administrators.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _newRequest() async {
     final state = context.read<FarmoraState>();

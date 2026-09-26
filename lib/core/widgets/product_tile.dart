@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../../models/product.dart';
+import 'safe_image.dart';
 
 class ProductTile extends StatelessWidget {
   final Product product;
@@ -30,9 +31,23 @@ class ProductTile extends StatelessWidget {
                 color: product.color,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(
-                product.emoji,
-                style: const TextStyle(fontSize: 36),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: product.imagePath != null && product.imagePath!.isNotEmpty
+                    ? SafeImage(
+                        path: product.imagePath!,
+                        fit: BoxFit.cover,
+                        width: 76,
+                        height: 76,
+                        errorBuilder: (_, __, ___) => Text(
+                          product.emoji,
+                          style: const TextStyle(fontSize: 36),
+                        ),
+                      )
+                    : Text(
+                        product.emoji,
+                        style: const TextStyle(fontSize: 36),
+                      ),
               ),
             ),
             const SizedBox(width: 14),
