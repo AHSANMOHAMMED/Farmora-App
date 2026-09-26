@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../core/navigation/app_navigator.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -470,12 +471,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                Navigator.push(
+                                AppNavigator.openConversations(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ConversationsScreen(orderId: order.id),
-                                  ),
+                                  orderId: order.id,
                                 );
                               },
                               icon: const Icon(Icons.chat_bubble_outline,
@@ -1281,12 +1279,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(ctx).pop();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ConversationsScreen(orderId: order.id),
-                ),
-              );
+              AppNavigator.openConversations(context, orderId: order.id);
             },
             icon: const Icon(Icons.chat_bubble_outline, size: 16),
             label: Text(l.openOrderChat),

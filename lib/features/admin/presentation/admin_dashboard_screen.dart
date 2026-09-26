@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import 'user_management_screen.dart';
@@ -282,10 +283,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.insights_rounded,
                   label: l.adminDashTabAnalytics,
                   color: const Color(0xFF1B6BD8),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PlatformAnalyticsScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const PlatformAnalyticsScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -294,10 +292,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.rate_review_rounded,
                   label: l.adminDashTabReviews,
                   color: Colors.amber.shade800,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ReviewManagementScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const ReviewManagementScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -306,10 +301,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.cloud_sync_rounded,
                   label: l.adminDashServerOps,
                   color: Colors.teal.shade700,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const ServerMaintenanceScreen()),
                 ),
               ),
             ],
@@ -322,10 +314,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.verified_user_rounded,
                   label: l.adminDashReviewKyc,
                   color: AppColors.primary,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const VerificationReviewScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -334,10 +323,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.trending_up_rounded,
                   label: l.adminDashPolaRates,
                   color: const Color(0xFF2E7D32),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MarketPriceManagementScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const MarketPriceManagementScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -346,10 +332,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.campaign_rounded,
                   label: l.adminDashBroadcast,
                   color: const Color(0xFFE65100),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const BroadcastAdvisoryScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const BroadcastAdvisoryScreen()),
                 ),
               ),
             ],
@@ -362,10 +345,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.account_balance_wallet_rounded,
                   label: l.adminDashTreasuryPayouts,
                   color: const Color(0xFF2E7D32),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettlementManagementScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const SettlementManagementScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -374,10 +354,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.local_shipping_rounded,
                   label: l.adminDashTabFleet,
                   color: const Color(0xFF1B6BD8),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LogisticsManagementScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const LogisticsManagementScreen()),
                 ),
               ),
               const SizedBox(width: 10),
@@ -386,10 +363,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   icon: Icons.shield_rounded,
                   label: l.adminDashTabAudit,
                   color: const Color(0xFF5E35B1),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AuditLogScreen()),
-                  ),
+                  onTap: () => AppNavigator.push(context, const AuditLogScreen()),
                 ),
               ),
             ],

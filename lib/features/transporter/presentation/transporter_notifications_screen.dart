@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -8,7 +9,6 @@ import '../../../core/utils/app_errors.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import '../domain/transporter_notification.dart';
-import 'collection_job_details_screen.dart';
 import 'widgets/transporter_states.dart';
 
 class TransporterNotificationsScreen extends StatelessWidget {
@@ -79,11 +79,7 @@ class TransporterNotificationsScreen extends StatelessWidget {
     final hasTarget = (notification.jobId ?? '').isNotEmpty ||
         (notification.orderId ?? '').isNotEmpty;
     if (job != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => CollectionJobDetailsScreen(jobId: job.id),
-        ),
-      );
+      AppNavigator.openCollectionJobDetail(context, job.id);
     } else if (hasTarget) {
       _snack(context, context.l10n.jobNoLongerAvailable);
     }
