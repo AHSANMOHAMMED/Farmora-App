@@ -63,6 +63,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
       // Status filter
       if (_selectedStatus == 'verified' && !verified) return false;
+      if (_selectedStatus == 'pending' && verified) return false;
       if (_selectedStatus == 'suspended' && !suspended) return false;
 
       return true;
@@ -121,6 +122,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   selected: _selectedStatus == 'verified',
                   onSelected: (val) {
                     setState(() => _selectedStatus = val ? 'verified' : 'all');
+                  },
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Pending Approval'),
+                  selected: _selectedStatus == 'pending',
+                  selectedColor: Colors.amber.shade100,
+                  onSelected: (val) {
+                    setState(() => _selectedStatus = val ? 'pending' : 'all');
                   },
                 ),
                 const SizedBox(width: 8),

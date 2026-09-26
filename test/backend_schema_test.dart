@@ -75,6 +75,16 @@ void main() {
       expect(p.effectivePricePerUnit, 350.0);
       expect(p.allImages.toSet(), {'m1', 'u1', 'i1'});
     });
+
+    test('imagePath prefers a valid download URL over a stale stored path', () {
+      final product = Product.fromMap('p2', {
+        'name': 'Carrot',
+        'imagePath': 'old_storage_path/carrot.jpg',
+        'media': ['https://storage.example/carrot.jpg'],
+      });
+
+      expect(product.imagePath, 'https://storage.example/carrot.jpg');
+    });
   });
 
   group('Backend order lifecycle statuses', () {

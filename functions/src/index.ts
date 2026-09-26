@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 
 admin.initializeApp();
@@ -28,12 +29,19 @@ const requireAuth = (context: functions.https.CallableContext): string => {
   return context.auth.uid;
 };
 
-const requireAdmin = async (context: functions.https.CallableContext): Promise<string> => {
+const requireAdmin = async (
+  context: functions.https.CallableContext
+): Promise<string> => {
   const uid = requireAuth(context);
-  if (context.auth?.token.admin !== true) {
+  const profile = (await db.collection("users").doc(uid).get()).data();
+  if (
+    (context.auth?.token.admin !== true &&
+      (profile?.role !== "admin" || profile?.isVerified !== true))
+    || profile?.isSuspended === true
+    || profile?.isDeleted === true
+  ) {
     throw new functions.https.HttpsError("permission-denied", "Administrator access required.");
   }
-  await requireRole(uid, ["admin"]);
   return uid;
 };
 
@@ -43,9 +51,23 @@ const requireRole = async (
 ): Promise<Record<string, unknown>> => {
   const snapshot = await db.collection("users").doc(uid).get();
   const user = snapshot.data();
-  if (!user || !roles.includes(String(user.role))
-    || user.isSuspended === true || user.isDeleted === true) {
+  if (!user || !roles.includes(String(user.role)) || user.isSuspended === true
+    || user.isDeleted === true) {
     throw new functions.https.HttpsError("permission-denied", "Account is not eligible.");
+  }
+  return user;
+};
+
+const requireVerifiedRole = async (
+  uid: string,
+  roles: string[]
+): Promise<Record<string, unknown>> => {
+  const user = await requireRole(uid, roles);
+  if (user.isVerified !== true) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Account verification is required for this action."
+    );
   }
   return user;
 };
@@ -105,56 +127,6 @@ const notifyUser = async (
   await Promise.all(removals);
 };
 
-const syncPublicTransporterProfile = async (
-  uid: string,
-  user: FirebaseFirestore.DocumentData | undefined
-): Promise<void> => {
-  const publicRef = db.collection("public_profiles").doc(uid);
-  if (!user || user.role !== "transporter" || user.isVerified !== true
-    || user.isSuspended === true || user.isDeleted === true) {
-    await publicRef.delete().catch(() => undefined);
-    return;
-  }
-  await publicRef.set({
-    uid,
-    role: "transporter",
-    isVerified: true,
-    displayName: String(user.displayName || user.name || "Transport provider").slice(0, 120),
-    photoUrl: typeof user.photoUrl === "string" ? user.photoUrl : "",
-    district: typeof user.district === "string" ? user.district : "",
-    vehicleType: typeof user.vehicleType === "string" ? user.vehicleType : "",
-    vehicleRegistration: typeof user.vehicleRegistration === "string"
-      ? user.vehicleRegistration : "",
-    vehicleCapacity: Number.isFinite(Number(user.vehicleCapacity))
-      ? Number(user.vehicleCapacity) : null,
-    vehicleCapacityUnit: user.vehicleCapacityUnit === "tons" ? "tons" : "kg",
-    serviceDistricts: Array.isArray(user.serviceDistricts)
-      ? user.serviceDistricts.filter((v: unknown) => typeof v === "string").slice(0, 25)
-      : [],
-    availabilityStatus: user.availabilityStatus === "unavailable" ? "unavailable" : "available",
-    location: user.locationSharingEnabled === true && user.location
-      ? user.location : admin.firestore.FieldValue.delete(),
-    locationUpdatedAt: user.locationSharingEnabled === true && user.location
-      ? user.locationUpdatedAt : admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-};
-
-export const syncPublicTransporterProfileOnUserChange = functions.firestore
-  .document("users/{userId}").onWrite(async (change, context) => {
-    await syncPublicTransporterProfile(context.params.userId, change.after.data());
-  });
-
-export const backfillPublicTransporterProfiles = functions.https.onCall(async (_data, context) => {
-  await requireAdmin(context);
-  const users = await db.collection("users").where("role", "==", "transporter").get();
-  for (let offset = 0; offset < users.docs.length; offset += 400) {
-    const chunk = users.docs.slice(offset, offset + 400);
-    await Promise.all(chunk.map((doc) => syncPublicTransporterProfile(doc.id, doc.data())));
-  }
-  return { processed: users.size };
-});
-
 const writeNotification = async (
   userId: string,
   title: string,
@@ -170,7 +142,7 @@ const writeNotification = async (
     type,
     ...(referenceId ? { referenceId, orderId: referenceId } : {}),
     read: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   // Always write in-app; FCM is skipped during quiet hours inside notifyUser.
   await notifyUser(userId, title, body, {
@@ -230,8 +202,9 @@ const createTransportJobForOrder = async (
     quantity: qtyLabel,
     status: "requested",
     accepted: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    transporterId: order.requestedTransporterId || null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return jobRef.id;
 };
@@ -271,8 +244,8 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
       isVerified: false,
       isSuspended: false,
       isOnboardingComplete: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true }
   );
@@ -294,7 +267,7 @@ export const registerDeviceToken = functions.https.onCall(async (data, context) 
     token,
     platform,
     enabled: true,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
@@ -342,7 +315,7 @@ export const updatePlatformSettings = functions.https.onCall(async (data, contex
   await db.collection("platform_settings").doc("global").set({
     ...updates,
     updatedBy: uid,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
   return { success: true };
 });
@@ -360,7 +333,9 @@ export const onOrderCreated = functions.firestore
     let calculatedSubtotal = 0;
     if (data.items && Array.isArray(data.items)) {
       for (const item of data.items) {
-        calculatedSubtotal += item.pricePerUnitMinor * item.quantity;
+        calculatedSubtotal += Number.isSafeInteger(item.lineTotalMinor)
+          ? item.lineTotalMinor
+          : item.pricePerUnitMinor * item.quantity;
       }
     }
 
@@ -371,7 +346,7 @@ export const onOrderCreated = functions.firestore
     await order.update({
       subtotalMinor: calculatedSubtotal,
       totalMinor: calculatedTotal,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     // Notify farmer
@@ -423,7 +398,7 @@ export const onTransportTransition = functions.firestore
       from: before.status,
       to: after.status,
       actorId: after.transporterId || "system",
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: FieldValue.serverTimestamp(),
     });
 
     // Update the corresponding order status + notify
@@ -439,9 +414,9 @@ export const onTransportTransition = functions.firestore
         await db.collection("orders").doc(after.orderId).update({
           status: orderStatus,
           ...(after.transporterId ? { transporterId: after.transporterId } : {}),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           ...(orderStatus === "delivered"
-            ? { deliveredAt: admin.firestore.FieldValue.serverTimestamp() }
+            ? { deliveredAt: FieldValue.serverTimestamp() }
             : {}),
         });
       }
@@ -463,9 +438,9 @@ export const onTransportTransition = functions.firestore
         }
         if (after.status === "delivered" || after.status === "cancelled") {
           await change.after.ref.update({
-            courierLat: admin.firestore.FieldValue.delete(),
-            courierLng: admin.firestore.FieldValue.delete(),
-            locationUpdatedAt: admin.firestore.FieldValue.delete(),
+            courierLat: FieldValue.delete(),
+            courierLng: FieldValue.delete(),
+            locationUpdatedAt: FieldValue.delete(),
           });
         }
       }
@@ -494,10 +469,10 @@ const cleanupProductVideoForOrder = async (
     }
   }
   await productRef.update({
-    videoPath: admin.firestore.FieldValue.delete(),
-    videoUrl: admin.firestore.FieldValue.delete(),
+    videoPath: FieldValue.delete(),
+    videoUrl: FieldValue.delete(),
     harvestStatus: "delivered",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 };
 
@@ -536,10 +511,10 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   const quantity = Number(data.quantity);
   const deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
+  const transporterId = typeof data.transporterId === "string"
+    ? data.transporterId : "";
   const deliveryAddress = typeof data.deliveryAddress === "string"
     ? data.deliveryAddress.trim().slice(0, 500) : "";
-  const idempotencyKey = typeof data.idempotencyKey === "string"
-    ? data.idempotencyKey : "";
   const paymentMethod = data.paymentMethod === "bank_deposit" ? "bank_deposit" : "cod";
   if (!productId || !Number.isSafeInteger(quantity) || quantity < 1
     || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
@@ -548,39 +523,23 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   if (!deliveryAddress || deliveryAddress.length < 5) {
     throw new functions.https.HttpsError("invalid-argument", "Delivery address is required.");
   }
-  if (!/^[A-Za-z0-9_:-]{16,256}$/.test(idempotencyKey)) {
-    throw new functions.https.HttpsError("invalid-argument", "A valid idempotency key is required.");
+  if (transporterId) {
+    const transporterSnap = await db.collection("users").doc(transporterId).get();
+    const transporter = transporterSnap.data();
+    if (!transporter || transporter.role !== "transporter"
+      || transporter.isSuspended === true) {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Selected transporter is unavailable.");
+    }
   }
 
   const productRef = db.collection("products").doc(productId);
-  const idempotencyRequestHash = createHash("sha256").update(JSON.stringify({
-    productId,
-    quantity,
-    deliveryFeeMinor,
-    offerId,
-    deliveryAddress,
-    paymentMethod,
-  })).digest("hex");
-  const idempotencyDocId = createHash("sha256")
-    .update(`${uid}:${idempotencyKey}`).digest("hex");
-  const orderRef = db.collection("orders").doc(`order_${idempotencyDocId}`);
+  const orderRef = db.collection("orders").doc();
   const offerRef = offerId ? db.collection("offers").doc(offerId) : null;
   const buyerSnap = await db.collection("users").doc(uid).get();
   const buyer = buyerSnap.data() || {};
 
   await db.runTransaction(async (transaction) => {
-    const existingOrder = await transaction.get(orderRef);
-    if (existingOrder.exists) {
-      const existing = existingOrder.data()!;
-      if (existing.buyerId !== uid
-        || existing.idempotencyRequestHash !== idempotencyRequestHash) {
-        throw new functions.https.HttpsError(
-          "already-exists",
-          "Idempotency key was already used for a different order."
-        );
-      }
-      return;
-    }
     const productSnapshot = await transaction.get(productRef);
     const product = productSnapshot.data();
     const available = Number(product?.quantityAvailable);
@@ -623,7 +582,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       transaction.update(offerRef, {
         status: "accepted",
         orderId: orderRef.id,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
       if (!Number.isSafeInteger(priceMinor) || priceMinor < 0) {
@@ -641,7 +600,9 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     const quantityLabel = `${orderQuantity} ${unit}`;
     transaction.update(productRef, {
       quantityAvailable: available - orderQuantity,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      quantity: `${available - orderQuantity} ${unit} available`,
+      status: available - orderQuantity > 0 ? "Active" : "Empty",
+      updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.create(orderRef, {
       buyerId: uid,
@@ -652,7 +613,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       quantity: quantityLabel,
       unit,
       listingVersion: product.listingVersion || 1,
-      items: [{ productId, quantity: orderQuantity, pricePerUnitMinor: priceMinor }],
+      items: [{ productId, quantity: orderQuantity, pricePerUnitMinor: priceMinor, lineTotalMinor: finalSubtotal }],
       subtotalMinor: finalSubtotal,
       deliveryFeeMinor,
       totalMinor: finalSubtotal + deliveryFeeMinor,
@@ -663,15 +624,14 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       buyerName: String(buyer.displayName || buyer.name || "Buyer"),
       buyerCompany: String(buyer.district || ""),
       status: "pending",
+      ...(transporterId ? { requestedTransporterId: transporterId } : {}),
       paymentMethod,
-      paymentStatus: "pending",
+      paymentStatus: "payment_required",
       ...(bankDetailsSnapshot ? { bankDetailsSnapshot } : {}),
       escrowStatus: "not_funded",
-      requestedQuantity: quantity,
-      idempotencyRequestHash,
       ...(offerId ? { offerId } : {}),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   });
   return { orderId: orderRef.id };
@@ -712,8 +672,8 @@ export const createOffer = functions.https.onCall(async (data, context) => {
     proposedPrice,
     proposedPriceMinor,
     status: "pending",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   await db.collection("notifications").add({
     userId: farmerId,
@@ -722,17 +682,55 @@ export const createOffer = functions.https.onCall(async (data, context) => {
     type: "offer",
     referenceId: offerRef.id,
     read: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return { offerId: offerRef.id };
 });
 
-// Farmer accepts an offer and creates the buyer order at the negotiated total.
+// Farmer counters a buyer's pending offer. All price changes and notifications
+// are server-owned so both parties see the same negotiated amount.
+export const counterOffer = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const offerId = typeof data.offerId === "string" ? data.offerId : "";
+  const counterPrice = Number(data.counterPrice);
+  if (!offerId || !Number.isFinite(counterPrice) || counterPrice <= 0) {
+    throw new functions.https.HttpsError("invalid-argument", "Valid offer and counter price are required.");
+  }
+  const ref = db.collection("offers").doc(offerId);
+  const snapshot = await ref.get();
+  const offer = snapshot.data();
+  if (!offer || offer.farmerId !== uid || offer.status !== "pending") {
+    throw new functions.https.HttpsError("failed-precondition", "Offer cannot be countered.");
+  }
+  const counterPriceMinor = Math.round(counterPrice * 100);
+  await ref.update({
+    status: "countered",
+    proposedPrice: counterPriceMinor / 100,
+    proposedPriceMinor: counterPriceMinor,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await writeNotification(
+    String(offer.buyerId),
+    "Farmer sent a counter-offer",
+    `The farmer countered at LKR ${(counterPriceMinor / 100).toFixed(2)} per unit.`,
+    "offer",
+    offerId
+  );
+  return { success: true };
+});
+
+// The farmer accepts the buyer's offer, or the buyer accepts the farmer's
+// counter. The same transaction creates one order and reserves the stock.
 export const acceptOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
+  const actor = await requireRole(uid, ["farmer", "buyer"]);
+  const actorRole = String(actor.role);
+  if (actorRole === "farmer") await requireVerifiedRole(uid, ["farmer"]);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
   const deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
+  const deliveryAddress = typeof data.deliveryAddress === "string"
+    ? data.deliveryAddress.trim().slice(0, 500) : "";
   if (!offerId || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid offer accept request.");
   }
@@ -743,7 +741,11 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
   await db.runTransaction(async (transaction) => {
     const offerSnapshot = await transaction.get(offerRef);
     const offer = offerSnapshot.data();
-    if (!offer || offer.farmerId !== uid || offer.status !== "pending") {
+    const isFarmerAccepting = actorRole === "farmer"
+      && offer?.farmerId === uid && offer?.status === "pending";
+    const isBuyerAcceptingCounter = actorRole === "buyer"
+      && offer?.buyerId === uid && offer?.status === "countered";
+    if (!offer || (!isFarmerAccepting && !isBuyerAcceptingCounter)) {
       throw new functions.https.HttpsError("failed-precondition", "Offer cannot be accepted.");
     }
     const productId = String(offer.productId || "");
@@ -757,7 +759,7 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
     const productSnapshot = await transaction.get(productRef);
     const product = productSnapshot.data();
     const available = Number(product?.quantityAvailable);
-    if (!product || product.farmerId !== uid || product.status !== "Active"
+    if (!product || product.farmerId !== offer.farmerId || product.status !== "Active"
       || !Number.isSafeInteger(available) || available < orderQuantity) {
       throw new functions.https.HttpsError("failed-precondition", "Product is unavailable.");
     }
@@ -765,17 +767,16 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
     const unit = String(product.unit || "unit");
     const productName = String(product.name || offer.productName || "Produce");
     const quantityLabel = `${orderQuantity} ${unit}`;
-    const deliveryAddress = typeof data.deliveryAddress === "string"
-      ? data.deliveryAddress.trim().slice(0, 500)
-      : String(offer.deliveryAddress || "");
     transaction.update(productRef, {
       quantityAvailable: available - orderQuantity,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      quantity: `${available - orderQuantity} ${unit} available`,
+      status: available - orderQuantity > 0 ? "Active" : "Empty",
+      updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.update(offerRef, {
       status: "accepted",
       orderId: orderRef.id,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.create(orderRef, {
       buyerId: offer.buyerId,
@@ -786,29 +787,32 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
       quantity: quantityLabel,
       unit,
       listingVersion: product.listingVersion || 1,
-      items: [{ productId, quantity: orderQuantity, pricePerUnitMinor: priceMinor }],
+      items: [{ productId, quantity: orderQuantity, pricePerUnitMinor: priceMinor, lineTotalMinor: finalSubtotal }],
       subtotalMinor: finalSubtotal,
       deliveryFeeMinor,
       totalMinor: finalSubtotal + deliveryFeeMinor,
       currency: "LKR",
-      deliveryAddress: deliveryAddress || "To be confirmed with buyer",
+      deliveryAddress: deliveryAddress || String(offer.deliveryAddress || "To be confirmed with buyer"),
       pickupAddress: String(product.location || "Farm pickup"),
       location: String(product.location || ""),
       status: "pending",
       paymentStatus: "payment_required",
       escrowStatus: "not_funded",
       offerId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   });
 
   const accepted = (await offerRef.get()).data();
-  if (accepted?.buyerId) {
+  const notifyId = actorRole === "farmer" ? accepted?.buyerId : accepted?.farmerId;
+  if (notifyId) {
     await writeNotification(
-      String(accepted.buyerId),
-      "Offer Accepted",
-      "Your offer was accepted and an order was created.",
+      String(notifyId),
+      actorRole === "farmer" ? "Offer Accepted" : "Counter-offer Accepted",
+      actorRole === "farmer"
+        ? "Your offer was accepted and an order was created."
+        : "The buyer accepted your counter-offer and an order was created.",
       "offer",
       offerId
     );
@@ -819,6 +823,7 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
 export const rejectOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const actor = await requireRole(uid, ["farmer", "buyer"]);
+  const actorRole = String(actor.role);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
   if (!offerId) {
     throw new functions.https.HttpsError("invalid-argument", "offerId is required.");
@@ -826,53 +831,24 @@ export const rejectOffer = functions.https.onCall(async (data, context) => {
   const offerRef = db.collection("offers").doc(offerId);
   const snapshot = await offerRef.get();
   const offer = snapshot.data();
-  if (!offer || !["pending", "countered"].includes(String(offer.status))) {
-    throw new functions.https.HttpsError("failed-precondition", "Offer cannot be changed.");
+  const canFarmerReject = actorRole === "farmer" && offer?.farmerId === uid
+    && ["pending", "countered"].includes(String(offer?.status));
+  const canBuyerWithdraw = actorRole === "buyer" && offer?.buyerId === uid
+    && ["pending", "countered"].includes(String(offer?.status));
+  if (!offer || (!canFarmerReject && !canBuyerWithdraw)) {
+    throw new functions.https.HttpsError("failed-precondition", "Offer cannot be rejected.");
   }
-  const status = actor.role === "farmer" && offer.farmerId === uid
-    ? "rejected"
-    : actor.role === "buyer" && offer.buyerId === uid ? "cancelled" : "";
-  if (!status) throw new functions.https.HttpsError("permission-denied", "Only an offer participant can cancel or reject it.");
   await offerRef.update({
-    status,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    status: actorRole === "buyer" ? "cancelled" : "rejected",
+    updatedAt: FieldValue.serverTimestamp(),
   });
   await writeNotification(
-    String(status === "rejected" ? offer.buyerId : offer.farmerId),
-    status === "rejected" ? "Offer Rejected" : "Offer Cancelled",
-    status === "rejected" ? "Your offer was rejected by the farmer." : "The buyer cancelled the offer.",
+    String(actorRole === "buyer" ? offer.farmerId : offer.buyerId),
+    actorRole === "buyer" ? "Offer Withdrawn" : "Offer Rejected",
+    actorRole === "buyer" ? "The buyer withdrew their offer." : "Your offer was rejected by the farmer.",
     "offer",
     offerId
   );
-  return { success: true };
-});
-
-export const counterOffer = functions.https.onCall(async (data, context) => {
-  const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
-  const offerId = typeof data.offerId === "string" ? data.offerId : "";
-  const proposedPriceMinor = Number(data.proposedPriceMinor);
-  if (!offerId || !Number.isSafeInteger(proposedPriceMinor)
-    || proposedPriceMinor < 1 || proposedPriceMinor > 1000000000) {
-    throw new functions.https.HttpsError("invalid-argument", "A valid counter price is required.");
-  }
-  const offerRef = db.collection("offers").doc(offerId);
-  let buyerId = "";
-  await db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(offerRef);
-    const offer = snapshot.data();
-    if (!offer || offer.farmerId !== uid || !["pending", "countered"].includes(String(offer.status))) {
-      throw new functions.https.HttpsError("failed-precondition", "Offer cannot be countered.");
-    }
-    buyerId = String(offer.buyerId || "");
-    transaction.update(offerRef, {
-      status: "countered",
-      proposedPriceMinor,
-      proposedPrice: proposedPriceMinor / 100,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-  if (buyerId) await writeNotification(buyerId, "Counter offer received", "The farmer proposed a new price.", "offer", offerId);
   return { success: true };
 });
 
@@ -919,14 +895,334 @@ export const createProduct = functions.https.onCall(async (data, context) => {
       : [],
     harvestStatus: "growing",
     listingVersion: 1,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { productId: productRef.id };
 });
 
+export const updateProduct = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const user = await requireRole(uid, ["farmer"]);
+  if (user.isVerified !== true) throw new functions.https.HttpsError("failed-precondition", "Account verification is required.");
+  const productId = typeof data.productId === "string" ? data.productId : "";
+  const ref = db.collection("products").doc(productId);
+  const snapshot = await ref.get();
+  const existing = snapshot.data();
+  if (!existing || existing.farmerId !== uid) throw new functions.https.HttpsError("permission-denied", "Product not found.");
+  const name = typeof data.name === "string" ? data.name.trim() : String(existing.name || "");
+  const category = typeof data.category === "string" ? data.category.trim() : String(existing.category || "");
+  const unit = typeof data.unit === "string" ? data.unit.trim() : String(existing.unit || "unit");
+  const location = typeof data.location === "string" ? data.location.trim() : String(existing.location || "");
+  const priceMinor = data.priceMinor == null ? Number(existing.priceMinor) : Number(data.priceMinor);
+  const quantityAvailable = data.quantityAvailable == null ? Number(existing.quantityAvailable) : Number(data.quantityAvailable);
+  const requestedStatus = data.status === "Empty" ? "Empty" : "Active";
+  if (!productId || !name || name.length > 120 || !category || !unit || !location
+    || !Number.isSafeInteger(priceMinor) || priceMinor < 0
+    || !Number.isSafeInteger(quantityAvailable) || quantityAvailable < 0) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid product details.");
+  }
+  const media = Array.isArray(data.media) ? data.media.slice(0, 5) : (existing.media || []);
+  await ref.update({ name, category, description: typeof data.description === "string" ? data.description.trim().slice(0, 4000) : String(existing.description || ""), unit, location, priceMinor, price: `LKR ${(priceMinor / 100).toFixed(2)} / ${unit}`, pricePerUnit: priceMinor / 100, quantityAvailable, quantity: `${quantityAvailable} ${unit} available`, status: quantityAvailable > 0 ? requestedStatus : "Empty", isOrganic: data.isOrganic == null ? existing.isOrganic === true : data.isOrganic === true, media, updatedAt: FieldValue.serverTimestamp(), listingVersion: Number(existing.listingVersion || 1) + 1 });
+  return { success: true };
+});
+
+export const deleteProduct = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const user = await requireRole(uid, ["farmer"]);
+  if (user.isVerified !== true) throw new functions.https.HttpsError("failed-precondition", "Account verification is required.");
+  const productId = typeof data.productId === "string" ? data.productId : "";
+  const ref = db.collection("products").doc(productId);
+  const snapshot = await ref.get();
+  if (!snapshot.exists || snapshot.data()?.farmerId !== uid) throw new functions.https.HttpsError("permission-denied", "Product not found.");
+  const activeOrders = await db.collection("orders").where("productId", "==", productId).where("status", "in", ["pending", "confirmed", "assigned", "pickedUp", "inTransit"]).limit(1).get();
+  if (!activeOrders.empty) throw new functions.https.HttpsError("failed-precondition", "Product has active orders and cannot be removed.");
+  await ref.delete();
+  return { success: true };
+});
+
+// ── Farmer farm management ────────────────────────────────────
+const cropStatuses = ["planned", "planted", "growing", "harvested", "cancelled"];
+const taskStatuses = ["pending", "inProgress", "completed", "cancelled"];
+
+export const createCropPlan = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const cropName = typeof data.cropName === "string" ? data.cropName.trim().slice(0, 100) : "";
+  const area = Number(data.area);
+  const areaUnit = typeof data.areaUnit === "string" ? data.areaUnit : "acres";
+  const plantedAt = new Date(String(data.plantedAt || ""));
+  const expectedHarvestAt = new Date(String(data.expectedHarvestAt || ""));
+  if (!cropName || !Number.isFinite(area) || area <= 0 || area > 100000
+    || !["acres", "hectares", "perches"].includes(areaUnit)
+    || Number.isNaN(plantedAt.getTime()) || Number.isNaN(expectedHarvestAt.getTime())
+    || expectedHarvestAt <= plantedAt) {
+    throw new functions.https.HttpsError("invalid-argument", "Enter a crop, valid farm area, planting date, and later harvest date.");
+  }
+  const ref = db.collection("crop_plans").doc();
+  await ref.set({
+    farmerId: uid, cropName, area, areaUnit,
+    plantedAt: Timestamp.fromDate(plantedAt),
+    expectedHarvestAt: Timestamp.fromDate(expectedHarvestAt),
+    expectedYield: Math.max(0, Number(data.expectedYield || 0)),
+    yieldUnit: String(data.yieldUnit || "kg").slice(0, 20),
+    status: "planned", notes: String(data.notes || "").trim().slice(0, 1000),
+    createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { cropId: ref.id };
+});
+
+export const updateCropPlan = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const cropId = String(data.cropId || "");
+  const ref = db.collection("crop_plans").doc(cropId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data()?.farmerId !== uid) throw new functions.https.HttpsError("permission-denied", "Crop plan not found.");
+  const updates: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
+  if (typeof data.status === "string") {
+    if (!cropStatuses.includes(data.status)) throw new functions.https.HttpsError("invalid-argument", "Invalid crop status.");
+    updates.status = data.status;
+    if (data.status === "harvested") updates.harvestedAt = FieldValue.serverTimestamp();
+  }
+  if (typeof data.notes === "string") updates.notes = data.notes.trim().slice(0, 1000);
+  if (typeof data.expectedYield === "number" && Number.isFinite(data.expectedYield) && data.expectedYield >= 0) updates.expectedYield = data.expectedYield;
+  await ref.update(updates);
+  return { success: true };
+});
+
+export const createFarmTask = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const title = typeof data.title === "string" ? data.title.trim().slice(0, 120) : "";
+  const dueAt = new Date(String(data.dueAt || ""));
+  if (!title || Number.isNaN(dueAt.getTime())) throw new functions.https.HttpsError("invalid-argument", "Task title and due date are required.");
+  const ref = db.collection("farm_tasks").doc();
+  await ref.set({
+    farmerId: uid, title, description: String(data.description || "").trim().slice(0, 1000),
+    cropId: String(data.cropId || ""), cropName: String(data.cropName || "").slice(0, 100),
+    dueAt: Timestamp.fromDate(dueAt), priority: ["low", "normal", "high"].includes(data.priority) ? data.priority : "normal",
+    status: "pending", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { taskId: ref.id };
+});
+
+export const updateFarmTask = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const taskId = String(data.taskId || "");
+  const ref = db.collection("farm_tasks").doc(taskId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data()?.farmerId !== uid) throw new functions.https.HttpsError("permission-denied", "Farm task not found.");
+  const updates: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
+  if (typeof data.status === "string") {
+    if (!taskStatuses.includes(data.status)) throw new functions.https.HttpsError("invalid-argument", "Invalid task status.");
+    updates.status = data.status;
+    if (data.status === "completed") updates.completedAt = FieldValue.serverTimestamp();
+  }
+  if (typeof data.title === "string" && data.title.trim()) updates.title = data.title.trim().slice(0, 120);
+  if (typeof data.dueAt === "string") {
+    const dueAt = new Date(data.dueAt);
+    if (Number.isNaN(dueAt.getTime())) throw new functions.https.HttpsError("invalid-argument", "Invalid due date.");
+    updates.dueAt = Timestamp.fromDate(dueAt);
+    updates.reminderDate = FieldValue.delete();
+  }
+  await ref.update(updates);
+  return { success: true };
+});
+
+export const checkFarmTaskReminders = functions.https.onCall(async (_data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const tasks = await db.collection("farm_tasks").where("farmerId", "==", uid)
+    .where("status", "in", ["pending", "inProgress"]).limit(100).get();
+  let reminders = 0;
+  for (const taskDoc of tasks.docs) {
+    const task = taskDoc.data();
+    const dueAt = task.dueAt instanceof Timestamp ? task.dueAt.toDate() : null;
+    if (!dueAt || dueAt > tomorrow || task.reminderDate === today) continue;
+    await db.runTransaction(async (tx) => {
+      const current = await tx.get(taskDoc.ref);
+      if (current.data()?.reminderDate === today || !["pending", "inProgress"].includes(String(current.data()?.status))) return;
+      tx.update(taskDoc.ref, { reminderDate: today });
+      const notificationRef = db.collection("notifications").doc();
+      tx.create(notificationRef, {
+        userId: uid, title: dueAt < new Date() ? "Farm task overdue" : "Farm task due soon",
+        body: `${task.title} is due ${dueAt < new Date() ? "now" : "within 24 hours"}.`,
+        type: "farm_task", referenceId: taskDoc.id, read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+    reminders++;
+  }
+  return { reminders };
+});
+
+export const createProduceRequest = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const buyer = await requireRole(uid, ["buyer"]);
+  const produceName = typeof data.produceName === "string" ? data.produceName.trim().slice(0, 100) : "";
+  const quantity = Number(data.quantity);
+  const unit = typeof data.unit === "string" ? data.unit.trim().toLowerCase() : "";
+  const units = ["kg", "g", "ton", "piece", "pcs", "box", "crate", "bunch", "bag", "liter"];
+  const deliveryAddress = typeof data.deliveryAddress === "string" ? data.deliveryAddress.trim().slice(0, 500) : "";
+  const deliveryDate = new Date(String(data.deliveryDate || ""));
+  if (!produceName || !Number.isSafeInteger(quantity) || quantity < 1 || !units.includes(unit)
+    || deliveryAddress.length < 5 || Number.isNaN(deliveryDate.getTime())) {
+    throw new functions.https.HttpsError("invalid-argument", "Produce, whole quantity/unit, delivery address, and required date are needed.");
+  }
+  const ref = db.collection("produce_requests").doc();
+  await ref.set({
+    buyerId: uid, buyerName: String(buyer.displayName || buyer.name || "Buyer"),
+    produceName, category: String(data.category || "Other").slice(0, 50), quantity, unit,
+    maxUnitPriceMinor: Math.max(0, Number(data.maxUnitPriceMinor || 0)),
+    district: String(data.district || "").trim().slice(0, 80),
+    deliveryAddress, deliveryDate: Timestamp.fromDate(deliveryDate),
+    notes: String(data.notes || "").trim().slice(0, 1000), status: "open", quoteCount: 0,
+    createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { requestId: ref.id };
+});
+
+export const cancelProduceRequest = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["buyer"]);
+  const requestId = String(data.requestId || "");
+  const ref = db.collection("produce_requests").doc(requestId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data()?.buyerId !== uid || snap.data()?.status !== "open") {
+    throw new functions.https.HttpsError("failed-precondition", "Only your open requests can be cancelled.");
+  }
+  await ref.update({ status: "cancelled", updatedAt: FieldValue.serverTimestamp() });
+  return { success: true };
+});
+
+export const submitProduceRequestQuote = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireVerifiedRole(uid, ["farmer"]);
+  const requestId = String(data.requestId || ""), productId = String(data.productId || "");
+  const unitPriceMinor = Number(data.unitPriceMinor), deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
+  if (!requestId || !productId || !Number.isSafeInteger(unitPriceMinor) || unitPriceMinor < 1
+    || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) throw new functions.https.HttpsError("invalid-argument", "Invalid quote.");
+  const requestRef = db.collection("produce_requests").doc(requestId);
+  const productRef = db.collection("products").doc(productId);
+  const [requestSnap, productSnap, farmerSnap] = await Promise.all([
+    requestRef.get(), productRef.get(), db.collection("users").doc(uid).get(),
+  ]);
+  const request = requestSnap.data(), product = productSnap.data(), farmer = farmerSnap.data();
+  if (!request || request.status !== "open" || !product || product.farmerId !== uid
+    || product.status !== "Active" || Number(product.quantityAvailable) < Number(request.quantity)
+    || String(product.unit).toLowerCase() !== String(request.unit).toLowerCase()) {
+    throw new functions.https.HttpsError("failed-precondition", "Your active listing must match the requested unit and have enough stock.");
+  }
+  const quoteRef = requestRef.collection("quotes").doc(uid);
+  await db.runTransaction(async (tx) => {
+    const latest = await tx.get(requestRef);
+    if (latest.data()?.status !== "open") throw new functions.https.HttpsError("failed-precondition", "This request is no longer open.");
+    tx.set(quoteRef, {
+      farmerId: uid, farmerName: String(farmer?.displayName || farmer?.name || "Farmer"),
+      productId, productName: String(product.name || request.produceName),
+      unitPriceMinor, deliveryFeeMinor, message: String(data.message || "").trim().slice(0, 500),
+      status: "pending", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(requestRef, { quoteCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+  });
+  await writeNotification(String(request.buyerId), "New produce quote", `${farmer?.displayName || "A farmer"} sent a quote for ${request.produceName}.`, "produce_request", requestId);
+  return { success: true };
+});
+
+export const acceptProduceRequestQuote = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["buyer"]);
+  const requestId = String(data.requestId || ""), farmerId = String(data.farmerId || "");
+  const requestRef = db.collection("produce_requests").doc(requestId);
+  const quoteRef = requestRef.collection("quotes").doc(farmerId);
+  const orderRef = db.collection("orders").doc();
+  await db.runTransaction(async (tx) => {
+    const requestSnap = await tx.get(requestRef), quoteSnap = await tx.get(quoteRef);
+    const request = requestSnap.data(), quote = quoteSnap.data();
+    if (!request || request.buyerId !== uid || request.status !== "open" || !quote || quote.status !== "pending") throw new functions.https.HttpsError("failed-precondition", "Request or quote is no longer available.");
+    const productRef = db.collection("products").doc(String(quote.productId));
+    const productSnap = await tx.get(productRef), product = productSnap.data();
+    const available = Number(product?.quantityAvailable), quantity = Number(request.quantity), price = Number(quote.unitPriceMinor);
+    if (!product || product.farmerId !== farmerId || product.status !== "Active" || available < quantity
+      || !Number.isSafeInteger(price) || price < 1) throw new functions.https.HttpsError("failed-precondition", "Farmer stock or quote is no longer valid.");
+    const subtotal = quantity * price, fee = Number(quote.deliveryFeeMinor || 0), unit = String(product.unit || request.unit);
+    tx.update(productRef, { quantityAvailable: available - quantity, quantity: `${available - quantity} ${unit} available`, status: available > quantity ? "Active" : "Empty", updatedAt: FieldValue.serverTimestamp() });
+    tx.update(quoteRef, { status: "accepted", orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
+    tx.update(requestRef, { status: "matched", acceptedFarmerId: farmerId, orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
+    tx.create(orderRef, {
+      buyerId: uid, farmerId, productId: quote.productId,
+      productName: product.name || request.produceName, title: product.name || request.produceName,
+      quantity: `${quantity} ${unit}`, unit, items: [{ productId: quote.productId, quantity, pricePerUnitMinor: price, lineTotalMinor: subtotal }],
+      subtotalMinor: subtotal, deliveryFeeMinor: fee, totalMinor: subtotal + fee, currency: "LKR",
+      buyerName: String(request.buyerName || "Buyer"), deliveryAddress: request.deliveryAddress,
+      pickupAddress: String(product.location || "Farm pickup"), location: String(product.location || ""),
+      status: "pending", paymentStatus: "payment_required", escrowStatus: "not_funded",
+      sourceRequestId: requestId, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  return { orderId: orderRef.id };
+});
+
+export const submitMarketPriceReport = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const user = await requireRole(uid, ["buyer", "farmer"]);
+  const cropName = typeof data.cropName === "string" ? data.cropName.trim().slice(0, 100) : "";
+  const district = typeof data.district === "string" ? data.district.trim().slice(0, 80) : "";
+  const marketName = typeof data.marketName === "string" ? data.marketName.trim().slice(0, 100) : "";
+  const unit = typeof data.unit === "string" ? data.unit.trim().toLowerCase() : "";
+  const priceMinor = Number(data.priceMinor);
+  if (!cropName || !district || !marketName || !["kg", "g", "ton", "piece", "pcs", "box", "crate", "bunch", "bag", "liter"].includes(unit)
+    || !Number.isSafeInteger(priceMinor) || priceMinor < 1 || priceMinor > 100000000) throw new functions.https.HttpsError("invalid-argument", "Enter valid produce, market, location, unit, and price.");
+  const ref = db.collection("market_price_reports").doc();
+  await ref.set({ reporterId: uid, reporterRole: String(user.role), cropName, category: String(data.category || "Other").slice(0, 50), district, marketName, unit, priceMinor, status: "pending", reportedAt: FieldValue.serverTimestamp(), createdAt: FieldValue.serverTimestamp() });
+  return { reportId: ref.id };
+});
+
+export const reviewMarketPriceReport = functions.https.onCall(async (data, context) => {
+  const uid = await requireAdmin(context);
+  const reportId = String(data.reportId || ""), decision = String(data.decision || "");
+  if (!reportId || !["approve", "reject"].includes(decision)) throw new functions.https.HttpsError("invalid-argument", "Invalid price report review.");
+  const reportRef = db.collection("market_price_reports").doc(reportId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(reportRef), report = snap.data();
+    if (!report || report.status !== "pending") throw new functions.https.HttpsError("failed-precondition", "Price report already reviewed.");
+    let benchmark: Record<string, unknown> | null = null;
+    if (decision === "approve") {
+      const key = `${String(report.cropName).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${String(report.district).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${report.unit}`;
+      const priceRef = db.collection("market_prices").doc(key);
+      const existingSnap = await tx.get(priceRef);
+      const existing = existingSnap.data();
+      const oldCount = Number(existing?.reportCount || 0), oldAvg = Number(existing?.averagePricePerKg || 0), price = Number(report.priceMinor) / 100;
+      const count = oldCount + 1, average = (oldAvg * oldCount + price) / count;
+      benchmark = {
+        cropName: report.cropName, category: report.category, district: report.district, marketName: report.marketName,
+        unit: report.unit, minPricePerKg: existing ? Math.min(Number(existing.minPricePerKg), price) : price,
+        maxPricePerKg: existing ? Math.max(Number(existing.maxPricePerKg), price) : price,
+        averagePricePerKg: average, trend: existing ? (price > oldAvg ? "up" : price < oldAvg ? "down" : "stable") : "stable",
+        reportCount: count, updatedAt: FieldValue.serverTimestamp(),
+      };
+      (benchmark as Record<string, unknown>).__ref = priceRef;
+    }
+    tx.update(reportRef, { status: decision === "approve" ? "approved" : "rejected", reviewedBy: uid, reviewedAt: FieldValue.serverTimestamp() });
+    if (benchmark) {
+      const priceRef = benchmark.__ref as FirebaseFirestore.DocumentReference;
+      delete benchmark.__ref;
+      tx.set(priceRef, benchmark, { merge: true });
+    }
+  });
+  const report = (await reportRef.get()).data();
+  if (report?.reporterId) await writeNotification(String(report.reporterId), `Market price report ${decision === "approve" ? "approved" : "reviewed"}`, decision === "approve" ? "Your market price report is now included in the benchmark." : "Your market price report was not approved.", "market_price", reportId);
+  return { success: true };
+});
+
 export const transitionOrder = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  const actor = await requireRole(uid, ["farmer", "buyer"]);
+  if (actor.role === "farmer") await requireVerifiedRole(uid, ["farmer"]);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
   const orderRef = db.collection("orders").doc(orderId);
@@ -935,8 +1231,8 @@ export const transitionOrder = functions.https.onCall(async (data, context) => {
   if (!order || !orderId) {
     throw new functions.https.HttpsError("not-found", "Order not found.");
   }
-  const isFarmer = order.farmerId === uid;
-  const isBuyer = order.buyerId === uid;
+  const isFarmer = actor.role === "farmer" && order.farmerId === uid;
+  const isBuyer = actor.role === "buyer" && order.buyerId === uid;
   const transitions: Record<string, string[]> = {
     pending: isFarmer ? ["confirmed", "rejected"] : ["cancelled"],
     confirmed: isFarmer ? ["assigned", "cancelled"] : ["cancelled"],
@@ -950,14 +1246,54 @@ export const transitionOrder = functions.https.onCall(async (data, context) => {
   if ((!isFarmer && !isBuyer) || !transitions[order.status]?.includes(nextStatus)) {
     throw new functions.https.HttpsError("failed-precondition", "Invalid order transition.");
   }
-  await orderRef.update({
-    status: nextStatus,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  await db.runTransaction(async (transaction) => {
+    const currentSnapshot = await transaction.get(orderRef);
+    const current = currentSnapshot.data();
+    if (!current || current.status !== order.status) {
+      throw new functions.https.HttpsError("aborted", "Order changed. Refresh and retry.");
+    }
+    if ((nextStatus === "rejected" || nextStatus === "cancelled")
+      && current.stockRestored !== true) {
+      const productId = String(current.productId || current.items?.[0]?.productId || "");
+      const quantity = Number(current.items?.[0]?.quantity || 0);
+      if (productId && Number.isSafeInteger(quantity) && quantity > 0) {
+        const productRef = db.collection("products").doc(productId);
+        const productSnapshot = await transaction.get(productRef);
+        const product = productSnapshot.data();
+        if (product) {
+          const available = Number(product.quantityAvailable || 0) + quantity;
+          const unit = String(product.unit || "unit");
+          transaction.update(productRef, {
+            quantityAvailable: available,
+            quantity: `${available} ${unit} available`,
+            status: available > 0 ? "Active" : "Empty",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    }
+    transaction.update(orderRef, {
+      status: nextStatus,
+      ...(nextStatus === "rejected" || nextStatus === "cancelled"
+        ? { stockRestored: true }
+        : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
   });
 
   let jobId: string | undefined;
   if (nextStatus === "confirmed" && isFarmer) {
     jobId = await createTransportJobForOrder(orderId, order as Record<string, any>);
+    const selectedTransporter = String(order.requestedTransporterId || "");
+    if (selectedTransporter) {
+      await writeNotification(
+        selectedTransporter,
+        "Delivery request",
+        `A confirmed order for ${order.productName || "produce"} is ready for delivery.`,
+        "logistics",
+        orderId
+      );
+    }
     await writeNotification(
       String(order.buyerId),
       "Order Confirmed",
@@ -979,7 +1315,7 @@ export const transitionOrder = functions.https.onCall(async (data, context) => {
 
 export const requestTransport = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["farmer"]);
+  await requireVerifiedRole(uid, ["farmer"]);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
   const deliveryFeeMinor = Number(data.deliveryFeeMinor);
   if (!orderId) {
@@ -1031,7 +1367,7 @@ export const updateOrderAddress = functions.https.onCall(async (data, context) =
   }
   await ref.update({
     deliveryAddress,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
@@ -1064,9 +1400,11 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
   }
   await ref.update({
     paymentStatus: "paid",
-    paidAt: admin.firestore.FieldValue.serverTimestamp(),
-    paymentConfirmedBy: uid,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    escrowStatus: "held",
+    paymentMethod: typeof order.paymentMethod === "string" ? order.paymentMethod : method,
+    paidAt: FieldValue.serverTimestamp(),
+    paidBy: uid,
+    updatedAt: FieldValue.serverTimestamp(),
   });
   if (order.buyerId) {
     await writeNotification(
@@ -1082,7 +1420,7 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
 
 export const transitionTransport = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["transporter"]);
+  await requireVerifiedRole(uid, ["transporter"]);
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
   const reason = typeof data.reason === "string" ? data.reason.trim() : "";
@@ -1124,23 +1462,42 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
     || !transitions[currentStatus]?.includes(requestedStatus)) {
     throw new functions.https.HttpsError("failed-precondition", "Invalid transport transition.");
   }
+  if (requestedStatus === "accepted" && job.orderId) {
+    const orderSnapshot = await db.collection("orders").doc(String(job.orderId)).get();
+    const linkedOrder = orderSnapshot.data();
+    if (!linkedOrder || linkedOrder.status !== "confirmed"
+      || (linkedOrder.requestedTransporterId && linkedOrder.requestedTransporterId !== uid)) {
+      throw new functions.https.HttpsError("failed-precondition", "Order is not ready for this transporter.");
+    }
+  }
   await db.runTransaction(async (transaction) => {
+    const currentSnap = await transaction.get(ref);
+    const currentJob = currentSnap.data();
+    if (!currentJob || normalizeStatus(currentJob.status) !== currentStatus
+      || (currentJob.transporterId && currentJob.transporterId !== uid)) {
+      throw new functions.https.HttpsError("aborted", "Delivery was claimed or updated. Refresh and retry.");
+    }
+    if (requestedStatus === "accepted" && currentJob.orderId) {
+      const orderRef = db.collection("orders").doc(String(currentJob.orderId));
+      const orderSnap = await transaction.get(orderRef);
+      const linkedOrder = orderSnap.data();
+      if (!linkedOrder || linkedOrder.status !== "confirmed"
+        || (linkedOrder.requestedTransporterId && linkedOrder.requestedTransporterId !== uid)) {
+        throw new functions.https.HttpsError("failed-precondition", "Order is not ready for this transporter.");
+      }
+    }
     transaction.update(ref, {
       status: requestedStatus,
       transporterId: uid,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      [`${requestedStatus}At`]: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      [`${requestedStatus}At`]: FieldValue.serverTimestamp(),
       ...(requestedStatus === "cancelled" && reason ? { cancellationReason: reason } : {}),
     });
-
-    if (requestedStatus === "delivered" && job.deliveryFeeMinor) {
-      const transporterRef = db.collection("users").doc(uid);
-      const amount = job.deliveryFeeMinor / 100.0;
-      transaction.update(transporterRef, {
-        availableBalance: admin.firestore.FieldValue.increment(amount)
-      });
-    }
   });
+  if (requestedStatus === "accepted" && job.orderId && job.requestedTransporterId === uid) {
+    // The order confirmation remains owned by the farmer. Acceptance only
+    // assigns the already-confirmed order through the onTransportTransition trigger.
+  }
   return { success: true };
 });
 
@@ -1183,7 +1540,7 @@ export const updateTransporterProfile = functions.https.onCall(async (data, cont
     vehicleCapacityUnit,
     vehicleDescription,
     availabilityStatus,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
@@ -1216,8 +1573,8 @@ export const updateTransportLocation = functions.https.onCall(async (data, conte
   await ref.update({
     courierLat: lat,
     courierLng: lng,
-    locationUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    locationUpdatedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
@@ -1237,7 +1594,7 @@ export const submitVerification = functions.https.onCall(async (data, context) =
     documentType,
     storagePath,
     status: "pending",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return { documentId: ref.id };
 });
@@ -1282,9 +1639,9 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
       orderId,
       participantIds: participants,
       lastMessage: "",
-      lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
-      unreadCounts: {},
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastMessageAt: FieldValue.serverTimestamp(),
+      unreadCounts: { [recipientId]: 0 },
+      createdAt: FieldValue.serverTimestamp(),
     });
   }
   const ref = db.collection("messages").doc();
@@ -1297,13 +1654,13 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
     type: hasImage ? "image" : "text",
     ...(hasText ? { ciphertext } : {}),
     ...(hasImage ? { attachmentUrl, attachmentPath, attachmentKind } : {}),
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   await convoRef.update({
     lastMessage: hasImage
       ? (attachmentKind === "payment_proof" ? "Payment receipt" : "Photo")
       : ciphertext.slice(0, 140),
-    lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastMessageAt: FieldValue.serverTimestamp(),
   });
   await writeNotification(
     recipientId,
@@ -1347,8 +1704,8 @@ export const createPayHereCheckout = functions.https.onCall(async (data, context
 
   await orderSnap.ref.update({
     paymentMethod: "payhere",
-    payhereCheckoutAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    payhereCheckoutAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 
   return {
@@ -1404,38 +1761,27 @@ export const payHereWebhook = functions.https.onRequest(async (request, response
     // Status 2 = success (paid)
     if (statusCode === "2") {
       const orderRef = db.collection("orders").doc(orderId);
-      let alreadyPaid = false;
-      let orderData: any = null;
-
-      await db.runTransaction(async (transaction) => {
-        const orderSnap = await transaction.get(orderRef);
-        if (!orderSnap.exists) return;
-        
-        orderData = orderSnap.data();
-        if (orderData?.paymentStatus === "paid") {
-          alreadyPaid = true;
-          return; // Idempotency check: already processed
-        }
-
-        transaction.update(orderRef, {
+      const orderSnap = await orderRef.get();
+      if (orderSnap.exists) {
+        await orderRef.update({
           paymentStatus: "paid",
           escrowStatus: "held",
           paymentMethod: "payhere",
           payhereStatusCode: statusCode,
           payherePaymentId: String(body.payment_id || ""),
-          paidAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          paidAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
-      });
-
-      if (!alreadyPaid && orderData?.farmerId) {
-        await writeNotification(
-          String(orderData.farmerId),
-          "Payment received",
-          `PayHere payment confirmed for ${orderData.productName || "an order"}.`,
-          "order",
-          orderId
-        );
+        const order = orderSnap.data();
+        if (order?.farmerId) {
+          await writeNotification(
+            String(order.farmerId),
+            "Payment received",
+            `PayHere payment confirmed for ${order.productName || "an order"}.`,
+            "order",
+            orderId
+          );
+        }
       }
     }
 
@@ -1449,98 +1795,25 @@ export const payHereWebhook = functions.https.onRequest(async (request, response
 export const releaseEscrow = functions.https.onCall(async (data, context) => {
   const uid = await requireAdmin(context);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
-  const orderRef = db.collection("orders").doc(orderId);
-
-  await db.runTransaction(async (transaction) => {
-    const orderSnap = await transaction.get(orderRef);
-    const order = orderSnap.data();
-    if (!order || order.status !== "delivered" || order.paymentStatus !== "paid" || order.disputeId) {
-      throw new functions.https.HttpsError("failed-precondition", "Order is not eligible for payout.");
-    }
-    const farmerId = order.farmerId;
-    if (!farmerId) throw new functions.https.HttpsError("internal", "Order has no farmerId.");
-    
-    const settlementMinor = typeof order.settlementMinor === "number" ? order.settlementMinor : Number(order.totalMinor || 0);
-    const settlementMajor = settlementMinor / 100;
-
-    const farmerRef = db.collection("users").doc(farmerId);
-    const auditRef = db.collection("audit_logs").doc();
-
-    transaction.update(orderRef, {
-      escrowStatus: "released",
-      paymentStatus: "released",
-      releasedBy: uid,
-      releasedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    transaction.set(farmerRef, {
-      availableBalance: admin.firestore.FieldValue.increment(settlementMajor),
-      totalEarnings: admin.firestore.FieldValue.increment(settlementMajor)
-    }, { merge: true });
-
-    transaction.create(auditRef, {
-      action: "escrow_release",
-      orderId,
-      farmerId,
-      amount: settlementMajor,
-      actorId: uid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-
-  return { success: true };
-});
-
-export const requestWithdrawal = functions.https.onCall(async (data, context) => {
-  const uid = requireAuth(context);
-  const amount = Number(data.amount);
-  const bankName = typeof data.bankName === "string" ? data.bankName : "";
-  const accountNumber = typeof data.accountNumber === "string" ? data.accountNumber : "";
-  const payoutMethod = typeof data.payoutMethod === "string" ? data.payoutMethod : "CEFT";
-
-  if (!amount || amount <= 0 || !bankName || !accountNumber) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid withdrawal parameters.");
+  const ref = db.collection("orders").doc(orderId);
+  const snapshot = await ref.get();
+  const order = snapshot.data();
+  if (!order || order.status !== "delivered" || order.paymentStatus !== "paid" || order.disputeId) {
+    throw new functions.https.HttpsError("failed-precondition", "Order is not eligible for payout.");
   }
-
-  const farmerRef = db.collection("users").doc(uid);
-  const settlementRef = db.collection("settlements").doc();
-
-  await db.runTransaction(async (transaction) => {
-    const farmerSnap = await transaction.get(farmerRef);
-    const farmer = farmerSnap.data();
-    if (!farmer) throw new functions.https.HttpsError("not-found", "User not found.");
-
-    const availableBalance = typeof farmer.availableBalance === "number" ? farmer.availableBalance : 0;
-    if (availableBalance < amount) {
-      throw new functions.https.HttpsError("failed-precondition", "Insufficient balance.");
-    }
-
-    const fee = amount * 0.05; // 5% commission as defined in client
-    const netAmount = amount - fee;
-
-    transaction.update(farmerRef, {
-      availableBalance: admin.firestore.FieldValue.increment(-amount)
-    });
-
-    const role = farmer.role || "farmer";
-    transaction.create(settlementRef, {
-      orderId: "WITHDRAWAL-" + Date.now(),
-      orderNumber: "WD-" + String(Date.now()).slice(7),
-      recipientId: uid,
-      recipientName: farmer.displayName || farmer.businessName || farmer.name || "User",
-      recipientRole: role,
-      bankName,
-      accountNumber,
-      grossAmount: amount,
-      platformFee: fee,
-      netAmount,
-      payoutMethod,
-      status: "pending",
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+  await ref.update({
+    escrowStatus: "released",
+    paymentStatus: "released",
+    releasedBy: uid,
+    releasedAt: FieldValue.serverTimestamp(),
   });
-
-  return { success: true, settlementId: settlementRef.id };
+  await db.collection("audit_logs").add({
+    action: "escrow_release",
+    orderId,
+    actorId: uid,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { success: true };
 });
 
 export const reviewVerification = functions.https.onCall(async (data, context) => {
@@ -1552,9 +1825,9 @@ export const reviewVerification = functions.https.onCall(async (data, context) =
   const snapshot = await ref.get();
   const document = snapshot.data();
   if (!document || document.status !== "pending") throw new functions.https.HttpsError("failed-precondition", "Document is not pending.");
-  await ref.update({ status, reviewedBy: uid, reviewedAt: admin.firestore.FieldValue.serverTimestamp() });
+  await ref.update({ status, reviewedBy: uid, reviewedAt: FieldValue.serverTimestamp() });
   if (status === "approved" && document.ownerId) {
-    await db.collection("users").doc(document.ownerId).update({ isVerified: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await db.collection("users").doc(document.ownerId).update({ isVerified: true, updatedAt: FieldValue.serverTimestamp() });
   }
   return { success: true };
 });
@@ -1593,7 +1866,7 @@ export const issueBarcode = functions.https.onCall(async (data, context) => {
     signature,
     status: "issued",
     scanCount: 0,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return { barcodeId, payload, signature };
 });
@@ -1624,8 +1897,8 @@ export const verifyBarcode = functions.https.onCall(async (data, context) => {
   await snapshot.ref.update({
     status: "verified",
     verifiedBy: uid,
-    verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-    scanCount: admin.firestore.FieldValue.increment(1),
+    verifiedAt: FieldValue.serverTimestamp(),
+    scanCount: FieldValue.increment(1),
   });
   return { valid: true, orderId: barcode.orderId, manifest: JSON.parse(barcode.payload) };
 });
@@ -1655,7 +1928,7 @@ export const submitReview = functions.https.onCall(async (data, context) => {
     rating,
     comment,
     moderationStatus: "pending",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
@@ -1682,462 +1955,10 @@ export const openDispute = functions.https.onCall(async (data, context) => {
     reason,
     status: "open",
     evidenceImages: evidenceUrls,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   await orderSnapshot.ref.update({ paymentStatus: "disputed", disputeId: disputeRef.id });
   return { disputeId: disputeRef.id };
-});
-
-export const resolveDispute = functions.https.onCall(async (data, context) => {
-  const adminId = await requireAdmin(context);
-  const orderId = typeof data.orderId === "string" ? data.orderId.trim() : "";
-  const resolution = typeof data.resolution === "string" ? data.resolution : "";
-  const adminNotes = typeof data.adminNotes === "string"
-    ? data.adminNotes.trim().slice(0, 2000) : "";
-  const refundPercent = resolution === "refund_buyer" ? 100
-    : resolution === "release_farmer" ? 0
-      : resolution === "split_settlement" ? 50 : -1;
-  if (!orderId || refundPercent < 0 || !adminNotes) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Order, valid outcome, and audit notes are required."
-    );
-  }
-
-  const orderRef = db.collection("orders").doc(orderId);
-  await db.runTransaction(async (transaction) => {
-    const orderSnapshot = await transaction.get(orderRef);
-    const order = orderSnapshot.data();
-    if (!order) {
-      throw new functions.https.HttpsError("not-found", "Order not found.");
-    }
-    if (order.paymentStatus !== "disputed" || !order.disputeId) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Order has no open payment dispute."
-      );
-    }
-    const disputeRef = db.collection("disputes").doc(String(order.disputeId));
-    const disputeSnapshot = await transaction.get(disputeRef);
-    const dispute = disputeSnapshot.data();
-    if (!dispute || dispute.orderId !== orderId || dispute.status !== "open") {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "The linked dispute is already closed or invalid."
-      );
-    }
-
-    const totalMinor = Number(order.totalMinor);
-    if (!Number.isSafeInteger(totalMinor) || totalMinor < 0) {
-      throw new functions.https.HttpsError("failed-precondition", "Order total is invalid.");
-    }
-    const refundMinor = Math.round(totalMinor * refundPercent / 100);
-    const settlementMinor = totalMinor - refundMinor;
-    const paymentStatus = refundPercent === 100 ? "refund_pending"
-      : refundPercent === 0 ? "settlement_pending" : "split_settlement_pending";
-    const resolvedAt = admin.firestore.FieldValue.serverTimestamp();
-
-    transaction.update(orderRef, {
-      status: resolution === "refund_buyer" ? "cancelled" : "completed",
-      disputeStatus: "resolved",
-      disputeResolution: resolution,
-      disputeAdminNotes: adminNotes,
-      disputeResolvedBy: adminId,
-      disputeResolvedAt: resolvedAt,
-      refundPercent,
-      refundMinor,
-      settlementMinor,
-      paymentStatus,
-      updatedAt: resolvedAt,
-    });
-    transaction.update(disputeRef, {
-      status: "resolved",
-      resolution,
-      adminNotes,
-      resolvedBy: adminId,
-      resolvedAt,
-      refundPercent,
-      refundMinor,
-      settlementMinor,
-    });
-    transaction.create(db.collection("audit_logs").doc(), {
-      action: "dispute_resolved",
-      orderId,
-      disputeId: order.disputeId,
-      resolution,
-      refundPercent,
-      actorId: adminId,
-      createdAt: resolvedAt,
-    });
-  });
-
-  return { success: true, orderId, resolution, refundPercent };
-});
-
-// ─── Admin: seed Sri Lankan marketplace data (Admin SDK only) ──────
-// Attaches products/orders/jobs to REAL users by role (or explicit IDs).
-export const seedDatabase = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const now = admin.firestore.FieldValue.serverTimestamp();
-
-  const findUidByRole = async (role: string): Promise<string | null> => {
-    const snap = await db.collection("users").where("role", "==", role).limit(10).get();
-    const docs = snap.docs.filter((d) => {
-      const u = d.data();
-      return u.isSuspended !== true && u.isDeleted !== true;
-    });
-    const verified = docs.find((d) => d.data().isVerified === true);
-    return (verified || docs[0])?.id || null;
-  };
-
-  let farmerId = (typeof data?.farmerId === "string" && data.farmerId) || await findUidByRole("farmer");
-  let buyerId = (typeof data?.buyerId === "string" && data.buyerId) || await findUidByRole("buyer");
-  let transporterId = (typeof data?.transporterId === "string" && data.transporterId) || await findUidByRole("transporter");
-
-  if (!farmerId) {
-    farmerId = "farmer_demo_1";
-    await db.collection("users").doc(farmerId).set({
-      id: farmerId, authUid: farmerId, role: "farmer", name: "Demo Farmer", displayName: "Demo Farmer", phone: "0770000001", isVerified: true, isSuspended: false, district: "Nuwara Eliya", createdAt: now, updatedAt: now
-    }, { merge: true });
-  }
-  
-  if (!buyerId) {
-    buyerId = "buyer_demo_1";
-    await db.collection("users").doc(buyerId).set({
-      id: buyerId, authUid: buyerId, role: "buyer", name: "Demo Buyer", displayName: "Demo Buyer", phone: "0770000002", isVerified: true, isSuspended: false, district: "Colombo", createdAt: now, updatedAt: now
-    }, { merge: true });
-  }
-  
-  if (!transporterId) {
-    transporterId = "transporter_demo_1";
-    await db.collection("users").doc(transporterId).set({
-      id: transporterId, authUid: transporterId, role: "transporter", name: "Demo Transporter", displayName: "Demo Transporter", phone: "0770000003", isVerified: true, isSuspended: false, district: "Gampaha", vehicleType: "Truck", vehicleCapacity: 5000, vehicleCapacityUnit: "kg", isApprovedTransporter: true, createdAt: now, updatedAt: now
-    }, { merge: true });
-  }
-
-  const farmerSnap = await db.collection("users").doc(farmerId).get();
-  const buyerSnap = await db.collection("users").doc(buyerId).get();
-  const farmerName = String(farmerSnap.data()?.name || farmerSnap.data()?.displayName || "Farmer");
-  const buyerName = String(buyerSnap.data()?.name || buyerSnap.data()?.displayName || "Buyer");
-  const farmerDistrict = String(farmerSnap.data()?.district || "Nuwara Eliya");
-  const buyerDistrict = String(buyerSnap.data()?.district || "Colombo");
-
-  const productSpecs = [
-    {
-      name: "Nuwara Eliya Carrots",
-      category: "Vegetables",
-      location: "Nuwara Eliya",
-      unit: "kg",
-      priceMinor: 35000,
-      quantityAvailable: 80,
-      description: "Crisp hill-country carrots from Nuwara Eliya farms.",
-      isOrganic: true,
-    },
-    {
-      name: "Dambulla Tomatoes",
-      category: "Vegetables",
-      location: "Matale",
-      unit: "kg",
-      priceMinor: 28000,
-      quantityAvailable: 120,
-      description: "Fresh tomatoes from the Dambulla economic centre supply belt.",
-      isOrganic: false,
-    },
-    {
-      name: "Jaffna Red Onions",
-      category: "Vegetables",
-      location: "Jaffna",
-      unit: "kg",
-      priceMinor: 42000,
-      quantityAvailable: 60,
-      description: "Pungent Jaffna red onions prized across Sri Lanka.",
-      isOrganic: false,
-    },
-    {
-      name: "Ceylon Cinnamon (Kurundu)",
-      category: "Spices",
-      location: "Kandy",
-      unit: "kg",
-      priceMinor: 450000,
-      quantityAvailable: 15,
-      description: "True Ceylon cinnamon quills, Grade 1 Alba.",
-      isOrganic: true,
-    },
-    {
-      name: "King Coconut (Thambili)",
-      category: "Fruits",
-      location: "Kurunegala",
-      unit: "pcs",
-      priceMinor: 12000,
-      quantityAvailable: 200,
-      description: "Sweet Thambili king coconuts, electrolyte-rich.",
-      isOrganic: true,
-    },
-    {
-      name: "Kolikuttu Banana",
-      category: "Fruits",
-      location: "Hambantota",
-      unit: "kg",
-      priceMinor: 25000,
-      quantityAvailable: 90,
-      description: "Ripe Kolikuttu bananas from the southern plains.",
-      isOrganic: false,
-    },
-    {
-      name: "Keeri Samba Rice",
-      category: "Grains",
-      location: "Polonnaruwa",
-      unit: "kg",
-      priceMinor: 32000,
-      quantityAvailable: 500,
-      description: "Premium Keeri Samba rice from Polonnaruwa paddies.",
-      isOrganic: false,
-    },
-    {
-      name: "Low-grown Ceylon Tea",
-      category: "Spices",
-      location: "Ratnapura",
-      unit: "kg",
-      priceMinor: 180000,
-      quantityAvailable: 40,
-      description: "Orthodox low-grown black tea from Ratnapura estates.",
-      isOrganic: true,
-    },
-    {
-      name: "Gotukola Bundle",
-      category: "Herbs",
-      location: "Gampaha",
-      unit: "pcs",
-      priceMinor: 8000,
-      quantityAvailable: 150,
-      description: "Fresh Gotukola greens for mallung and juice.",
-      isOrganic: true,
-    },
-    {
-      name: "Ambul Banana",
-      category: "Fruits",
-      location: "Monaragala",
-      unit: "kg",
-      priceMinor: 18000,
-      quantityAvailable: 70,
-      description: "Cooking Ambul bananas popular in village kitchens.",
-      isOrganic: false,
-    },
-  ];
-
-  const batch = db.batch();
-  const productIds: string[] = [];
-  for (const spec of productSpecs) {
-    const ref = db.collection("products").doc();
-    productIds.push(ref.id);
-    batch.set(ref, {
-      farmerId,
-      farmerName,
-      name: spec.name,
-      category: spec.category,
-      description: spec.description,
-      unit: spec.unit,
-      location: spec.location,
-      priceMinor: spec.priceMinor,
-      price: `LKR ${(spec.priceMinor / 100).toFixed(2)} / ${spec.unit}`,
-      pricePerUnit: spec.priceMinor / 100,
-      currency: "LKR",
-      quantityAvailable: spec.quantityAvailable,
-      quantity: `${spec.quantityAvailable} ${spec.unit} available`,
-      status: "Active",
-      isOrganic: spec.isOrganic,
-      media: [],
-      imageUrls: [],
-      harvestStatus: "harvested",
-      listingVersion: 1,
-      isSeedData: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  // Orders covering the acceptance status chain (LKR, SL addresses).
-  const orderSpecs: Array<Record<string, unknown>> = [
-    {
-      productIdx: 0,
-      qty: 20,
-      status: "pending",
-      paymentStatus: "payment_required",
-      escrowStatus: "not_funded",
-      deliveryAddress: `No. 12, Galle Road, ${buyerDistrict === "Colombo" ? "Colombo 03" : buyerDistrict}`,
-      pickupAddress: "Nuwara Eliya",
-    },
-    {
-      productIdx: 3,
-      qty: 5,
-      status: "confirmed",
-      paymentStatus: "payment_required",
-      escrowStatus: "not_funded",
-      deliveryAddress: "45 Peradeniya Road, Kandy",
-      pickupAddress: "Kandy",
-    },
-    {
-      productIdx: 4,
-      qty: 50,
-      status: "inTransit",
-      paymentStatus: "payment_required",
-      escrowStatus: "not_funded",
-      deliveryAddress: "88 Baseline Road, Colombo 09",
-      pickupAddress: "Kurunegala",
-      transporterId: transporterId || null,
-    },
-    {
-      productIdx: 6,
-      qty: 25,
-      status: "delivered",
-      paymentStatus: "paid",
-      escrowStatus: "held",
-      deliveryAddress: "22 Marine Drive, Dehiwala",
-      pickupAddress: "Polonnaruwa",
-      transporterId: transporterId || null,
-    },
-  ];
-
-  const orderRefs: Array<FirebaseFirestore.DocumentReference> = [];
-  for (const spec of orderSpecs) {
-    const idx = Number(spec.productIdx);
-    const p = productSpecs[idx];
-    const qty = Number(spec.qty);
-    const subtotal = p.priceMinor * qty;
-    const deliveryFeeMinor = 35000;
-    const ref = db.collection("orders").doc();
-    orderRefs.push(ref);
-    batch.set(ref, {
-      buyerId,
-      farmerId,
-      farmerName,
-      buyerName,
-      productId: productIds[idx],
-      productName: p.name,
-      title: `${qty} ${p.unit} ${p.name}`,
-      quantity: `${qty} ${p.unit}`,
-      unit: p.unit,
-      items: [{ productId: productIds[idx], quantity: qty, pricePerUnitMinor: p.priceMinor }],
-      subtotalMinor: subtotal,
-      deliveryFeeMinor,
-      totalMinor: subtotal + deliveryFeeMinor,
-      currency: "LKR",
-      deliveryAddress: spec.deliveryAddress,
-      pickupAddress: spec.pickupAddress,
-      location: p.location,
-      status: spec.status,
-      paymentStatus: spec.paymentStatus,
-      escrowStatus: spec.escrowStatus,
-      ...(spec.transporterId ? { transporterId: spec.transporterId } : {}),
-      isSeedData: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  // Transport jobs with districts for matching.
-  const jobSpecs = [
-    {
-      orderRef: orderRefs[1],
-      productIdx: 3,
-      status: "requested",
-      route: "Kandy → Peradeniya",
-      pickup: "Kandy",
-      dropoff: "Peradeniya",
-      district: "Kandy",
-      feeMinor: 220000,
-      qty: "5 kg",
-      transporterId: null as string | null,
-    },
-    {
-      orderRef: orderRefs[2],
-      productIdx: 4,
-      status: "inTransit",
-      route: "Kurunegala → Colombo",
-      pickup: "Kurunegala",
-      dropoff: "Colombo 09",
-      district: "Kurunegala",
-      feeMinor: 450000,
-      qty: "50 pcs",
-      transporterId: transporterId || null,
-    },
-    {
-      orderRef: orderRefs[3],
-      productIdx: 6,
-      status: "delivered",
-      route: "Polonnaruwa → Dehiwala",
-      pickup: "Polonnaruwa",
-      dropoff: "Dehiwala",
-      district: "Polonnaruwa",
-      feeMinor: 550000,
-      qty: "25 kg",
-      transporterId: transporterId || null,
-    },
-    {
-      orderRef: orderRefs[0],
-      productIdx: 0,
-      status: "requested",
-      route: `${farmerDistrict} → ${buyerDistrict}`,
-      pickup: String(orderSpecs[0].pickupAddress),
-      dropoff: buyerDistrict,
-      district: "Nuwara Eliya",
-      feeMinor: 350000,
-      qty: "20 kg",
-      transporterId: null as string | null,
-    },
-  ];
-
-  for (const j of jobSpecs) {
-    const p = productSpecs[j.productIdx];
-    const ref = db.collection("transport_jobs").doc();
-    batch.set(ref, {
-      orderId: j.orderRef.id,
-      farmerId,
-      buyerId,
-      ...(j.transporterId ? { transporterId: j.transporterId } : {}),
-      title: `Delivery: ${p.name}`,
-      route: j.route,
-      detail: `${j.qty} · ${p.name}`,
-      fee: `LKR ${(j.feeMinor / 100).toLocaleString("en-LK")}`,
-      offeredFeeMinor: j.feeMinor,
-      pickupAddress: j.pickup,
-      dropoffAddress: j.dropoff,
-      pickup: j.pickup,
-      dropoff: j.dropoff,
-      productName: p.name,
-      quantity: j.qty,
-      district: j.district,
-      capacityKg: 500,
-      weightKg: parseInt(j.qty, 10) || 20,
-      status: j.status,
-      accepted: j.status !== "requested",
-      isSeedData: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  // Platform settings defaults (LKR delivery fee suggestion).
-  batch.set(db.collection("settings").doc("platform"), {
-    currency: "LKR",
-    defaultDeliveryFeeMinor: 35000,
-    platformFeeBps: 250,
-    sessionTimeoutMinutes: 60,
-    country: "Sri Lanka",
-    updatedAt: now,
-  }, { merge: true });
-
-  await batch.commit();
-  return {
-    success: true,
-    farmerId,
-    buyerId,
-    transporterId: transporterId || null,
-    products: productIds.length,
-    orders: orderRefs.length,
-    jobs: jobSpecs.length,
-    message: "Seeded Sri Lankan marketplace data onto registered role accounts.",
-  };
 });
 
 export const setUserSuspended = functions.https.onCall(async (data, context) => {
@@ -2154,18 +1975,18 @@ export const setUserSuspended = functions.https.onCall(async (data, context) => 
   }
   await ref.update({
     isSuspended: suspended,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   await db.collection("audit_logs").add({
     action: suspended ? "user_suspended" : "user_unsuspended",
     targetUserId: userId,
     actorId: context.auth!.uid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return { success: true, userId, isSuspended: suspended };
 });
 
-export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1GB" }).https.onCall(async (_data, context) => {
+export const deleteAccount = functions.https.onCall(async (_data, context) => {
   const uid = requireAuth(context);
   const userRef = db.collection("users").doc(uid);
 
@@ -2173,173 +1994,47 @@ export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1
   await userRef.set({
     displayName: "Deleted User",
     phone: "",
-    photoUrl: admin.firestore.FieldValue.delete(),
-    email: admin.firestore.FieldValue.delete(),
-    address: admin.firestore.FieldValue.delete(),
-    district: admin.firestore.FieldValue.delete(),
-    country: admin.firestore.FieldValue.delete(),
-    location: admin.firestore.FieldValue.delete(),
-    latitude: admin.firestore.FieldValue.delete(),
-    longitude: admin.firestore.FieldValue.delete(),
-    locationSharingEnabled: false,
-    vehicleRegistration: admin.firestore.FieldValue.delete(),
-    chatPublicKey: admin.firestore.FieldValue.delete(),
-    deviceTokens: admin.firestore.FieldValue.delete(),
-    notificationPreferences: admin.firestore.FieldValue.delete(),
+    photoUrl: FieldValue.delete(),
+    email: FieldValue.delete(),
+    address: FieldValue.delete(),
+    deviceTokens: FieldValue.delete(),
+    notificationPreferences: FieldValue.delete(),
     isSuspended: true,
     isDeleted: true,
-    deletedAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    deletedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  const processOwnedRecords = async (
-    collectionName: string,
-    field: string,
-    action: (batch: FirebaseFirestore.WriteBatch, doc: FirebaseFirestore.QueryDocumentSnapshot) => void,
-    arrayContains = false
-  ): Promise<void> => {
-    let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
-    while (true) {
-      let query: FirebaseFirestore.Query = db.collection(collectionName);
-      query = arrayContains
-        ? query.where(field, "array-contains", uid)
-        : query.where(field, "==", uid);
-      query = query.limit(400);
-      if (cursor) query = query.startAfter(cursor);
-      const page = await query.get();
-      if (page.empty) return;
-      const batch = db.batch();
-      for (const doc of page.docs) action(batch, doc);
-      await batch.commit();
-      cursor = page.docs[page.docs.length - 1];
-    }
-  };
+  // Remove device tokens subcollection
+  const tokens = await userRef.collection("device_tokens").get();
+  await Promise.all(tokens.docs.map((d) => d.ref.delete()));
 
-  const tokenDocs = await userRef.collection("device_tokens").get();
-  for (let offset = 0; offset < tokenDocs.docs.length; offset += 400) {
-    const batch = db.batch();
-    for (const doc of tokenDocs.docs.slice(offset, offset + 400)) batch.delete(doc.ref);
-    await batch.commit();
-  }
-
-  // Keep financial order records, but remove direct contact details.
-  await processOwnedRecords("orders", "buyerId", (batch, doc) => batch.update(doc.ref, {
-    buyerId: "deleted-user",
-    buyerName: "Deleted User",
-    buyerCompany: "",
-    buyerAvatar: admin.firestore.FieldValue.delete(),
-    buyerPhone: admin.firestore.FieldValue.delete(),
-    deliveryAddress: "[redacted]",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("orders", "farmerId", (batch, doc) => batch.update(doc.ref, {
-    farmerId: "deleted-user",
-    farmerName: "Deleted User",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("orders", "transporterId", (batch, doc) => batch.update(doc.ref, {
-    transporterId: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-
-  const productIds: string[] = [];
-  await processOwnedRecords("products", "farmerId", (batch, doc) => {
-    productIds.push(doc.id);
-    batch.update(doc.ref, {
-    status: "Deleted",
-    farmerId: "deleted-user",
-    name: "[deleted]",
-    description: "",
-    location: "",
-    imagePath: admin.firestore.FieldValue.delete(),
-    media: [],
-    imageUrls: [],
-    images: [],
-    videoPath: admin.firestore.FieldValue.delete(),
-    videoUrl: admin.firestore.FieldValue.delete(),
-    qrCode: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-
-  // Remove personal content and account-scoped records. Keep financial and
-  // dispute records only where needed for audit, with identifying text scrubbed.
-  for (const field of ["ownerId", "farmerId"]) {
-    await processOwnedRecords("verification_docs", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  for (const field of ["buyerId", "farmerId"]) {
-    await processOwnedRecords("offers", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  for (const field of ["senderId", "recipientId", "receiverId"]) {
-    await processOwnedRecords("messages", field, (batch, doc) => batch.delete(doc.ref));
-  }
-  await processOwnedRecords("notifications", "userId", (batch, doc) => batch.delete(doc.ref));
-  await processOwnedRecords("reviews", "reviewerId", (batch, doc) => batch.delete(doc.ref));
-  await processOwnedRecords("reviews", "subjectId", (batch, doc) => batch.update(doc.ref, {
-    subjectId: "deleted-user",
-    subjectName: "Deleted User",
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("disputes", "openedBy", (batch, doc) => batch.update(doc.ref, {
-    openedBy: "deleted-user",
-    reason: "[redacted]",
-    evidenceImages: [],
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  await processOwnedRecords("conversations", "participantIds", (batch, doc) => batch.update(doc.ref, {
-    participantIds: admin.firestore.FieldValue.arrayRemove(uid),
-    unreadCounts: admin.firestore.FieldValue.delete(),
-    lastMessage: "",
-    lastMessageAt: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }), true);
-  await processOwnedRecords("transport_jobs", "transporterId", (batch, doc) => batch.update(doc.ref, {
-    transporterId: admin.firestore.FieldValue.delete(),
-    courierLat: admin.firestore.FieldValue.delete(),
-    courierLng: admin.firestore.FieldValue.delete(),
-    locationUpdatedAt: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
-  for (const field of ["createdBy", "farmerId", "buyerId"]) {
-    await processOwnedRecords("transport_jobs", field, (batch, doc) => batch.update(doc.ref, {
-      farmerId: admin.firestore.FieldValue.delete(),
-      buyerId: admin.firestore.FieldValue.delete(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  // Scrub PII from orders where user is buyer/farmer/transporter
+  const roles = ["buyerId", "farmerId", "transporterId"] as const;
+  for (const field of roles) {
+    const snap = await db.collection("orders").where(field, "==", uid).limit(100).get();
+    await Promise.all(snap.docs.map((doc) => {
+      const updates: Record<string, unknown> = {
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      if (field === "buyerId") {
+        updates.buyerName = "Deleted User";
+        updates.buyerCompany = "";
+        updates.deliveryAddress = "[redacted]";
+      }
+      return doc.ref.update(updates);
     }));
   }
-  await processOwnedRecords("settlements", "recipientId", (batch, doc) => batch.update(doc.ref, {
-    bankName: admin.firestore.FieldValue.delete(),
-    accountNumber: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }));
 
-  await Promise.all([
-    db.collection("public_profiles").doc(uid).delete().catch(() => undefined),
-    db.collection("chat_public_keys").doc(uid).delete().catch(() => undefined),
-  ]);
-
-  // Remove account-owned uploads, including profile, listing and KYC media.
-  const bucket = admin.storage().bucket();
-  for (const prefix of [
-    `users/${uid}/`,
-    `product_images/${uid}/`,
-    `product_videos/${uid}/`,
-    `verification/${uid}/`,
-    `disputes/${uid}/`,
-  ]) {
-    const [files] = await bucket.getFiles({ prefix });
-    for (let offset = 0; offset < files.length; offset += 100) {
-      await Promise.all(files.slice(offset, offset + 100)
-        .map((file) => file.delete({ ignoreNotFound: true })));
-    }
-  }
-  for (const productId of productIds) {
-    const [files] = await bucket.getFiles({ prefix: `products/${productId}/` });
-    for (let offset = 0; offset < files.length; offset += 100) {
-      await Promise.all(files.slice(offset, offset + 100)
-        .map((file) => file.delete({ ignoreNotFound: true })));
-    }
-  }
+  // Soft-delete owned products
+  const products = await db.collection("products").where("farmerId", "==", uid).limit(100).get();
+  await Promise.all(products.docs.map((doc) => doc.ref.update({
+    status: "Deleted",
+    name: "[deleted]",
+    description: "",
+    media: [],
+    updatedAt: FieldValue.serverTimestamp(),
+  })));
 
   await auth.deleteUser(uid);
   return { success: true };
@@ -2348,47 +2043,14 @@ export const deleteAccount = functions.runWith({ timeoutSeconds: 540, memory: "1
 export const exportUserData = functions.https.onCall(async (_data, context) => {
   const uid = requireAuth(context);
 
-  const [
-    userSnap,
-    buyerOrders,
-    farmerOrders,
-    transporterOrders,
-    products,
-    verificationDocs,
-    buyerOffers,
-    farmerOffers,
-    openedDisputes,
-    sentMessages,
-    receivedMessages,
-    legacyReceivedMessages,
-    notifications,
-    authoredReviews,
-    receivedReviews,
-    conversations,
-    transporterJobs,
-    createdJobs,
-    settlements,
-  ] = await Promise.all([
+  const [userSnap, buyerOrders, farmerOrders, transporterOrders, products, verificationDocs] =
+    await Promise.all([
       db.collection("users").doc(uid).get(),
       db.collection("orders").where("buyerId", "==", uid).limit(200).get(),
       db.collection("orders").where("farmerId", "==", uid).limit(200).get(),
       db.collection("orders").where("transporterId", "==", uid).limit(200).get(),
       db.collection("products").where("farmerId", "==", uid).limit(200).get(),
       db.collection("verification_docs").where("ownerId", "==", uid).limit(100).get(),
-      db.collection("offers").where("buyerId", "==", uid).limit(200).get(),
-      db.collection("offers").where("farmerId", "==", uid).limit(200).get(),
-      db.collection("disputes").where("openedBy", "==", uid).limit(100).get(),
-      db.collection("messages").where("senderId", "==", uid).limit(500).get(),
-      db.collection("messages").where("recipientId", "==", uid).limit(500).get(),
-      db.collection("messages").where("receiverId", "==", uid).limit(500).get(),
-      db.collection("notifications").where("userId", "==", uid).limit(500).get(),
-      db.collection("reviews").where("reviewerId", "==", uid).limit(200).get(),
-      db.collection("reviews").where("subjectId", "==", uid).limit(200).get(),
-      db.collection("conversations").where("participantIds", "array-contains", uid)
-        .limit(200).get(),
-      db.collection("transport_jobs").where("transporterId", "==", uid).limit(200).get(),
-      db.collection("transport_jobs").where("createdBy", "==", uid).limit(200).get(),
-      db.collection("settlements").where("recipientId", "==", uid).limit(200).get(),
     ]);
 
   // Also collect verification docs keyed by farmerId for older records
@@ -2409,19 +2071,9 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
     }
   }
 
-  const asRecords = (snapshots: FirebaseFirestore.QuerySnapshot[]) => {
-    const records = new Map<string, Record<string, unknown>>();
-    for (const snapshot of snapshots) {
-      for (const doc of snapshot.docs) {
-        records.set(doc.id, { id: doc.id, ...doc.data() });
-      }
-    }
-    return Array.from(records.values());
-  };
-
   const serialize = (value: unknown): unknown => {
     if (value === null || value === undefined) return value;
-    if (value instanceof admin.firestore.Timestamp) return value.toDate().toISOString();
+    if (value instanceof Timestamp) return value.toDate().toISOString();
     if (Array.isArray(value)) return value.map(serialize);
     if (typeof value === "object") {
       const out: Record<string, unknown> = {};
@@ -2440,14 +2092,5 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
     orders: Array.from(orderMap.values()),
     products: products.docs.map((d) => ({ id: d.id, ...d.data() })),
     verificationDocs: Array.from(verificationMap.values()),
-    offers: asRecords([buyerOffers, farmerOffers]),
-    disputes: asRecords([openedDisputes]),
-    messages: asRecords([sentMessages, receivedMessages, legacyReceivedMessages]),
-    notifications: asRecords([notifications]),
-    authoredReviews: asRecords([authoredReviews]),
-    reviewsAboutUser: asRecords([receivedReviews]),
-    conversations: asRecords([conversations]),
-    transportJobs: asRecords([transporterJobs, createdJobs]),
-    settlements: asRecords([settlements]),
   });
 });

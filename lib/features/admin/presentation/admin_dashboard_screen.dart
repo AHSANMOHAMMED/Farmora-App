@@ -13,6 +13,7 @@ import 'server_maintenance_screen.dart';
 import 'settlement_management_screen.dart';
 import 'logistics_management_screen.dart';
 import 'audit_log_screen.dart';
+import 'market_price_review_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
@@ -25,7 +26,7 @@ class AdminDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return DefaultTabController(
-      length: 11,
+      length: 12,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -50,25 +51,27 @@ class AdminDashboardScreen extends StatelessWidget {
               Tab(text: l.adminDashTabDisputes, icon: const Icon(Icons.gavel_rounded, size: 20)),
               Tab(text: l.adminDashTabFleet, icon: const Icon(Icons.local_shipping_rounded, size: 20)),
               Tab(text: l.adminDashTabMarket, icon: const Icon(Icons.trending_up_rounded, size: 20)),
+              const Tab(text: 'Price Reports', icon: Icon(Icons.fact_check_outlined, size: 20)),
               Tab(text: l.adminDashTabAudit, icon: const Icon(Icons.shield_rounded, size: 20)),
               Tab(text: l.adminDashTabServer, icon: const Icon(Icons.cloud_sync_rounded, size: 20)),
               Tab(text: l.adminDashTabAdvisories, icon: const Icon(Icons.campaign_rounded, size: 20)),
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            _OverviewTab(),
-            PlatformAnalyticsScreen(),
-            UserManagementScreen(),
-            ReviewManagementScreen(),
-            SettlementManagementScreen(),
-            DisputeResolutionScreen(),
-            LogisticsManagementScreen(),
-            MarketPriceManagementScreen(),
-            AuditLogScreen(),
-            ServerMaintenanceScreen(),
-            BroadcastAdvisoryScreen(),
+            const _OverviewTab(),
+            const PlatformAnalyticsScreen(),
+            const UserManagementScreen(),
+            const ReviewManagementScreen(),
+            const SettlementManagementScreen(),
+            const DisputeResolutionScreen(),
+            const LogisticsManagementScreen(),
+            const MarketPriceManagementScreen(),
+            MarketPriceReviewScreen(),
+            const AuditLogScreen(),
+            const ServerMaintenanceScreen(),
+            const BroadcastAdvisoryScreen(),
           ],
         ),
       ),

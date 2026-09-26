@@ -13,6 +13,7 @@ import '../../../models/conversation_model.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/chat_crypto.dart';
+import '../../../services/chat_outbox_service.dart';
 import '../../../services/firebase_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -71,10 +72,9 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _messages = _service.messagesStream(
       _conversation.id,
-      orderId: _conversation.orderId,
-      uid: _uid,
     );
     _bootstrapKeys();
+    _flushOutbox();
   }
 
   Future<void> _bootstrapKeys() async {
@@ -88,6 +88,24 @@ class _ChatScreenState extends State<ChatScreen> {
       userMessage(e, action: 'set up chat encryption', stack: st);
     } finally {
       if (mounted) setState(() => _keysReady = true);
+    }
+  }
+
+  /// Re-sends text messages that were saved offline for this order.
+  Future<void> _flushOutbox() async {
+    try {
+      final pending = await ChatOutboxService.getPending();
+      for (final msg in pending) {
+        if (msg.orderId != _conversation.orderId) continue;
+        await _service.sendEncryptedMessage(
+          orderId: msg.orderId,
+          recipientId: msg.recipientId,
+          ciphertext: msg.ciphertext,
+        );
+        await ChatOutboxService.remove(msg);
+      }
+    } catch (_) {
+      // Still offline; the outbox is retried next time the chat opens.
     }
   }
 
@@ -141,8 +159,8 @@ class _ChatScreenState extends State<ChatScreen> {
       item.status = _OutgoingStatus.sending;
       item.error = null;
     });
+    String? ciphertext;
     try {
-      String? ciphertext;
       ChatAttachment? attachment;
       if (item.text != null) {
         final peerKey =
@@ -191,6 +209,18 @@ class _ChatScreenState extends State<ChatScreen> {
         _snack(L10n.current.chatReceiptSent);
       }
     } catch (e, st) {
+      if (ciphertext != null) {
+        // Encrypted but not delivered: keep it in the offline outbox.
+        await ChatOutboxService.enqueue(PendingMessage(
+          orderId: _conversation.orderId,
+          recipientId: _recipientId,
+          ciphertext: ciphertext,
+        ));
+        if (!mounted) return;
+        setState(() => _outgoing.remove(item));
+        _snack('Saved offline. Will retry automatically.');
+        return;
+      }
       if (!mounted) return;
       setState(() {
         item.status = _OutgoingStatus.failed;

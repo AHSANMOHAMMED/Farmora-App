@@ -5,6 +5,7 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../models/market_price_index.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../models/user_role.dart';
 
 class MarketPriceManagementScreen extends StatefulWidget {
   const MarketPriceManagementScreen({super.key});
@@ -59,14 +60,14 @@ class _MarketPriceManagementScreenState
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
         elevation: 0.5,
-        actions: [
+        actions: state.role == Role.admin ? [
           IconButton(
             icon:
                 const Icon(Icons.add_circle_outline, color: AppColors.primary),
             tooltip: l.adminMarketAddTooltip,
             onPressed: () => _showAddPriceDialog(context, state),
           ),
-        ],
+        ] : [],
       ),
       body: Column(
         children: [
@@ -226,8 +227,7 @@ class _MarketPriceManagementScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        l.adminMarketCenterCategory(
-                            item.district, _categoryLabel(l, item.category)),
+                        '${item.marketName.isEmpty ? item.district : item.marketName} · ${item.district} · ${_categoryLabel(l, item.category)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -271,18 +271,15 @@ class _MarketPriceManagementScreenState
                 Expanded(
                   child: _buildPriceMetric(
                       l.adminMarketWholesaleRange,
-                      l.adminMarketRangePerKg(
-                          AppFormat.lkr(item.minPricePerKg),
-                          AppFormat.number(item.maxPricePerKg))),
+                      '${AppFormat.lkr(item.minPricePerKg, decimals: 2)} - ${AppFormat.number(item.maxPricePerKg, decimals: 2)} / ${item.unit}'),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildPriceMetric(l.adminMarketAvgBenchmark,
-                      l.adminMarketPricePerKg(
-                          AppFormat.lkr(item.averagePricePerKg)),
+                      '${AppFormat.lkr(item.averagePricePerKg, decimals: 2)} / ${item.unit}',
                       isPrimary: true),
                 ),
-                Row(
+                if (state.role == Role.admin) Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(

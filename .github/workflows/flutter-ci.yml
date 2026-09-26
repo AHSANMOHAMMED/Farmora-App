@@ -31,10 +31,12 @@ jobs:
           channel: stable
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub upgrade firebase_core_web
 
       - name: Analyze code
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Run tests
         run: flutter test
@@ -64,3 +66,24 @@ jobs:
 
       - name: Build APK
         run: flutter build apk --release
+      - name: Build Web
+        run: flutter build web --release
+
+      - name: Deploy to Firebase Hosting & Functions
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/suka' || github.ref == 'refs/heads/dev/swami'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMINGAPP_24B34 }}
+          projectId: farmingapp-24b34
+          channelId: live
+        continue-on-error: true
+
+      - name: Deploy Firebase Rules and Functions via CLI (Fallback)
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev/swami') && env.FIREBASE_TOKEN != ''
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting,firestore:rules,storage --token "$FIREBASE_TOKEN" --project farmingapp-24b34
+

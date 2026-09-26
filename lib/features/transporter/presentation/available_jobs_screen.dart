@@ -20,7 +20,13 @@ class AvailableJobsScreen extends StatelessWidget {
         .toSet();
     final capacity = state.capacityKg > 0 ? state.capacityKg : null;
 
-    final requested = state.jobs.where((j) => j.status == 'requested').toList();
+    final requested = state.jobs
+        .where((j) =>
+            j.status == 'requested' &&
+            (j.transporterId == null ||
+                j.transporterId!.isEmpty ||
+                j.transporterId == state.currentUserId))
+        .toList();
 
     int score(TransportJob j) {
       var s = 0;
@@ -111,8 +117,22 @@ class AvailableJobsScreen extends StatelessWidget {
                     detail: j.detail,
                     fee: j.fee,
                     accepted: j.accepted,
-                    onAccept: () =>
-                        context.read<FarmoraState>().acceptJob(j.id),
+                    onAccept: () async {
+                      try {
+                        await context.read<FarmoraState>().acceptJob(j.id);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Job accepted successfully.'),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Could not accept job: $e')),
+                        );
+                      }
+                    },
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(

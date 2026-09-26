@@ -235,6 +235,17 @@ class Product {
     final imageUrls = List<String>.from(data['imageUrls'] ?? []);
     final legacyImages = List<String>.from(data['images'] ?? []);
     final mergedImages = {...legacyImages, ...media, ...imageUrls}.toList();
+    final storedImagePath = (data['imagePath'] as String?)?.trim();
+    // Prefer a downloadable image when older documents have a stale path first.
+    final imagePath = [storedImagePath, ...mergedImages]
+        .whereType<String>()
+        .firstWhere(
+          (value) => value.startsWith('http://') ||
+              value.startsWith('https://') ||
+              value.startsWith('data:image'),
+          orElse: () => storedImagePath ??
+              (mergedImages.isNotEmpty ? mergedImages.first : ''),
+        );
     return Product(
       id: id,
       name: data['name'] ?? '',
@@ -246,7 +257,7 @@ class Product {
       pricePerUnit: priceMinor > 0 ? priceMinor / 100.0 : legacyPrice,
       emoji: data['emoji'] ?? '🌱',
       color: Color(data['color'] as int? ?? 0xFFE8F5E9),
-      imagePath: data['imagePath'] as String?,
+      imagePath: imagePath.isEmpty ? null : imagePath,
       status: data['status'] ?? 'Active',
       isOrganic: data['isOrganic'] ?? true,
       description: data['description'] ?? '',

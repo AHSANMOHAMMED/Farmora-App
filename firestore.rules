@@ -1,10 +1,6 @@
 rules_version = '2';
-// Application data rules.
-//
-// Default backend is the Spark plan (lib/core/config/app_backend.dart): the
-// client writes Firestore directly, so every client write below is validated
-// here — ownership, money fields, and the order/payment state machine.
-// Cloud Functions (Blaze, optional) use the Admin SDK and bypass these rules.
+// Commerce mutations run through authenticated Cloud Functions. Client writes
+// are limited to profile and user-owned ancillary data.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
@@ -12,79 +8,40 @@ service cloud.firestore {
     function userDoc(u) { return get(/databases/$(database)/documents/users/$(u)).data; }
     function userExists(u) { return exists(/databases/$(database)/documents/users/$(u)); }
     function admin() {
-      return signedIn() && userExists(uid())
-        && userDoc(uid()).get('isSuspended', false) != true
-        && userDoc(uid()).get('isDeleted', false) != true && (
-        request.auth.token.get('admin', false) == true
-        || userDoc(uid()).role == 'admin'
+      return signedIn() && (
+        request.auth.token.admin == true
+        || (userExists(request.auth.uid)
+          && userDoc(request.auth.uid).role == 'admin'
+          && userDoc(request.auth.uid).isVerified == true
+          && userDoc(request.auth.uid).isSuspended != true
+          && userDoc(request.auth.uid).isDeleted != true)
       );
     }
     function roleIs(r) {
       return signedIn() && userExists(uid()) && userDoc(uid()).role == r;
     }
     function active() {
-      return signedIn() && userExists(uid())
-        && userDoc(uid()).get('isSuspended', false) != true
-        && userDoc(uid()).get('isDeleted', false) != true;
+      return signedIn() && userExists(request.auth.uid)
+        && (!('isSuspended' in userDoc(request.auth.uid))
+          || userDoc(request.auth.uid).isSuspended != true)
+        && (!('isDeleted' in userDoc(request.auth.uid))
+          || userDoc(request.auth.uid).isDeleted != true);
     }
     function farmer() { return active() && roleIs('farmer'); }
     function buyer() { return active() && roleIs('buyer'); }
     function transporter() { return active() && roleIs('transporter'); }
-    function validLocationShareUpdate() {
-      return !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['location', 'locationUpdatedAt', 'locationSharingEnabled'])
-        || request.resource.data.locationSharingEnabled == false
-        || (request.resource.data.locationSharingEnabled == true
-          && request.resource.data.location is map
-          && request.resource.data.location.lat is number
-          && request.resource.data.location.lat >= -90
-          && request.resource.data.location.lat <= 90
-          && request.resource.data.location.lng is number
-          && request.resource.data.location.lng >= -180
-          && request.resource.data.location.lng <= 180
-          && request.resource.data.locationUpdatedAt == request.time);
-    }
-    // Farm details a farmer edits on their own profile.
-    function validFarmDetailsUpdate() {
-      let d = request.resource.data;
-      return (!('farmName' in d) || (d.farmName is string && d.farmName.size() <= 80))
-        && (!('farmSize' in d) || (d.farmSize is string && d.farmSize.size() <= 40))
-        && (!('mainCrops' in d) || (d.mainCrops is list && d.mainCrops.size() <= 10));
-    }
-    function orderDoc(orderId) {
-      return get(/databases/$(database)/documents/orders/$(orderId)).data;
-    }
-    function isOrderParty(order, u) {
-      return u == order.buyerId || u == order.farmerId
-        || u == order.get('transporterId', '');
-    }
     function participant(order) {
-      return active() && isOrderParty(order, uid());
-    }
-    function participantByOrderId(orderId) {
-      return orderId is string
-        && exists(/databases/$(database)/documents/orders/$(orderId))
-        && participant(orderDoc(orderId));
+      return signedIn() && (order.buyerId == request.auth.uid
+        || order.farmerId == request.auth.uid
+        || order.transporterId == request.auth.uid);
     }
 
     // ── Order payments (COD / Bank Deposit) ─────────────────
-    // Payment and money fields change only through the transitions below, so a
-    // buyer can never mark their own order paid or edit the amount owed.
+    // Orders are created and moved through their lifecycle by Cloud Functions.
+    // The only client writes allowed are these payment transitions, and they
+    // may touch nothing but the payment fields listed below.
     function orderDiff() {
       return request.resource.data.diff(resource.data).affectedKeys();
-    }
-    function touchesPayment() {
-      return orderDiff().hasAny([
-        'paymentStatus', 'paymentMethod', 'paidAt', 'paidBy', 'proofImageUrl',
-        'proofImagePath', 'proofSubmittedAt', 'proofMessageId', 'rejectionReason',
-        'paymentConfirmedBy', 'bankDetailsSnapshot', 'escrowStatus'
-      ]);
-    }
-    function touchesMoney() {
-      return orderDiff().hasAny([
-        'totalMinor', 'subtotalMinor', 'deliveryFeeMinor', 'items',
-        'totalAmount', 'totalAmountNumber', 'farmerId', 'buyerId', 'productId'
-      ]);
     }
     function payStatus() { return resource.data.get('paymentStatus', 'pending'); }
     function isBankDeposit() {
@@ -93,26 +50,6 @@ service cloud.firestore {
     function awaitingPayment() {
       return payStatus() in ['pending', 'payment_required', 'unpaid',
         'proof_submitted', 'rejected'];
-    }
-    function newOrderPaymentOk() {
-      let d = request.resource.data;
-      return d.get('paymentStatus', 'pending') in ['pending', 'payment_required']
-        && d.get('paymentMethod', 'cod') in ['cod', 'bank_deposit']
-        && !d.keys().hasAny(['paidAt', 'paidBy', 'proofImageUrl',
-          'proofImagePath', 'paymentConfirmedBy'])
-        && (d.get('paymentMethod', 'cod') == 'cod'
-          || d.bankDetailsSnapshot.accountNumber == get(/databases/$(database)/documents/bank_details/$(d.farmerId)).data.accountNumber);
-    }
-    // Checkout order: totals must be derived from the catalog price.
-    function buyerOrderPricingOk() {
-      let d = request.resource.data;
-      let product = get(/databases/$(database)/documents/products/$(d.productId)).data;
-      return d.farmerId == product.farmerId
-        && d.requestedQuantity is int && d.requestedQuantity >= 1
-        && d.subtotalMinor == product.priceMinor * d.requestedQuantity
-        && d.deliveryFeeMinor is int && d.deliveryFeeMinor >= 0
-        && d.deliveryFeeMinor <= 10000000
-        && d.totalMinor == d.subtotalMinor + d.deliveryFeeMinor;
     }
     // Farmer: "Mark Cash Received" after delivery, or Confirm / Reject a slip.
     function farmerPaymentTransition() {
@@ -136,7 +73,7 @@ service cloud.firestore {
     function buyerProofSubmission(orderId) {
       let d = request.resource.data;
       return orderDiff().hasOnly(['paymentStatus', 'proofImageUrl',
-          'proofImagePath', 'proofSubmittedAt', 'proofMessageId', 'updatedAt'])
+          'proofImagePath', 'proofSubmittedAt', 'updatedAt'])
         && isBankDeposit()
         && d.paymentStatus == 'proof_submitted'
         && payStatus() in ['pending', 'payment_required', 'proof_submitted', 'rejected']
@@ -146,11 +83,6 @@ service cloud.firestore {
         && d.proofImagePath.matches('^payment_slips/' + orderId + '/' + uid() + '_[^/]+$')
         && d.proofSubmittedAt == request.time;
     }
-    function buyerOpensDispute() {
-      return orderDiff().hasOnly(['paymentStatus', 'disputeId', 'updatedAt'])
-        && request.resource.data.paymentStatus == 'disputed';
-    }
-
     function onlyStockChange() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['quantityAvailable', 'updatedAt', 'status', 'quantity']);
@@ -158,62 +90,24 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || admin());
-      // User documents contain contact and account data; only operators may
-      // enumerate them. Public transporter details use public_profiles.
       allow list: if admin();
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.id == userId
-        && request.resource.data.authUid == userId
+        // Admin profiles must be provisioned by a trusted Admin SDK tool.
         && request.resource.data.role in ['farmer', 'buyer', 'transporter']
-        && request.resource.data.isVerified == false
-        && request.resource.data.isSuspended == false
-        && request.resource.data.keys().hasOnly([
-          'id', 'authUid', 'name', 'displayName', 'phone', 'email', 'photoUrl',
-          'role', 'district', 'authProvider', 'isVerified', 'isSuspended',
-          'termsAcceptedAt', 'privacyAcceptedAt', 'createdAt', 'updatedAt'
-        ])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 120
-        && request.resource.data.displayName is string
-        && request.resource.data.displayName.size() <= 120
-        && request.resource.data.phone is string
-        && request.resource.data.phone.size() <= 32
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.isVerified == false;
       allow update: if admin()
         || (signedIn() && request.auth.uid == userId
           && request.resource.data.role == resource.data.role
-          && validLocationShareUpdate()
-          && validFarmDetailsUpdate()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
             'farmName', 'farmSize', 'mainCrops',
             'notificationPreferences', 'country', 'district', 'location',
             'locationUpdatedAt', 'locationAccuracy',
-            'vehicleType', 'vehicleRegistration', 'vehicleCapacity',
-            'vehicleCapacityUnit', 'vehicleDescription', 'capacityKg',
-            'serviceDistricts', 'availabilityStatus', 'locationSharingEnabled',
-            'locationShareDisabledAt'
+            'vehicleType', 'capacityKg', 'serviceDistricts', 'chatPublicKey',
+            'termsAcceptedAt', 'privacyAcceptedAt', 'phone'
           ]));
-      // Account removal must run the trusted cleanup callable first.
-      allow delete: if false;
-    }
-
-    match /public_profiles/{userId} {
-      allow read: if signedIn();
-      // Materialized and sanitized by trusted Functions only.
-      allow write: if false;
-    }
-
-    match /chat_public_keys/{userId} {
-      allow read: if signedIn();
-      allow create, update: if active() && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['publicKey', 'updatedAt'])
-        && request.resource.data.publicKey is string
-        && request.resource.data.publicKey.size() >= 40
-        && request.resource.data.publicKey.size() <= 256;
-      allow delete: if active() && request.auth.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     match /users/{userId}/device_tokens/{tokenId} {
@@ -222,93 +116,29 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if true;
-      allow create: if admin() || (farmer()
-        && request.resource.data.farmerId == uid()
-        && request.resource.data.keys().hasAll([
-          'farmerId', 'name', 'category', 'priceMinor', 'quantityAvailable', 'unit', 'location'
-        ])
-        && request.resource.data.priceMinor is int
-        && request.resource.data.priceMinor >= 0
-        && request.resource.data.quantityAvailable is int
-        && request.resource.data.quantityAvailable >= 0
-        && request.resource.data.get('media', []).size() <= 5);
-      allow update: if admin()
-        || (farmer()
-          && resource.data.farmerId == uid()
-          && request.resource.data.farmerId == resource.data.farmerId
-          && request.resource.data.get('media', []).size() <= 5)
-        // Checkout reserves stock: buyers may only decrease quantity.
-        || (buyer() && onlyStockChange()
-          && request.resource.data.quantityAvailable is int
-          && request.resource.data.quantityAvailable >= 0
-          && request.resource.data.quantityAvailable < resource.data.quantityAvailable)
-        // Harvest video is cleared automatically after delivery.
-        || (active() && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['videoPath', 'videoUrl', 'harvestStatus', 'updatedAt']));
-      allow delete: if admin()
-        || (farmer() && resource.data.farmerId == uid());
+      allow create: if false;
+      allow update: if admin();
+      allow delete: if admin();
     }
 
     match /orders/{orderId} {
-      // Checkout reads its idempotency doc (orders/idem_…) before creating
-      // it, so a signed-in user may see that a doc does NOT exist. Existing
-      // orders stay readable only by their participants.
-      allow get: if (resource == null && active())
-        || participant(resource.data) || admin();
-      allow list: if participant(resource.data) || admin();
-      // Buyer creates pending checkout orders; farmer creates confirmed orders
-      // from accepted offers. Totals and payment state are validated.
-      allow create: if admin()
-        || (buyer()
-          && request.resource.data.buyerId == uid()
-          && request.resource.data.keys().hasAll([
-            'buyerId', 'farmerId', 'productId', 'status', 'totalMinor', 'deliveryAddress'
-          ])
-          && request.resource.data.status == 'pending'
-          && buyerOrderPricingOk()
-          && newOrderPaymentOk())
-        || (farmer()
-          && request.resource.data.farmerId == uid()
-          && request.resource.data.keys().hasAll([
-            'buyerId', 'farmerId', 'productId', 'status', 'totalMinor', 'deliveryAddress', 'offerId'
-          ])
-          && get(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.farmerId == uid()
-          && get(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.buyerId == request.resource.data.buyerId
-          && request.resource.data.status == 'confirmed'
-          && newOrderPaymentOk());
-      allow update: if admin()
-        || (buyer() && resource.data.buyerId == uid()
-          && !touchesMoney()
-          && (!touchesPayment() || buyerProofSubmission(orderId) || buyerOpensDispute()))
-        || (farmer() && resource.data.farmerId == uid()
-          && !touchesMoney()
-          && (!touchesPayment() || farmerPaymentTransition()))
-        || (transporter() && !touchesMoney() && !touchesPayment() && (
-          resource.data.get('transporterId', null) == uid()
-          || (resource.data.get('transporterId', null) in [null, '']
-            && request.resource.data.transporterId == uid())
-        ));
-      allow delete: if admin();
+      allow read: if participant(resource.data) || admin();
+      allow create, delete: if false;
+      allow update: if (active() && resource.data.buyerId == uid()
+          && buyerProofSubmission(orderId))
+        || (active() && resource.data.farmerId == uid()
+          && farmerPaymentTransition());
     }
 
     match /transport_jobs/{jobId} {
       allow read: if admin()
-        || (active() && resource.data.get('transporterId', '') == uid())
-        || (active() && resource.data.farmerId == uid())
-        || (active() && resource.data.buyerId == uid())
-        || (transporter() && resource.data.status == 'requested');
-      allow create: if admin() || (farmer()
-        && request.resource.data.farmerId == uid()
-        && request.resource.data.status == 'requested'
-        && participantByOrderId(request.resource.data.orderId));
-      allow update: if admin()
-        || (farmer() && resource.data.farmerId == uid()
-          && request.resource.data.farmerId == resource.data.farmerId)
-        || (transporter() && (
-          resource.data.status == 'requested'
-          || resource.data.get('transporterId', '') == uid()
-        ) && request.resource.data.get('transporterId', uid()) == uid());
-      allow delete: if admin();
+        || (transporter() && (resource.data.transporterId == request.auth.uid
+          || (resource.data.status == 'requested'
+            && (!resource.data.keys().hasAny(['transporterId'])
+              || resource.data.transporterId == null))))
+        || (signedIn() && resource.data.farmerId == request.auth.uid)
+        || (signedIn() && resource.data.buyerId == request.auth.uid);
+      allow create, update, delete: if false;
     }
 
     match /transportJobs/{jobId} {
@@ -316,15 +146,14 @@ service cloud.firestore {
     }
 
     match /verification_docs/{documentId} {
-      allow read: if active() && (
-        resource.data.farmerId == uid()
-        || resource.data.ownerId == uid()
+      allow read: if signedIn() && (
+        resource.data.farmerId == request.auth.uid
+        || resource.data.ownerId == request.auth.uid
         || admin()
       );
       allow create: if (farmer() || transporter())
-        && request.resource.data.ownerId == uid()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.storagePath.matches('^verification/' + uid() + '/.*');
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'pending';
       allow update: if admin();
       allow delete: if admin();
     }
@@ -333,36 +162,26 @@ service cloud.firestore {
       allow read: if resource.data.moderationStatus == 'approved'
         || resource.data.status == 'approved'
         || admin()
-        || (active() && resource.data.reviewerId == uid());
+        || (signedIn() && resource.data.reviewerId == request.auth.uid);
       allow create: if buyer()
-        && request.resource.data.reviewerId == uid()
-        && request.resource.data.moderationStatus == 'pending'
-        && participantByOrderId(request.resource.data.orderId);
+        && request.resource.data.reviewerId == request.auth.uid;
       // Admin moderation writes status / moderationNote / moderatedAt.
       allow update: if admin();
       allow delete: if admin();
     }
 
     match /disputes/{disputeId} {
-      allow read: if (active() && resource.data.openedBy == uid()) || admin();
+      allow read: if signedIn() && (resource.data.openedBy == request.auth.uid || admin());
       allow create: if active()
-        && request.resource.data.openedBy == uid()
-        && request.resource.data.status == 'open'
-        && participantByOrderId(request.resource.data.orderId);
+        && request.resource.data.openedBy == request.auth.uid;
       allow update: if admin();
       allow delete: if admin();
     }
 
     match /barcodes/{barcodeId} {
-      allow read: if admin() || participantByOrderId(resource.data.orderId);
-      allow create: if admin() || (farmer()
-        && request.resource.data.farmerId == uid()
-        && orderDoc(request.resource.data.orderId).farmerId == uid());
-      // Buyer verification only records the scan.
-      allow update: if admin() || (buyer()
-        && orderDoc(resource.data.orderId).buyerId == uid()
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'verifiedBy', 'verifiedAt', 'scanCount']));
+      allow read: if signedIn();
+      allow create: if farmer() || admin();
+      allow update: if buyer() || farmer() || admin();
       allow delete: if admin();
     }
 
@@ -371,73 +190,21 @@ service cloud.firestore {
     // photos reference Storage objects under chat/{orderId}/{sender}/ or the
     // sender's payment slip under payment_slips/{orderId}/.
     match /messages/{messageId} {
-      allow read: if participantByOrderId(resource.data.orderId)
-        && (resource.data.senderId == uid()
-          || resource.data.receiverId == uid()
-          || resource.data.recipientId == uid());
-      allow create: if admin() || (active() && validNewMessage());
+      allow read: if signedIn() && (resource.data.senderId == request.auth.uid
+        || resource.data.receiverId == request.auth.uid
+        || resource.data.recipientId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.keys().hasAll(['ciphertext', 'senderId', 'orderId']);
       allow update, delete: if false;
-
-      function validNewMessage() {
-        let d = request.resource.data;
-        let convo = get(/databases/$(database)/documents/conversations/$(d.conversationId)).data;
-        let hasText = d.keys().hasAny(['ciphertext']);
-        let hasImage = d.keys().hasAny(['attachmentUrl']);
-        return d.keys().hasOnly(['orderId', 'conversationId', 'senderId',
-            'receiverId', 'recipientId', 'type', 'ciphertext', 'attachmentUrl',
-            'attachmentPath', 'attachmentKind', 'createdAt'])
-          && d.senderId == uid()
-          && d.receiverId == d.recipientId
-          && d.receiverId != uid()
-          && convo.orderId == d.orderId
-          && uid() in convo.participantIds
-          && d.receiverId in convo.participantIds
-          && participantByOrderId(d.orderId)
-          && d.createdAt == request.time
-          && (hasText || hasImage)
-          && (!hasText || (d.ciphertext is string
-            && d.ciphertext.size() >= 16 && d.ciphertext.size() <= 20000))
-          && (!hasImage || validAttachment(d));
-      }
-      function validAttachment(d) {
-        return d.type == 'image'
-          && d.attachmentUrl is string && d.attachmentUrl.size() < 2048
-          && d.attachmentUrl.matches('^https?://.*')
-          && d.attachmentPath is string
-          && ((d.attachmentKind == 'photo'
-              && d.attachmentPath.matches('^chat/' + d.orderId + '/' + uid() + '/[^/]+$'))
-            || (d.attachmentKind == 'payment_proof'
-              && orderDoc(d.orderId).buyerId == uid()
-              && d.attachmentPath.matches('^payment_slips/' + d.orderId + '/' + uid() + '_[^/]+$')));
-      }
     }
 
     match /conversations/{conversationId} {
-      // `resource == null` lets a participant check whether their
-      // deterministic conversation exists before creating it.
-      allow get: if active()
-        && (resource == null || uid() in resource.data.participantIds);
-      allow list: if active() && uid() in resource.data.participantIds;
-      // Id is o_{orderId}_{uidA}_{uidB} (sorted), so it can't be duplicated.
-      allow create: if admin() || (active()
-        && request.resource.data.participantIds is list
-        && request.resource.data.participantIds.size() == 2
-        && request.resource.data.participantIds[0] < request.resource.data.participantIds[1]
-        && uid() in request.resource.data.participantIds
-        && conversationId == 'o_' + request.resource.data.orderId + '_'
-          + request.resource.data.participantIds[0] + '_'
-          + request.resource.data.participantIds[1]
-        && isOrderParty(orderDoc(request.resource.data.orderId), request.resource.data.participantIds[0])
-        && isOrderParty(orderDoc(request.resource.data.orderId), request.resource.data.participantIds[1])
-        && participant(orderDoc(request.resource.data.orderId))
-        && request.resource.data.keys().hasOnly(['orderId', 'participantIds',
-          'lastMessage', 'lastMessageAt', 'unreadCounts', 'createdAt']));
-      allow update: if admin() || (active()
-        && uid() in resource.data.participantIds
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['lastMessage', 'lastMessageAt', 'unreadCounts'])
-        && request.resource.data.lastMessage is string
-        && request.resource.data.lastMessage.size() <= 200);
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.participantIds;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.participantIds;
       allow delete: if admin();
     }
 
@@ -470,25 +237,41 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    match /market_price_reports/{reportId} {
+      allow read: if admin() || (signedIn() && resource.data.reporterId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /produce_requests/{requestId} {
+      allow read: if admin()
+        || (signedIn() && resource.data.buyerId == request.auth.uid)
+        || (farmer() && resource.data.status == 'open' && userDoc(request.auth.uid).isVerified == true);
+      allow create, update, delete: if false;
+
+      match /quotes/{farmerId} {
+        allow read: if admin()
+          || (signedIn() && get(/databases/$(database)/documents/produce_requests/$(requestId)).data.buyerId == request.auth.uid)
+          || (signedIn() && farmerId == request.auth.uid);
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /crop_plans/{cropId} {
+      allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /farm_tasks/{taskId} {
+      allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
     match /notifications/{notificationId} {
-      allow read: if active() && resource.data.userId == uid();
-      allow update: if active() && resource.data.userId == uid()
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      // Spark: the acting user notifies the other party of an order event.
-      allow create: if admin() || (active()
-        && request.resource.data.keys().hasOnly([
-          'userId', 'title', 'body', 'type', 'referenceId', 'orderId', 'read', 'createdAt'
-        ])
-        && request.resource.data.userId is string
-        && request.resource.data.userId != uid()
-        && request.resource.data.read == false
-        && request.resource.data.type in ['order', 'payment', 'message', 'offer',
-          'transport', 'general', 'dispute', 'review', 'verification']
-        && request.resource.data.title is string
-        && request.resource.data.title.size() <= 80
-        && request.resource.data.body is string
-        && request.resource.data.body.size() <= 300);
-      allow delete: if admin() || (active() && resource.data.userId == uid());
+      allow create: if signedIn();
+      allow delete: if admin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /audit_logs/{logId} {
@@ -499,15 +282,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Payout requests: recipients see their own; admins manage all. Client
-    // requests are constrained to a pending self-payout with sane amounts.
+    // Market price benchmarks: public read, admin-managed.
+    match /market_prices/{priceId} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Treasury payouts: recipients see their own; admins manage all.
+    // Client-created payouts are constrained field-by-field: self-recipient,
+    // pending status only, bounded consistent amounts — so a malicious client
+    // cannot forge a settled payout or impersonate another beneficiary.
+    // Actual disbursement happens only through the admin approval flow.
     match /settlements/{settlementId} {
       allow read: if admin()
-        || (active() && resource.data.recipientId == uid());
+        || (signedIn() && resource.data.recipientId == request.auth.uid);
       allow create: if admin()
-        || (active()
-          && request.resource.data.recipientId == uid()
-          && request.resource.data.recipientRole in ['farmer', 'transporter']
+        || (signedIn()
+          && request.resource.data.recipientId == request.auth.uid
+          && request.resource.data.recipientRole in ['farmer', 'transporter', 'buyer']
           && request.resource.data.status == 'pending'
           && request.resource.data.grossAmount is number
           && request.resource.data.grossAmount > 0
@@ -523,7 +315,8 @@ service cloud.firestore {
           && request.resource.data.bankName.size() <= 100
           && request.resource.data.accountNumber is string
           && request.resource.data.accountNumber.size() >= 4
-          && request.resource.data.accountNumber.size() <= 40);
+          && request.resource.data.accountNumber.size() <= 40
+          && request.resource.data.payoutMethod in ['CEFT', 'SLIP', 'Mobile Wallet']);
       allow update: if admin();
       allow delete: if false;
     }
@@ -531,7 +324,7 @@ service cloud.firestore {
     // Transporter issue reports for active hauls.
     match /transport_job_issues/{reportId} {
       allow read: if admin()
-        || (active() && resource.data.logisticsProviderId == uid());
+        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
       allow create: if transporter()
         && request.resource.data.logisticsProviderId == uid();
       allow update, delete: if false;
@@ -540,45 +333,26 @@ service cloud.firestore {
     // Transporter delivery ratings.
     match /transport_job_ratings/{ratingId} {
       allow read: if admin()
-        || (active() && resource.data.logisticsProviderId == uid());
+        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
       allow create: if transporter()
         && request.resource.data.logisticsProviderId == uid();
       allow update, delete: if false;
     }
 
     match /offers/{offerId} {
-      allow read: if active()
-        && (resource.data.buyerId == uid()
-          || resource.data.farmerId == uid()
+      allow read: if signedIn()
+        && (resource.data.buyerId == request.auth.uid
+          || resource.data.farmerId == request.auth.uid
           || admin());
-      allow create: if admin() || (buyer()
-        && request.resource.data.buyerId == uid()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.farmerId
-          == get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.farmerId);
-      allow update: if admin()
-        || (buyer() && resource.data.buyerId == uid()
-          && request.resource.data.buyerId == resource.data.buyerId
-          && request.resource.data.farmerId == resource.data.farmerId)
-        || (farmer() && resource.data.farmerId == uid()
-          && request.resource.data.buyerId == resource.data.buyerId
-          && request.resource.data.farmerId == resource.data.farmerId);
+      allow create, update: if false;
       allow delete: if admin();
     }
 
     match /reports/{reportId} {
       allow read: if admin();
       allow list: if admin();
-      allow create: if active()
-        && request.resource.data.reporterId == uid()
-        && request.resource.data.keys().hasOnly([
-          'reporterId', 'targetType', 'targetId', 'reason', 'details', 'createdAt'
-        ])
-        && request.resource.data.reason is string
-        && request.resource.data.reason.size() > 0
-        && request.resource.data.reason.size() <= 120
-        && request.resource.data.details is string
-        && request.resource.data.details.size() <= 2000;
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid;
       allow update, delete: if false;
     }
 

@@ -34,6 +34,7 @@ void main() {
   test('open jobs get a suitability score in the valid range', () async {
     final controller = TransporterController(
       repository: MockCollectionJobRepository(),
+      providerId: 'test-provider',
     );
     await _waitForLoad(controller);
     expect(controller.availableJobs, isNotEmpty);
@@ -144,6 +145,7 @@ void main() {
   test('search, location, produce and date filters combine', () async {
     final controller = TransporterController(
       repository: MockCollectionJobRepository(),
+      providerId: 'test-provider',
     );
     await _waitForLoad(controller);
 

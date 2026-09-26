@@ -15,6 +15,7 @@ import '../../../models/user_role.dart';
 import '../../../models/verification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/user_location_service.dart';
+import '../../auth/presentation/auth_gate.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../payments/presentation/bank_details_screen.dart';
@@ -1056,7 +1057,14 @@ class _LogoutButton extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) await state.signOut();
+    if (confirmed != true) return;
+    await state.signOut();
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthGate()),
+        (route) => false,
+      );
+    }
   }
 
   @override

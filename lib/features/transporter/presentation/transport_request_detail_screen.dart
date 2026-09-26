@@ -294,8 +294,17 @@ class TransportRequestDetailScreen extends StatelessWidget {
     if (!job.accepted && job.status == 'requested') {
       return FilledButton(
         onPressed: () {
-          context.read<FarmoraState>().acceptJob(job.id);
-          Navigator.of(context).pop();
+          () async {
+            try {
+              await context.read<FarmoraState>().acceptJob(job.id);
+              if (context.mounted) Navigator.of(context).pop();
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not accept job: $e')),
+              );
+            }
+          }();
         },
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),

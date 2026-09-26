@@ -297,7 +297,7 @@ List<FlowStep> farmerFlowSteps() {
     final convo =
         await service.ensureConversation(orderId: bankOrderId, peerId: buyerId);
     final msgs = await service
-        .messagesStream(convo.id, orderId: bankOrderId, uid: farmerId)
+        .messagesStream(convo.id)
         .first;
     final proof = msgs.singleWhere((m) => m.isPaymentProof);
     // Farmer can download the slip (what the full-screen viewer loads).
@@ -380,7 +380,7 @@ List<FlowStep> farmerFlowSteps() {
 
     // Farmer's chat screen query shows both photos; each one downloads.
     final farmerView = await _op('farmer chat query', () => service
-        .messagesStream(farmerConvo.id, orderId: codOrderId, uid: farmerId)
+        .messagesStream(farmerConvo.id)
         .first);
     final photos = farmerView.where((m) => m.hasImage).toList();
     expect(photos.length, 2);
@@ -394,7 +394,7 @@ List<FlowStep> farmerFlowSteps() {
   steps.add(('9. outsiders cannot read slips, orders or chats', () async {
     await _signIn(strangerEmail);
     final msgs = await service
-        .messagesStream('o_${bankOrderId}_x', orderId: bankOrderId, uid: 'x')
+        .messagesStream('o_${bankOrderId}_x')
         .first
         .then((_) => 'read', onError: (_) => 'denied');
     expect(msgs, 'denied');

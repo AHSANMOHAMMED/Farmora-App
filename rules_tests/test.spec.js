@@ -8,7 +8,7 @@ before(async () => {
     projectId: "farmora-test",
     firestore: {
       host: "127.0.0.1",
-      port: 8080,
+      port: 8085,
       rules: fs.readFileSync("../firestore.rules", "utf8"),
     },
   });
@@ -49,12 +49,12 @@ beforeEach(async () => {
 });
 
 describe("Farmora Firestore Rules", () => {
-  it("should allow a farmer to update their own product but not another farmer's", async () => {
+  it("should deny client product writes so validation runs through Cloud Functions", async () => {
     const farmer1Db = testEnv.authenticatedContext('farmer1').firestore();
     const farmer2Db = testEnv.authenticatedContext('farmer2').firestore();
     
-    // Farmer 1 updates their product
-    await assertSucceeds(farmer1Db.collection("products").doc("prod1").update({ name: "Updated" }));
+    // Even the owner uses the backend callable for validated product changes.
+    await assertFails(farmer1Db.collection("products").doc("prod1").update({ name: "Updated" }));
     
     // Farmer 2 fails to update Farmer 1's product
     await assertFails(farmer2Db.collection("products").doc("prod1").update({ name: "Hacked" }));
@@ -80,10 +80,10 @@ describe("Farmora Firestore Rules", () => {
     await assertFails(strangerDb.collection("orders").doc("order1").get());
   });
 
-  it("should allow admins to do anything", async () => {
+  it("allows admin product moderation but keeps order mutations backend-only", async () => {
     const adminDb = testEnv.authenticatedContext('admin1', { admin: true }).firestore();
     
     await assertSucceeds(adminDb.collection("products").doc("prod1").delete());
-    await assertSucceeds(adminDb.collection("orders").doc("order1").delete());
+    await assertFails(adminDb.collection("orders").doc("order1").delete());
   });
 });

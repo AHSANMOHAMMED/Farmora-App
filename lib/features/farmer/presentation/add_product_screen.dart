@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart' show FieldValue;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -253,6 +252,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
     final state = context.read<FarmoraState>();
+    if (state.currentUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to publish products.')),
+      );
+      return;
+    }
     final name = _nameController.text.trim();
     final quantityVal = int.tryParse(_quantityController.text.trim()) ?? 0;
     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -325,71 +330,44 @@ class _AddProductScreenState extends State<AddProductScreen> {
     // ownership (farmerId) and server-managed fields are never touched.
     try {
       if (isEdit) {
-        if (signedIn) {
-          await _firestore.updateProduct(productId, {
-            'name': name,
-            'category': _category,
-            'description': description,
-            'unit': _unit,
-            'location': location,
-            'media': media,
-            'imageUrls': media,
-            'images': media,
-            'imagePath': media.isNotEmpty ? media.first : null,
-            'quantityAvailable': quantityVal,
-            'quantity': '$quantityVal $_unit available',
-            'priceMinor': (priceVal * 100).round(),
-            'pricePerUnit': priceVal,
-            'price': 'LKR ${priceVal.toStringAsFixed(2)} / $_unit',
-            'isOrganic': _isOrganic,
-            'availabilityDate': _availabilityDate?.toIso8601String(),
-            'status': productStatus,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-          // Replaced/removed photos are no longer referenced anywhere.
-          for (final url in _originalUrls.difference(media.toSet())) {
-            _firestore.deleteOwnProductImage(url);
-          }
-        } else {
-          state.updateProduct(newProduct);
+        await state.updateProduct(newProduct);
+        // Replaced/removed photos are no longer referenced anywhere.
+        for (final url in _originalUrls.difference(media.toSet())) {
+          _firestore.deleteOwnProductImage(url);
         }
       } else {
-        if (signedIn) {
-          final newId = await _firestore.createSecureProduct(newProduct);
-          if (!mounted) return;
-          final uploadVideo = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(ctx.l10n.addHarvestVideo),
-              content: Text(ctx.l10n.farmerAddProductVideoPrompt),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(ctx.l10n.skip),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(ctx.l10n.upload),
-                ),
-              ],
-            ),
+        final newId = await _firestore.createSecureProduct(newProduct);
+        if (!mounted) return;
+        final uploadVideo = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(ctx.l10n.addHarvestVideo),
+            content: Text(ctx.l10n.farmerAddProductVideoPrompt),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(ctx.l10n.skip),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(ctx.l10n.upload),
+              ),
+            ],
+          ),
+        );
+        if (uploadVideo == true && mounted) {
+          final file = await _picker.pickVideo(
+            source: ImageSource.gallery,
+            maxDuration: const Duration(minutes: 3),
           );
-          if (uploadVideo == true && mounted) {
-            final file = await _picker.pickVideo(
-              source: ImageSource.gallery,
-              maxDuration: const Duration(minutes: 3),
+          if (file != null) {
+            final bytes = await file.readAsBytes();
+            await state.uploadHarvestVideo(
+              productId: newId,
+              bytes: bytes,
+              fileName: file.name,
             );
-            if (file != null) {
-              final bytes = await file.readAsBytes();
-              await state.uploadHarvestVideo(
-                productId: newId,
-                bytes: bytes,
-                fileName: file.name,
-              );
-            }
           }
-        } else {
-          state.addProduct(newProduct);
         }
       }
       _saved = true;
@@ -543,7 +521,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
                                   labelOf: (v) => farmerUnitLabel(v, l),
                                   onChanged: (val) {
-                                    if (val != null) setState(() => _unit = val);
+                                    if (val != null) {
+                                      setState(() => _unit = val);
+                                    }
                                   },
                                 ),
                               ],
@@ -562,7 +542,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           hintText: '0.00',
                           hintStyle: TextStyle(
                             fontFamily: 'Inter',
-                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.50),
+                            color: AppColors.onSurfaceVariant
+                                .withValues(alpha: 0.50),
                           ),
                           // LKR prefix for Sri Lankan pricing
                           prefixText: 'LKR ',
@@ -575,17 +556,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           fillColor: AppColors.surfaceContainerLowest,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
+                            borderSide: const BorderSide(
+                                color: AppColors.outlineVariant),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.outlineVariant),
+                            borderSide: const BorderSide(
+                                color: AppColors.outlineVariant),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                            borderSide: const BorderSide(
+                                color: AppColors.primary, width: 2),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 16),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -1019,7 +1004,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more, color: AppColors.onSurfaceVariant, size: 22),
+          icon: const Icon(Icons.expand_more,
+              color: AppColors.onSurfaceVariant, size: 22),
           items: items.map((item) {
             return DropdownMenuItem(
               value: item,
