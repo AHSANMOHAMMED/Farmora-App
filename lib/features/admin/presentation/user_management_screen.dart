@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
@@ -375,10 +376,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(bCtx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
-                  );
+                  AppNavigator.push(context, const VerificationReviewScreen());
                 },
               ),
 

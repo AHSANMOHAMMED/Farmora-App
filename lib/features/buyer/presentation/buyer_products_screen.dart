@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
-import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
@@ -310,11 +310,7 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
     final l = context.l10n;
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(product: product),
-          ),
-        );
+        AppNavigator.openProductDetail(context, product);
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(

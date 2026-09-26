@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -25,7 +26,6 @@ import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/cart_screen.dart';
-import '../../buyer/presentation/product_detail_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import '../../transporter/presentation/active_delivery_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
@@ -1726,10 +1726,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         else
           ...products.take(4).map((product) {
             return GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(product: product)),
-              ),
+              onTap: () => AppNavigator.openProductDetail(context, product),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,7 +13,6 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../payments/presentation/order_payment_card.dart';
-import 'logistics_tracking_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -665,11 +665,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          Navigator.push(
+                          AppNavigator.openLogisticsTracking(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => LogisticsTrackingScreen(order: currentOrder),
-                            ),
+                            currentOrder,
                           );
                         },
                         style: OutlinedButton.styleFrom(

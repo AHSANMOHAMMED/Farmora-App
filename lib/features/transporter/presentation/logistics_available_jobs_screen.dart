@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
-import 'collection_job_details_screen.dart';
 import 'widgets/collection_job_card.dart';
 import 'widgets/transporter_states.dart';
 
@@ -289,11 +289,7 @@ class _JobsBody extends StatelessWidget {
           return CollectionJobCard(
             job: job,
             score: state.suitabilityFor(job),
-            onViewDetails: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CollectionJobDetailsScreen(jobId: job.id),
-              ),
-            ),
+            onViewDetails: () => AppNavigator.openCollectionJobDetail(context, job.id),
           );
         },
       ),

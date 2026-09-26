@@ -10,6 +10,7 @@ import '../../../models/conversation_model.dart';
 import '../../../models/notification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
+import '../../../core/navigation/app_navigator.dart';
 import '../../home/presentation/order_navigation.dart';
 import '../../messaging/presentation/chat_screen.dart';
 
@@ -189,9 +190,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _snack('This conversation is no longer available.');
         return;
       }
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ChatScreen(conversation: conversation!),
-      ));
+      await AppNavigator.push(context, ChatScreen(conversation: conversation!));
     } catch (e, st) {
       _snack(userMessage(e, action: 'open the chat', stack: st));
     }

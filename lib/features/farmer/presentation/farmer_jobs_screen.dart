@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/async_state_view.dart';
@@ -7,7 +8,6 @@ import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
-import 'logistics_tracking_screen.dart';
 
 class FarmerJobsScreen extends StatelessWidget {
   const FarmerJobsScreen({super.key});
@@ -175,12 +175,9 @@ class FarmerJobsScreen extends StatelessWidget {
                               color: const Color(0xFF2E7D32),
                               timestamp: context.l10n.commonToday,
                             );
-                        Navigator.push(
+                        AppNavigator.openLogisticsTracking(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                LogisticsTrackingScreen(order: targetOrder),
-                          ),
+                          targetOrder,
                         );
                       },
                       icon: const Icon(Icons.navigation_outlined, size: 16),

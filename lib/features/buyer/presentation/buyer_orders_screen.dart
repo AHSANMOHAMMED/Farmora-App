@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
-import 'buyer_order_detail_screen.dart';
 import 'cart_screen.dart';
 import 'buyer_products_screen.dart';
 import 'buyer_l10n.dart';
@@ -266,11 +266,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BuyerOrderDetailScreen(order: order),
-          ),
-        );
+        AppNavigator.openBuyerOrderDetail(context, order);
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -479,11 +475,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                     ],
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BuyerOrderDetailScreen(order: order),
-                          ),
-                        );
+                        AppNavigator.openBuyerOrderDetail(context, order);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

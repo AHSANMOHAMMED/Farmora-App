@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
@@ -297,10 +298,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsMarketPriceTitle),
             subtitle: Text(l.adminSettingsMarketPriceSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MarketPriceManagementScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const MarketPriceManagementScreen()),
           ),
           const Divider(),
           ListTile(
@@ -308,10 +306,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsBroadcastTitle),
             subtitle: Text(l.adminSettingsBroadcastSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BroadcastAdvisoryScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const BroadcastAdvisoryScreen()),
           ),
           const Divider(),
           ListTile(
@@ -319,10 +314,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsDisputeTitle),
             subtitle: Text(l.adminSettingsDisputeSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DisputeResolutionScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const DisputeResolutionScreen()),
           ),
           const Divider(),
           ListTile(
@@ -330,10 +322,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsKycTitle),
             subtitle: Text(l.adminSettingsKycSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const VerificationReviewScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const VerificationReviewScreen()),
           ),
           const Divider(),
           ListTile(
@@ -341,10 +330,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsAnalyticsTitle),
             subtitle: Text(l.adminSettingsAnalyticsSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PlatformAnalyticsScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const PlatformAnalyticsScreen()),
           ),
           const Divider(),
           ListTile(
@@ -352,10 +338,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminReviewsTitle),
             subtitle: Text(l.adminSettingsReviewsSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ReviewManagementScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const ReviewManagementScreen()),
           ),
           const Divider(),
           ListTile(
@@ -363,10 +346,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminServerTitle),
             subtitle: Text(l.adminSettingsServerSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ServerMaintenanceScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const ServerMaintenanceScreen()),
           ),
           const Divider(),
           ListTile(
@@ -374,10 +354,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsTreasuryTitle),
             subtitle: Text(l.adminSettingsTreasurySubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettlementManagementScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const SettlementManagementScreen()),
           ),
           const Divider(),
           ListTile(
@@ -385,10 +362,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsFleetTitle),
             subtitle: Text(l.adminSettingsFleetSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LogisticsManagementScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const LogisticsManagementScreen()),
           ),
           const Divider(),
           ListTile(
@@ -396,10 +370,7 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             title: Text(l.adminSettingsAuditTitle),
             subtitle: Text(l.adminSettingsAuditSubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AuditLogScreen()),
-            ),
+            onTap: () => AppNavigator.push(context, const AuditLogScreen()),
           ),
         ],
       ),

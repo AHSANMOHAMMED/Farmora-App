@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
-import 'collection_job_details_screen.dart';
 import 'transporter_payouts_screen.dart';
 import 'widgets/collection_job_card.dart';
 import 'widgets/transporter_actions.dart';
@@ -131,12 +131,8 @@ class LogisticsDashboardScreen extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: CollectionJobCard(
                       job: job,
-                      onViewDetails: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CollectionJobDetailsScreen(jobId: job.id),
-                        ),
-                      ),
+                      onViewDetails: () =>
+                          AppNavigator.openCollectionJobDetail(context, job.id),
                     ),
                   ),
                 ),
