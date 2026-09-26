@@ -39,6 +39,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int tabIndex = 0;
+  bool _isSidebarCollapsed = false;
 
   /// Installed app version (package_info_plus); null until read / on error.
   String? _appVersion;
@@ -265,62 +266,479 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final safeTabIndex = tabIndex >= screens.length ? 0 : tabIndex;
-    return Scaffold(
-      body: IndexedStack(
-        index: safeTabIndex,
-        children: screens,
-      ),
-      // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.92),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, -1),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 768;
+
+        if (isDesktop) {
+          return Scaffold(
+            body: Row(
+              children: [
+                _buildSidebar(
+                  context: context,
+                  state: state,
+                  role: role,
+                  navItems: navItems,
+                  selectedIndex: safeTabIndex,
+                  isCollapsed: _isSidebarCollapsed,
+                  onToggleCollapse: () {
+                    setState(() {
+                      _isSidebarCollapsed = !_isSidebarCollapsed;
+                    });
+                  },
+                  onSelectTab: (index) {
+                    setState(() {
+                      tabIndex = index;
+                    });
+                  },
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.35),
+                ),
+                Expanded(
+                  child: IndexedStack(
+                    index: safeTabIndex,
+                    children: screens,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: NavigationBar(
-          height: 72,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
-          indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-          selectedIndex: safeTabIndex,
-          onDestinationSelected: (i) => setState(() => tabIndex = i),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          // Small labels so Tamil/Sinhala fit six tabs on a 360px phone.
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => TextStyle(
-              fontSize: 11,
-              height: 1.1,
-              fontWeight: states.contains(WidgetState.selected)
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-              color: states.contains(WidgetState.selected)
-                  ? AppColors.primary
-                  : AppColors.onSurfaceVariant,
-            ),
+          );
+        }
+
+        return Scaffold(
+          body: IndexedStack(
+            index: safeTabIndex,
+            children: screens,
           ),
-          destinations: navItems.asMap().entries.map(
-            (e) {
-              final isSelected = safeTabIndex == e.key;
-              final item = e.value;
-              return NavigationDestination(
-                icon: Icon(
-                  isSelected ? item.activeIcon : item.icon,
-                  color: isSelected
+          // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.92),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, -1),
+                ),
+              ],
+            ),
+            child: NavigationBar(
+              height: 72,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
+              indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
+              selectedIndex: safeTabIndex,
+              onDestinationSelected: (i) => setState(() => tabIndex = i),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              // Small labels so Tamil/Sinhala fit six tabs on a 360px phone.
+              labelTextStyle: WidgetStateProperty.resolveWith(
+                (states) => TextStyle(
+                  fontSize: 11,
+                  height: 1.1,
+                  fontWeight: states.contains(WidgetState.selected)
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  color: states.contains(WidgetState.selected)
                       ? AppColors.primary
                       : AppColors.onSurfaceVariant,
                 ),
-                label: item.label,
-                tooltip: item.label,
-              );
-            },
-          ).toList(),
+              ),
+              destinations: navItems.asMap().entries.map(
+                (e) {
+                  final isSelected = safeTabIndex == e.key;
+                  final item = e.value;
+                  return NavigationDestination(
+                    icon: Icon(
+                      isSelected ? item.activeIcon : item.icon,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.onSurfaceVariant,
+                    ),
+                    label: item.label,
+                    tooltip: item.label,
+                  );
+                },
+              ).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSidebar({
+    required BuildContext context,
+    required FarmoraState state,
+    required Role role,
+    required List<_NavItem> navItems,
+    required int selectedIndex,
+    required bool isCollapsed,
+    required VoidCallback onToggleCollapse,
+    required ValueChanged<int> onSelectTab,
+  }) {
+    final double sidebarWidth = isCollapsed ? 76.0 : 256.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      width: sidebarWidth,
+      color: Colors.white,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header: Logo + App title + Role badge + Collapse toggle
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCollapsed ? 12.0 : 16.0,
+                vertical: 18.0,
+              ),
+              child: isCollapsed
+                  ? Column(
+                      children: [
+                        _buildBrandIcon(),
+                        const SizedBox(height: 12),
+                        IconButton(
+                          icon: const Icon(Icons.menu_rounded,
+                              size: 20, color: AppColors.outline),
+                          tooltip: 'Expand sidebar',
+                          splashRadius: 18,
+                          onPressed: onToggleCollapse,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _buildBrandIcon(),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Farmora',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      role.name.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    if (state.isVerified) ...[
+                                      const SizedBox(width: 3),
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        size: 11,
+                                        color: AppColors.primary,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.menu_open_rounded,
+                              size: 20, color: AppColors.outline),
+                          tooltip: 'Collapse sidebar',
+                          splashRadius: 18,
+                          onPressed: onToggleCollapse,
+                        ),
+                      ],
+                    ),
+            ),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.outlineVariant.withValues(alpha: 0.25),
+            ),
+            const SizedBox(height: 8),
+
+            // Navigation items list
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                itemCount: navItems.length,
+                itemBuilder: (context, i) {
+                  final item = navItems[i];
+                  final isSelected = selectedIndex == i;
+
+                  if (isCollapsed) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Tooltip(
+                        message: item.label,
+                        preferBelow: false,
+                        child: InkWell(
+                          onTap: () => onSelectTab(i),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isSelected ? item.activeIcon : item.icon,
+                                size: 22,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: InkWell(
+                      onTap: () => onSelectTab(i),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.10)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isSelected ? item.activeIcon : item.icon,
+                              size: 20,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isSelected)
+                              Container(
+                                width: 4,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // Footer: User card & Quick switch
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.outlineVariant.withValues(alpha: 0.25),
+            ),
+            Padding(
+              padding: EdgeInsets.all(isCollapsed ? 8.0 : 12.0),
+              child: isCollapsed
+                  ? Tooltip(
+                      message: state.displayName.isNotEmpty
+                          ? state.displayName
+                          : (state.phone.isNotEmpty
+                              ? state.phone
+                              : role.name),
+                      child: InkWell(
+                        onTap: () {
+                          final profileIdx = navItems.indexWhere((item) =>
+                              item.icon == Icons.person_outline_rounded ||
+                              item.icon == Icons.settings_outlined);
+                          if (profileIdx != -1) onSelectTab(profileIdx);
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.15),
+                          child: Text(
+                            (state.displayName.isNotEmpty
+                                    ? state.displayName[0]
+                                    : (state.phone.isNotEmpty
+                                        ? state.phone[0]
+                                        : 'U'))
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : InkWell(
+                      onTap: () {
+                        final profileIdx = navItems.indexWhere((item) =>
+                            item.icon == Icons.person_outline_rounded ||
+                            item.icon == Icons.settings_outlined);
+                        if (profileIdx != -1) onSelectTab(profileIdx);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 17,
+                              backgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.15),
+                              child: Text(
+                                (state.displayName.isNotEmpty
+                                        ? state.displayName[0]
+                                        : (state.phone.isNotEmpty
+                                            ? state.phone[0]
+                                            : 'U'))
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    state.displayName.isNotEmpty
+                                        ? state.displayName
+                                        : (state.phone.isNotEmpty
+                                            ? state.phone
+                                            : 'Farmora User'),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    state.phone.isNotEmpty
+                                        ? state.phone
+                                        : role.name,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: AppColors.outline,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  static Widget _buildBrandIcon() {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.splashGradientStart,
+            AppColors.splashGradientEnd,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.agriculture_rounded,
+        color: Colors.white,
+        size: 20,
       ),
     );
   }
