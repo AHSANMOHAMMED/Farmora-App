@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
+import '../../../models/conversation_model.dart';
+import '../../../services/firebase_service.dart';
 
 import '../data/collection_job_repository.dart';
 import '../data/transporter_account_repository.dart';
@@ -45,7 +47,12 @@ class TransporterController extends ChangeNotifier {
   StreamSubscription<List<CollectionJob>>? _jobsSubscription;
   StreamSubscription<List<TransporterNotification>>? _notificationsSubscription;
   StreamSubscription<dynamic>? _profileSubscription;
+  StreamSubscription<List<String>>? _districtsSubscription;
   int _bindingGeneration = 0;
+
+  /// Created on first use so tests without Firebase never touch it.
+  FirestoreService? _chatService;
+  FirestoreService get _chat => _chatService ??= FirestoreService();
 
   String providerId = '';
   bool isLoading = false;
@@ -68,6 +75,15 @@ class TransporterController extends ChangeNotifier {
   String vehicleCapacityUnit = 'kg';
   String vehicleDescription = '';
   bool isAvailable = false;
+
+  /// Districts the transporter serves; used by the "suitable only" filter.
+  List<String> serviceDistricts = const [];
+
+  /// Vehicle capacity in kg (null when unknown). `vehicleCapacity` with its
+  /// unit is canonical; legacy `capacityKg` is folded in by the repository.
+  double? get vehicleCapacityKg => vehicleCapacity == null
+      ? null
+      : vehicleCapacity! * (vehicleCapacityUnit == 'tons' ? 1000 : 1);
 
   List<CollectionJob> get allJobs => List.unmodifiable(_jobs);
 
@@ -192,6 +208,7 @@ class TransporterController extends ChangeNotifier {
     _jobsSubscription?.cancel();
     _notificationsSubscription?.cancel();
     _profileSubscription?.cancel();
+    _districtsSubscription?.cancel();
 
     _jobsSubscription = _repository.watchJobs(uid).listen(
       (jobs) {
@@ -239,6 +256,37 @@ class TransporterController extends ChangeNotifier {
       },
       onError: (_) {},
     );
+    _districtsSubscription =
+        _accountRepository.watchServiceDistricts(uid).listen(
+      (districts) {
+        if (generation != _bindingGeneration) return;
+        serviceDistricts = List.unmodifiable(districts);
+        notifyListeners();
+      },
+      onError: (_) {},
+    );
+  }
+
+  /// Clears everything bound to the signed-in transporter (sign-out).
+  void unbind() {
+    _bindingGeneration++;
+    _jobsSubscription?.cancel();
+    _notificationsSubscription?.cancel();
+    _profileSubscription?.cancel();
+    _districtsSubscription?.cancel();
+    _jobsSubscription = null;
+    _notificationsSubscription = null;
+    _profileSubscription = null;
+    _districtsSubscription = null;
+    providerId = '';
+    _jobs.clear();
+    _notifications.clear();
+    _ratings.clear();
+    _reportedIssues.clear();
+    serviceDistricts = const [];
+    isLoading = false;
+    loadError = null;
+    notifyListeners();
   }
 
   Future<void> loadJobs({bool refresh = false}) async {
@@ -351,12 +399,6 @@ class TransporterController extends ChangeNotifier {
         logisticsProviderId: providerId,
       );
       _replaceJob(updated);
-      _addLocalNotification(
-        type: TransporterNotificationType.accepted,
-        title: L10n.current.jobAcceptedNotifTitle,
-        message: L10n.current.jobAcceptedNotifBody(updated.produceName),
-        jobId: updated.id,
-      );
       notifyListeners();
       return TransporterActionResult.success(
         L10n.current.jobAcceptedAddedToMyJobs,
@@ -364,6 +406,54 @@ class TransporterController extends ChangeNotifier {
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
     }
+  }
+
+  /// True when [job] is a `requested` job addressed to this transporter, so
+  /// the job details screen can offer "Decline".
+  bool canDecline(CollectionJob job) =>
+      job.status == CollectionJobStatus.open &&
+      (job.logisticsProviderId == providerId ||
+          _repository.isTargetedRequest(job.id));
+
+  /// Declines a request addressed to this transporter; the farmer is
+  /// notified and the job returns to the open pool (or is re-requested).
+  Future<TransporterActionResult> declineJob(String jobId) async {
+    final job = jobById(jobId);
+    if (providerId.isEmpty || job == null || !canDecline(job)) {
+      return TransporterActionResult.failure(
+        L10n.current.jobNoLongerAvailable,
+      );
+    }
+    try {
+      await _repository.declineJob(
+        jobId: jobId,
+        logisticsProviderId: providerId,
+      );
+      _jobs.removeWhere((item) => item.id == jobId);
+      notifyListeners();
+      return const TransporterActionResult.success('Request declined.');
+    } catch (error) {
+      return TransporterActionResult.failure(_friendlyError(error));
+    }
+  }
+
+  /// Opens (without creating) the order chat with the job's farmer.
+  Future<FarmoraConversation> chatWithFarmer(String jobId) =>
+      _openChat(jobId, farmer: true);
+
+  /// Opens (without creating) the order chat with the job's buyer.
+  Future<FarmoraConversation> chatWithBuyer(String jobId) =>
+      _openChat(jobId, farmer: false);
+
+  Future<FarmoraConversation> _openChat(String jobId,
+      {required bool farmer}) async {
+    final job = jobById(jobId);
+    final orderId = job?.orderId ?? '';
+    final peerId = farmer ? job?.farmerId ?? '' : job?.buyerId ?? '';
+    if (job == null || orderId.isEmpty || peerId.isEmpty) {
+      throw AppException(L10n.current.svcNoChatPeer);
+    }
+    return _chat.ensureConversation(orderId: orderId, peerId: peerId);
   }
 
   Future<TransporterActionResult> markCollected(String jobId) =>
@@ -397,12 +487,11 @@ class TransporterController extends ChangeNotifier {
         description: description,
       );
       _reportedIssues.add(jobId);
+      notifyListeners();
       return TransporterActionResult.success(
         L10n.current.jobIssueReportedSuccess,
       );
     } catch (error) {
-      // Keep the issue visible locally even if persistence fails.
-      _reportedIssues.add(jobId);
       return TransporterActionResult.failure(_friendlyError(error));
     }
   }
@@ -425,6 +514,7 @@ class TransporterController extends ChangeNotifier {
         comment: comment,
       );
       _ratings[jobId] = (stars: stars, comment: comment.trim());
+      notifyListeners();
       return TransporterActionResult.success(L10n.current.jobThanksFeedback);
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
@@ -442,16 +532,6 @@ class TransporterController extends ChangeNotifier {
         reason: reason,
       );
       _replaceJob(updated);
-      if (nextStatus == CollectionJobStatus.completed) {
-        _addLocalNotification(
-          type: TransporterNotificationType.completed,
-          title: L10n.current.jobDeliveryCompletedNotifTitle,
-          message: L10n.current.jobDeliveryCompletedNotifBody(
-            updated.produceName,
-          ),
-          jobId: updated.id,
-        );
-      }
       notifyListeners();
       return TransporterActionResult.success(
         switch (nextStatus) {
@@ -474,8 +554,13 @@ class TransporterController extends ChangeNotifier {
     try {
       await _accountRepository.markNotificationRead(id);
     } catch (_) {
-      _notifications[index] = _notifications[index].copyWith(isRead: false);
+      final current = _notifications.indexWhere((item) => item.id == id);
+      if (current >= 0) {
+        _notifications[current] =
+            _notifications[current].copyWith(isRead: false);
+      }
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -492,30 +577,20 @@ class TransporterController extends ChangeNotifier {
         ..clear()
         ..addAll(previous);
       notifyListeners();
+      rethrow;
     }
   }
 
+  /// Availability-only update; the profile stream confirms the new value.
   Future<TransporterActionResult> setAvailability(bool value) async {
-    final previous = isAvailable;
-    isAvailable = value;
-    notifyListeners();
     try {
-      await _accountRepository.updateProfile(
-        name: profileName,
-        phone: phoneNumber,
-        vehicleType: vehicleType,
-        vehicleRegistration: vehicleRegistration,
-        vehicleCapacity: vehicleCapacity,
-        vehicleCapacityUnit: vehicleCapacityUnit,
-        vehicleDescription: vehicleDescription,
-        isAvailable: value,
-      );
+      await _accountRepository.updateAvailability(value);
+      isAvailable = value;
+      notifyListeners();
       return TransporterActionResult.success(
         L10n.current.transporterAvailabilityUpdated,
       );
     } catch (error) {
-      isAvailable = previous;
-      notifyListeners();
       return TransporterActionResult.failure(_friendlyError(error));
     }
   }
@@ -528,6 +603,7 @@ class TransporterController extends ChangeNotifier {
     required double? capacity,
     required String capacityUnit,
     required String description,
+    List<String>? districts,
   }) async {
     if (name.trim().isEmpty || phone.trim().isEmpty) {
       return TransporterActionResult.failure(
@@ -549,6 +625,10 @@ class TransporterController extends ChangeNotifier {
         vehicleCapacityUnit: capacityUnit,
         vehicleDescription: description.trim(),
         isAvailable: isAvailable,
+        serviceDistricts: districts
+            ?.map((d) => d.trim())
+            .where((d) => d.isNotEmpty)
+            .toList(),
       );
       return TransporterActionResult.success(
         L10n.current.transporterProfileUpdated,
@@ -583,7 +663,12 @@ class TransporterController extends ChangeNotifier {
     final matchesCapacity = !suitableOnly ||
         vehicleCapacity == null ||
         _capacityInKg(job) <= _capacityInKgForVehicle;
+    final matchesDistrict = !suitableOnly ||
+        serviceDistricts.isEmpty ||
+        serviceDistricts.any((district) =>
+            job.pickupLocation.toLowerCase().contains(district.toLowerCase()));
     return matchesSearch &&
+        matchesDistrict &&
         matchesLocation &&
         matchesDelivery &&
         matchesProduce &&
@@ -618,31 +703,6 @@ class TransporterController extends ChangeNotifier {
     }
   }
 
-  void _addLocalNotification({
-    required TransporterNotificationType type,
-    required String title,
-    required String message,
-    required String jobId,
-  }) {
-    if (_notifications.any(
-      (notification) =>
-          notification.jobId == jobId && notification.type == type,
-    )) {
-      return;
-    }
-    _notifications.insert(
-      0,
-      TransporterNotification(
-        id: 'local-$jobId-${type.name}',
-        type: type,
-        title: title,
-        message: message,
-        createdAt: DateTime.now(),
-        jobId: jobId,
-      ),
-    );
-  }
-
   /// Localized, user-safe message for [error] (never the raw exception).
   String _friendlyError(Object error) {
     if (error is CollectionJobException) return error.message;
@@ -655,6 +715,7 @@ class TransporterController extends ChangeNotifier {
     _jobsSubscription?.cancel();
     _notificationsSubscription?.cancel();
     _profileSubscription?.cancel();
+    _districtsSubscription?.cancel();
     super.dispose();
   }
 }
@@ -678,6 +739,10 @@ class _UnavailableTransporterAccountRepository
   Future<void> markAllNotificationsRead(String providerId) async {}
 
   @override
+  Stream<List<String>> watchServiceDistricts(String providerId) =>
+      const Stream.empty();
+
+  @override
   Future<void> updateProfile({
     required String name,
     required String phone,
@@ -687,5 +752,9 @@ class _UnavailableTransporterAccountRepository
     required String vehicleCapacityUnit,
     required String vehicleDescription,
     required bool isAvailable,
+    List<String>? serviceDistricts,
   }) async {}
+
+  @override
+  Future<void> updateAvailability(bool isAvailable) async {}
 }

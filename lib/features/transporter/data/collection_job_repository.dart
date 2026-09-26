@@ -52,6 +52,17 @@ abstract interface class CollectionJobRepository {
     required String logisticsProviderId,
   });
 
+  /// Declines a job that was requested for [logisticsProviderId] (targeted
+  /// request from a buyer, or legacy pre-assigned `requested` job).
+  Future<void> declineJob({
+    required String jobId,
+    required String logisticsProviderId,
+  });
+
+  /// True when [jobId] is a `requested` job addressed to this transporter
+  /// (so it can be declined). Based on the latest [watchJobs]/[getJobs] data.
+  bool isTargetedRequest(String jobId);
+
   Future<CollectionJob> updateStatus({
     required String jobId,
     required String logisticsProviderId,
@@ -59,7 +70,7 @@ abstract interface class CollectionJobRepository {
     String? reason,
   });
 
-  /// Persists an issue report for [jobId] so it survives app restarts.
+  /// Persists an issue report for [jobId] (a new document per report).
   Future<void> reportIssue({
     required String jobId,
     required String logisticsProviderId,

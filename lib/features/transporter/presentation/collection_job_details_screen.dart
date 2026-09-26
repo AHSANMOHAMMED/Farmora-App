@@ -5,10 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import '../../messaging/presentation/chat_screen.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
+import 'active_delivery_screen.dart';
 import 'widgets/job_status_chip.dart';
 import 'widgets/job_timeline.dart';
+import 'widgets/live_location.dart';
 import 'widgets/transporter_actions.dart';
 import 'widgets/transporter_states.dart';
 
@@ -118,21 +122,59 @@ class _CollectionJobDetailsScreenState
               children: [
                 _ContactRow(
                   icon: Icons.agriculture_outlined,
+                  role: l10n.roleFarmer,
                   name: job.farmerName,
                   phone: job.farmerPhone,
                   onCall: () => _openPhone(job.farmerPhone),
                   onWhatsApp: () => _openWhatsApp(job.farmerPhone),
+                  onChat: _canChat(job, farmer: true)
+                      ? () => _openChat(context, state, job, farmer: true)
+                      : null,
                 ),
                 const Divider(height: 24),
                 _ContactRow(
                   icon: Icons.storefront_outlined,
+                  role: l10n.roleBuyer,
                   name: job.buyerName,
                   phone: job.buyerPhone,
                   onCall: () => _openPhone(job.buyerPhone),
                   onWhatsApp: () => _openWhatsApp(job.buyerPhone),
+                  onChat: _canChat(job, farmer: false)
+                      ? () => _openChat(context, state, job, farmer: false)
+                      : null,
                 ),
               ],
             ),
+            if (job.status.isActive) ...[
+              const SizedBox(height: 14),
+              _Section(
+                title: l10n.jobActiveDeliveryTitle,
+                children: [
+                  Text(
+                    l10n.jobSharingOffHelp,
+                    style: const TextStyle(
+                      color: AppColors.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ActiveDeliveryScreen(job: transportJobFrom(job)),
+                      ),
+                    ),
+                    icon: const Icon(Icons.my_location_rounded),
+                    label: Text(
+                      l10n.jobShareLiveLocation,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 14),
             _Section(
               title: l10n.jobNavigation,
@@ -309,6 +351,17 @@ class _CollectionJobDetailsScreenState
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (job.status == CollectionJobStatus.open &&
+                state.canDecline(job)) ...[
+              const SizedBox(height: 6),
+              TextButton(
+                onPressed: _busy ? null : () => _decline(context, state, job),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Decline request'),
+              ),
+            ],
             if (job.logisticsProviderId == state.providerId &&
                 (job.status == CollectionJobStatus.accepted ||
                     job.status == CollectionJobStatus.collected)) ...[
@@ -392,6 +445,69 @@ class _CollectionJobDetailsScreenState
     if (!context.mounted) return;
     setState(() => _busy = false);
     showTransporterResult(context, result);
+    if (result.success) await syncLiveSharing(context, job.id, nextStatus);
+  }
+
+  Future<void> _decline(
+    BuildContext context,
+    TransporterController state,
+    CollectionJob job,
+  ) async {
+    final confirmed = await confirmTransporterAction(
+      context,
+      title: 'Decline this request?',
+      message: 'The farmer will be notified so the delivery can be offered '
+          'to another transporter.',
+      confirmLabel: 'Decline',
+      destructive: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    setState(() => _busy = true);
+    final result = await state.declineJob(job.id);
+    if (!context.mounted) return;
+    setState(() => _busy = false);
+    showTransporterResult(context, result);
+    if (result.success) Navigator.of(context).maybePop();
+  }
+
+  bool _canChat(CollectionJob job, {required bool farmer}) =>
+      (job.orderId ?? '').isNotEmpty &&
+      (farmer ? job.farmerId : job.buyerId).isNotEmpty;
+
+  Future<void> _openChat(
+    BuildContext context,
+    TransporterController state,
+    CollectionJob job, {
+    required bool farmer,
+  }) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final conversation = farmer
+          ? await state.chatWithFarmer(job.id)
+          : await state.chatWithBuyer(job.id);
+      if (!context.mounted) return;
+      setState(() => _busy = false);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(conversation: conversation),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      setState(() => _busy = false);
+      _showError(context, userMessage(error, action: 'open the chat'));
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
   }
 
   Future<void> _cancel(BuildContext context, TransporterController state,
@@ -431,6 +547,9 @@ class _CollectionJobDetailsScreenState
     if (!context.mounted) return;
     setState(() => _busy = false);
     showTransporterResult(context, result);
+    if (result.success) {
+      await syncLiveSharing(context, job.id, CollectionJobStatus.cancelled);
+    }
   }
 
   Future<void> _reportIssue(BuildContext context, TransporterController state,
@@ -577,18 +696,30 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _openPhone(String phone) async {
     if (phone.trim().isEmpty) return;
-    await launchUrl(Uri(scheme: 'tel', path: phone));
+    await _launch(Uri(scheme: 'tel', path: phone.trim()));
   }
 
   Future<void> _openWhatsApp(String phone) async {
-    if (phone.trim().isEmpty) return;
-    await launchUrl(
-        Uri.parse('https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}'));
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+    await _launch(Uri.parse('https://wa.me/$digits'));
   }
 
   Future<void> _openLocation(String location) async {
-    await launchUrl(Uri.parse(
+    await _launch(Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(location)}'));
+  }
+
+  Future<void> _launch(Uri uri) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      _showError(context, 'Could not open this link on your device.');
+    }
   }
 
   bool _isSuitable(TransporterController state, CollectionJob job) {
@@ -649,6 +780,18 @@ class _JobHero extends StatelessWidget {
               JobStatusChip(status: job.status),
             ],
           ),
+          if (job.deliveryFeeMinor != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              context.l10n.jobDeliveryFeeLine(
+                AppFormat.lkr(job.deliveryFeeMinor! / 100),
+              ),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Text(
             context.l10n.jobOrderAndPostRefs(
@@ -731,49 +874,87 @@ class _DetailRow extends StatelessWidget {
 
 class _ContactRow extends StatelessWidget {
   final IconData icon;
+  final String role;
   final String name;
   final String phone;
   final VoidCallback onCall;
   final VoidCallback onWhatsApp;
+  final VoidCallback? onChat;
 
-  const _ContactRow(
-      {required this.icon,
-      required this.name,
-      required this.phone,
-      required this.onCall,
-      required this.onWhatsApp});
+  const _ContactRow({
+    required this.icon,
+    required this.role,
+    required this.name,
+    required this.phone,
+    required this.onCall,
+    required this.onWhatsApp,
+    this.onChat,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final hasPhone = phone.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          backgroundColor: AppColors.primaryLight,
-          child: Icon(icon, color: AppColors.primary),
+        Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.primaryLight,
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textMuted)),
+                  Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (hasPhone)
+                    Text(phone,
+                        style: const TextStyle(
+                            color: AppColors.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
         ),
-        if (phone.isNotEmpty) ...[
-          IconButton(
-            tooltip: context.l10n.call,
-            onPressed: onCall,
-            icon: const Icon(Icons.call_outlined),
-          ),
-          IconButton(
-            tooltip: 'WhatsApp',
-            onPressed: onWhatsApp,
-            icon: const Icon(Icons.chat_outlined),
-          ),
-        ],
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        if (onChat != null || hasPhone) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(phone.isEmpty ? context.l10n.jobPhoneNotProvided : phone,
-                  style: const TextStyle(color: AppColors.onSurfaceVariant)),
+              if (onChat != null)
+                OutlinedButton.icon(
+                  onPressed: onChat,
+                  icon: const Icon(Icons.chat_bubble_outline_rounded,
+                      size: 18),
+                  label: Text(
+                    '${context.l10n.chat} · $role',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              if (hasPhone) ...[
+                IconButton(
+                  tooltip: context.l10n.call,
+                  onPressed: onCall,
+                  icon: const Icon(Icons.call_outlined),
+                ),
+                IconButton(
+                  tooltip: 'WhatsApp',
+                  onPressed: onWhatsApp,
+                  icon: const Icon(Icons.chat_outlined),
+                ),
+              ],
             ],
           ),
-        ),
+        ],
       ],
     );
   }

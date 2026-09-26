@@ -7,6 +7,7 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../models/user_role.dart';
+import 'admin_csv_export.dart';
 
 /// Display label for a raw recipient role ('farmer', 'transporter', ...).
 String _roleLabel(String raw) {
@@ -28,6 +29,40 @@ class _SettlementManagementScreenState
     extends State<SettlementManagementScreen> {
   String _selectedStatus = 'all';
 
+  /// Settlements with a backend call in flight (their buttons are disabled).
+  final Set<String> _busyIds = {};
+
+  /// Awaits a settlement action; shows [success] only after it returns and
+  /// `userMessage(e)` otherwise.
+  Future<void> _runAction(
+    String settlementId,
+    Future<void> Function() action, {
+    required String success,
+    Color? successColor,
+    String Function(String message)? failure,
+  }) async {
+    if (_busyIds.contains(settlementId)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busyIds.add(settlementId));
+    try {
+      await action();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(success),
+          backgroundColor: successColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      final message = userMessage(error, action: 'update the settlement');
+      messenger.showSnackBar(
+        SnackBar(content: Text(failure?.call(message) ?? message)),
+      );
+    } finally {
+      if (mounted) setState(() => _busyIds.remove(settlementId));
+    }
+  }
+
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case 'settled':
@@ -36,6 +71,8 @@ class _SettlementManagementScreenState
         return const Color(0xFF1B6BD8);
       case 'on_hold':
         return const Color(0xFFD32F2F);
+      case 'rejected':
+        return const Color(0xFF616161);
       case 'pending':
       default:
         return const Color(0xFFF57C00);
@@ -149,33 +186,18 @@ class _SettlementManagementScreenState
                 );
                 return;
               }
+              final state = context.read<FarmoraState>();
               Navigator.pop(ctx);
-              try {
-                await context.read<FarmoraState>().approveSettlement(
-                      settlement.id,
-                      transactionReference: reference,
-                    );
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(l.adminSettlementRecordFailed(userMessage(
-                            error,
-                            action: 'record settlement transfer')))),
-                  );
-                }
-                return;
-              }
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        l.adminSettlementRecorded(settlement.recipientName)),
-                    backgroundColor: const Color(0xFF2E7D32),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
+              await _runAction(
+                settlement.id,
+                () => state.approveSettlement(
+                  settlement.id,
+                  transactionReference: reference,
+                ),
+                success: l.adminSettlementRecorded(settlement.recipientName),
+                successColor: const Color(0xFF2E7D32),
+                failure: l.adminSettlementRecordFailed,
+              );
             },
             child: Text(l.adminSettlementRecordTransfer),
           ),
@@ -221,36 +243,149 @@ class _SettlementManagementScreenState
             style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFD32F2F)),
             onPressed: () async {
-              Navigator.pop(ctx);
-              await context
-                  .read<FarmoraState>()
-                  .holdSettlement(settlement.id, reasonCtrl.text.trim());
-              if (context.mounted) {
+              final reason = reasonCtrl.text.trim();
+              if (reason.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l.adminSettlementHoldApplied(settlement.id)),
-                    backgroundColor: const Color(0xFFD32F2F),
-                    behavior: SnackBarBehavior.floating,
-                  ),
+                  const SnackBar(content: Text('Enter a reason for the hold.')),
                 );
+                return;
               }
+              final state = context.read<FarmoraState>();
+              Navigator.pop(ctx);
+              await _runAction(
+                settlement.id,
+                () => state.holdSettlement(settlement.id, reason),
+                success: l.adminSettlementHoldApplied(settlement.orderNumber
+                        .isNotEmpty
+                    ? settlement.orderNumber
+                    : settlement.id),
+                successColor: const Color(0xFFD32F2F),
+              );
             },
             child: Text(l.adminSettlementApplyHold),
           ),
         ],
       ),
-    );
+    ).whenComplete(reasonCtrl.dispose);
   }
 
-  void _exportBankBatchManifest(
-      BuildContext context, List<SettlementPayout> settlements) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.adminSettlementExported(settlements.length)),
-        backgroundColor: const Color(0xFF1B6BD8),
-        behavior: SnackBarBehavior.floating,
+  void _showRejectDialog(BuildContext context, SettlementPayout settlement) {
+    final l = context.l10n;
+    final reasonCtrl = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reject payout'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Reject the payout of '
+              '${AppFormat.lkr(settlement.netAmount, decimals: 2)} to '
+              '${settlement.recipientName}? The recipient is notified and '
+              'the amount returns to their available balance.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              maxLength: 300,
+              decoration: InputDecoration(
+                labelText: 'Reason',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF616161)),
+            onPressed: () async {
+              final reason = reasonCtrl.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Enter a reason for the rejection.')),
+                );
+                return;
+              }
+              final state = context.read<FarmoraState>();
+              Navigator.pop(ctx);
+              await _runAction(
+                settlement.id,
+                () => state.rejectSettlement(settlement.id, reason: reason),
+                success: 'Payout to ${settlement.recipientName} rejected.',
+              );
+            },
+            child: const Text('Reject payout'),
+          ),
+        ],
       ),
+    ).whenComplete(reasonCtrl.dispose);
+  }
+
+  Future<void> _exportBankBatchManifest(
+      BuildContext context, List<SettlementPayout> settlements) async {
+    if (settlements.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to export.')),
+      );
+      return;
+    }
+    final csv = buildCsv(
+      const [
+        'settlement_id',
+        'reference',
+        'order_id',
+        'recipient_id',
+        'recipient_name',
+        'recipient_role',
+        'bank_name',
+        'account_number',
+        'payout_method',
+        'gross_lkr',
+        'platform_fee_lkr',
+        'net_lkr',
+        'status',
+        'created_at',
+        'settled_at',
+        'transaction_reference',
+        'hold_reason',
+      ],
+      [
+        for (final s in settlements)
+          [
+            s.id,
+            s.orderNumber,
+            s.orderId,
+            s.recipientId,
+            s.recipientName,
+            s.recipientRole,
+            s.bankName,
+            s.accountNumber,
+            s.payoutMethod,
+            s.grossAmount.toStringAsFixed(2),
+            s.platformFee.toStringAsFixed(2),
+            s.netAmount.toStringAsFixed(2),
+            s.status,
+            s.createdAt,
+            s.settledAt,
+            s.transactionReference,
+            s.holdReason,
+          ],
+      ],
     );
+    final stamp = DateTime.now().toIso8601String().substring(0, 10);
+    await exportCsv(context,
+        fileName: 'farmora_settlements_$stamp.csv', csv: csv);
   }
 
   @override
@@ -358,6 +493,9 @@ class _SettlementManagementScreenState
                             const SizedBox(width: 6),
                             _buildFilterChip(
                                 'on_hold', statusLabel('on_hold', l)),
+                            const SizedBox(width: 6),
+                            _buildFilterChip(
+                                'rejected', statusLabel('rejected', l)),
                           ],
                         ),
                       ),
@@ -602,6 +740,12 @@ class _SettlementManagementScreenState
                               ],
                               const SizedBox(height: 12),
                               // Action Buttons
+                              if (_busyIds.contains(s.id))
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: LinearProgressIndicator(),
+                                )
+                              else
                               Row(
                                 children: [
                                   if (s.status == 'pending' ||
@@ -648,19 +792,13 @@ class _SettlementManagementScreenState
                                   ] else if (s.status == 'on_hold') ...[
                                     Expanded(
                                       child: FilledButton.icon(
-                                        onPressed: () async {
-                                          await context
+                                        onPressed: () => _runAction(
+                                          s.id,
+                                          () => context
                                               .read<FarmoraState>()
-                                              .retrySettlement(s.id);
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                  content: Text(l
-                                                      .adminSettlementResumed)),
-                                            );
-                                          }
-                                        },
+                                              .retrySettlement(s.id),
+                                          success: l.adminSettlementResumed,
+                                        ),
                                         icon: const Icon(Icons.replay_rounded,
                                             size: 16),
                                         label: Text(
@@ -675,6 +813,18 @@ class _SettlementManagementScreenState
                                                   BorderRadius.circular(10)),
                                         ),
                                       ),
+                                    ),
+                                  ],
+                                  if (s.status == 'pending' ||
+                                      s.status == 'processing' ||
+                                      s.status == 'on_hold') ...[
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      tooltip: 'Reject payout',
+                                      icon: const Icon(Icons.block_rounded,
+                                          color: Color(0xFF616161)),
+                                      onPressed: () =>
+                                          _showRejectDialog(context, s),
                                     ),
                                   ],
                                 ],

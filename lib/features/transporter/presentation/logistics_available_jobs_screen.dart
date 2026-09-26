@@ -5,7 +5,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
-import '../domain/collection_job.dart';
 import 'collection_job_details_screen.dart';
 import 'widgets/collection_job_card.dart';
 import 'widgets/transporter_states.dart';
@@ -113,7 +112,6 @@ class _Filters extends StatelessWidget {
         state.selectedDelivery != 'All destinations' ||
         state.selectedProduce != 'All produce' ||
         state.selectedDate != null ||
-        state.selectedStatus != null ||
         state.suitableOnly;
     return Container(
       color: AppColors.surface,
@@ -205,33 +203,6 @@ class _Filters extends StatelessWidget {
                   onChanged: state.updateDelivery,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonFormField<CollectionJobStatus>(
-                  key: ValueKey(state.selectedStatus),
-                  initialValue: state.selectedStatus,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.status,
-                    prefixIcon: const Icon(Icons.filter_alt_outlined),
-                  ),
-                  items: [
-                    DropdownMenuItem<CollectionJobStatus>(
-                      value: null,
-                      child: Text(l10n.transporterAllStatuses,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    ...CollectionJobStatus.values.map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child:
-                            Text(status.label, overflow: TextOverflow.ellipsis),
-                      ),
-                    ),
-                  ],
-                  onChanged: state.updateStatus,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -255,7 +226,8 @@ class _Filters extends StatelessWidget {
               ],
             ],
           ),
-          if (state.vehicleCapacity != null)
+          if (state.vehicleCapacity != null ||
+              state.serviceDistricts.isNotEmpty)
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,

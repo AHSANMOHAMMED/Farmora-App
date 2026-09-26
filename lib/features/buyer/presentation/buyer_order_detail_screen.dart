@@ -6,17 +6,170 @@ import '../../../providers/farmora_state.dart';
 import 'track_order_screen.dart';
 import 'barcode_scan_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
+import '../../reviews/presentation/submit_review_screen.dart';
+import '../../../models/transport_job.dart';
 import '../../../services/firebase_service.dart';
+import 'create_dispute_screen.dart';
 import '../../payments/presentation/order_payment_card.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
 
-class BuyerOrderDetailScreen extends StatelessWidget {
+class BuyerOrderDetailScreen extends StatefulWidget {
   final FarmoraOrder order;
 
   const BuyerOrderDetailScreen({super.key, required this.order});
+
+  @override
+  State<BuyerOrderDetailScreen> createState() => _BuyerOrderDetailScreenState();
+}
+
+class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
+  final FirestoreService _service = FirestoreService();
+  Stream<List<TransportJob>>? _jobStream;
+  final Map<String, Stream<Map<String, dynamic>?>> _transporterStreams = {};
+  bool _cancelling = false;
+
+  FarmoraOrder get order => widget.order;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = context.read<FarmoraState>().currentUserId;
+    if (uid.isNotEmpty) {
+      _jobStream = _service.jobByOrderAsBuyerStream(order.id, uid);
+    }
+  }
+
+  Stream<Map<String, dynamic>?> _transporterProfile(String id) =>
+      _transporterStreams.putIfAbsent(
+          id, () => _service.transporterPublicProfileStream(id));
+
+  void _snack(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: error ? AppColors.error : null,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  /// Scans the harvest barcode; it only counts when the server verified it
+  /// AND it belongs to this order.
+  Future<void> _verifyBarcode(FarmoraOrder currentOrder) async {
+    final l = context.l10n;
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+    );
+    if (!mounted || result == null) return;
+    final scannedOrderId = (result['orderId'] ?? '').toString();
+    if (result['valid'] == false || scannedOrderId != currentOrder.id) {
+      _snack(
+          scannedOrderId.isNotEmpty && scannedOrderId != currentOrder.id
+              ? 'This barcode belongs to a different order.'
+              : l.buyerBarcodeVerifyFailed,
+          error: true);
+      return;
+    }
+    _snack(l.harvestAuthenticityVerified);
+  }
+
+  Future<void> _cancelOrder(
+      FarmoraState state, FarmoraOrder currentOrder) async {
+    final l = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.cancelOrder),
+        content: Text(l.buyerCancelOrderConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.noKeep),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.yesCancel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _cancelling = true);
+    try {
+      await state.cancelOrder(currentOrder.id);
+      if (!mounted) return;
+      _snack(l.orderCancelled);
+      Navigator.of(context).pop();
+    } catch (e, st) {
+      _snack(userMessage(e, action: 'cancel the order', stack: st),
+          error: true);
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
+
+  /// Complaints (with photo evidence) are possible once the farmer has
+  /// confirmed the order, until it is cancelled or already disputed.
+  bool _canDispute(FarmoraOrder o) =>
+      !o.isCancelled && !o.isDisputed && o.statusStep >= 1;
+
+  /// The server accepts one review per order, only once delivered.
+  bool _canReview(FarmoraOrder o) =>
+      o.statusKey == 'delivered' && !o.isDisputed;
+
+  Widget _buildTrustActions(AppLocalizations l, FarmoraOrder o) {
+    final canReview = _canReview(o);
+    final canDispute = _canDispute(o);
+    if (!canReview && !canDispute) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 16),
+        Text(l.buyerTrustAndSupport,
+            style: Theme.of(context).textTheme.titleMedium),
+        if (!canReview)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(l.buyerReviewsUnlockHint,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            if (canReview)
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.star_outline_rounded, size: 18),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => SubmitReviewScreen(order: o)),
+                  ),
+                  label: Text(l.submitReview),
+                ),
+              ),
+            if (canReview && canDispute) const SizedBox(width: 8),
+            if (canDispute)
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.report_problem_outlined, size: 18),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => CreateDisputeScreen(order: o)),
+                  ),
+                  label: Text(l.openComplaint),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +178,6 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       (o) => o.id == order.id,
       orElse: () => order,
     );
-    final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
     final l = context.l10n;
 
     return Scaffold(
@@ -69,7 +221,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    l.buyerOrderNumber(currentOrder.orderNumber.toUpperCase()),
+                    l.buyerOrderNumber(currentOrder.displayNumber),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -82,7 +234,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _buildStatusBadge(l, currentOrder.status),
+                _buildStatusBadge(l, currentOrder.statusKey),
               ],
             ),
             const SizedBox(height: 8),
@@ -140,31 +292,18 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             // Status Timeline
             _buildStatusTimeline(l, currentOrder),
             const SizedBox(height: 20),
-            if (currentOrder.status.toLowerCase() != 'delivered')
+            if (!currentOrder.isCancelled && currentOrder.statusStep < 3)
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.qr_code_scanner_rounded),
                   label: Text(l.verifyHarvestBarcode),
-                  onPressed: () async {
-                    final result =
-                        await Navigator.of(context).push<Map<String, dynamic>>(
-                      MaterialPageRoute(
-                          builder: (_) => const BarcodeScanScreen()),
-                    );
-                    if (context.mounted && result != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(l.harvestAuthenticityVerified)),
-                      );
-                    }
-                  },
+                  onPressed: () => _verifyBarcode(currentOrder),
                 ),
               ),
-            if (currentOrder.status.toLowerCase() == 'delivered')
-              _TrustActions(order: currentOrder),
+            _buildTrustActions(l, currentOrder),
             const SizedBox(height: 16),
-            if (!currentOrder.isDeclined) ...[
+            if (!currentOrder.isCancelled) ...[
               OrderPaymentCard(order: currentOrder, viewerIsFarmer: false),
               const SizedBox(height: 16),
             ],
@@ -205,7 +344,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              currentOrder.buyerName,
+                              currentOrder.farmerName.isNotEmpty
+                                  ? currentOrder.farmerName
+                                  : l.farmer,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 16,
@@ -215,7 +356,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              currentOrder.buyerCompany,
+                              l.farmer,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 13,
@@ -266,11 +407,11 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (currentOrder.status == 'pending')
+                      if (currentOrder.statusKey == 'pending')
                         IconButton(
                           tooltip: l.editDeliveryAddress,
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: () => _editDeliveryAddress(context, state, currentOrder),
+                          onPressed: () => _editDeliveryAddress(state, currentOrder),
                           color: AppColors.primary,
                         ),
                     ],
@@ -314,7 +455,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                           ? currentOrder.productName
                           : currentOrder.title),
                   _buildDivider(),
-                  _buildSummaryRow(l.quantity, currentOrder.quantity),
+                  _buildSummaryRow(
+                      l.quantity,
+                      currentOrder.unit.isNotEmpty &&
+                              !currentOrder.quantity.contains(currentOrder.unit)
+                          ? '${currentOrder.quantity} ${currentOrder.unit}'
+                          : currentOrder.quantity),
                   _buildDivider(),
                   _buildSummaryRow(l.buyerUnitPrice, currentOrder.unitPrice),
                   _buildDivider(),
@@ -353,79 +499,21 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (linkedJob != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l.buyerLogisticsTransport,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onSurface,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryContainer,
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
-                          child: Text(
-                            statusLabel(linkedJob.status, l),
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSummaryRow(
-                      l.buyerTransportProvider,
-                      linkedJob.transporterId != null && linkedJob.transporterId!.isNotEmpty
-                          ? l.buyerAssignedTo(linkedJob.transporterId!)
-                          : l.buyerPendingAssignment,
-                    ),
-                    _buildDivider(),
-                    _buildSummaryRow(l.buyerRoute, linkedJob.route),
-                    _buildDivider(),
-                    _buildSummaryRow(l.buyerFee, linkedJob.fee),
-                  ],
-                ),
+            if (_jobStream != null)
+              StreamBuilder<List<TransportJob>>(
+                stream: _jobStream,
+                builder: (context, snap) {
+                  final jobs = snap.data ?? const <TransportJob>[];
+                  if (jobs.isEmpty) return const SizedBox.shrink();
+                  return _buildJobCard(l, jobs.first);
+                },
               ),
-            ],
           ],
         ),
       ),
       bottomNavigationBar: (() {
-            final s = currentOrder.status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
-            final trackable = {'confirmed','assigned','pickedup','intransit','accepted'}.contains(s);
+            final trackable = !currentOrder.isCancelled &&
+                (currentOrder.statusStep == 1 || currentOrder.statusStep == 2);
             return trackable
           ? Container(
               padding: const EdgeInsets.all(16),
@@ -477,13 +565,9 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                     ],
                   ),
                   child: OutlinedButton(
-                    onPressed: () {
-                      state.cancelOrder(currentOrder.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.orderCancelled)),
-                      );
-                      Navigator.of(context).pop();
-                    },
+                    onPressed: _cancelling
+                        ? null
+                        : () => _cancelOrder(state, currentOrder),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       foregroundColor: AppColors.error,
@@ -492,7 +576,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text(
+                    child: _cancelling
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(
                       l.buyerCancelOrderButton,
                       style: const TextStyle(
                           fontFamily: 'Inter',
@@ -513,19 +602,34 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       l.statusInTransit,
       l.statusDelivered,
     ];
-    int currentStep;
-    switch (order.status.toLowerCase()) {
-      case 'accepted':
-        currentStep = 1;
-        break;
-      case 'in transit':
-        currentStep = 2;
-        break;
-      case 'delivered':
-        currentStep = 3;
-        break;
-      default:
-        currentStep = 0;
+    final currentStep = order.statusStep;
+    if (order.isCancelled) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.statusRejectedBg,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.cancel_outlined,
+                color: AppColors.statusRejectedText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${l.buyerOrderStatus}: ${statusLabel(order.statusKey, l)}',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.statusRejectedText,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Container(
@@ -673,17 +777,19 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     Color bgColor;
     Color textColor;
 
-    switch (status.toLowerCase()) {
-      case 'accepted':
-        bgColor = AppColors.statusApprovedBg;
-        textColor = AppColors.statusApprovedText;
-        break;
+    // [status] is a normalised FarmoraOrder.statusKey.
+    switch (status) {
+      case 'confirmed':
+      case 'assigned':
+      case 'pickedUp':
+      case 'inTransit':
       case 'delivered':
       case 'completed':
         bgColor = AppColors.statusApprovedBg;
         textColor = AppColors.statusApprovedText;
         break;
-      case 'declined':
+      case 'rejected':
+      case 'cancelled':
         bgColor = AppColors.statusRejectedBg;
         textColor = AppColors.statusRejectedText;
         break;
@@ -750,153 +856,164 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     );
   }
 
-  void _editDeliveryAddress(BuildContext context, FarmoraState state, FarmoraOrder order) {
+  Future<void> _editDeliveryAddress(
+      FarmoraState state, FarmoraOrder order) async {
     final controller = TextEditingController(text: order.deliveryAddress);
     final l = context.l10n;
-    showDialog(
+    var saving = false;
+    String? error;
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.editDeliveryAddress),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: l.buyerEnterNewAddress,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: Text(l.editDeliveryAddress),
+          content: TextField(
+            controller: controller,
+            enabled: !saving,
+            decoration: InputDecoration(
+              hintText: l.buyerEnterNewAddress,
+              errorText: error,
+              errorMaxLines: 3,
+            ),
+            maxLines: 2,
           ),
-          maxLines: 2,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonCancel),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await state.updateOrderAddress(order.id, controller.text.trim());
-                if (context.mounted) {
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l.addressUpdatedSuccessfully)),
-                  );
-                }
-              }
-            },
-            child: Text(l.commonSave),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustActions extends StatefulWidget {
-  final FarmoraOrder order;
-
-  const _TrustActions({required this.order});
-
-  @override
-  State<_TrustActions> createState() => _TrustActionsState();
-}
-
-class _TrustActionsState extends State<_TrustActions> {
-  final _comment = TextEditingController();
-  int _rating = 5;
-  final _service = FirestoreService();
-
-  @override
-  void dispose() {
-    _comment.dispose();
-    super.dispose();
-  }
-
-  Future<void> _review() async {
-    if (!widget.order.canReview) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.buyerReviewOnlyAfterDelivery)));
-      }
-      return;
-    }
-    if (_comment.text.trim().isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.buyerWriteReviewFirst)));
-      }
-      return;
-    }
-    try {
-      await _service.submitReview(
-        orderId: widget.order.id,
-        rating: _rating,
-        comment: _comment.text,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.buyerReviewSubmittedModeration)));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.reviewSubmitFailed(
-                userMessage(e, action: 'submit review')))));
-      }
-    }
-  }
-
-  Future<void> _dispute() async {
-    final reason = _comment.text.trim();
-    if (reason.isEmpty) return;
-    await _service.openDispute(orderId: widget.order.id, reason: reason);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(context.l10n.buyerComplaintOpened)));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(l.buyerTrustAndSupport,
-            style: Theme.of(context).textTheme.titleMedium),
-        if (!widget.order.canReview)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 4),
-            child: Text(l.buyerReviewsUnlockHint,
-                style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-          ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          initialValue: _rating,
-          items: [1, 2, 3, 4, 5]
-              .map((value) =>
-                  DropdownMenuItem(value: value, child: Text(l.buyerStarsCount(value))))
-              .toList(),
-          onChanged: (value) => setState(() => _rating = value ?? 5),
-          decoration: InputDecoration(labelText: l.buyerProductRating),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _comment,
-          maxLength: 2000,
-          maxLines: 3,
-          decoration:
-              InputDecoration(labelText: l.buyerReviewOrComplaintDetails),
-        ),
-        Row(
-          children: [
-            Expanded(
-                child: FilledButton(
-                    onPressed: _review, child: Text(l.submitReview))),
-            const SizedBox(width: 8),
-            Expanded(
-                child: OutlinedButton(
-                    onPressed: _dispute, child: Text(l.openComplaint))),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.of(ctx).pop(false),
+              child: Text(l.commonCancel),
+            ),
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final address = controller.text.trim();
+                      if (address.length < 5) {
+                        setDialog(() => error = l.buyerEnterAddressToOrder);
+                        return;
+                      }
+                      setDialog(() {
+                        saving = true;
+                        error = null;
+                      });
+                      try {
+                        await state.updateOrderAddress(order.id, address);
+                        if (ctx.mounted) Navigator.of(ctx).pop(true);
+                      } catch (e, st) {
+                        if (ctx.mounted) {
+                          setDialog(() {
+                            saving = false;
+                            error = userMessage(e,
+                                action: 'update the delivery address',
+                                stack: st);
+                          });
+                        }
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(l.commonSave),
+            ),
           ],
         ),
-      ],
+      ),
+    );
+    controller.dispose();
+    if (saved == true) _snack(l.addressUpdatedSuccessfully);
+  }
+
+  Widget _buildJobCard(AppLocalizations l, TransportJob job) {
+    final transporterId = (job.transporterId ?? '').isNotEmpty
+        ? job.transporterId!
+        : (job.requestedTransporterId ?? '');
+    final fee = job.deliveryFeeMinor != null
+        ? AppFormat.lkr(job.deliveryFeeMinor! / 100, decimals: 2)
+        : job.fee;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    l.buyerLogisticsTransport,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                  child: Text(
+                    statusLabel(job.status, l),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (transporterId.isEmpty)
+              _buildSummaryRow(
+                  l.buyerTransportProvider, l.buyerPendingAssignment)
+            else
+              StreamBuilder<Map<String, dynamic>?>(
+                stream: _transporterProfile(transporterId),
+                builder: (context, snap) {
+                  final name = (snap.data?['displayName'] ?? '').toString();
+                  final vehicle = (snap.data?['vehicleType'] ?? '').toString();
+                  final label = name.isEmpty ? l.roleTransporter : name;
+                  final assigned = (job.transporterId ?? '').isNotEmpty;
+                  return _buildSummaryRow(
+                    l.buyerTransportProvider,
+                    [
+                      assigned
+                          ? label
+                          : '$label (${statusLabel('requested', l)})',
+                      if (vehicle.isNotEmpty) vehicle,
+                    ].join(' • '),
+                  );
+                },
+              ),
+            _buildDivider(),
+            _buildSummaryRow(l.buyerRoute, job.route),
+            _buildDivider(),
+            _buildSummaryRow(l.buyerFee, fee),
+          ],
+        ),
+      ),
     );
   }
 }

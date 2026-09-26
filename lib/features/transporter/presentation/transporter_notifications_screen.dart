@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../application/transporter_controller.dart';
+import '../domain/collection_job.dart';
 import '../domain/transporter_notification.dart';
 import 'collection_job_details_screen.dart';
 import 'widgets/transporter_states.dart';
@@ -24,7 +26,7 @@ class TransporterNotificationsScreen extends StatelessWidget {
         actions: [
           if (state.unreadNotificationCount > 0)
             TextButton(
-              onPressed: state.markAllNotificationsRead,
+              onPressed: () => _markAllRead(context, state),
               child: Text(l10n.transporterMarkAllRead),
             ),
         ],
@@ -43,59 +45,93 @@ class TransporterNotificationsScreen extends StatelessWidget {
                 final notification = notifications[index];
                 return _NotificationTile(
                   notification: notification,
-                  produceName: notification.jobId == null
-                      ? null
-                      : state.jobById(notification.jobId!)?.produceName,
-                  onTap: () {
-                    state.markNotificationRead(notification.id);
-                    if (notification.jobId != null &&
-                        state.jobById(notification.jobId!) != null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CollectionJobDetailsScreen(
-                            jobId: notification.jobId!,
-                          ),
-                        ),
-                      );
-                    }
-                  },
+                  onTap: () => _open(context, state, notification),
                 );
               },
             ),
     );
   }
+
+  /// Job the notification refers to: by `jobId`, else by its order.
+  static CollectionJob? _jobFor(
+    TransporterController state,
+    TransporterNotification notification,
+  ) {
+    final jobId = notification.jobId ?? '';
+    if (jobId.isNotEmpty) {
+      final job = state.jobById(jobId);
+      if (job != null) return job;
+    }
+    final orderId = notification.orderId ?? '';
+    if (orderId.isEmpty) return null;
+    for (final job in state.allJobs) {
+      if (job.orderId == orderId) return job;
+    }
+    return null;
+  }
+
+  Future<void> _open(
+    BuildContext context,
+    TransporterController state,
+    TransporterNotification notification,
+  ) async {
+    final job = _jobFor(state, notification);
+    final hasTarget = (notification.jobId ?? '').isNotEmpty ||
+        (notification.orderId ?? '').isNotEmpty;
+    if (job != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CollectionJobDetailsScreen(jobId: job.id),
+        ),
+      );
+    } else if (hasTarget) {
+      _snack(context, context.l10n.jobNoLongerAvailable);
+    }
+    if (notification.isRead) return;
+    try {
+      await state.markNotificationRead(notification.id);
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, userMessage(error, action: 'update the notification'),
+            error: true);
+      }
+    }
+  }
+
+  Future<void> _markAllRead(
+    BuildContext context,
+    TransporterController state,
+  ) async {
+    try {
+      await state.markAllNotificationsRead();
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, userMessage(error, action: 'update notifications'),
+            error: true);
+      }
+    }
+  }
+
+  static void _snack(BuildContext context, String message,
+      {bool error = false}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
+      ));
+  }
 }
 
 class _NotificationTile extends StatelessWidget {
   final TransporterNotification notification;
-  final String? produceName;
   final VoidCallback onTap;
 
   const _NotificationTile({
     required this.notification,
     required this.onTap,
-    this.produceName,
   });
-
-  /// Notifications created on this device are re-worded in the current
-  /// language; server notifications are shown as stored.
-  (String, String) _text(AppLocalizations l10n) {
-    final produce = produceName;
-    if (!notification.id.startsWith('local-') || produce == null) {
-      return (notification.title, notification.message);
-    }
-    return switch (notification.type) {
-      TransporterNotificationType.accepted => (
-          l10n.jobAcceptedNotifTitle,
-          l10n.jobAcceptedNotifBody(produce),
-        ),
-      TransporterNotificationType.completed => (
-          l10n.jobDeliveryCompletedNotifTitle,
-          l10n.jobDeliveryCompletedNotifBody(produce),
-        ),
-      _ => (notification.title, notification.message),
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +157,8 @@ class _NotificationTile extends StatelessWidget {
           AppColors.primary
         ),
     };
-    final (title, message) = _text(context.l10n);
+    final title = notification.title;
+    final message = notification.message;
     return Material(
       color: notification.isRead
           ? AppColors.surfaceContainerLowest

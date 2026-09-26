@@ -1,7 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../auth/presentation/login_screen.dart';
+import '../../auth/presentation/auth_gate.dart';
+
+/// Device flag: onboarding is shown only on the first launch.
+class OnboardingPrefs {
+  static const key = 'onboarding_seen';
+
+  static Future<bool> seen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(key) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> markSeen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, true);
+    } catch (_) {
+      // Worst case the onboarding shows again next launch.
+    }
+  }
+}
 
 /// Data model representing an individual onboarding slide.
 class OnboardingSlideData {
@@ -120,6 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _finishOnboarding() {
+    OnboardingPrefs.markSeen();
     if (widget.onComplete != null) {
       widget.onComplete!();
     } else {
@@ -127,7 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 400),
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const LoginScreen(),
+              const AuthGate(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
               opacity: animation,

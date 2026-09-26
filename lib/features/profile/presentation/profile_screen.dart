@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../l10n/app_localizations.dart';
@@ -16,10 +17,12 @@ import '../../../models/verification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/user_location_service.dart';
 import '../../auth/presentation/auth_gate.dart';
+import '../../auth/presentation/session_actions.dart';
 import '../../farmer/presentation/account_verification_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../payments/presentation/bank_details_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
+import 'change_password_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
 import 'language_picker.dart';
@@ -49,9 +52,10 @@ class ProfileScreen extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await context.read<FarmoraState>().refreshProfile();
-    } catch (_) {
+    } catch (e) {
       messenger.showSnackBar(SnackBar(
-        content: Text(l.profileRefreshFailed),
+        content: Text(
+            '${l.profileRefreshFailed} ${userMessage(e, action: 'refresh profile')}'),
         backgroundColor: AppColors.error,
       ));
     }
@@ -201,9 +205,9 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
         backgroundColor: AppColors.primary,
       ));
     } catch (e) {
-      debugPrint('Profile photo change failed: $e');
       messenger.showSnackBar(SnackBar(
-        content: Text(l.profilePhotoFailed),
+        content: Text(
+            '${l.profilePhotoFailed} ${userMessage(e, action: 'change profile photo')}'),
         backgroundColor: AppColors.error,
       ));
     } finally {
@@ -825,6 +829,12 @@ class _AccountSection extends StatelessWidget {
           subtitle: l.profileEditSubtitle,
           onTap: () => _push(context, const EditProfileScreen()),
         ),
+        _Tile(
+          icon: Icons.lock_outline_rounded,
+          title: 'Change password',
+          subtitle: 'Update the password you use to log in',
+          onTap: () => showChangePasswordDialog(context),
+        ),
         if (isFarmer) ...[
           _Tile(
             icon: Icons.grass_rounded,
@@ -844,6 +854,9 @@ class _AccountSection extends StatelessWidget {
             highlight: !state.hasBankDetails,
             onTap: () => _push(context, const BankDetailsScreen()),
           ),
+        ],
+        // Farmers must verify; buyers may (optional, not gated).
+        if (state.role == Role.farmer || state.role == Role.buyer)
           _Tile(
             icon: Icons.verified_user_outlined,
             title: l.profileVerification,
@@ -855,10 +868,10 @@ class _AccountSection extends StatelessWidget {
               ProfileVerification.notVerified =>
                 l.profileVerificationNoneSubtitle,
             },
-            highlight: verification == ProfileVerification.notVerified,
+            highlight:
+                isFarmer && verification == ProfileVerification.notVerified,
             onTap: () => _push(context, const AccountVerificationScreen()),
           ),
-        ],
       ],
     );
   }
@@ -911,9 +924,8 @@ class _PrivacySection extends StatelessWidget {
       await Clipboard.setData(ClipboardData(text: encoded));
       messenger.showSnackBar(SnackBar(content: Text(l.profileExportCopied)));
     } catch (e) {
-      debugPrint('Data export failed: $e');
       messenger.showSnackBar(SnackBar(
-        content: Text(l.profileExportFailed),
+        content: Text(userMessage(e, action: 'export your data')),
         backgroundColor: AppColors.error,
       ));
     }
@@ -927,16 +939,19 @@ class _PrivacySection extends StatelessWidget {
       context: context,
       builder: (_) => const _DeleteAccountDialog(),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !context.mounted) return;
+    unbindTransporterController(context);
     try {
       await state.deleteAccount();
     } catch (e) {
-      debugPrint('Account deletion failed: $e');
       messenger.showSnackBar(SnackBar(
-        content: Text(l.profileDeleteFailed),
+        content: Text(
+            '${l.profileDeleteFailed} ${userMessage(e, action: 'delete account')}'),
         backgroundColor: AppColors.error,
       ));
+      return;
     }
+    if (context.mounted) AuthGate.resetTo(context);
   }
 
   @override
@@ -1039,7 +1054,6 @@ class _LogoutButton extends StatelessWidget {
 
   Future<void> _confirmLogout(BuildContext context) async {
     final l = AppLocalizations.of(context);
-    final state = context.read<FarmoraState>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1057,13 +1071,16 @@ class _LogoutButton extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true) return;
-    await state.signOut();
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-        (route) => false,
-      );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await signOutAndReset(context);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'sign out')),
+          backgroundColor: AppColors.error,
+        ));
+      }
     }
   }
 

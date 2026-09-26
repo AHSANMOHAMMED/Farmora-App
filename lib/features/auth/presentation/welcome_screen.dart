@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/user_role.dart';
+import 'auth_blocked_banner.dart';
 import 'auth_language_button.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -29,6 +30,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               alignment: AlignmentDirectional.centerEnd,
               child: AuthLanguageButton(),
             ),
+            const AuthBlockedBanner(padding: EdgeInsets.only(bottom: 12)),
             const FarmoraLogo(size: 80),
             const SizedBox(height: 20),
             Text(

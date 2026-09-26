@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import 'buyer_order_detail_screen.dart';
@@ -19,6 +20,7 @@ class BuyerOrdersScreen extends StatefulWidget {
 class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
   int _selectedTab = 0; // 0: All, 1: Active, 2: Completed, 3: Cancelled
   String _searchQuery = '';
+  final Set<String> _cancelling = {};
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +33,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
     } else if (_selectedTab == 2) {
       displayOrders = state.orders.where((o) => o.isCompleted).toList();
     } else if (_selectedTab == 3) {
-      displayOrders = state.orders.where((o) =>
-          o.status.toLowerCase() == 'cancelled' || o.isDeclined).toList();
+      displayOrders = state.orders.where((o) => o.isCancelled).toList();
     } else {
       displayOrders = state.orders;
     }
@@ -43,7 +44,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
         return o.productName.toLowerCase().contains(q) ||
             o.title.toLowerCase().contains(q) ||
             o.buyerCompany.toLowerCase().contains(q) ||
-            o.orderNumber.toLowerCase().contains(q);
+            o.displayNumber.toLowerCase().contains(q);
       }).toList();
     }
 
@@ -261,7 +262,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
       BuildContext context, FarmoraState state, FarmoraOrder order) {
     final l = context.l10n;
     final isPending = order.isPending;
-    final isCancelled = order.status.toLowerCase() == 'cancelled' || order.isDeclined;
+    final isCancelled = order.isCancelled;
 
     return GestureDetector(
       onTap: () {
@@ -301,7 +302,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                      order.orderNumber.isNotEmpty ? order.orderNumber : l.buyerOrderFallback,
+                      order.displayNumber,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -316,7 +317,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                 ),
                 ),
                 const SizedBox(width: 8),
-                _buildStatusBadge(l, order.status),
+                _buildStatusBadge(l, order.statusKey),
               ],
             ),
             const SizedBox(height: 12),
@@ -459,7 +460,9 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                   children: [
                     if (isPending) ...[
                       OutlinedButton(
-                        onPressed: () => _confirmCancelOrder(context, state, order.id),
+                        onPressed: _cancelling.contains(order.id)
+                            ? null
+                            : () => _confirmCancelOrder(context, state, order.id),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
                           side: const BorderSide(color: AppColors.error),
@@ -542,35 +545,50 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
     );
   }
 
-  void _confirmCancelOrder(BuildContext context, FarmoraState state, String orderId) {
+  Future<void> _confirmCancelOrder(
+      BuildContext context, FarmoraState state, String orderId) async {
     final l = context.l10n;
-    showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.cancelOrder),
         content: Text(l.buyerCancelOrderConfirm),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(l.noKeep),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () {
-              state.cancelOrder(orderId);
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l.orderCancelledSuccessfully),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(l.yesCancel),
           ),
         ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+    setState(() => _cancelling.add(orderId));
+    try {
+      await state.cancelOrder(orderId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.orderCancelledSuccessfully),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e, st) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userMessage(e, action: 'cancel the order', stack: st)),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _cancelling.remove(orderId));
+    }
   }
 
   Widget _buildStatusBadge(AppLocalizations l, String status) {
@@ -578,14 +596,16 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
     Color textColor;
     IconData icon;
 
-    switch (status.toLowerCase()) {
-      case 'accepted':
+    // [status] is a normalised FarmoraOrder.statusKey.
+    switch (status) {
+      case 'confirmed':
+      case 'assigned':
         bgColor = const Color(0xFFE8F5E9);
         textColor = const Color(0xFF2E7D32);
         icon = Icons.check_circle_outline;
         break;
-      case 'in transit':
-      case 'intransit':
+      case 'pickedUp':
+      case 'inTransit':
         bgColor = const Color(0xFFE3F2FD);
         textColor = const Color(0xFF1565C0);
         icon = Icons.local_shipping_outlined;
@@ -596,7 +616,7 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
         textColor = const Color(0xFF2E7D32);
         icon = Icons.check_circle;
         break;
-      case 'declined':
+      case 'rejected':
       case 'cancelled':
         bgColor = const Color(0xFFFFEBEE);
         textColor = const Color(0xFFC62828);

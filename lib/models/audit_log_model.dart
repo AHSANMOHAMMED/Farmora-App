@@ -52,9 +52,19 @@ class AuditLog {
       actionType: (map['actionType'] ?? 'UNKNOWN').toString(),
       targetEntity: (map['targetEntity'] ?? 'System').toString(),
       targetId: (map['targetId'] ?? '').toString(),
-      details: (map['details'] ?? '').toString(),
+      details: map['details'] is Map
+          ? (map['details'] as Map)
+              .entries
+              .map((e) => '${e.key}: ${e.value}')
+              .join(', ')
+          : (map['details'] ?? '').toString(),
       severity: (map['severity'] ?? 'info').toString(),
-      timestamp: firebaseDate(map['timestamp']) ?? DateTime.now(),
+      // Functions write `timestamp` as a server Timestamp; older client
+      // writes used ISO strings. `createdAt` is the secondary fallback.
+      timestamp: firebaseDate(map['timestamp']) ??
+          firebaseDate(map['createdAt']) ??
+          firebaseDate(map['serverCreatedAt']) ??
+          DateTime.now(),
       ipAddress: map['ipAddress']?.toString(),
     );
   }

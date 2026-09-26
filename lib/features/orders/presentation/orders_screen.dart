@@ -27,10 +27,13 @@ class OrdersScreen extends StatelessWidget {
           ...state.orders.map(
             (o) => OrderCard(
               title: o.title,
-              detail: o.detail,
-              status: o.status,
+              detail: o.detail.isNotEmpty
+                  ? '${o.displayNumber} · ${o.detail}'
+                  : o.displayNumber,
+              status: o.statusKey,
               color: o.color,
-              progress: o.progress,
+              // Progress from the normalised lifecycle step (0..3).
+              progress: o.isCancelled ? 0 : o.statusStep / 3,
             ),
           ),
         ],

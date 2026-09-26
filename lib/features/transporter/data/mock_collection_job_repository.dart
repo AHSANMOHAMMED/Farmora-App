@@ -77,6 +77,31 @@ class MockCollectionJobRepository implements CollectionJobRepository {
   }
 
   @override
+  bool isTargetedRequest(String jobId) {
+    final index = _jobs.indexWhere((job) => job.id == jobId);
+    return index >= 0 &&
+        _jobs[index].status == CollectionJobStatus.open &&
+        _jobs[index].logisticsProviderId != null;
+  }
+
+  @override
+  Future<void> declineJob({
+    required String jobId,
+    required String logisticsProviderId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    final index = _jobs.indexWhere((job) => job.id == jobId);
+    if (index < 0) throw CollectionJobException(L10n.current.jobNotFound);
+    final job = _jobs[index];
+    if (job.status != CollectionJobStatus.open ||
+        job.logisticsProviderId != logisticsProviderId) {
+      throw CollectionJobException(L10n.current.jobNoLongerAvailable);
+    }
+    _jobs.removeAt(index);
+    _emit();
+  }
+
+  @override
   Future<CollectionJob> updateStatus({
     required String jobId,
     required String logisticsProviderId,

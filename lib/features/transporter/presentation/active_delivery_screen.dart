@@ -11,6 +11,7 @@ import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
+import '../../messaging/presentation/chat_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 
@@ -30,19 +31,18 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   bool _sharing = false;
   bool _pushing = false;
   bool _starting = false;
+  bool _transitioning = false;
 
   @override
   void initState() {
     super.initState();
     _liveJob = widget.job;
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (widget.job.orderId != null &&
-        widget.job.orderId!.isNotEmpty &&
-        uid.isNotEmpty) {
-      // The assigned transporter always reads their own job; fall back to a
-      // direct doc subscription is unnecessary — transporterId scope suffices.
+    if (uid.isNotEmpty) {
+      // The assigned transporter always reads their own jobs; follow this
+      // job's document for live status / courier location.
       _jobSub = _service.jobsByTransporterStream(uid).listen((jobs) {
-        final match = jobs.where((j) => j.orderId == widget.job.orderId);
+        final match = jobs.where((j) => j.id == widget.job.id);
         if (match.isNotEmpty && mounted) {
           setState(() => _liveJob = match.first);
         }
@@ -66,8 +66,13 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   Future<void> _startSharing() async {
     if (_starting) return;
     setState(() => _starting = true);
-    final ok = await DeliveryLocationService.instance
-        .requestConsentAndStart(jobId: job.id);
+    var ok = false;
+    try {
+      ok = await DeliveryLocationService.instance
+          .requestConsentAndStart(jobId: job.id);
+    } catch (_) {
+      ok = false;
+    }
     if (!mounted) return;
     setState(() {
       _sharing = ok;
@@ -97,43 +102,72 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   }
 
   Future<void> _transition(BuildContext context, String next) async {
+    if (_transitioning) return;
+    setState(() => _transitioning = true);
     try {
-      if (next == 'pickedUp' || next == 'inTransit') {
-        final ok = await DeliveryLocationService.instance
-            .requestConsentAndStart(jobId: job.id);
-        if (!mounted) return;
-        setState(() => _sharing = ok);
-        final pos =
-            await DeliveryLocationService.instance.currentPositionQuick();
-        if (pos != null) {
-          await FirestoreService().updateTransportJobLocation(
-            jobId: job.id,
-            lat: pos.latitude,
-            lng: pos.longitude,
-          );
-        }
-      }
-      await FirestoreService().transitionTransport(job.id, next);
+      await _service.transitionTransport(job.id, next);
       DeliveryLocationService.instance.onJobStatusChanged(job.id, next);
       if (next == 'delivered' || next == 'cancelled') {
         DeliveryLocationService.instance.stopSharing(jobId: job.id);
         if (mounted) setState(() => _sharing = false);
+      } else if (next == 'pickedUp' || next == 'inTransit') {
+        // Pickup starts live sharing automatically (with location consent).
+        var ok = false;
+        try {
+          ok = await DeliveryLocationService.instance
+              .requestConsentAndStart(jobId: job.id);
+        } catch (_) {
+          ok = false;
+        }
+        if (mounted) setState(() => _sharing = ok);
       }
-      if (context.mounted) Navigator.of(context).pop();
+      if (!context.mounted) return;
+      setState(() => _transitioning = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(statusLabel(next)),
+        backgroundColor: AppColors.primary,
+      ));
+      if (next == 'delivered' || next == 'cancelled') {
+        Navigator.of(context).pop();
+      }
     } catch (error) {
+      if (mounted) setState(() => _transitioning = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.jobCouldNotUpdateDelivery(
-                userMessage(error, action: 'update delivery')))));
+          content: Text(context.l10n.jobCouldNotUpdateDelivery(
+              userMessage(error, action: 'update delivery'))),
+          backgroundColor: AppColors.error,
+        ));
       }
     }
   }
 
-  void _callParty() async {
-    // Phone numbers stay private — direct users to in-app chat instead.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(context.l10n.jobCallsPrivate),
-    ));
+  bool _canChatWith(String? peerId) =>
+      (job.orderId ?? '').isNotEmpty && (peerId ?? '').isNotEmpty;
+
+  Future<void> _openPartyChat(String? peerId) async {
+    if (!_canChatWith(peerId)) {
+      await _openChat();
+      return;
+    }
+    try {
+      final conversation = await _service.ensureConversation(
+        orderId: job.orderId!,
+        peerId: peerId!,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(conversation: conversation),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(userMessage(error, action: 'open the chat')),
+        backgroundColor: AppColors.error,
+      ));
+    }
   }
 
   Future<void> _openChat() async {
@@ -328,17 +362,25 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _callParty,
-                    icon: const Icon(Icons.phone_outlined, size: 16),
-                    label: Text(l10n.call),
+                    onPressed: () => _openPartyChat(job.farmerId),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: Text(
+                      '${l10n.chat} · ${l10n.roleFarmer}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _openChat,
+                    onPressed: () => _openPartyChat(job.buyerId),
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                    label: Text(l10n.chat),
+                    label: Text(
+                      '${l10n.chat} · ${l10n.roleBuyer}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ],
@@ -350,9 +392,17 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           ? Container(
               padding: const EdgeInsets.all(16),
               child: FilledButton(
-                onPressed: () => _transition(context, job.nextStatuses.first),
-                child: Text(
-                    l10n.jobMarkStatus(statusLabel(job.nextStatuses.first))),
+                onPressed: _transitioning
+                    ? null
+                    : () => _transition(context, job.nextStatuses.first),
+                child: _transitioning
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n
+                        .jobMarkStatus(statusLabel(job.nextStatuses.first))),
               ),
             )
           : null,

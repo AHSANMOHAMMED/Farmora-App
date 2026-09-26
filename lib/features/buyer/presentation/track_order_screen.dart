@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
@@ -10,6 +11,7 @@ import '../../../core/localization/l10n.dart';
 import '../../../core/widgets/route_progress_map.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
@@ -48,7 +50,10 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
+    // Live order from the orders stream (the route argument is a snapshot).
+    final order = context.select<FarmoraState, FarmoraOrder>((s) => s.orders
+        .firstWhere((o) => o.id == widget.order.id,
+            orElse: () => widget.order));
     final courier = (_job?.hasCourierLocation ?? false)
         ? LatLng(_job!.courierLat!, _job!.courierLng!)
         : null;
@@ -94,7 +99,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          l.buyerOrderNumber(order.orderNumber.toUpperCase()),
+                          l.buyerOrderNumber(order.displayNumber),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -110,16 +115,24 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.statusPendingBg,
+                          color: order.isCancelled
+                              ? AppColors.statusRejectedBg
+                              : order.statusStep > 0
+                                  ? AppColors.statusApprovedBg
+                                  : AppColors.statusPendingBg,
                           borderRadius: BorderRadius.circular(9999),
                         ),
                         child: Text(
-                          statusLabel(order.status, l),
-                          style: const TextStyle(
+                          statusLabel(order.statusKey, l),
+                          style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.statusPendingText,
+                            color: order.isCancelled
+                                ? AppColors.statusRejectedText
+                                : order.statusStep > 0
+                                    ? AppColors.statusApprovedText
+                                    : AppColors.statusPendingText,
                           ),
                         ),
                       ),
@@ -169,7 +182,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   : l.buyerFarmPickup,
               dropoffLabel: order.deliveryAddress.split('\n').first,
               statusLabel:
-                  '${statusLabel(order.status, l)} • ${deliveryStatus.isNotEmpty ? statusLabel(deliveryStatus, l) : l.buyerInNetwork}',
+                  '${statusLabel(order.statusKey, l)} • ${deliveryStatus.isNotEmpty ? statusLabel(deliveryStatus, l) : l.buyerInNetwork}',
               pickup: _job?.pickupLat != null && _job?.pickupLng != null
                   ? LatLng(_job!.pickupLat!, _job!.pickupLng!)
                   : null,
@@ -197,10 +210,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               child: Column(
                 children: [
                   ...(() {
-                    final s = order.status
-                        .toLowerCase()
-                        .replaceAll(' ', '')
-                        .replaceAll('_', '');
+                    final step = order.isCancelled ? -1 : order.statusStep;
                     final steps = <(String, String, bool)>[
                       (
                         l.buyerStepOrderPlaced,
@@ -212,25 +222,17 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                       (
                         l.statusConfirmed,
                         l.buyerStepFarmerAccepted,
-                        {
-                          'confirmed',
-                          'assigned',
-                          'pickedup',
-                          'intransit',
-                          'delivered',
-                          'completed',
-                          'accepted'
-                        }.contains(s)
+                        step >= 1
                       ),
                       (
                         l.statusInTransit,
                         l.buyerStepOnTheWay,
-                        {'intransit', 'delivered', 'completed'}.contains(s)
+                        step >= 2
                       ),
                       (
                         l.statusDelivered,
                         l.buyerStepBuyerReceived,
-                        {'delivered', 'completed'}.contains(s)
+                        step >= 3
                       ),
                     ];
                     return [

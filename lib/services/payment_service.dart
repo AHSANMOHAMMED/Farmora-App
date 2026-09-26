@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/localization/l10n.dart';
@@ -10,14 +11,22 @@ import 'service_errors.dart';
 ///
 /// Every transition runs in a transaction that re-checks who the caller is and
 /// what state the order is in; `firestore.rules` enforces the same constraints
-/// server-side, so this works on the Spark plan without Cloud Functions.
+/// server-side. Notifications for payment changes are written by the
+/// `onOrderPaymentStatusChanged` Cloud Function trigger, not by the client.
 class PaymentService {
-  PaymentService({FirebaseFirestore? db, String Function()? currentUid})
-      : _db = db ?? FirebaseFirestore.instance,
-        _currentUid = currentUid;
+  PaymentService({
+    FirebaseFirestore? db,
+    String Function()? currentUid,
+    FirebaseFunctions? functions,
+  })  : _db = db ?? FirebaseFirestore.instance,
+        _currentUid = currentUid,
+        _functionsOverride = functions;
 
   final FirebaseFirestore _db;
   final String Function()? _currentUid;
+  final FirebaseFunctions? _functionsOverride;
+  FirebaseFunctions get _functions =>
+      _functionsOverride ?? FirebaseFunctions.instance;
 
   String get _uid {
     final uid = _currentUid?.call() ?? FirebaseAuth.instance.currentUser?.uid;
@@ -32,9 +41,37 @@ class PaymentService {
 
   // ── Bank details ─────────────────────────────────────────
 
+  /// The signed-in farmer's own bank details (rules: owner/admin only).
   Future<BankDetails> getBankDetails(String farmerId) async {
     final snap = await _bankRef(farmerId).get();
     return BankDetails.fromMap(snap.data());
+  }
+
+  /// Checkout: whether [farmerId] accepts bank deposits. Buyers cannot read
+  /// `bank_details`, so this goes through `getFarmerBankDetails {farmerId}`.
+  Future<bool> farmerAcceptsBankDeposit(String farmerId) async {
+    final result = await _functions
+        .httpsCallable('getFarmerBankDetails')
+        .call({'farmerId': farmerId});
+    final data = result.data;
+    return data is Map && data['available'] == true;
+  }
+
+  /// Bank account to pay for [order]. Prefers the snapshot taken when the
+  /// order was created; otherwise asks `getFarmerBankDetails {orderId}`
+  /// (allowed for the buyer of a bank-deposit order).
+  Future<BankDetails> bankDetailsForOrder(FarmoraOrder order) async {
+    final snapshot = order.bankDetailsSnapshot;
+    if (snapshot != null && snapshot.isComplete) return snapshot;
+    final result = await _functions
+        .httpsCallable('getFarmerBankDetails')
+        .call({'orderId': order.id});
+    final data = result.data;
+    if (data is! Map) return BankDetails.empty;
+    final details = data['details'] ?? data['bankDetails'] ?? data;
+    return details is Map
+        ? BankDetails.fromMap(Map<String, dynamic>.from(details))
+        : BankDetails.empty;
   }
 
   Stream<BankDetails> bankDetailsStream(String farmerId) => _bankRef(farmerId)
@@ -67,7 +104,7 @@ class PaymentService {
       throw ArgumentError('Invalid payment slip.');
     }
     final ref = _db.collection('orders').doc(orderId);
-    final order = await _db.runTransaction((tx) async {
+    await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final data = snap.data();
       if (data == null) throw UserStateError(L10n.current.svcOrderNotFound);
@@ -85,17 +122,7 @@ class PaymentService {
         'proofSubmittedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      return order;
     });
-    if (order.farmerId.isNotEmpty) {
-      await _notify(
-        order.farmerId,
-        'Payment receipt submitted',
-        'The buyer uploaded a deposit slip for ${order.displayTotal}. '
-            'Check your account, then confirm or reject it.',
-        orderId,
-      );
-    }
   }
 
   // ── Farmer confirmations ─────────────────────────────────
@@ -113,9 +140,6 @@ class PaymentService {
         }
       },
       update: {'paymentStatus': 'paid', 'paidAt': FieldValue.serverTimestamp()},
-      notifyTitle: 'Cash received',
-      notifyBody: (o) => 'The farmer confirmed your cash payment of '
-          '${o.displayTotal}.',
     );
   }
 
@@ -133,8 +157,6 @@ class PaymentService {
         'paidAt': FieldValue.serverTimestamp(),
         'rejectionReason': FieldValue.delete(),
       },
-      notifyTitle: 'Payment confirmed',
-      notifyBody: (o) => 'Your bank deposit of ${o.displayTotal} was confirmed.',
     );
   }
 
@@ -152,8 +174,6 @@ class PaymentService {
         }
       },
       update: {'paymentStatus': 'rejected', 'rejectionReason': trimmed},
-      notifyTitle: 'Payment receipt rejected',
-      notifyBody: (_) => 'Reason: $trimmed. Please upload a new receipt.',
     );
   }
 
@@ -161,12 +181,10 @@ class PaymentService {
     String orderId, {
     required void Function(FarmoraOrder order) check,
     required Map<String, dynamic> update,
-    required String notifyTitle,
-    required String Function(FarmoraOrder order) notifyBody,
   }) async {
     final uid = _uid;
     final ref = _db.collection('orders').doc(orderId);
-    final order = await _db.runTransaction((tx) async {
+    await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final data = snap.data();
       if (data == null) throw UserStateError(L10n.current.svcOrderNotFound);
@@ -178,24 +196,6 @@ class PaymentService {
         'paymentConfirmedBy': uid,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      return order;
-    });
-    if (order.buyerId.isNotEmpty) {
-      await _notify(order.buyerId, notifyTitle, notifyBody(order), orderId);
-    }
-  }
-
-  Future<void> _notify(
-      String userId, String title, String body, String orderId) async {
-    await _db.collection('notifications').add({
-      'userId': userId,
-      'title': title,
-      'body': body,
-      'type': 'payment',
-      'referenceId': orderId,
-      'orderId': orderId,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 }

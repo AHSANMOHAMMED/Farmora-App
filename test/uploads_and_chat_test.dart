@@ -144,7 +144,8 @@ void main() {
       });
     });
 
-    test('links the slip, marks it for review and notifies the farmer', () async {
+    test('links the slip and marks it for review (no client notification)',
+        () async {
       await buyerService.submitPaymentProof(
         orderId: 'o1',
         proofImageUrl: 'https://storage/slip.jpg',
@@ -155,8 +156,9 @@ void main() {
       expect(order.paymentState, PaymentState.proofSubmitted);
       expect(order.proofImageUrl, 'https://storage/slip.jpg');
       expect(order.canReviewProof, isTrue);
+      // The farmer is notified by the onOrderPaymentStatusChanged trigger.
       final notes = await db.collection('notifications').get();
-      expect(notes.docs.single['userId'], 'farmer1');
+      expect(notes.docs, isEmpty);
     });
 
     test('farmer can then confirm it', () async {

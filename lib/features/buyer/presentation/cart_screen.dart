@@ -7,67 +7,34 @@ import '../../payments/presentation/payment_method_selector.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
-import '../../../services/firebase_service.dart';
+import 'transporter_picker_dialog.dart';
+import '../../../models/product.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
 
-  Future<String?> _chooseTransporter(BuildContext context) async {
-    var transporters = await FirestoreService().getAvailableTransporters();
-    if (!context.mounted) return null;
-    if (transporters.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No available transporters are registered yet.')),
-      );
-      return null;
-    }
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Choose a transporter'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: transporters.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final transporter = transporters[index];
-              final name =
-                  (transporter['displayName'] ?? 'Transporter').toString();
-              final district = (transporter['district'] ?? '').toString();
-              final vehicle = (transporter['vehicleType'] ?? '').toString();
-              final capacity = transporter['vehicleCapacity'];
-              final details = [
-                if (district.isNotEmpty) district,
-                if (vehicle.isNotEmpty) vehicle,
-                if (capacity != null) '$capacity kg capacity',
-              ].join(' • ');
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage:
-                      (transporter['photoUrl'] ?? '').toString().isNotEmpty
-                          ? NetworkImage(transporter['photoUrl'].toString())
-                          : null,
-                  child: (transporter['photoUrl'] ?? '').toString().isEmpty
-                      ? const Icon(Icons.local_shipping_outlined)
-                      : null,
-                ),
-                title: Text(name),
-                subtitle: Text(
-                  details.isEmpty ? 'Verified transporter' : details,
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(dialogContext)
-                    .pop(transporter['uid'].toString()),
-              );
-            },
-          ),
-        ),
-      ),
-    );
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Don't show a checkout error left over from a previous visit. Deferred
+    // so listeners aren't notified mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<FarmoraState>().clearLastOrderError();
+    });
   }
+
+  static bool _atStockLimit(Product p, int qty) {
+    final max = buyerAvailableQty(p);
+    return max > 0 && qty >= max;
+  }
+
+  static int _farmerCount(FarmoraState state) =>
+      state.cartItems.map((c) => c.product.farmerId).toSet().length;
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +226,27 @@ class CartScreen extends StatelessWidget {
                                       color: AppColors.primary,
                                     ),
                                   ),
+                                  if (buyerAvailableQty(item.product) > 0 &&
+                                      item.quantity >
+                                          buyerAvailableQty(item.product))
+                                    Text(
+                                      'Only ${buyerAvailableQty(item.product)} ${item.product.unit} available',
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 11,
+                                        color: AppColors.error,
+                                      ),
+                                    )
+                                  else if (_atStockLimit(
+                                      item.product, item.quantity))
+                                    Text(
+                                      'Max available: ${buyerAvailableQty(item.product)} ${item.product.unit}',
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 11,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -307,16 +295,22 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                   IconButton(
-                                    onPressed: () {
-                                      state.updateCartQuantity(
-                                        item.product.id,
-                                        item.quantity + 1,
-                                      );
-                                    },
-                                    icon: const Icon(
+                                    onPressed: _atStockLimit(
+                                            item.product, item.quantity)
+                                        ? null
+                                        : () {
+                                            state.updateCartQuantity(
+                                              item.product.id,
+                                              item.quantity + 1,
+                                            );
+                                          },
+                                    icon: Icon(
                                       Icons.add,
                                       size: 18,
-                                      color: AppColors.primary,
+                                      color: _atStockLimit(
+                                              item.product, item.quantity)
+                                          ? AppColors.outline
+                                          : AppColors.primary,
                                     ),
                                   ),
                                 ],
@@ -348,9 +342,26 @@ class CartScreen extends StatelessWidget {
                       _buildFeeRow(l.buyerCartSubtotalItems(state.cartItemCount),
                           AppFormat.lkr(state.cartSubtotal, decimals: 2)),
                       const SizedBox(height: 4),
-                      _buildFeeRow(l.buyerDeliveryFee, AppFormat.lkr(state.cartDeliveryFee, decimals: 2)),
-                      const SizedBox(height: 4),
-                      const SizedBox(height: 4),
+                      _buildFeeRow(
+                          _farmerCount(state) > 1
+                              ? '${l.buyerDeliveryFee} (${_farmerCount(state)} farmers)'
+                              : l.buyerDeliveryFee,
+                          AppFormat.lkr(state.cartDeliveryFee, decimals: 2)),
+                      if (_farmerCount(state) > 1)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Each farmer ships separately, so one delivery fee applies per farmer.',
+                              style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
                       const PaymentMethodSelector(),
                       const SizedBox(height: 8),
                       Row(
@@ -375,6 +386,34 @@ class CartScreen extends StatelessWidget {
                         ),
                         maxLines: 2,
                       ),
+                      if (state.lastOrderError != null &&
+                          !state.placingOrder) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 18, color: AppColors.error),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  state.lastOrderError!,
+                                  style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      color: AppColors.error),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Text(l.buyerCartVerifyNote,
                           style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: AppColors.onSurfaceVariant)),
@@ -397,9 +436,28 @@ class CartScreen extends StatelessWidget {
                                     );
                                     return;
                                   }
+                                  final overStock = state.cartItems
+                                      .where((c) =>
+                                          buyerAvailableQty(c.product) > 0 &&
+                                          c.quantity > buyerAvailableQty(c.product))
+                                      .toList();
+                                  if (overStock.isNotEmpty) {
+                                    final p = overStock.first.product;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Only ${buyerAvailableQty(p)} ${p.unit} of ${p.name} is available. Reduce the quantity to continue.'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   final transporterId =
-                                      await _chooseTransporter(context);
-                                  if (transporterId == null) return;
+                                      await showTransporterPicker(context);
+                                  if (transporterId == null ||
+                                      !context.mounted) {
+                                    return;
+                                  }
                                   final ok = await state.placeOrder(
                                     deliveryAddress: address,
                                     transporterId: transporterId,
@@ -408,12 +466,13 @@ class CartScreen extends StatelessWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(ok
-                                          ? 'Request sent. Order will confirm after transporter accepts.'
-                                          : l.buyerOrderPlaceFailed),
+                                          ? 'Order placed. The farmer will confirm it.'
+                                          : (state.lastOrderError ??
+                                              l.buyerOrderPlaceFailed)),
                                       backgroundColor: ok
                                           ? AppColors.primary
-                                          : AppColors.onSurfaceVariant,
-                                      duration: const Duration(seconds: 2),
+                                          : AppColors.error,
+                                      duration: Duration(seconds: ok ? 2 : 4),
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );

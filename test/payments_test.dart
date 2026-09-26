@@ -128,8 +128,10 @@ void main() {
       expect(data['paymentStatus'], 'paid');
       expect(data['paidAt'], isNotNull);
       expect(data['paymentConfirmedBy'], 'farmer1');
+      // Notifications come from the onOrderPaymentStatusChanged trigger,
+      // never from the client.
       final notes = await db.collection('notifications').get();
-      expect(notes.docs.single.data()['userId'], 'buyer1');
+      expect(notes.docs, isEmpty);
     });
 
     test('cash cannot be marked before delivery or by the buyer', () async {

@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
@@ -31,6 +32,30 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   StreamSubscription<Map<String, dynamic>?>? _transporterSub;
   TransportJob? _job;
   Map<String, dynamic>? _transporter;
+  bool _handoverBusy = false;
+
+  Future<void> _confirmHandover(FarmoraOrder order) async {
+    if (_handoverBusy) return;
+    final state = context.read<FarmoraState>();
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    setState(() => _handoverBusy = true);
+    try {
+      await state.confirmHandover(order.id);
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text(l.farmerTrackHandedConfirmed),
+            backgroundColor: AppColors.primary),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(userMessage(e, action: 'confirm the handover')),
+        backgroundColor: AppColors.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _handoverBusy = false);
+    }
+  }
 
   @override
   void initState() {
@@ -142,7 +167,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    l.farmerTrackOrderHash(order.orderNumber),
+                                    l.farmerTrackOrderHash(order.displayNumber),
                                     style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 12,
@@ -857,18 +882,16 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if ((order.statusKey == 'assigned' ||
+                          order.statusKey == 'pickedUp') &&
+                      order.farmerHandedOverAt == null) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        state.completeOrder(order.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(l.farmerTrackHandedConfirmed),
-                              backgroundColor: AppColors.primary),
-                        );
-                      },
+                      onPressed: _handoverBusy
+                          ? null
+                          : () => _confirmHandover(order),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -888,6 +911,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     height: 44,
@@ -1322,7 +1346,7 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                             style: const TextStyle(
                                 color: AppColors.onSurfaceVariant)),
                       ),
-                      Text(order.totalAmount,
+                      Text(order.displayTotal,
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

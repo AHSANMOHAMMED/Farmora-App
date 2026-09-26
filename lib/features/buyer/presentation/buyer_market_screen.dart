@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/firebase_values.dart';
 import '../../../models/market_price_index.dart';
 import '../../../providers/farmora_state.dart';
@@ -17,6 +18,7 @@ class BuyerMarketScreen extends StatefulWidget {
 class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTickerProviderStateMixin {
   final _market = CommunityMarketService();
   late final TabController _tabs = TabController(length: 2, vsync: this);
+  bool _busy = false;
   @override
   void dispose() { _tabs.dispose(); super.dispose(); }
 
@@ -24,13 +26,13 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Market & Requests'), bottom: TabBar(controller: _tabs, tabs: const [Tab(text: 'My requests'), Tab(text: 'Market prices')])),
     body: TabBarView(controller: _tabs, children: [_requests(), _prices()]),
-    floatingActionButton: FloatingActionButton.extended(onPressed: _newRequest, icon: const Icon(Icons.campaign_outlined), label: const Text('Request produce')),
+    floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newRequest, icon: const Icon(Icons.campaign_outlined), label: const Text('Request produce')),
   );
 
   Widget _requests() => StreamBuilder<List<Map<String, dynamic>>>(
     stream: _market.watchBuyerRequests(),
     builder: (context, snapshot) {
-      if (snapshot.hasError) return _empty('Could not load requests: ${snapshot.error}');
+      if (snapshot.hasError) return _empty(userMessage(snapshot.error!, action: 'load your requests'));
       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
       if (snapshot.data!.isEmpty) return _empty('Post a requirement to invite verified farmers to quote your produce order.');
       return ListView.builder(padding: const EdgeInsets.all(12), itemCount: snapshot.data!.length, itemBuilder: (context, i) {
@@ -49,10 +51,10 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
                 contentPadding: EdgeInsets.zero,
                 title: Text('${quote['farmerName']} · LKR ${((quote['unitPriceMinor'] as num).toInt() / 100).toStringAsFixed(2)} / ${request['unit']}'),
                 subtitle: Text('${quote['productName']} · delivery LKR ${((quote['deliveryFeeMinor'] as num).toInt() / 100).toStringAsFixed(2)}${(quote['message'] as String?)?.isNotEmpty == true ? '\n${quote['message']}' : ''}'),
-                trailing: FilledButton(onPressed: quote['status'] == 'pending' ? () => _accept(request['id'], quote['farmerId']) : null, child: const Text('Accept')),
+                trailing: FilledButton(onPressed: quote['status'] == 'pending' && !_busy ? () => _accept(request['id'], quote['farmerId']) : null, child: const Text('Accept')),
               )).toList());
             }),
-            Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: () => _run(() => _market.cancelRequest(request['id'])), icon: const Icon(Icons.close), label: const Text('Close request'))),
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: _busy ? null : () => _run(() => _market.cancelRequest(request['id']), success: 'Request closed.'), icon: const Icon(Icons.close), label: const Text('Close request'))),
           ],
           if (request['status'] == 'matched') TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerOrdersScreen())), child: const Text('View resulting order')),
         ])));
@@ -63,13 +65,18 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
   Widget _prices() => StreamBuilder<List<MarketPriceIndex>>(
     stream: FirestoreService().marketPricesStream(),
     builder: (context, snapshot) {
-      if (snapshot.hasError) return _empty('Could not load market prices: ${snapshot.error}');
+      // The report button is always available, even when there are no
+      // benchmarks yet or they failed to load.
+      final report = FilledButton.tonalIcon(onPressed: _busy ? null : _reportPrice, icon: const Icon(Icons.add_chart), label: const Text('Report a market price'));
+      if (snapshot.hasError) {
+        return ListView(padding: const EdgeInsets.all(12), children: [report, _empty(userMessage(snapshot.error!, action: 'load market prices'))]);
+      }
       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
       final prices = snapshot.data!;
-      if (prices.isEmpty) return _empty('No verified prices yet. Submit a market observation and an admin can add it to the benchmark.');
       return ListView(padding: const EdgeInsets.all(12), children: [
-        FilledButton.tonalIcon(onPressed: _reportPrice, icon: const Icon(Icons.add_chart), label: const Text('Report a market price')),
+        report,
         const SizedBox(height: 8),
+        if (prices.isEmpty) _empty('No verified prices yet. Submit a market observation and an admin can add it to the benchmark.'),
         for (final price in prices) Card(child: ListTile(
           leading: const Icon(Icons.trending_up, color: Colors.green),
           title: Text(price.cropName),
@@ -90,8 +97,8 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
       title: const Text('Broadcast a produce request'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Produce item')),
-        DropdownButtonFormField(value: category, items: const ['Vegetables','Fruits','Grains','Spices','Other'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => category = v ?? 'Other')),
-        Row(children: [Expanded(child: TextField(controller: quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity'))), const SizedBox(width: 8), Expanded(child: DropdownButtonFormField(value: unit, decoration: const InputDecoration(labelText: 'Unit'), items: const ['kg','g','ton','pcs','piece','box','crate','bunch','bag','liter'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => unit = v ?? 'kg')))]),
+        DropdownButtonFormField(initialValue: category, items: const ['Vegetables','Fruits','Grains','Spices','Other'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => category = v ?? 'Other')),
+        Row(children: [Expanded(child: TextField(controller: quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity'))), const SizedBox(width: 8), Expanded(child: DropdownButtonFormField(initialValue: unit, decoration: const InputDecoration(labelText: 'Unit'), items: const ['kg','g','ton','pcs','piece','box','crate','bunch','bag','liter'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => unit = v ?? 'kg')))]),
         TextField(controller: district, decoration: const InputDecoration(labelText: 'Delivery district')),
         TextField(controller: address, decoration: const InputDecoration(labelText: 'Delivery address')),
         TextField(controller: budget, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Maximum price per $unit (optional LKR)')),
@@ -101,7 +108,7 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
       actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () { final q = int.tryParse(quantity.text); if (q != null && q > 0 && name.text.trim().isNotEmpty && address.text.trim().length >= 5) Navigator.pop(ctx, {'name': name.text.trim(),'category': category,'quantity': q,'unit': unit,'district': district.text.trim(),'address': address.text.trim(),'budget': double.tryParse(budget.text) ?? 0.0,'notes': notes.text.trim(),'date': date}); }, child: const Text('Broadcast'))],
     )));
     if (data == null) return;
-    await _run(() => _market.createRequest(produceName: data['name'], category: data['category'], quantity: data['quantity'], unit: data['unit'], district: data['district'], deliveryAddress: data['address'], deliveryDate: data['date'], maxUnitPriceMinor: (data['budget'] * 100).round(), notes: data['notes']).then((_) {}));
+    await _run(() => _market.createRequest(produceName: data['name'], category: data['category'], quantity: data['quantity'], unit: data['unit'], district: data['district'], deliveryAddress: data['address'], deliveryDate: data['date'], maxUnitPriceMinor: (data['budget'] * 100).round(), notes: data['notes']).then((_) {}), success: 'Request broadcast to farmers.');
   }
 
   Future<void> _reportPrice() async {
@@ -112,22 +119,34 @@ class _BuyerMarketScreenState extends State<BuyerMarketScreen> with SingleTicker
         TextField(controller: crop, decoration: const InputDecoration(labelText: 'Produce item')),
         TextField(controller: market, decoration: const InputDecoration(labelText: 'Market / pola')),
         TextField(controller: district, decoration: const InputDecoration(labelText: 'District')),
-        DropdownButtonFormField(value: category, items: const ['Vegetables','Fruits','Grains','Spices','Other'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => category = v ?? 'Other')),
-        Row(children: [Expanded(child: TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'LKR price'))), const SizedBox(width: 8), Expanded(child: DropdownButtonFormField(value: unit, items: const ['kg','g','ton','pcs','piece','box','crate','bunch','bag','liter'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => unit = v ?? 'kg')))]),
+        DropdownButtonFormField(initialValue: category, items: const ['Vegetables','Fruits','Grains','Spices','Other'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => category = v ?? 'Other')),
+        Row(children: [Expanded(child: TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'LKR price'))), const SizedBox(width: 8), Expanded(child: DropdownButtonFormField(initialValue: unit, items: const ['kg','g','ton','pcs','piece','box','crate','bunch','bag','liter'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setDialog(() => unit = v ?? 'kg')))]),
       ])), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () { final p = double.tryParse(price.text); if (p != null && p > 0 && crop.text.trim().isNotEmpty && market.text.trim().isNotEmpty && district.text.trim().isNotEmpty) Navigator.pop(ctx, {'crop':crop.text.trim(),'market':market.text.trim(),'district':district.text.trim(),'category':category,'unit':unit,'price':p}); }, child: const Text('Submit for review'))],
     )));
     if (data == null) return;
-    await _run(() => _market.submitPriceReport(cropName: data['crop'], category: data['category'], marketName: data['market'], district: data['district'], unit: data['unit'], price: data['price']));
+    await _run(() => _market.submitPriceReport(cropName: data['crop'], category: data['category'], marketName: data['market'], district: data['district'], unit: data['unit'], price: data['price']), success: 'Price report submitted for review.');
   }
 
   Future<void> _accept(String requestId, String farmerId) async {
-    await _run(() async { await _market.acceptQuote(requestId, farmerId); });
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quote accepted. The order is now in your orders for farmer confirmation.')));
+    await _run(() async { await _market.acceptQuote(requestId, farmerId); },
+        success: 'Quote accepted. The order is now in your orders for farmer confirmation.');
   }
 
-  Future<void> _run(Future<void> Function() action) async {
-    try { await action(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved.'))); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not complete action: $e'))); }
+  /// Awaits [action]; shows [success] only after it succeeded, otherwise the
+  /// mapped error. Actions are disabled while one is in flight.
+  Future<bool> _run(Future<void> Function() action, {String success = 'Saved.'}) async {
+    if (_busy) return false;
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success)));
+      return true;
+    } catch (e, st) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userMessage(e, stack: st)), backgroundColor: Colors.red.shade700));
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Widget _empty(String text) => Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center)));

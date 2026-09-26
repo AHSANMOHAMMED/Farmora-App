@@ -56,8 +56,9 @@ void main() {
       // 4. Primary Green Button "Login"
       expect(find.text('Login'), findsOneWidget);
 
-      // 5. Alternative OTP button
-      expect(find.text('Login with OTP'), findsOneWidget);
+      // 5. Forgot password entry (OTP login was removed on purpose)
+      expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Login with OTP'), findsNothing);
 
       // 6. Registration footer link
       expect(find.text("Don't have an account? "), findsOneWidget);

@@ -102,20 +102,21 @@ class Review {
       } catch (e) {
         statusValue = ReviewStatus.pending;
       }
-    }    return Review(
+    }
+    return Review(
       id: id,
-      orderId: data['orderId'] ?? '',
-      orderNumber: data['orderNumber'] ?? '',
-      reviewerId: data['reviewerId'] ?? '',
-      reviewerName: data['reviewerName'] ?? '',
-      subjectId: data['subjectId'] ?? '',
-      subjectName: data['subjectName'] ?? '',
+      orderId: (data['orderId'] ?? '').toString(),
+      orderNumber: (data['orderNumber'] ?? '').toString(),
+      reviewerId: (data['reviewerId'] ?? '').toString(),
+      reviewerName: (data['reviewerName'] ?? '').toString(),
+      subjectId: (data['subjectId'] ?? data['revieweeId'] ?? '').toString(),
+      subjectName: (data['subjectName'] ?? '').toString(),
       rating: firebaseInt(data['rating']) ?? 5,
-      comment: data['comment'] ?? '',
+      comment: (data['comment'] ?? '').toString(),
       status: statusValue,
       createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
       moderatedAt: firebaseDate(data['moderatedAt']),
-      moderationNote: data['moderationNote'] as String?,
+      moderationNote: data['moderationNote']?.toString(),
     );
   }
 

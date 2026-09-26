@@ -4,6 +4,21 @@ import '../../../../providers/farmora_state.dart';
 import '../../../../models/review_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+
+/// Awaits a moderation call; shows [success] only after it returns and
+/// `userMessage(e)` on failure.
+Future<void> _runReviewAction(BuildContext context,
+    Future<void> Function() action, String success) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await action();
+    messenger.showSnackBar(SnackBar(content: Text(success)));
+  } catch (e) {
+    messenger.showSnackBar(
+        SnackBar(content: Text(userMessage(e, action: 'moderate the review'))));
+  }
+}
 
 class ReviewManagementScreen extends StatefulWidget {
   const ReviewManagementScreen({super.key});
@@ -234,36 +249,30 @@ class _ReviewCard extends StatelessWidget {
                   FilledButton.tonalIcon(
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
                     label: Text(l.adminReviewsApprove, style: const TextStyle(fontSize: 12)),
-                    onPressed: () async {
-                      await state.moderateReview(
+                    onPressed: () => _runReviewAction(
+                      context,
+                      () => state.moderateReview(
                         reviewId: review.id,
                         status: ReviewStatus.approved,
                         note: 'Approved by admin',
-                      );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminReviewsApprovedSnack)),
-                        );
-                      }
-                    },
+                      ),
+                      l.adminReviewsApprovedSnack,
+                    ),
                   ),
                 if (review.status != ReviewStatus.rejected) ...[
                   const SizedBox(width: 6),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.flag_outlined, size: 16, color: Colors.orange),
                     label: Text(l.adminReviewsFlag, style: const TextStyle(fontSize: 12, color: Colors.orange)),
-                    onPressed: () async {
-                      await state.moderateReview(
+                    onPressed: () => _runReviewAction(
+                      context,
+                      () => state.moderateReview(
                         reviewId: review.id,
                         status: ReviewStatus.rejected,
                         note: 'Flagged for content review',
-                      );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminReviewsFlaggedSnack)),
-                        );
-                      }
-                    },
+                      ),
+                      l.adminReviewsFlaggedSnack,
+                    ),
                   ),
                 ],
                 const SizedBox(width: 4),
@@ -286,13 +295,12 @@ class _ReviewCard extends StatelessWidget {
                         ],
                       ),
                     );
-                    if (confirm == true) {
-                      await state.deleteReview(reviewId: review.id);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminReviewsDeletedSnack)),
-                        );
-                      }
+                    if (confirm == true && context.mounted) {
+                      await _runReviewAction(
+                        context,
+                        () => state.deleteReview(reviewId: review.id),
+                        l.adminReviewsDeletedSnack,
+                      );
                     }
                   },
                 ),
@@ -355,18 +363,17 @@ class _ReviewCard extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           FilledButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.pop(ctx);
-              await state.moderateReview(
-                reviewId: review.id,
-                status: review.status,
-                note: ctrl.text.trim(),
+              _runReviewAction(
+                context,
+                () => state.moderateReview(
+                  reviewId: review.id,
+                  status: review.status,
+                  note: ctrl.text.trim(),
+                ),
+                l.adminReviewsNoteSaved,
               );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l.adminReviewsNoteSaved)),
-                );
-              }
             },
             child: Text(l.adminReviewsSaveNote),
           ),

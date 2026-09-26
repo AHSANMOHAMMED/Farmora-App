@@ -4,6 +4,8 @@ import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import 'admin_csv_export.dart';
 
 class PlatformAnalyticsScreen extends StatelessWidget {
   const PlatformAnalyticsScreen({super.key});
@@ -24,43 +26,61 @@ class PlatformAnalyticsScreen extends StatelessWidget {
     final l = context.l10n;
     final state = context.watch<FarmoraState>();
 
-    // Calculate Financial metrics
-    double totalGmv = 0.0;
+    final stats = state.adminStats;
+    final orders = state.orders;
+    final rate = state.commissionRate / 100.0;
+
+    // Financial metrics from the loaded order stream.
+    double localGmv = 0.0;
+    double localCut = 0.0;
     double escrowLocked = 0.0;
     int completedCount = 0;
     int disputedCount = 0;
     int inTransitCount = 0;
+    int activeOrderCount = 0;
 
-    for (final o in state.orders) {
-      totalGmv += o.total;
-      final st = o.status.toLowerCase();
-      if (st == 'completed' || st == 'delivered') {
+    for (final o in orders) {
+      final key = o.statusKey;
+      if (o.isDisputed) disputedCount++;
+      if (o.isCancelled) continue;
+      activeOrderCount++;
+      localGmv += o.total;
+      localCut += o.platformFeeMinor > 0
+          ? o.platformFee
+          : (o.subtotalMinor > 0 ? o.subtotalMinor / 100.0 : o.total) * rate;
+      if (key == 'completed' || key == 'delivered') {
         completedCount++;
-      } else if (st == 'disputed') {
-        disputedCount++;
-      } else {
+      } else if (!o.isDisputed) {
         inTransitCount++;
       }
-      if (o.paymentStatus == 'paid' && st != 'completed' && st != 'delivered') {
+      if (o.paymentStatus == 'paid' && key != 'completed' && key != 'delivered') {
         escrowLocked += o.total;
       }
     }
 
-    final platformCut = totalGmv * (state.commissionRate / 100.0);
-    final avgOrderSize =
-        state.orders.isNotEmpty ? totalGmv / state.orders.length : 0.0;
+    // Aggregate totals (adminStats) win once loaded; local values are the
+    // fallback until then.
+    final totalGmv = stats.isLoaded ? stats.grossVolume : localGmv;
+    final totalOrders = stats.isLoaded ? stats.totalOrders : orders.length;
+    final platformCut =
+        stats.isLoaded && activeOrderCount < stats.totalOrders
+            ? stats.grossVolume * rate
+            : localCut;
+    final avgOrderSize = totalOrders > 0 ? totalGmv / totalOrders : 0.0;
+    final fulfillmentRate =
+        orders.isNotEmpty ? completedCount / orders.length : 0.0;
+    final disputeRate = orders.isNotEmpty
+        ? disputedCount / orders.length
+        : (stats.totalOrders > 0 ? stats.openDisputes / stats.totalOrders : 0.0);
 
     // User breakdown
-    final farmerCount = state.users
-        .where((u) => (u['role'] ?? '').toString().toLowerCase() == 'farmer')
+    int roleCount(String role) => state.users
+        .where((u) => (u['role'] ?? '').toString().toLowerCase() == role)
         .length;
-    final buyerCount = state.users
-        .where((u) => (u['role'] ?? '').toString().toLowerCase() == 'buyer')
-        .length;
-    final transporterCount = state.users
-        .where(
-            (u) => (u['role'] ?? '').toString().toLowerCase() == 'transporter')
-        .length;
+    final farmerCount = stats.isLoaded ? stats.farmers : roleCount('farmer');
+    final buyerCount = stats.isLoaded ? stats.buyers : roleCount('buyer');
+    final transporterCount =
+        stats.isLoaded ? stats.transporters : roleCount('transporter');
     final categories = <String, int>{};
     final regions = <String, int>{};
     for (final product in state.products.where((product) => product.isActive)) {
@@ -80,19 +100,36 @@ class PlatformAnalyticsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.download_rounded),
             tooltip: l.adminAnalyticsExportTooltip,
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l.adminAnalyticsExportUnavailable),
-                ),
-              );
-            },
+            onPressed: () => _export(
+              context,
+              state,
+              totalGmv: totalGmv,
+              platformCut: platformCut,
+              escrowLocked: escrowLocked,
+              totalOrders: totalOrders,
+              completedCount: completedCount,
+              disputedCount: disputedCount,
+              inTransitCount: inTransitCount,
+              farmerCount: farmerCount,
+              buyerCount: buyerCount,
+              transporterCount: transporterCount,
+              categories: categories,
+              regions: regions,
+            ),
           ),
         ],
       ),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () => _refresh(context),
+        child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          if (state.adminStatsLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(),
+            ),
           // Header Card
           Container(
             padding: const EdgeInsets.all(16),
@@ -151,7 +188,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                   children: [
                     Text(
                       l.adminAnalyticsEstCommission(
-                          '${state.commissionRate}', AppFormat.lkr(platformCut)),
+                          AppFormat.number(state.commissionRate, decimals: 1), AppFormat.lkr(platformCut)),
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -187,7 +224,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                 child: _MetricCard(
                   title: l.adminAnalyticsFulfillment,
                   value:
-                      '${state.orders.isNotEmpty ? ((completedCount / state.orders.length) * 100).toStringAsFixed(0) : '0'}%',
+                      '${(fulfillmentRate * 100).toStringAsFixed(0)}%',
                   subtitle: l.adminAnalyticsDeliveredSafely(completedCount),
                   icon: Icons.check_circle_outline_rounded,
                   color: const Color(0xFF2E7D32),
@@ -360,7 +397,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${state.orders.isNotEmpty ? ((disputedCount / state.orders.length) * 100).toStringAsFixed(1) : '0.0'}%',
+                        '${(disputeRate * 100).toStringAsFixed(1)}%',
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, color: Colors.orange),
                       ),
@@ -370,9 +407,7 @@ class PlatformAnalyticsScreen extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
-                      value: state.orders.isNotEmpty
-                          ? (disputedCount / state.orders.length)
-                          : 0,
+                      value: disputeRate.clamp(0.0, 1.0).toDouble(),
                       backgroundColor: Colors.grey.shade200,
                       valueColor: const AlwaysStoppedAnimation(Colors.orange),
                       minHeight: 8,
@@ -402,10 +437,74 @@ class PlatformAnalyticsScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (stats.fetchedAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'Platform totals updated ${AppFormat.dateTime(stats.fetchedAt!)} · pull down to refresh',
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ),
           const SizedBox(height: 32),
         ],
       ),
+      ),
     );
+  }
+
+  Future<void> _refresh(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<FarmoraState>().refreshAdminStats();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'load platform statistics'))));
+    }
+  }
+
+  Future<void> _export(
+    BuildContext context,
+    FarmoraState state, {
+    required double totalGmv,
+    required double platformCut,
+    required double escrowLocked,
+    required int totalOrders,
+    required int completedCount,
+    required int disputedCount,
+    required int inTransitCount,
+    required int farmerCount,
+    required int buyerCount,
+    required int transporterCount,
+    required Map<String, int> categories,
+    required Map<String, int> regions,
+  }) async {
+    final stats = state.adminStats;
+    final rows = <List<Object?>>[
+      ['summary', 'generated_at', DateTime.now()],
+      ['summary', 'stats_fetched_at', stats.fetchedAt],
+      ['summary', 'gross_volume_lkr', totalGmv.toStringAsFixed(2)],
+      ['summary', 'commission_rate_percent', state.commissionRate],
+      ['summary', 'platform_cut_lkr', platformCut.toStringAsFixed(2)],
+      ['summary', 'escrow_locked_lkr', escrowLocked.toStringAsFixed(2)],
+      ['summary', 'total_orders', totalOrders],
+      ['summary', 'loaded_orders', state.orders.length],
+      ['summary', 'completed_orders', completedCount],
+      ['summary', 'disputed_orders', disputedCount],
+      ['summary', 'in_progress_orders', inTransitCount],
+      ['summary', 'open_disputes', stats.openDisputes],
+      ['users', 'total', stats.isLoaded ? stats.totalUsers : state.users.length],
+      ['users', 'farmers', farmerCount],
+      ['users', 'buyers', buyerCount],
+      ['users', 'transporters', transporterCount],
+      if (stats.isLoaded) ['users', 'admins', stats.admins],
+      for (final e in categories.entries) ['listings_by_category', e.key, e.value],
+      for (final e in regions.entries) ['listings_by_location', e.key, e.value],
+    ];
+    final csv = buildCsv(const ['section', 'metric', 'value'], rows);
+    final stamp = DateTime.now().toIso8601String().substring(0, 10);
+    await exportCsv(context,
+        fileName: 'farmora_analytics_$stamp.csv', csv: csv);
   }
 }
 

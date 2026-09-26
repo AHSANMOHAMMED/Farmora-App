@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
@@ -252,28 +253,54 @@ class FarmerJobsScreen extends StatelessWidget {
 
   void _showCancelDialog(
       BuildContext context, FarmoraState state, TransportJob job) {
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    var busy = false;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.cancelRequest),
-        content: Text(context.l10n.farmerJobsCancelConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(context.l10n.commonNo),
-          ),
-          TextButton(
-            onPressed: () {
-              state.deleteTransportJob(job.id);
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.l10n.transportRequestCancelled)),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(context.l10n.farmerJobsCancelRequestButton),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l.cancelRequest),
+          content: Text(l.farmerJobsCancelConfirm),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.of(ctx).pop(),
+              child: Text(l.commonNo),
+            ),
+            TextButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() => busy = true);
+                      try {
+                        await state.cancelTransportRequest(job.id);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        messenger.showSnackBar(
+                          SnackBar(content: Text(l.transportRequestCancelled)),
+                        );
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDialogState(() => busy = false);
+                        }
+                        messenger.showSnackBar(SnackBar(
+                          backgroundColor: AppColors.error,
+                          content: Text(userMessage(e,
+                              action: 'cancel the transport request')),
+                        ));
+                      }
+                    },
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l.farmerJobsCancelRequestButton),
+            ),
+          ],
+        ),
       ),
     );
   }

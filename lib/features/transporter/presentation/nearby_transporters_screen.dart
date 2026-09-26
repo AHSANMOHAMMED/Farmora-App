@@ -3,18 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/geo.dart';
 import '../../../core/utils/firebase_values.dart';
-import '../../../models/user_role.dart';
-import '../../../providers/farmora_state.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
-import '../../messaging/presentation/conversations_screen.dart';
 
 /// Discovery screen where farmers and buyers find verified transport
 /// providers near their location and connect with them via in-app chat.
@@ -31,8 +28,9 @@ class NearbyTransportersScreen extends StatefulWidget {
 class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
   final FirestoreService _service = FirestoreService();
   final TextEditingController _searchController = TextEditingController();
-  StreamSubscription<List<Map<String, dynamic>>>? _transportersSub;
   List<Map<String, dynamic>> _transporters = [];
+  bool _loading = true;
+  String? _loadError;
   Position? _myPosition;
   String _search = '';
   bool _locating = false;
@@ -41,17 +39,38 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
   @override
   void initState() {
     super.initState();
-    _transportersSub = _service.transportersStream().listen((list) {
-      if (mounted) setState(() => _transporters = list);
-    }, onError: (e) => debugPrint('Transporters stream error: $e'));
+    _loadTransporters();
     _locateMe();
   }
 
   @override
   void dispose() {
-    _transportersSub?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// One-shot load via the `listAvailableTransporters` callable (the
+  /// transporter directory is not readable directly). Pull to refresh.
+  Future<void> _loadTransporters() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final list = await _service.listAvailableTransporters();
+      if (!mounted) return;
+      setState(() {
+        _transporters = list;
+        _loading = false;
+      });
+    } catch (e, st) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError =
+            userMessage(e, action: 'load transport providers', stack: st);
+      });
+    }
   }
 
   Future<void> _locateMe() async {
@@ -119,7 +138,9 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
               .contains(_search.toLowerCase())) {
         continue;
       }
-      final loc = GeoPoint.fromMap(t['location'] as Map<String, dynamic>?);
+      final rawLoc = t['location'];
+      final loc = GeoPoint.fromMap(
+          rawLoc is Map ? Map<String, dynamic>.from(rawLoc) : null);
       double? km;
       if (_myPosition != null && loc.isValid) {
         km = distanceKm(
@@ -141,8 +162,6 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<FarmoraState>();
-    final isVerifiedUser = state.isVerified;
     final entries = _sorted;
     final l10n = context.l10n;
 
@@ -266,31 +285,64 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
               ),
             ),
           Expanded(
-            child: entries.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        l10n.transporterNoProviders,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    itemCount: entries.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) {
-                      final e = entries[i];
-                      return _TransporterCard(
-                        entry: e,
-                        canChat: isVerifiedUser || state.role != Role.farmer,
-                      );
-                    },
+            child: _loading && _transporters.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadTransporters,
+                    child: _loadError != null && _transporters.isEmpty
+                        ? _messageList(
+                            icon: Icons.error_outline,
+                            message: _loadError!,
+                            showRetry: true,
+                          )
+                        : entries.isEmpty
+                            ? _messageList(
+                                icon: Icons.local_shipping_outlined,
+                                message: l10n.transporterNoProviders,
+                                showRetry: false,
+                              )
+                            : ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                                itemCount: entries.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, i) =>
+                                    _TransporterCard(entry: entries[i]),
+                              ),
                   ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Scrollable (so pull-to-refresh works) empty/error message.
+  Widget _messageList({
+    required IconData icon,
+    required String message,
+    required bool showRetry,
+  }) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 48),
+        Icon(icon, size: 44, color: AppColors.onSurfaceVariant),
+        const SizedBox(height: 12),
+        Text(message, textAlign: TextAlign.center),
+        if (showRetry) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: _loading ? null : _loadTransporters,
+              icon: const Icon(Icons.refresh),
+              label: Text(context.l10n.commonRetry),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -305,9 +357,90 @@ class _TransporterEntry {
 
 class _TransporterCard extends StatelessWidget {
   final _TransporterEntry entry;
-  final bool canChat;
 
-  const _TransporterCard({required this.entry, required this.canChat});
+  const _TransporterCard({required this.entry});
+
+  /// Read-only provider details. Messaging is order-scoped, so there is no
+  /// direct "connect" here: pick this provider at checkout, then chat from
+  /// the order.
+  void _showDetails(BuildContext context, String name) {
+    final t = entry.data;
+    final districts = (t['serviceDistricts'] is List)
+        ? (t['serviceDistricts'] as List).map((e) => e.toString()).toList()
+        : const <String>[];
+    final rating = t['rating'];
+    final capacity = t['vehicleCapacity'];
+    final rows = <MapEntry<String, String>>[
+      if ((t['district'] ?? '').toString().isNotEmpty)
+        MapEntry('District', t['district'].toString()),
+      if (districts.isNotEmpty) MapEntry('Serves', districts.join(', ')),
+      if ((t['vehicleType'] ?? '').toString().isNotEmpty)
+        MapEntry('Vehicle', t['vehicleType'].toString()),
+      if ((t['vehicleRegistration'] ?? '').toString().isNotEmpty)
+        MapEntry('Registration', t['vehicleRegistration'].toString()),
+      if (capacity != null)
+        MapEntry('Capacity',
+            '$capacity ${(t['vehicleCapacityUnit'] ?? 'kg').toString()}'),
+      if (rating is num && rating > 0)
+        MapEntry('Rating', rating.toStringAsFixed(1)),
+      if (entry.distanceKm != null)
+        MapEntry('Distance', distanceLabel(entry.distanceKm!)),
+      MapEntry('Verified', t['isVerified'] == true ? 'Yes' : 'No'),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name,
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              for (final r in rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 110,
+                        child: Text(r.key,
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant)),
+                      ),
+                      Expanded(
+                        child: Text(r.value,
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                context.l10n.transporterConnectTooltip,
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   String get _initials {
     final name =
@@ -496,16 +629,10 @@ class _TransporterCard extends StatelessWidget {
                     Tooltip(
                       message: l10n.transporterConnectTooltip,
                       child: OutlinedButton.icon(
-                        onPressed: canChat
-                            ? () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const ConversationsScreen(),
-                                  ),
-                                )
-                            : null,
-                        icon: const Icon(Icons.chat_bubble_outline, size: 14),
-                        label: Text(l10n.transporterConnect,
-                            style: const TextStyle(
+                        onPressed: () => _showDetails(context, name),
+                        icon: const Icon(Icons.info_outline, size: 14),
+                        label: const Text('Details',
+                            style: TextStyle(
                                 fontFamily: 'Inter', fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,

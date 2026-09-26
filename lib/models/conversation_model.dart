@@ -7,6 +7,11 @@ class FarmoraConversation {
   final String lastMessage;
   final DateTime? lastMessageAt;
   final Map<String, int> unreadCounts;
+  final String lastSenderId;
+
+  /// False for a conversation that has not been created on the server yet
+  /// (the first `sendMessage` creates it).
+  final bool exists;
 
   const FarmoraConversation({
     required this.id,
@@ -15,7 +20,15 @@ class FarmoraConversation {
     this.lastMessage = '',
     this.lastMessageAt,
     this.unreadCounts = const {},
+    this.lastSenderId = '',
+    this.exists = true,
   });
+
+  /// The other participant for [uid] (empty when unknown).
+  String peerOf(String uid) => participantIds.firstWhere(
+        (id) => id != uid,
+        orElse: () => '',
+      );
 
   int unreadFor(String uid) => unreadCounts[uid] ?? 0;
 
@@ -23,7 +36,9 @@ class FarmoraConversation {
     return FarmoraConversation(
       id: id,
       orderId: (data['orderId'] ?? '').toString(),
-      participantIds: List<String>.from(data['participantIds'] ?? []),
+      participantIds: (data['participantIds'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
       lastMessage: (data['lastMessage'] ?? '').toString(),
       lastMessageAt: firebaseDate(data['lastMessageAt']),
       unreadCounts: Map<String, int>.from(
@@ -31,6 +46,7 @@ class FarmoraConversation {
           (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
         ),
       ),
+      lastSenderId: (data['lastSenderId'] ?? '').toString(),
     );
   }
 }

@@ -11,8 +11,23 @@ class FarmoraOffer {
   final String status; // 'pending', 'accepted', 'rejected', 'countered'
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String buyerName;
+  final String farmerName;
 
+  /// Unit the per-unit [proposedPrice] refers to (e.g. 'kg').
+  final String unit;
+
+  /// Order created when the offer was accepted (if any).
+  final String? orderId;
+
+  /// Price per unit in minor units (LKR cents). Offers are always per unit.
   int get proposedPriceMinor => (proposedPrice * 100).round();
+
+  /// Offer value: per-unit price × quantity (LKR major units).
+  double get totalPrice => proposedPrice * proposedQuantity;
+
+  bool get isPending => status == 'pending';
+  bool get isCountered => status == 'countered';
 
   FarmoraOffer({
     required this.id,
@@ -25,6 +40,10 @@ class FarmoraOffer {
     this.status = 'pending',
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.buyerName = '',
+    this.farmerName = '',
+    this.unit = 'kg',
+    this.orderId,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -39,6 +58,10 @@ class FarmoraOffer {
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? buyerName,
+    String? farmerName,
+    String? unit,
+    String? orderId,
   }) {
     return FarmoraOffer(
       id: id ?? this.id,
@@ -51,6 +74,10 @@ class FarmoraOffer {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      buyerName: buyerName ?? this.buyerName,
+      farmerName: farmerName ?? this.farmerName,
+      unit: unit ?? this.unit,
+      orderId: orderId ?? this.orderId,
     );
   }
 
@@ -65,25 +92,33 @@ class FarmoraOffer {
       'status': status,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'buyerName': buyerName,
+      'farmerName': farmerName,
+      'unit': unit,
+      if (orderId != null) 'orderId': orderId,
     };
   }
 
   factory FarmoraOffer.fromMap(String id, Map<String, dynamic> data) {
-    final priceMinor = (data['proposedPriceMinor'] as num?)?.toInt();
+    final priceMinor = firebaseInt(data['proposedPriceMinor']);
     final proposedPrice = priceMinor != null
         ? priceMinor / 100.0
-        : (data['proposedPrice'] as num?)?.toDouble() ?? 0.0;
+        : firebaseDouble(data['proposedPrice']) ?? 0.0;
     return FarmoraOffer(
       id: id,
-      productId: data['productId'] ?? '',
-      productName: data['productName'] ?? '',
-      buyerId: data['buyerId'] ?? '',
-      farmerId: data['farmerId'] ?? '',
-      proposedQuantity: (data['proposedQuantity'] as num?)?.toInt() ?? 0,
+      productId: (data['productId'] ?? '').toString(),
+      productName: (data['productName'] ?? '').toString(),
+      buyerId: (data['buyerId'] ?? '').toString(),
+      farmerId: (data['farmerId'] ?? '').toString(),
+      proposedQuantity: firebaseInt(data['proposedQuantity']) ?? 0,
       proposedPrice: proposedPrice,
-      status: data['status'] ?? 'pending',
+      status: (data['status'] ?? 'pending').toString(),
       createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
       updatedAt: firebaseDate(data['updatedAt']) ?? DateTime.now(),
+      buyerName: (data['buyerName'] ?? '').toString(),
+      farmerName: (data['farmerName'] ?? '').toString(),
+      unit: (data['unit'] ?? 'kg').toString(),
+      orderId: data['orderId']?.toString(),
     );
   }
 }

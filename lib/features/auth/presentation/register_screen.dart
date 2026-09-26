@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -9,9 +10,10 @@ import '../../../core/utils/app_errors.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
-import '../../home/presentation/home_screen.dart';
+import 'auth_gate.dart';
 import 'auth_l10n.dart';
 import 'login_screen.dart';
+import 'phone_otp_dialog.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible registration form screen for Farmora.
@@ -47,6 +49,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _isPickingPhoto = false;
   bool _acceptedTerms = false;
+
+  /// Verify the phone by SMS during registration so it is linked to the
+  /// account (enables the OTP password reset). Optional; not offered on web,
+  /// where the phone credential cannot be linked to a password account.
+  bool _verifyPhone = !kIsWeb;
   final _picker = ImagePicker();
   Uint8List? _photoBytes;
   String? _photoName;
@@ -75,17 +82,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-
     final state = context.read<FarmoraState>();
-    final success = await state.registerWithBackend(
-      name: _nameController.text,
-      phone: _phoneController.text,
-      password: _passwordController.text,
-      role: widget.selectedRole,
-      district: _selectedDistrict,
+
+    String? phoneOtpCode;
+    if (_verifyPhone) {
+      final result = await _collectPhoneOtp(state);
+      if (!mounted) return;
+      if (result.cancelledFlag) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      phoneOtpCode = result.code;
+    }
+
+    // Keep the gate on the signed-out UI until the profile exists, so the
+    // home screen does not try to load a profile that is not written yet.
+    final success = await AuthGate.guardAuthFlow(
+      () => state.registerWithBackend(
+        name: _nameController.text,
+        phone: _phoneController.text,
+        password: _passwordController.text,
+        role: widget.selectedRole,
+        district: _selectedDistrict,
+        phoneOtpCode: phoneOtpCode,
+      ),
     );
+    if (!mounted) return;
 
     if (success && _photoBytes != null && _photoName != null) {
       try {
@@ -104,11 +126,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         widget.onRegistered!();
       }
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const AuthGate()),
           (route) => false,
         );
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(context.l10n.accountCreatedSuccessfully),
             backgroundColor: AppColors.primary,
@@ -126,7 +149,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     }
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  /// Sends an SMS code to the entered phone and asks for it. A failure to
+  /// send (SMS unavailable, quota) does not block registration: it goes on
+  /// without phone verification. Cancelling the dialog stops registration.
+  Future<_OtpResult> _collectPhoneOtp(FarmoraState state) async {
+    final phone = _phoneController.text.trim();
+    final sent = await state.sendPhoneOtp(phone);
+    if (!mounted) return _OtpResult.cancelled;
+    if (!sent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${authErrorText(state.authError, context.l10n, context.l10n.authCouldNotSendOtp)} '
+            'Continuing without phone verification.',
+          ),
+        ),
+      );
+      return const _OtpResult(null);
+    }
+    String? code;
+    String? codeError;
+    final verified = await showPhoneOtpDialog(
+      context: context,
+      phone: phone,
+      // The code is checked when the account is created (linking the phone).
+      verify: (value) async {
+        final trimmed = value.trim();
+        if (!RegExp(r'^\d{6}$').hasMatch(trimmed)) {
+          codeError = 'Enter the 6-digit verification code.';
+          return false;
+        }
+        code = trimmed;
+        return true;
+      },
+      resend: () => state.sendPhoneOtp(phone),
+      error: () => codeError ?? state.authError,
+    );
+    if (!verified) return _OtpResult.cancelled;
+    return _OtpResult(code);
   }
 
   Future<void> _handleGoogleRegister() async {
@@ -142,18 +205,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() => _isLoading = true);
     final state = context.read<FarmoraState>();
-    final success = await state.registerWithGoogle(
-      name: _nameController.text,
-      phone: phone,
-      role: widget.selectedRole,
-      district: _selectedDistrict,
+    final success = await AuthGate.guardAuthFlow(
+      () => state.registerWithGoogle(
+        name: _nameController.text,
+        phone: phone,
+        role: widget.selectedRole,
+        district: _selectedDistrict,
+      ),
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {
       if (widget.onRegistered != null) widget.onRegistered!();
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
       );
     } else {
@@ -446,6 +511,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                if (!kIsWeb)
+                  SwitchListTile(
+                    value: _verifyPhone,
+                    onChanged: _isLoading
+                        ? null
+                        : (v) => setState(() => _verifyPhone = v),
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: AppColors.primary,
+                    title: Text(
+                      context.l10n.verifyPhoneNumber,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Recommended: lets you reset your password by SMS.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
                 CheckboxListTile(
                   value: _acceptedTerms,
                   onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
@@ -791,4 +874,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
+
+/// Outcome of the optional registration phone check: [code] is null when
+/// verification was unavailable (registration continues without it).
+class _OtpResult {
+  const _OtpResult(this.code, {this.cancelledFlag = false});
+  final String? code;
+  final bool cancelledFlag;
+
+  static const cancelled = _OtpResult(null, cancelledFlag: true);
 }

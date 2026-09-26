@@ -38,7 +38,10 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final products = state.filteredProducts;
+    // Buyers only see live listings (drafts, sold-out and hidden products
+    // stay with the farmer).
+    final products =
+        state.filteredProducts.where((p) => p.isActive).toList();
     final l = context.l10n;
 
     return Scaffold(
@@ -408,6 +411,20 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
               IconButton(
                 tooltip: l.buyerAddToCart,
                 onPressed: () {
+                  final max = buyerAvailableQty(product);
+                  final inCart = state.cartItems
+                      .where((c) => c.product.id == product.id)
+                      .fold<int>(0, (sum, c) => sum + c.quantity);
+                  if (max > 0 && inCart >= max) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Only $max ${product.unit} of ${product.name} is available.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
                   state.addToCart(product);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

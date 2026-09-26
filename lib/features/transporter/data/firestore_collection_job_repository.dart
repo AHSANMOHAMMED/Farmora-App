@@ -19,6 +19,36 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
 
+  /// Provider the repository last loaded jobs for (scopes feedback reads).
+  String _providerId = '';
+
+  /// `requested` jobs addressed to [_providerId] (declinable).
+  final Set<String> _targeted = {};
+
+  @override
+  bool isTargetedRequest(String jobId) => _targeted.contains(jobId);
+
+  /// Whether an open job is visible to [providerId]: untargeted requests and
+  /// requests addressed to them (not requests meant for someone else).
+  bool _visibleOpenJob(Map<String, dynamic> data, String providerId) {
+    final requested = data['requestedTransporterId']?.toString() ?? '';
+    return requested.isEmpty || requested == providerId;
+  }
+
+  void _trackTargeted(
+      DocumentSnapshot<Map<String, dynamic>> doc, String providerId) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final isRequested = (data['status']?.toString() ?? '') == 'requested';
+    final targeted = isRequested &&
+        (data['requestedTransporterId'] == providerId ||
+            data['transporterId'] == providerId);
+    if (targeted) {
+      _targeted.add(doc.id);
+    } else {
+      _targeted.remove(doc.id);
+    }
+  }
+
   CollectionReference<Map<String, dynamic>> get _jobs =>
       _firestore.collection('transport_jobs');
 
@@ -30,6 +60,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   @override
   Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
+    _providerId = logisticsProviderId;
     late final StreamController<List<CollectionJob>> controller;
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? availableSub;
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? assignedSub;
@@ -49,10 +80,15 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             .orderBy('createdAt', descending: true)
             .snapshots()
             .listen((snapshot) {
+          final visible = snapshot.docs.where(
+              (doc) => _visibleOpenJob(doc.data(), logisticsProviderId));
+          for (final doc in snapshot.docs) {
+            _trackTargeted(doc, logisticsProviderId);
+          }
           available
             ..clear()
-            ..addEntries(snapshot.docs.map((doc) =>
-                MapEntry(doc.id, _fromDocument(doc))));
+            ..addEntries(
+                visible.map((doc) => MapEntry(doc.id, _fromDocument(doc))));
           emit();
         }, onError: controller.addError);
         assignedSub = _jobs
@@ -60,6 +96,9 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             .orderBy('createdAt', descending: true)
             .snapshots()
             .listen((snapshot) {
+          for (final doc in snapshot.docs) {
+            _trackTargeted(doc, logisticsProviderId);
+          }
           assigned
             ..clear()
             ..addEntries(snapshot.docs.map((doc) =>
@@ -77,6 +116,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   @override
   Future<List<CollectionJob>> getJobs(String logisticsProviderId) async {
+    _providerId = logisticsProviderId;
     try {
       final snapshots = await Future.wait([
         _jobs
@@ -92,6 +132,11 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       final merged = <String, CollectionJob>{};
       for (final snapshot in snapshots) {
         for (final document in snapshot.docs) {
+          _trackTargeted(document, logisticsProviderId);
+          if (snapshot == snapshots.first &&
+              !_visibleOpenJob(document.data(), logisticsProviderId)) {
+            continue;
+          }
           merged[document.id] = _fromDocument(document);
         }
       }
@@ -125,6 +170,19 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     try {
       await _transition(jobId, 'accepted');
       return await getJob(jobId);
+    } on FirebaseFunctionsException catch (error) {
+      throw CollectionJobException(_functionMessage(error));
+    }
+  }
+
+  @override
+  Future<void> declineJob({
+    required String jobId,
+    required String logisticsProviderId,
+  }) async {
+    try {
+      await _transition(jobId, 'declined');
+      _targeted.remove(jobId);
     } on FirebaseFunctionsException catch (error) {
       throw CollectionJobException(_functionMessage(error));
     }
@@ -187,13 +245,14 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     String description = '',
   }) async {
     try {
-      await _issues.doc(jobId).set({
+      // One document per report (rules allow create with a generated id).
+      await _issues.add({
         'jobId': jobId,
         'logisticsProviderId': logisticsProviderId,
         'reason': reason,
         'description': description.trim(),
         'reportedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
     } on FirebaseException catch (error) {
       throw CollectionJobException(_firebaseMessage(error));
     }
@@ -216,6 +275,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         'stars': stars,
         'comment': comment.trim(),
         'ratedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } on FirebaseException catch (error) {
       throw CollectionJobException(_firebaseMessage(error));
@@ -225,8 +285,14 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   @override
   Future<JobIssueReport?> getIssueReport(String jobId) async {
     try {
-      final document = await _issues.doc(jobId).get();
-      final data = document.data();
+      Query<Map<String, dynamic>> query =
+          _issues.where('jobId', isEqualTo: jobId);
+      if (_providerId.isNotEmpty) {
+        query = query.where('logisticsProviderId', isEqualTo: _providerId);
+      }
+      final snapshot = await query.limit(1).get();
+      final data =
+          snapshot.docs.isEmpty ? null : snapshot.docs.first.data();
       if (data == null) return null;
       return JobIssueReport(
         jobId: jobId,
@@ -262,8 +328,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data() ?? const <String, dynamic>{};
-    final pickup = _text(data, ['pickupLocation', 'pickupAddress']);
-    final delivery = _text(data, ['deliveryLocation', 'dropoffAddress']);
+    final pickup =
+        _text(data, ['pickupLocation', 'pickupAddress', 'pickup']);
+    final delivery =
+        _text(data, ['deliveryLocation', 'dropoffAddress', 'dropoff']);
     final status = _status(data['status']?.toString());
     final createdAt = _date(data['createdAt']) ?? DateTime.now();
     return CollectionJob(
@@ -279,7 +347,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         ['produceName', 'productName', 'title'],
         fallback: L10n.current.jobProduceCollectionFallback,
       ),
-      quantity: _number(data, ['quantity', 'cargoWeightKg']),
+      // `quantityValue` is numeric; legacy `quantity` may be "20 kg".
+      quantity: _number(data, ['quantityValue', 'quantity', 'cargoWeightKg']),
       unit: _text(data, ['unit'], fallback: 'kg'),
       pickupLocation:
           pickup.isEmpty ? L10n.current.jobPickupNotProvided : pickup,
@@ -310,7 +379,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       acceptedAt:
           _date(data['acceptedAt']) ?? _date(data['acceptedByTransporterAt']),
       cancelledAt: _date(data['cancelledAt']),
-      deliveryFeeMinor: _integer(data, ['deliveryFeeMinor']),
+      deliveryFeeMinor:
+          _integer(data, ['deliveryFeeMinor', 'offeredFeeMinor']),
     );
   }
 
@@ -360,7 +430,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     for (final key in keys) {
       final value = data[key];
       if (value is num) return value.toDouble();
-      final parsed = double.tryParse(value?.toString() ?? '');
+      // Leading number of strings such as "20 kg".
+      final match =
+          RegExp(r'^\s*(\d+(?:\.\d+)?)').firstMatch(value?.toString() ?? '');
+      final parsed = double.tryParse(match?.group(1) ?? '');
       if (parsed != null) return parsed;
     }
 

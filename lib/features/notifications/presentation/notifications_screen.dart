@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -5,10 +6,28 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/async_state_view.dart';
+import '../../../models/conversation_model.dart';
 import '../../../models/notification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
-import '../../transporter/presentation/transport_request_detail_screen.dart';
+import '../../home/presentation/order_navigation.dart';
+import '../../messaging/presentation/chat_screen.dart';
+
+/// A notification plus its routing helpers. The model already parses the
+/// backend's extra fields (`conversationId`, `senderId`, `orderId`, `jobId`)
+/// and Timestamp `createdAt` values.
+class _NotifItem {
+  _NotifItem(this.notif);
+
+  final FarmoraNotification notif;
+
+  String get conversationId => notif.conversationId ?? '';
+  String get senderId => notif.senderId ?? '';
+  String get orderId => notif.orderId ?? notif.referenceId ?? '';
+
+  static _NotifItem fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
+      _NotifItem(FarmoraNotification.fromMap(doc.id, doc.data()));
+}
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -20,20 +39,53 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _service = FirestoreService();
   // Internal filter ids (not shown): 'All', 'Unread', 'Orders', 'Offers',
-  // 'Logistics'. Labels come from [_filterLabel].
+  // 'Logistics', 'Messages'. Labels come from [_filterLabel].
   String _selectedFilter = 'All';
   bool _orderUpdates = true;
   bool _messages = true;
   bool _promos = false;
   bool _quietHours = false;
 
+  /// Created once (not per build) so rebuilds don't resubscribe.
+  Stream<List<_NotifItem>>? _stream;
+  final Set<String> _opening = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<FarmoraState>();
+    _loadPrefs(state.notificationPrefs);
+    _stream = _createStream(state.currentUserId);
+  }
+
+  Stream<List<_NotifItem>>? _createStream(String uid) {
+    if (uid.isEmpty) return null;
+    return FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs.map(_NotifItem.fromDoc).toList());
+  }
+
+  void _loadPrefs(Map<String, dynamic> prefs) {
+    _orderUpdates = prefs['orderUpdates'] != false;
+    _messages = prefs['messages'] != false;
+    _promos = prefs['promos'] == true;
+    _quietHours = prefs['quietHoursStart'] != null ||
+        prefs['quietHours'] == true; // legacy flag
+  }
+
   Future<void> _savePrefs() async {
+    final state = context.read<FarmoraState>();
     try {
-      await _service.updateNotificationPreferences({
+      await state.updateNotificationPrefs({
         'orderUpdates': _orderUpdates,
         'messages': _messages,
         'promos': _promos,
-        'quietHours': _quietHours,
+        'quietHoursStart': _quietHours ? 22 : null,
+        'quietHoursEnd': _quietHours ? 7 : null,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -42,6 +94,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     } catch (e, st) {
       if (mounted) {
+        // Show what is really saved.
+        setState(() => _loadPrefs(state.notificationPrefs));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(userMessage(e,
@@ -52,7 +106,99 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _markAllRead(FarmoraState state) async {
+    try {
+      await state.markAllNotificationsRead();
+      if (mounted) _snack(context.l10n.notifAllMarkedRead);
+    } catch (e, st) {
+      _snack(userMessage(e, action: 'mark notifications read', stack: st));
+    }
+  }
+
+  /// Deletes on swipe; the item only disappears when the delete succeeded.
+  Future<bool> _delete(FarmoraState state, _NotifItem item) async {
+    try {
+      await state.deleteNotification(item.notif.id);
+      return true;
+    } catch (e, st) {
+      _snack(userMessage(e, action: 'delete the notification', stack: st));
+      return false;
+    }
+  }
+
+  Future<void> _open(FarmoraState state, _NotifItem item) async {
+    final notif = item.notif;
+    if (_opening.contains(notif.id)) return;
+    _opening.add(notif.id);
+    try {
+      if (!notif.read) {
+        try {
+          await state.markNotificationRead(notif.id);
+        } catch (e, st) {
+          _snack(userMessage(e, action: 'mark the notification read',
+              stack: st));
+        }
+      }
+      if (!mounted) return;
+      final type = notif.type.toLowerCase();
+      if (type == 'message' || item.conversationId.isNotEmpty) {
+        await _openChat(item);
+        return;
+      }
+      final orderId = item.orderId;
+      if (orderId.isEmpty) return;
+      final order = state.orders.where((o) => o.id == orderId).firstOrNull;
+      if (order == null) {
+        if (const {'order', 'logistics', 'transport', 'payment'}
+            .contains(type)) {
+          _snack('This order is no longer available.');
+        }
+        return;
+      }
+      openOrderDetail(context, order);
+    } finally {
+      _opening.remove(notif.id);
+    }
+  }
+
+  Future<void> _openChat(_NotifItem item) async {
+    try {
+      FarmoraConversation? conversation;
+      if (item.orderId.isNotEmpty && item.senderId.isNotEmpty) {
+        conversation = await _service.ensureConversation(
+          orderId: item.orderId,
+          peerId: item.senderId,
+        );
+      } else if (item.conversationId.isNotEmpty) {
+        final snap = await FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(item.conversationId)
+            .get();
+        final data = snap.data();
+        if (data != null) {
+          conversation = FarmoraConversation.fromMap(snap.id, data);
+        }
+      }
+      if (!mounted) return;
+      if (conversation == null) {
+        _snack('This conversation is no longer available.');
+        return;
+      }
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ChatScreen(conversation: conversation!),
+      ));
+    } catch (e, st) {
+      _snack(userMessage(e, action: 'open the chat', stack: st));
+    }
+  }
+
   void _showPreferencesSheet() {
+    var saved = false;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -138,6 +284,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
+                        saved = true;
                         Navigator.of(ctx).pop();
                         _savePrefs();
                       },
@@ -158,14 +305,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      // Closed without saving: show the saved preferences again.
+      if (!saved && mounted) {
+        setState(() =>
+            _loadPrefs(context.read<FarmoraState>().notificationPrefs));
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final uid = state.currentUserId;
     final l = context.l10n;
+    final stream = _stream;
 
     // Use state.notifications if available, or fallback to direct Firestore Stream
     return Scaffold(
@@ -197,14 +350,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           IconButton(
             tooltip: l.markAllRead,
             icon: const Icon(Icons.done_all_rounded, color: AppColors.primary),
-            onPressed: () async {
-              await state.markAllNotificationsRead();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.l10n.notifAllMarkedRead)),
-                );
-              }
-            },
+            onPressed: () => _markAllRead(state),
           ),
         ],
       ),
@@ -221,6 +367,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 _buildFilterChip('Orders'),
                 _buildFilterChip('Offers'),
                 _buildFilterChip('Logistics'),
+                _buildFilterChip('Messages'),
               ],
             ),
           ),
@@ -228,32 +375,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           // Notifications List
           Expanded(
-            child: uid.isNotEmpty
-                ? StreamBuilder<List<FarmoraNotification>>(
-                    stream: _service.notificationsStream(uid),
+            child: stream != null
+                ? StreamBuilder<List<_NotifItem>>(
+                    stream: stream,
                     builder: (context, snapshot) {
+                      final items = _filterNotifications(
+                          snapshot.data ?? const <_NotifItem>[]);
                       return AsyncStateView(
                         isLoading: !snapshot.hasData && !snapshot.hasError,
                         error: snapshot.hasError ? snapshot.error : null,
-                        isEmpty: snapshot.hasData &&
-                            _filterNotifications(snapshot.data!).isEmpty,
+                        isEmpty: snapshot.hasData && items.isEmpty,
                         emptyMessage: _emptyMessage(l),
-                        onRetry: () => setState(() {}),
-                        child: _buildListView(
-                          _filterNotifications(snapshot.data ?? const []),
-                          state,
-                        ),
+                        onRetry: () => setState(() {
+                          _stream = _createStream(state.currentUserId);
+                        }),
+                        child: _buildListView(items, state),
                       );
                     },
                   )
                 : Builder(
                     builder: (context) {
-                      final notifs = _filterNotifications(state.notifications);
+                      final items = _filterNotifications(state.notifications
+                          .map(_NotifItem.new)
+                          .toList());
                       return AsyncStateView(
                         isLoading: false,
-                        isEmpty: notifs.isEmpty,
+                        isEmpty: items.isEmpty,
                         emptyMessage: _emptyMessage(l),
-                        child: _buildListView(notifs, state),
+                        child: _buildListView(items, state),
                       );
                     },
                   ),
@@ -263,20 +412,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  List<FarmoraNotification> _filterNotifications(
-      List<FarmoraNotification> list) {
+  List<_NotifItem> _filterNotifications(List<_NotifItem> list) {
+    String type(_NotifItem i) => i.notif.type.toLowerCase();
     switch (_selectedFilter) {
       case 'Unread':
-        return list.where((n) => !n.read).toList();
+        return list.where((i) => !i.notif.read).toList();
       case 'Orders':
-        return list.where((n) => n.type.toLowerCase() == 'order').toList();
+        return list
+            .where((i) => const {'order', 'payment'}.contains(type(i)))
+            .toList();
       case 'Offers':
-        return list.where((n) => n.type.toLowerCase() == 'offer').toList();
+        return list.where((i) => type(i) == 'offer').toList();
       case 'Logistics':
         return list
-            .where((n) =>
-                const {'logistics', 'transport'}.contains(n.type.toLowerCase()))
+            .where((i) => const {'logistics', 'transport'}.contains(type(i)))
             .toList();
+      case 'Messages':
+        return list.where((i) => type(i) == 'message').toList();
       default:
         return list;
     }
@@ -292,6 +444,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'Orders' => l.orders,
       'Offers' => l.homeNavOffers,
       'Logistics' => l.homeNavLogistics,
+      'Messages' => l.messages,
       _ => l.commonAll,
     };
   }
@@ -324,19 +477,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildListView(List<FarmoraNotification> list, FarmoraState state) {
+  Widget _buildListView(List<_NotifItem> list, FarmoraState state) {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final notif = list[index];
-        return _buildNotificationCard(notif, state);
+        final item = list[index];
+        return Dismissible(
+          key: ValueKey('notif_${item.notif.id}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _delete(state, item),
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: AppColors.error,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.delete_outline_rounded,
+                color: Colors.white),
+          ),
+          child: _buildNotificationCard(item, state),
+        );
       },
     );
   }
 
-  Widget _buildNotificationCard(FarmoraNotification notif, FarmoraState state) {
+  Widget _buildNotificationCard(_NotifItem item, FarmoraState state) {
+    final notif = item.notif;
     IconData icon;
     Color iconColor;
     Color bgColor;
@@ -358,6 +527,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         iconColor = const Color(0xFFD97706);
         bgColor = const Color(0xFFFEF3C7);
         break;
+      case 'message':
+        icon = Icons.chat_bubble_rounded;
+        iconColor = const Color(0xFF7C3AED);
+        bgColor = const Color(0xFFF3E8FF);
+        break;
       default:
         icon = Icons.notifications_rounded;
         iconColor = AppColors.primary;
@@ -365,41 +539,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return InkWell(
-      onTap: () async {
-        if (!notif.read) {
-          state.markNotificationRead(notif.id);
-        }
-        if (notif.type.toLowerCase() != 'logistics' ||
-            notif.referenceId == null ||
-            notif.referenceId!.isEmpty ||
-            state.currentUserId.isEmpty) {
-          return;
-        }
-        try {
-          final job = await _service.getTransportJobForOrder(
-            orderId: notif.referenceId!,
-            transporterId: state.currentUserId,
-          );
-          if (!mounted) return;
-          if (job == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Delivery request is no longer available.')),
-            );
-            return;
-          }
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => TransportRequestDetailScreen(job: job),
-            ),
-          );
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open delivery request: $e')),
-          );
-        }
-      },
+      onTap: () => _open(state, item),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(14),

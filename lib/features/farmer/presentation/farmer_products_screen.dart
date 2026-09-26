@@ -542,6 +542,19 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       );
                     },
                   ),
+                if (product.hasVideo)
+                  ListTile(
+                    leading: const Icon(Icons.videocam_off_outlined,
+                        color: AppColors.error),
+                    title: const Text('Delete harvest video',
+                        style: TextStyle(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600)),
+                    onTap: () async {
+                      Navigator.of(ctx).pop();
+                      await _deleteHarvestVideo(context, state, product);
+                    },
+                  ),
                 ListTile(
                   leading:
                       const Icon(Icons.qr_code_2, color: AppColors.primary),
@@ -572,7 +585,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text(
-                                  l.farmerProductsQrError(describeError(e)))),
+                                  l.farmerProductsQrError(userMessage(e,
+                                      action: 'generate the QR code')))),
                         );
                       }
                     }
@@ -602,7 +616,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     } catch (error) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Could not update listing: $error')));
+                          content: Text('Could not update listing: ${userMessage(error, action: 'update the listing')}')));
                     }
                   },
                 ),
@@ -645,7 +659,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     } catch (error) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Could not remove listing: $error')));
+                          content: Text('Could not remove listing: ${userMessage(error, action: 'remove the listing')}')));
                     }
                   },
                 ),
@@ -663,6 +677,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
     Product product,
   ) async {
     final picker = ImagePicker();
+    var dialogShown = false;
     try {
       final file = await picker.pickVideo(
         source: ImageSource.gallery,
@@ -670,6 +685,7 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
       );
       if (file == null) return;
       if (!context.mounted) return;
+      dialogShown = true;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -682,7 +698,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
         fileName: file.name,
       );
       if (!context.mounted) return;
-      Navigator.of(context).pop(); // dialog
+      Navigator.of(context, rootNavigator: true).pop(); // dialog
+      dialogShown = false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result == null
@@ -692,13 +709,61 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
       );
     } catch (e) {
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
+        if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(context.l10n
-                  .farmerProductsVideoUploadFailedReason(describeError(e)))),
+              content: Text(context.l10n.farmerProductsVideoUploadFailedReason(
+                  userMessage(e, action: 'upload the harvest video')))),
         );
       }
+    }
+  }
+
+  Future<void> _deleteHarvestVideo(
+    BuildContext context,
+    FarmoraState state,
+    Product product,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete harvest video?'),
+        content: Text(
+            'Buyers will no longer see the harvest video for ${product.name}.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete',
+                style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      await state.deleteHarvestVideo(product);
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Harvest video deleted.')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                userMessage(e, action: 'delete the harvest video'))),
+      );
     }
   }
 }

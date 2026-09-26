@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../providers/farmora_state.dart';
-import '../../auth/presentation/welcome_screen.dart';
+import '../../auth/presentation/auth_gate.dart';
+import '../../farmer/presentation/account_verification_screen.dart';
 import '../application/transporter_controller.dart';
+import 'transporter_payouts_screen.dart';
 import 'widgets/transporter_actions.dart';
 
 class TransporterProfileScreen extends StatelessWidget {
@@ -15,6 +18,7 @@ class TransporterProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<TransporterController>();
+    final isVerified = context.select<FarmoraState, bool>((s) => s.isVerified);
     final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -55,7 +59,10 @@ class TransporterProfileScreen extends StatelessWidget {
             color: AppColors.surfaceContainerLowest,
             child: SwitchListTile(
               value: state.isAvailable,
-              onChanged: state.setAvailability,
+              onChanged: (value) async {
+                final result = await state.setAvailability(value);
+                if (context.mounted) showTransporterResult(context, result);
+              },
               secondary: Icon(
                 state.isAvailable
                     ? Icons.toggle_on_rounded
@@ -70,6 +77,27 @@ class TransporterProfileScreen extends StatelessWidget {
                   : l10n.transporterUnavailableForNewJobs),
             ),
           ),
+          if (!isVerified) ...[
+            const SizedBox(height: 12),
+            Card(
+              margin: EdgeInsets.zero,
+              elevation: 0,
+              color: AppColors.surfaceContainerLowest,
+              child: ListTile(
+                leading: const Icon(Icons.verified_user_outlined,
+                    color: AppColors.statusPendingText),
+                title: Text(l10n.profileVerification,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(l10n.verifyTransporterHint),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AccountVerificationScreen(),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -123,6 +151,15 @@ class TransporterProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.map_outlined,
+                      color: AppColors.primary),
+                  title: const Text('Service districts'),
+                  subtitle: Text(state.serviceDistricts.isEmpty
+                      ? 'Not set (jobs from all districts are shown)'
+                      : state.serviceDistricts.join(', ')),
+                ),
                 if (state.vehicleDescription.trim().isNotEmpty) ...[
                   const Divider(height: 1, indent: 56),
                   ListTile(
@@ -142,6 +179,19 @@ class TransporterProfileScreen extends StatelessWidget {
             color: AppColors.surfaceContainerLowest,
             child: Column(
               children: [
+                ListTile(
+                  leading: const Icon(Icons.payments_outlined,
+                      color: AppColors.primary),
+                  title: Text(l10n.earnings,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Request withdrawals and view payouts'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const TransporterPayoutsScreen()),
+                  ),
+                ),
+                const Divider(height: 1, indent: 56),
                 ListTile(
                   leading:
                       const Icon(Icons.edit_outlined, color: AppColors.primary),
@@ -196,10 +246,26 @@ class TransporterProfileScreen extends StatelessWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    await context.read<FarmoraState>().signOut();
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    final appState = context.read<FarmoraState>();
+    final controller = context.read<TransporterController>();
+    final providerId = controller.providerId;
+    controller.unbind();
+    try {
+      await appState.signOut();
+    } catch (error) {
+      // Still signed in: restore the transporter's live data.
+      if (providerId.isNotEmpty) controller.bindProvider(providerId);
+      messenger.showSnackBar(SnackBar(
+        content: Text(userMessage(error, action: 'sign out')),
+        backgroundColor: errorColor,
+      ));
+      return;
+    }
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthGate()),
       (_) => false,
     );
   }
@@ -222,7 +288,9 @@ class _EditTransporterProfileScreenState
   late final TextEditingController _registration;
   late final TextEditingController _capacity;
   late final TextEditingController _description;
+  late final TextEditingController _districts;
   late String _capacityUnit;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -236,7 +304,9 @@ class _EditTransporterProfileScreenState
       text: state.vehicleCapacity?.toString() ?? '',
     );
     _description = TextEditingController(text: state.vehicleDescription);
-    _capacityUnit = state.vehicleCapacityUnit;
+    _districts =
+        TextEditingController(text: state.serviceDistricts.join(', '));
+    _capacityUnit = state.vehicleCapacityUnit == 'tons' ? 'tons' : 'kg';
   }
 
   @override
@@ -247,6 +317,7 @@ class _EditTransporterProfileScreenState
     _registration.dispose();
     _capacity.dispose();
     _description.dispose();
+    _districts.dispose();
     super.dispose();
   }
 
@@ -293,19 +364,52 @@ class _EditTransporterProfileScreenState
                   setState(() => _capacityUnit = value ?? 'kg'),
             ),
             const SizedBox(height: 12),
-            _field(_capacity, l10n.transporterMaxLoadCapacity,
-                Icons.fitness_center_outlined,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                )),
+            TextFormField(
+              controller: _capacity,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: l10n.transporterMaxLoadCapacity,
+                prefixIcon: const Icon(Icons.fitness_center_outlined),
+              ),
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) {
+                  return l10n.transporterFieldRequired(
+                      l10n.transporterMaxLoadCapacity);
+                }
+                final parsed = double.tryParse(text);
+                if (parsed == null || parsed <= 0) {
+                  return 'Enter a valid capacity.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _districts,
+              decoration: const InputDecoration(
+                labelText: 'Service districts',
+                helperText: 'Comma separated, e.g. Colombo, Gampaha. '
+                    'Used by the suitable-jobs filter.',
+                helperMaxLines: 2,
+                prefixIcon: Icon(Icons.map_outlined),
+              ),
+            ),
             const SizedBox(height: 12),
             _field(_description, l10n.transporterVehicleDescriptionOptional,
                 Icons.notes_outlined,
                 required: false),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.save_outlined),
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
               label: Text(l10n.transporterSaveChanges),
             ),
           ],
@@ -335,6 +439,13 @@ class _EditTransporterProfileScreenState
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    final districts = _districts.text
+        .split(',')
+        .map((d) => d.trim())
+        .where((d) => d.isNotEmpty)
+        .toSet()
+        .toList();
     final result = await context.read<TransporterController>().updateProfile(
           name: _name.text,
           phone: _phone.text,
@@ -343,8 +454,10 @@ class _EditTransporterProfileScreenState
           capacity: double.tryParse(_capacity.text.trim()),
           capacityUnit: _capacityUnit,
           description: _description.text,
+          districts: districts,
         );
     if (!mounted) return;
+    setState(() => _saving = false);
     showTransporterResult(context, result);
     if (result.success) Navigator.pop(context);
   }

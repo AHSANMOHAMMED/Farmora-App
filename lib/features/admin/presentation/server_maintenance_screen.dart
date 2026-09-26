@@ -4,6 +4,7 @@ import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class ServerMaintenanceScreen extends StatefulWidget {
   const ServerMaintenanceScreen({super.key});
@@ -33,6 +34,45 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
     _noticeCtrl.dispose();
     _minVersionCtrl.dispose();
     super.dispose();
+  }
+
+  bool _busy = false;
+
+  /// Awaits one settings write; the success text is shown only after the
+  /// backend accepted it. [onError] restores local slider values.
+  Future<void> _run(
+    Future<void> Function() action, {
+    required String success,
+    Color? successColor,
+    VoidCallback? onError,
+  }) async {
+    if (_busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await action();
+      messenger.showSnackBar(
+        SnackBar(content: Text(success), backgroundColor: successColor),
+      );
+    } catch (e) {
+      onError?.call();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(userMessage(e, action: 'update platform settings')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _resetEconomics() {
+    if (!mounted) return;
+    final state = context.read<FarmoraState>();
+    setState(() {
+      _commission = state.commissionRate;
+      _escrowHours = state.escrowReleaseHours;
+    });
   }
 
   @override
@@ -89,17 +129,16 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                       Switch(
                         value: state.maintenanceMode,
                         activeThumbColor: Colors.red,
-                        onChanged: (val) {
-                          state.setMaintenanceMode(enabled: val, notice: _noticeCtrl.text.trim());
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                val ? l.adminServerMaintenanceOnSnack : l.adminServerMaintenanceOffSnack,
-                              ),
-                              backgroundColor: val ? Colors.red.shade800 : AppColors.primary,
-                            ),
-                          );
-                        },
+                        onChanged: _busy
+                            ? null
+                            : (val) => _run(
+                                  () => state.setMaintenanceMode(
+                                      enabled: val, notice: _noticeCtrl.text.trim()),
+                                  success: val
+                                      ? l.adminServerMaintenanceOnSnack
+                                      : l.adminServerMaintenanceOffSnack,
+                                  successColor: val ? Colors.red.shade800 : AppColors.primary,
+                                ),
                       ),
                     ],
                   ),
@@ -129,15 +168,25 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: FilledButton.tonal(
-                      onPressed: () {
-                        state.setMaintenanceMode(
-                          enabled: state.maintenanceMode,
-                          notice: _noticeCtrl.text.trim(),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminServerNoticeUpdated)),
-                        );
-                      },
+                      onPressed: _busy
+                          ? null
+                          : () {
+                              final notice = _noticeCtrl.text.trim();
+                              if (notice.length > 300) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('The notice must be 300 characters or fewer.')),
+                                );
+                                return;
+                              }
+                              _run(
+                                () => state.updatePlatformSettings({
+                                  'maintenanceMode': state.maintenanceMode,
+                                  'maintenanceNotice': notice,
+                                }),
+                                success: l.adminServerNoticeUpdated,
+                              );
+                            },
                       child: Text(l.adminServerUpdateNotice),
                     ),
                   ),
@@ -230,14 +279,18 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                     ],
                   ),
                   Slider(
-                    value: _commission,
-                    min: 1.0,
-                    max: 10.0,
-                    divisions: 18,
+                    value: _commission.clamp(0.0, 20.0),
+                    min: 0.0,
+                    max: 20.0,
+                    divisions: 40,
                     label: l.adminServerPercent(AppFormat.number(_commission, decimals: 1)),
                     activeColor: AppColors.primary,
-                    onChanged: (v) => setState(() => _commission = v),
-                    onChangeEnd: (v) => state.setCommissionRate(v),
+                    onChanged: _busy ? null : (v) => setState(() => _commission = v),
+                    onChangeEnd: (v) => _run(
+                      () => state.setCommissionRate(v),
+                      success: l.adminServerPercent(AppFormat.number(v, decimals: 1)),
+                      onError: _resetEconomics,
+                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -251,14 +304,18 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                     ],
                   ),
                   Slider(
-                    value: _escrowHours.toDouble(),
+                    value: _escrowHours.clamp(12, 168).toDouble(),
                     min: 12.0,
-                    max: 96.0,
-                    divisions: 14,
+                    max: 168.0,
+                    divisions: 26,
                     label: l.adminServerHoursShort(_escrowHours),
                     activeColor: const Color(0xFFE65100),
-                    onChanged: (v) => setState(() => _escrowHours = v.toInt()),
-                    onChangeEnd: (v) => state.setEscrowReleaseHours(v.toInt()),
+                    onChanged: _busy ? null : (v) => setState(() => _escrowHours = v.toInt()),
+                    onChangeEnd: (v) => _run(
+                      () => state.setEscrowReleaseHours(v.toInt()),
+                      success: l.adminServerHours(v.toInt()),
+                      onError: _resetEconomics,
+                    ),
                   ),
                   const SizedBox(height: 14),
 
@@ -278,12 +335,21 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                       ),
                       const SizedBox(width: 10),
                       FilledButton(
-                        onPressed: () {
-                          state.setMinAppVersion(_minVersionCtrl.text.trim());
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l.adminServerMinVersionEnforced)),
-                          );
-                        },
+                        onPressed: _busy
+                            ? null
+                            : () {
+                                final v = _minVersionCtrl.text.trim();
+                                if (v.length > 20 || !RegExp(r'^\d+(\.\d+){0,3}$').hasMatch(v)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Enter a version like 1.2.0.')),
+                                  );
+                                  return;
+                                }
+                                _run(
+                                  () => state.setMinAppVersion(v),
+                                  success: l.adminServerMinVersionEnforced,
+                                );
+                              },
                         child: Text(l.adminServerEnforce),
                       ),
                     ],

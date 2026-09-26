@@ -7,6 +7,7 @@ import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_details_screen.dart';
 import 'widgets/collection_job_card.dart';
+import 'widgets/live_location.dart';
 import 'widgets/transporter_actions.dart';
 import 'widgets/transporter_states.dart';
 
@@ -117,6 +118,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
     if (!mounted) return;
     setState(() => _busyJobId = null);
     showTransporterResult(context, result);
+    if (result.success) await syncLiveSharing(context, job.id, nextStatus);
   }
 }
 
