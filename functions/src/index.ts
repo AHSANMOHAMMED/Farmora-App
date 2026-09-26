@@ -89,6 +89,14 @@ const isWithinQuietHours = (
   return hour >= start || hour < end;
 };
 
+// Maps a notification type to the user-preference category that controls
+// its push delivery. The in-app notification doc is always written.
+const notificationCategory = (type: string): "messages" | "promos" | "orderUpdates" => {
+  if (type === "message") return "messages";
+  if (type === "general" || type === "advisory" || type === "promo") return "promos";
+  return "orderUpdates";
+};
+
 const notifyUser = async (
   userId: string,
   title: string,
@@ -97,7 +105,12 @@ const notifyUser = async (
 ): Promise<void> => {
   const userSnap = await db.collection("users").doc(userId).get();
   const user = userSnap.data() || {};
-  const prefs = (user.notificationPreferences || {}) as Record<string, unknown>;
+  if (user.isDeleted === true) return;
+  // `notificationPrefs` is the current shape; `notificationPreferences` is legacy.
+  const prefs = (user.notificationPrefs || user.notificationPreferences || {}) as
+    Record<string, unknown>;
+  const category = notificationCategory(String(data.type || ""));
+  if (prefs[category] === false) return;
   if (isWithinQuietHours(prefs)) return;
 
   const tokenSnap = await db.collection("users").doc(userId).collection("device_tokens")
@@ -135,20 +148,226 @@ const writeNotification = async (
   referenceId?: string,
   extra: Record<string, string> = {}
 ): Promise<void> => {
+  if (!userId) return;
   await db.collection("notifications").add({
     userId,
     title,
     body,
     type,
     ...(referenceId ? { referenceId, orderId: referenceId } : {}),
+    ...extra,
     read: false,
     createdAt: FieldValue.serverTimestamp(),
   });
-  // Always write in-app; FCM is skipped during quiet hours inside notifyUser.
-  await notifyUser(userId, title, body, {
-    type,
-    ...(referenceId ? { orderId: referenceId } : {}),
-    ...extra,
+  // Always write in-app; FCM honours category prefs and quiet hours in notifyUser.
+  try {
+    await notifyUser(userId, title, body, {
+      type,
+      ...(referenceId ? { orderId: referenceId } : {}),
+      ...extra,
+    });
+  } catch (err) {
+    functions.logger.warn("Push notification failed", { userId, err });
+  }
+};
+
+// ─── Audit log ───────────────────────────────────────────────
+type AuditSeverity = "info" | "warning" | "critical";
+
+const writeAudit = async (
+  actorId: string,
+  fields: {
+    actionType: string;
+    targetEntity: string;
+    targetId: string;
+    details?: string;
+    severity?: AuditSeverity;
+  }
+): Promise<void> => {
+  let actorName = "System";
+  let actorRole = "system";
+  if (actorId && actorId !== "system") {
+    const actor = (await db.collection("users").doc(actorId).get()).data() || {};
+    actorName = String(actor.displayName || actor.name || actorId);
+    actorRole = String(actor.role || "admin");
+  }
+  await db.collection("audit_logs").add({
+    actorId: actorId || "system",
+    actorName,
+    actorRole,
+    actionType: fields.actionType,
+    targetEntity: fields.targetEntity,
+    targetId: fields.targetId,
+    details: fields.details || "",
+    severity: fields.severity || "info",
+    timestamp: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+};
+
+// ─── Platform settings / maintenance gate ─────────────────────
+const SETTINGS_DEFAULTS = {
+  maintenanceMode: false,
+  maintenanceNotice: "",
+  platformFeeBps: 0,
+  sessionTimeoutMinutes: 60,
+  defaultDeliveryFeeMinor: 0,
+  escrowReleaseHours: 72,
+  minAppVersion: "",
+};
+
+type PublicSettings = typeof SETTINGS_DEFAULTS;
+
+const loadPlatformSettings = async (): Promise<PublicSettings> => {
+  const data = (await db.collection("platform_settings").doc("global").get()).data() || {};
+  const intOr = (value: unknown, fallback: number): number => {
+    const n = Number(value);
+    return Number.isSafeInteger(n) ? n : fallback;
+  };
+  return {
+    maintenanceMode: data.maintenanceMode === true,
+    maintenanceNotice: typeof data.maintenanceNotice === "string"
+      ? data.maintenanceNotice : SETTINGS_DEFAULTS.maintenanceNotice,
+    platformFeeBps: intOr(data.platformFeeBps, SETTINGS_DEFAULTS.platformFeeBps),
+    sessionTimeoutMinutes: intOr(data.sessionTimeoutMinutes,
+      SETTINGS_DEFAULTS.sessionTimeoutMinutes),
+    defaultDeliveryFeeMinor: intOr(data.defaultDeliveryFeeMinor,
+      SETTINGS_DEFAULTS.defaultDeliveryFeeMinor),
+    escrowReleaseHours: intOr(data.escrowReleaseHours, SETTINGS_DEFAULTS.escrowReleaseHours),
+    minAppVersion: typeof data.minAppVersion === "string"
+      ? data.minAppVersion : SETTINGS_DEFAULTS.minAppVersion,
+  };
+};
+
+const isAdminCaller = async (
+  context: functions.https.CallableContext
+): Promise<boolean> => {
+  if (!context.auth) return false;
+  if (context.auth.token.admin === true) return true;
+  const profile = (await db.collection("users").doc(context.auth.uid).get()).data();
+  return profile?.role === "admin" && profile?.isVerified === true
+    && profile?.isSuspended !== true && profile?.isDeleted !== true;
+};
+
+const assertNotMaintenance = async (
+  context: functions.https.CallableContext
+): Promise<void> => {
+  const settings = (await db.collection("platform_settings").doc("global").get()).data();
+  if (settings?.maintenanceMode === true && !(await isAdminCaller(context))) {
+    throw new functions.https.HttpsError("unavailable", "Farmora is under maintenance");
+  }
+};
+
+// ─── Small shared helpers ─────────────────────────────────────
+const orderNumberFor = (id: string): string => `FM-${id.slice(0, 8).toUpperCase()}`;
+
+const platformFeeFor = (subtotalMinor: number, feeBps: number): number =>
+  Math.round((subtotalMinor * feeBps) / 10000);
+
+const displayNameOf = (user: Record<string, any> | undefined, fallback: string): string =>
+  String(user?.displayName || user?.name || fallback);
+
+const sha256Hex = (value: string): string =>
+  createHash("sha256").update(value).digest("hex");
+
+const optionalIsoDate = (value: unknown, label: string): string | null => {
+  if (value === null || value === "") return null;
+  if (typeof value !== "string" || value.length > 40) {
+    throw new functions.https.HttpsError("invalid-argument", `Invalid ${label}.`);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new functions.https.HttpsError("invalid-argument", `Invalid ${label}.`);
+  }
+  return parsed.toISOString();
+};
+
+const requiredString = (value: unknown, label: string, min: number, max: number): string => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (text.length < min || text.length > max) {
+    throw new functions.https.HttpsError("invalid-argument", `Invalid ${label}.`);
+  }
+  return text;
+};
+
+// Validates an optional transporter choice made at checkout / offer accept.
+const assertTransporterSelectable = async (transporterId: string): Promise<void> => {
+  if (!transporterId) return;
+  const transporter = (await db.collection("users").doc(transporterId).get()).data();
+  if (!transporter || transporter.role !== "transporter"
+    || transporter.isSuspended === true || transporter.isDeleted === true) {
+    throw new functions.https.HttpsError(
+      "failed-precondition", "Selected transporter is unavailable.");
+  }
+};
+
+// Reads a farmer's payout account in a transaction and returns the snapshot
+// copied onto bank-deposit orders (throws when the farmer has none).
+const readBankSnapshot = async (
+  transaction: FirebaseFirestore.Transaction,
+  farmerId: string
+): Promise<Record<string, string>> => {
+  const bank = (await transaction.get(
+    db.collection("bank_details").doc(farmerId || "-")
+  )).data();
+  if (!isUsableBank(bank)) {
+    throw new functions.https.HttpsError(
+      "failed-precondition", "This farmer does not accept bank deposits yet.");
+  }
+  return {
+    bankName: String(bank!.bankName),
+    branch: String(bank!.branch),
+    accountHolderName: String(bank!.accountHolderName),
+    accountNumber: String(bank!.accountNumber),
+  };
+};
+
+const isUsableBank = (bank: Record<string, any> | undefined): boolean =>
+  !!bank && !!bank.bankName && !!bank.branch && !!bank.accountHolderName
+  && /^[0-9]{6,18}$/.test(String(bank.accountNumber || ""));
+
+// Public, non-sensitive projection of a transporter profile. Mirrored into
+// `transporter_profiles/{uid}` (readable by signed-in users, written only here).
+const transporterProjection = (
+  uid: string,
+  user: Record<string, any>
+): Record<string, unknown> => {
+  const capacity = Number(user.vehicleCapacity ?? user.capacityKg);
+  return {
+    id: uid,
+    uid,
+    displayName: displayNameOf(user, "Transporter"),
+    photoUrl: typeof user.photoUrl === "string" ? user.photoUrl : null,
+    district: typeof user.district === "string" ? user.district : "",
+    vehicleType: typeof user.vehicleType === "string" ? user.vehicleType : "",
+    vehicleRegistration: typeof user.vehicleRegistration === "string"
+      ? user.vehicleRegistration : "",
+    vehicleCapacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null,
+    vehicleCapacityUnit: user.vehicleCapacity != null
+      ? (user.vehicleCapacityUnit === "tons" ? "tons" : "kg")
+      : "kg",
+    serviceDistricts: Array.isArray(user.serviceDistricts)
+      ? user.serviceDistricts.filter((d: unknown) => typeof d === "string").slice(0, 25)
+      : [],
+    availabilityStatus: user.availabilityStatus === "unavailable" ? "unavailable" : "available",
+    isVerified: user.isVerified === true,
+    isSuspended: user.isSuspended === true || user.isDeleted === true,
+    rating: Number.isFinite(Number(user.rating)) ? Number(user.rating) : null,
+  };
+};
+
+// Re-derives transporter_profiles/{uid} from users/{uid}; deletes it when the
+// user is no longer an active transporter.
+const syncTransporterProfile = async (uid: string): Promise<void> => {
+  const user = (await db.collection("users").doc(uid).get()).data();
+  const ref = db.collection("transporter_profiles").doc(uid);
+  if (!user || user.role !== "transporter" || user.isDeleted === true) {
+    await ref.delete();
+    return;
+  }
+  await ref.set({
+    ...transporterProjection(uid, user),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 };
 
@@ -185,24 +404,43 @@ const createTransportJobForOrder = async (
   const productName = String(order.productName || order.title || "Produce");
   const dropoff = String(order.deliveryAddress || "Buyer delivery point");
   const pickup = String(order.pickupAddress || order.location || "Farm pickup");
-  const qtyLabel = String(order.quantity || `${(order.items?.[0]?.quantity) || ""} units`);
+  const unit = String(order.unit || "units");
+  const quantityValue = Number(order.items?.[0]?.quantity);
+  const qtyLabel = String(order.quantity
+    || `${Number.isFinite(quantityValue) ? quantityValue : ""} ${unit}`);
+  const requestedTransporterId = typeof order.requestedTransporterId === "string"
+    && order.requestedTransporterId ? order.requestedTransporterId : null;
+  let farmerName = typeof order.farmerName === "string" ? order.farmerName : "";
+  if (!farmerName && order.farmerId) {
+    farmerName = displayNameOf(
+      (await db.collection("users").doc(String(order.farmerId)).get()).data(), "Farmer");
+  }
   const jobRef = db.collection("transport_jobs").doc();
   await jobRef.set({
     orderId,
+    orderNumber: String(order.orderNumber || orderNumberFor(orderId)),
     farmerId: order.farmerId,
     buyerId: order.buyerId,
+    farmerName: farmerName || "Farmer",
+    buyerName: String(order.buyerName || "Buyer"),
     title: `Delivery for ${productName}`,
     route: `${pickup} → ${dropoff}`,
     detail: `${qtyLabel} · Ready for pickup`,
     fee: `LKR ${(fee / 100).toFixed(2)}`,
     offeredFeeMinor: fee,
+    deliveryFeeMinor: fee,
     pickupAddress: pickup,
     dropoffAddress: dropoff,
+    pickup,
+    dropoff,
     productName,
     quantity: qtyLabel,
+    quantityValue: Number.isFinite(quantityValue) ? quantityValue : 0,
+    unit,
     status: "requested",
     accepted: false,
-    transporterId: order.requestedTransporterId || null,
+    transporterId: requestedTransporterId,
+    ...(requestedTransporterId ? { requestedTransporterId } : {}),
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
@@ -231,24 +469,30 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     );
   }
 
+  // A role can only be chosen once. Changing it later is an admin action
+  // (adminSetUserRole); this also prevents un-suspending via re-onboarding.
+  const userRef = db.collection("users").doc(uid);
+  if ((await userRef.get()).exists) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Your profile already exists. Contact support to change your role."
+    );
+  }
+
   // Set custom claim
   await auth.setCustomUserClaims(uid, { role });
 
-  // Create/update Firestore document
-  await db.collection("users").doc(uid).set(
-    {
-      role,
-      displayName: displayName || "",
-      phone: phone || "",
-      languageCode: languageCode || "en",
-      isVerified: false,
-      isSuspended: false,
-      isOnboardingComplete: true,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await userRef.create({
+    id: uid,
+    role,
+    displayName: typeof displayName === "string" ? displayName.trim().slice(0, 120) : "",
+    phone: typeof phone === "string" ? phone.trim().slice(0, 30) : "",
+    languageCode: typeof languageCode === "string" ? languageCode.slice(0, 10) : "en",
+    isVerified: false,
+    isOnboardingComplete: true,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 
   return { success: true, role };
 });
@@ -283,18 +527,43 @@ export const unregisterDeviceToken = functions.https.onCall(async (data, context
   return { success: true };
 });
 
+// Any signed-in user: returns only the public settings fields.
 export const getPlatformSettings = functions.https.onCall(async (_data, context) => {
-  await requireAdmin(context);
-  const snapshot = await db.collection("platform_settings").doc("global").get();
-  return snapshot.exists
-    ? snapshot.data()
-    : { maintenanceMode: false, platformFeeBps: 0, sessionTimeoutMinutes: 60 };
+  requireAuth(context);
+  return loadPlatformSettings();
 });
 
 export const updatePlatformSettings = functions.https.onCall(async (data, context) => {
   const uid = await requireAdmin(context);
   const updates: Record<string, unknown> = {};
   if (typeof data.maintenanceMode === "boolean") updates.maintenanceMode = data.maintenanceMode;
+  if (data.maintenanceNotice !== undefined) {
+    if (typeof data.maintenanceNotice !== "string" || data.maintenanceNotice.length > 300) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid maintenance notice.");
+    }
+    updates.maintenanceNotice = data.maintenanceNotice.trim();
+  }
+  if (data.escrowReleaseHours !== undefined) {
+    const hours = Number(data.escrowReleaseHours);
+    if (!Number.isSafeInteger(hours) || hours < 1 || hours > 720) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid escrow release hours.");
+    }
+    updates.escrowReleaseHours = hours;
+  }
+  if (data.minAppVersion !== undefined) {
+    if (typeof data.minAppVersion !== "string" || data.minAppVersion.length > 20
+      || !/^[0-9A-Za-z.+-]*$/.test(data.minAppVersion)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid minimum app version.");
+    }
+    updates.minAppVersion = data.minAppVersion.trim();
+  }
+  if (data.defaultDeliveryFeeMinor !== undefined) {
+    const fee = Number(data.defaultDeliveryFeeMinor);
+    if (!Number.isSafeInteger(fee) || fee < 0 || fee > 10000000) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid default delivery fee.");
+    }
+    updates.defaultDeliveryFeeMinor = fee;
+  }
   if (data.platformFeeBps !== undefined) {
     const fee = Number(data.platformFeeBps);
     if (!Number.isSafeInteger(fee) || fee < 0 || fee > 10000) {
@@ -312,11 +581,22 @@ export const updatePlatformSettings = functions.https.onCall(async (data, contex
   if (Object.keys(updates).length === 0) {
     throw new functions.https.HttpsError("invalid-argument", "No settings supplied.");
   }
+  const before = await loadPlatformSettings();
   await db.collection("platform_settings").doc("global").set({
     ...updates,
     updatedBy: uid,
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
+  const maintenanceToggled = typeof updates.maintenanceMode === "boolean"
+    && updates.maintenanceMode !== before.maintenanceMode;
+  await writeAudit(uid, {
+    actionType: maintenanceToggled ? "MAINTENANCE_TOGGLE" : "PLATFORM_SETTINGS_UPDATED",
+    targetEntity: "platform_settings",
+    targetId: "global",
+    details: `Updated ${Object.entries(updates)
+      .map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ")}`,
+    severity: maintenanceToggled || updates.platformFeeBps !== undefined ? "warning" : "info",
+  });
   return { success: true };
 });
 
@@ -370,6 +650,7 @@ export const onTransportTransition = functions.firestore
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
+    const jobId = context.params.jobId as string;
 
     if (before.status === after.status) return; // No change
 
@@ -384,66 +665,112 @@ export const onTransportTransition = functions.firestore
 
     const allowed = validTransitions[before.status] || [];
     if (!allowed.includes(after.status)) {
-      // Revert invalid transition
-      await change.after.ref.update({ status: before.status });
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        `Invalid transition from ${before.status} to ${after.status}`
-      );
+      // Only Cloud Functions write transport_jobs (rules deny clients), so an
+      // unexpected transition is logged rather than reverted — a revert would
+      // itself be an "invalid" transition and re-trigger this function.
+      functions.logger.error("Unexpected transport transition", {
+        jobId, from: before.status, to: after.status,
+      });
+      return;
     }
 
     // Log transition
     await db.collection("transportTransitions").add({
-      jobId: context.params.jobId,
+      jobId,
       from: before.status,
       to: after.status,
-      actorId: after.transporterId || "system",
+      actorId: after.transporterId || after.cancelledBy || "system",
       timestamp: FieldValue.serverTimestamp(),
     });
 
-    // Update the corresponding order status + notify
-    if (after.orderId) {
-      const orderStatusMap: Record<string, string> = {
-        accepted: "assigned",
-        pickedUp: "pickedUp",
-        inTransit: "inTransit",
-        delivered: "delivered",
-      };
-      const orderStatus = orderStatusMap[after.status];
-      if (orderStatus) {
-        await db.collection("orders").doc(after.orderId).update({
-          status: orderStatus,
-          ...(after.transporterId ? { transporterId: after.transporterId } : {}),
-          updatedAt: FieldValue.serverTimestamp(),
-          ...(orderStatus === "delivered"
-            ? { deliveredAt: FieldValue.serverTimestamp() }
-            : {}),
-        });
-      }
-      const orderSnap = await db.collection("orders").doc(after.orderId).get();
-      const order = orderSnap.data();
-      if (order) {
-        const body = `Delivery for ${order.productName || "your order"} is now ${after.status}.`;
-        if (order.buyerId) {
-          await writeNotification(String(order.buyerId), "Delivery update", body, "logistics", after.orderId);
-        }
-        if (order.farmerId) {
-          await writeNotification(String(order.farmerId), "Delivery update", body, "logistics", after.orderId);
-        }
-        // Auto-delete harvest video after successful delivery (privacy).
-        // Live courier GPS is cleared on delivery AND cancellation so a
-        // cancelled job never retains an exposed last position.
-        if (after.status === "delivered") {
-          await cleanupProductVideoForOrder(order as Record<string, any>);
-        }
-        if (after.status === "delivered" || after.status === "cancelled") {
-          await change.after.ref.update({
-            courierLat: FieldValue.delete(),
-            courierLng: FieldValue.delete(),
-            locationUpdatedAt: FieldValue.delete(),
-          });
-        }
-      }
+    if (!after.orderId) return;
+    const orderRef = db.collection("orders").doc(String(after.orderId));
+    const extra = { jobId };
+
+    // A transporter dropped an assigned job: the order goes back to
+    // "confirmed" and a fresh open request is created for other transporters.
+    const droppedAfterAssignment = after.status === "cancelled"
+      && (before.status === "accepted" || before.status === "pickedUp");
+
+    const orderStatusMap: Record<string, string> = {
+      accepted: "assigned",
+      pickedUp: "pickedUp",
+      inTransit: "inTransit",
+      delivered: "delivered",
+    };
+    const orderStatus = orderStatusMap[after.status];
+    if (orderStatus) {
+      await orderRef.update({
+        status: orderStatus,
+        ...(after.transporterId ? { transporterId: after.transporterId } : {}),
+        updatedAt: FieldValue.serverTimestamp(),
+        ...(orderStatus === "delivered"
+          ? { deliveredAt: FieldValue.serverTimestamp() }
+          : {}),
+      });
+    } else if (droppedAfterAssignment) {
+      await orderRef.update({
+        status: "confirmed",
+        transporterId: FieldValue.delete(),
+        requestedTransporterId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    const orderSnap = await orderRef.get();
+    const order = orderSnap.data();
+    if (!order) return;
+
+    let reopenedJobId: string | null = null;
+    if (droppedAfterAssignment && order.status === "confirmed") {
+      // The fresh request is open to every transporter (no target).
+      const reopenOrder: Record<string, any> = { ...order };
+      delete reopenOrder.requestedTransporterId;
+      delete reopenOrder.transporterId;
+      reopenedJobId = await createTransportJobForOrder(
+        orderSnap.id,
+        reopenOrder,
+        Number(after.offeredFeeMinor ?? after.deliveryFeeMinor ?? order.deliveryFeeMinor ?? 0)
+      );
+    }
+
+    const productLabel = order.productName || "your order";
+    const body = droppedAfterAssignment
+      ? `The transporter cancelled the delivery for ${productLabel}. It has been re-opened for other transporters.`
+      : `Delivery for ${productLabel} is now ${after.status}.`;
+    const notifyExtra = reopenedJobId ? { jobId: reopenedJobId, previousJobId: jobId } : extra;
+    if (order.buyerId) {
+      await writeNotification(String(order.buyerId), "Delivery update", body,
+        "logistics", String(after.orderId), notifyExtra);
+    }
+    if (order.farmerId) {
+      await writeNotification(String(order.farmerId), "Delivery update", body,
+        "logistics", String(after.orderId), notifyExtra);
+    }
+    if (after.transporterId && (after.status === "accepted" || after.status === "delivered")) {
+      await writeNotification(
+        String(after.transporterId),
+        after.status === "accepted" ? "Job accepted" : "Delivery completed",
+        after.status === "accepted"
+          ? `You accepted the delivery for ${productLabel}.`
+          : `Delivery for ${productLabel} is complete.`,
+        "logistics",
+        String(after.orderId),
+        extra
+      );
+    }
+    // Auto-delete harvest video after successful delivery (privacy).
+    // Live courier GPS is cleared on delivery AND cancellation so a
+    // cancelled job never retains an exposed last position.
+    if (after.status === "delivered") {
+      await cleanupProductVideoForOrder(order as Record<string, any>);
+    }
+    if (after.status === "delivered" || after.status === "cancelled") {
+      await change.after.ref.update({
+        courierLat: FieldValue.delete(),
+        courierLng: FieldValue.delete(),
+        locationUpdatedAt: FieldValue.delete(),
+      });
     }
   });
 
@@ -503,9 +830,11 @@ export const calculateOrderTotal = functions.https.onCall(async (data) => {
 });
 
 // Creates an order from catalog IDs, never from client-supplied prices or totals.
-// Optional offerId: when set, uses that offer's negotiated total/qty (buyer must own it).
+// Optional offerId: when set, uses that offer's negotiated per-unit price/qty
+// (buyer must own it). Optional idempotencyKey makes client retries safe.
 export const createOrder = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   await requireRole(uid, ["buyer"]);
   const productId = typeof data.productId === "string" ? data.productId : "";
   const quantity = Number(data.quantity);
@@ -516,30 +845,45 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   const deliveryAddress = typeof data.deliveryAddress === "string"
     ? data.deliveryAddress.trim().slice(0, 500) : "";
   const paymentMethod = data.paymentMethod === "bank_deposit" ? "bank_deposit" : "cod";
+  const idempotencyKey = data.idempotencyKey == null ? "" : data.idempotencyKey;
   if (!productId || !Number.isSafeInteger(quantity) || quantity < 1
-    || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
+    || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0
+    || deliveryFeeMinor > 10000000) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid order details.");
+  }
+  if (idempotencyKey !== "" && (typeof idempotencyKey !== "string"
+    || idempotencyKey.length < 16 || idempotencyKey.length > 256)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid idempotency key.");
   }
   if (!deliveryAddress || deliveryAddress.length < 5) {
     throw new functions.https.HttpsError("invalid-argument", "Delivery address is required.");
   }
-  if (transporterId) {
-    const transporterSnap = await db.collection("users").doc(transporterId).get();
-    const transporter = transporterSnap.data();
-    if (!transporter || transporter.role !== "transporter"
-      || transporter.isSuspended === true) {
-      throw new functions.https.HttpsError(
-        "failed-precondition", "Selected transporter is unavailable.");
-    }
-  }
+  await assertTransporterSelectable(transporterId);
 
+  const settings = await loadPlatformSettings();
   const productRef = db.collection("products").doc(productId);
-  const orderRef = db.collection("orders").doc();
   const offerRef = offerId ? db.collection("offers").doc(offerId) : null;
   const buyerSnap = await db.collection("users").doc(uid).get();
   const buyer = buyerSnap.data() || {};
+  const idemRef = idempotencyKey
+    ? db.collection("idempotency_keys").doc(sha256Hex(`${uid}:${idempotencyKey}`))
+    : null;
+  const requestHash = sha256Hex(JSON.stringify({
+    productId, quantity, deliveryFeeMinor, offerId, transporterId, deliveryAddress, paymentMethod,
+  }));
 
-  await db.runTransaction(async (transaction) => {
+  const orderId = await db.runTransaction(async (transaction) => {
+    if (idemRef) {
+      const previous = (await transaction.get(idemRef)).data();
+      if (previous) {
+        if (previous.requestHash === requestHash && typeof previous.orderId === "string") {
+          return previous.orderId as string;
+        }
+        throw new functions.https.HttpsError(
+          "already-exists", "This checkout was already submitted with different details.");
+      }
+    }
+    const orderRef = db.collection("orders").doc();
     const productSnapshot = await transaction.get(productRef);
     const product = productSnapshot.data();
     const available = Number(product?.quantityAvailable);
@@ -547,23 +891,12 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     let orderQuantity = quantity;
     let finalSubtotal = 0;
     // Reads must precede writes in a transaction, so fetch bank details now.
-    let bankDetailsSnapshot: Record<string, string> | null = null;
-    if (paymentMethod === "bank_deposit") {
-      const bank = (await transaction.get(
-        db.collection("bank_details").doc(String(product?.farmerId || "-"))
-      )).data();
-      if (!bank || !bank.bankName || !bank.branch || !bank.accountHolderName
-        || !/^[0-9]{6,18}$/.test(String(bank.accountNumber || ""))) {
-        throw new functions.https.HttpsError(
-          "failed-precondition", "This farmer does not accept bank deposits yet.");
-      }
-      bankDetailsSnapshot = {
-        bankName: String(bank.bankName),
-        branch: String(bank.branch),
-        accountHolderName: String(bank.accountHolderName),
-        accountNumber: String(bank.accountNumber),
-      };
-    }
+    const bankDetailsSnapshot = paymentMethod === "bank_deposit"
+      ? await readBankSnapshot(transaction, String(product?.farmerId || ""))
+      : null;
+    const farmer = product?.farmerId
+      ? (await transaction.get(db.collection("users").doc(String(product.farmerId)))).data()
+      : undefined;
 
     if (offerRef) {
       const offerSnapshot = await transaction.get(offerRef);
@@ -573,12 +906,12 @@ export const createOrder = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("failed-precondition", "Offer is not usable.");
       }
       orderQuantity = Number(offer.proposedQuantity);
-      finalSubtotal = Number(offer.proposedPriceMinor);
+      priceMinor = Number(offer.proposedPriceMinor); // per unit
       if (!Number.isSafeInteger(orderQuantity) || orderQuantity < 1
-        || !Number.isSafeInteger(finalSubtotal) || finalSubtotal < 0) {
+        || !Number.isSafeInteger(priceMinor) || priceMinor < 0) {
         throw new functions.https.HttpsError("failed-precondition", "Offer pricing is invalid.");
       }
-      priceMinor = Math.round(finalSubtotal / orderQuantity);
+      finalSubtotal = priceMinor * orderQuantity;
       transaction.update(offerRef, {
         status: "accepted",
         orderId: orderRef.id,
@@ -605,6 +938,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.create(orderRef, {
+      orderNumber: orderNumberFor(orderRef.id),
       buyerId: uid,
       farmerId: product.farmerId,
       productId,
@@ -617,12 +951,14 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       subtotalMinor: finalSubtotal,
       deliveryFeeMinor,
       totalMinor: finalSubtotal + deliveryFeeMinor,
+      platformFeeMinor: platformFeeFor(finalSubtotal, settings.platformFeeBps),
       currency: "LKR",
       deliveryAddress,
       pickupAddress: String(product.location || "Farm pickup"),
       location: String(product.location || ""),
-      buyerName: String(buyer.displayName || buyer.name || "Buyer"),
+      buyerName: displayNameOf(buyer, "Buyer"),
       buyerCompany: String(buyer.district || ""),
+      farmerName: displayNameOf(farmer, "Farmer"),
       status: "pending",
       ...(transporterId ? { requestedTransporterId: transporterId } : {}),
       paymentMethod,
@@ -633,19 +969,30 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+    if (idemRef) {
+      transaction.create(idemRef, {
+        uid,
+        requestHash,
+        orderId: orderRef.id,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+    return orderRef.id;
   });
-  return { orderId: orderRef.id };
+  return { orderId };
 });
 
 // Buyer creates a price offer; farmerId always taken from the product document.
+// proposedPrice / proposedPriceMinor are PER UNIT.
 export const createOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["buyer"]);
+  await assertNotMaintenance(context);
+  const buyer = await requireRole(uid, ["buyer"]);
   const productId = typeof data.productId === "string" ? data.productId : "";
   const proposedQuantity = Number(data.proposedQuantity);
   const proposedPrice = Number(data.proposedPrice);
   if (!productId || !Number.isSafeInteger(proposedQuantity) || proposedQuantity < 1
-    || !Number.isFinite(proposedPrice) || proposedPrice <= 0) {
+    || !Number.isFinite(proposedPrice) || proposedPrice <= 0 || proposedPrice > 100000000) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid offer details.");
   }
   const proposedPriceMinor = Math.round(proposedPrice * 100);
@@ -662,12 +1009,17 @@ export const createOffer = functions.https.onCall(async (data, context) => {
   if (!farmerId) {
     throw new functions.https.HttpsError("failed-precondition", "Product has no farmer.");
   }
+  const farmer = (await db.collection("users").doc(farmerId).get()).data();
+  const unit = String(product.unit || "unit");
   const offerRef = db.collection("offers").doc();
   await offerRef.set({
     productId,
     productName: String(product.name || ""),
+    unit,
     buyerId: uid,
+    buyerName: displayNameOf(buyer, "Buyer"),
     farmerId,
+    farmerName: displayNameOf(farmer, "Farmer"),
     proposedQuantity,
     proposedPrice,
     proposedPriceMinor,
@@ -675,26 +1027,27 @@ export const createOffer = functions.https.onCall(async (data, context) => {
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
-  await db.collection("notifications").add({
-    userId: farmerId,
-    title: "New Price Offer",
-    body: `You received an offer of LKR ${proposedPrice.toFixed(0)} for ${proposedQuantity} units.`,
-    type: "offer",
-    referenceId: offerRef.id,
-    read: false,
-    createdAt: FieldValue.serverTimestamp(),
-  });
+  await writeNotification(
+    farmerId,
+    "New Price Offer",
+    `You received an offer of LKR ${proposedPrice.toFixed(2)} per ${unit} for ${proposedQuantity} ${unit}.`,
+    "offer",
+    offerRef.id,
+    { offerId: offerRef.id }
+  );
   return { offerId: offerRef.id };
 });
 
-// Farmer counters a buyer's pending offer. All price changes and notifications
-// are server-owned so both parties see the same negotiated amount.
+// Farmer counters a buyer's pending offer. counterPrice is LKR PER UNIT.
+// All price changes and notifications are server-owned so both parties see
+// the same negotiated amount.
 export const counterOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   await requireVerifiedRole(uid, ["farmer"]);
   const offerId = typeof data.offerId === "string" ? data.offerId : "";
   const counterPrice = Number(data.counterPrice);
-  if (!offerId || !Number.isFinite(counterPrice) || counterPrice <= 0) {
+  if (!offerId || !Number.isFinite(counterPrice) || counterPrice <= 0
+    || counterPrice > 100000000) {
     throw new functions.https.HttpsError("invalid-argument", "Valid offer and counter price are required.");
   }
   const ref = db.collection("offers").doc(offerId);
@@ -706,24 +1059,28 @@ export const counterOffer = functions.https.onCall(async (data, context) => {
   const counterPriceMinor = Math.round(counterPrice * 100);
   await ref.update({
     status: "countered",
+    originalPriceMinor: Number(offer.proposedPriceMinor || 0),
     proposedPrice: counterPriceMinor / 100,
     proposedPriceMinor: counterPriceMinor,
+    counteredAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
   await writeNotification(
     String(offer.buyerId),
     "Farmer sent a counter-offer",
-    `The farmer countered at LKR ${(counterPriceMinor / 100).toFixed(2)} per unit.`,
+    `The farmer countered at LKR ${(counterPriceMinor / 100).toFixed(2)} per ${offer.unit || "unit"}.`,
     "offer",
-    offerId
+    offerId,
+    { offerId }
   );
   return { success: true };
 });
 
-// The farmer accepts the buyer's offer, or the buyer accepts the farmer's
-// counter. The same transaction creates one order and reserves the stock.
+// The farmer accepts the buyer's pending offer, or the buyer accepts the
+// farmer's counter. The same transaction creates one order and reserves stock.
 export const acceptOffer = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   const actor = await requireRole(uid, ["farmer", "buyer"]);
   const actorRole = String(actor.role);
   if (actorRole === "farmer") await requireVerifiedRole(uid, ["farmer"]);
@@ -731,9 +1088,15 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
   const deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
   const deliveryAddress = typeof data.deliveryAddress === "string"
     ? data.deliveryAddress.trim().slice(0, 500) : "";
-  if (!offerId || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0) {
+  const paymentMethod = data.paymentMethod === "bank_deposit" ? "bank_deposit" : "cod";
+  const transporterId = typeof data.transporterId === "string" ? data.transporterId : "";
+  if (!offerId || !Number.isSafeInteger(deliveryFeeMinor) || deliveryFeeMinor < 0
+    || deliveryFeeMinor > 10000000
+    || (deliveryAddress !== "" && deliveryAddress.length < 5)) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid offer accept request.");
   }
+  await assertTransporterSelectable(transporterId);
+  const settings = await loadPlatformSettings();
 
   const offerRef = db.collection("offers").doc(offerId);
   const orderRef = db.collection("orders").doc();
@@ -750,21 +1113,27 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
     }
     const productId = String(offer.productId || "");
     const orderQuantity = Number(offer.proposedQuantity);
-    const finalSubtotal = Number(offer.proposedPriceMinor);
+    const priceMinor = Number(offer.proposedPriceMinor); // per unit
     if (!productId || !Number.isSafeInteger(orderQuantity) || orderQuantity < 1
-      || !Number.isSafeInteger(finalSubtotal) || finalSubtotal < 0) {
+      || !Number.isSafeInteger(priceMinor) || priceMinor < 0) {
       throw new functions.https.HttpsError("failed-precondition", "Offer pricing is invalid.");
     }
+    const finalSubtotal = priceMinor * orderQuantity;
+    const farmerId = String(offer.farmerId);
     const productRef = db.collection("products").doc(productId);
     const productSnapshot = await transaction.get(productRef);
     const product = productSnapshot.data();
+    const bankDetailsSnapshot = paymentMethod === "bank_deposit"
+      ? await readBankSnapshot(transaction, farmerId)
+      : null;
+    const buyerSnap = await transaction.get(db.collection("users").doc(String(offer.buyerId)));
+    const farmerSnap = await transaction.get(db.collection("users").doc(farmerId));
     const available = Number(product?.quantityAvailable);
-    if (!product || product.farmerId !== offer.farmerId || product.status !== "Active"
+    if (!product || product.farmerId !== farmerId || product.status !== "Active"
       || !Number.isSafeInteger(available) || available < orderQuantity) {
       throw new functions.https.HttpsError("failed-precondition", "Product is unavailable.");
     }
-    const priceMinor = Math.round(finalSubtotal / orderQuantity);
-    const unit = String(product.unit || "unit");
+    const unit = String(product.unit || offer.unit || "unit");
     const productName = String(product.name || offer.productName || "Produce");
     const quantityLabel = `${orderQuantity} ${unit}`;
     transaction.update(productRef, {
@@ -776,11 +1145,13 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
     transaction.update(offerRef, {
       status: "accepted",
       orderId: orderRef.id,
+      acceptedBy: uid,
       updatedAt: FieldValue.serverTimestamp(),
     });
     transaction.create(orderRef, {
+      orderNumber: orderNumberFor(orderRef.id),
       buyerId: offer.buyerId,
-      farmerId: uid,
+      farmerId,
       productId,
       productName,
       title: productName,
@@ -791,12 +1162,18 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
       subtotalMinor: finalSubtotal,
       deliveryFeeMinor,
       totalMinor: finalSubtotal + deliveryFeeMinor,
+      platformFeeMinor: platformFeeFor(finalSubtotal, settings.platformFeeBps),
       currency: "LKR",
       deliveryAddress: deliveryAddress || String(offer.deliveryAddress || "To be confirmed with buyer"),
       pickupAddress: String(product.location || "Farm pickup"),
       location: String(product.location || ""),
+      buyerName: displayNameOf(buyerSnap.data(), String(offer.buyerName || "Buyer")),
+      farmerName: displayNameOf(farmerSnap.data(), String(offer.farmerName || "Farmer")),
       status: "pending",
+      ...(transporterId ? { requestedTransporterId: transporterId } : {}),
+      paymentMethod,
       paymentStatus: "payment_required",
+      ...(bankDetailsSnapshot ? { bankDetailsSnapshot } : {}),
       escrowStatus: "not_funded",
       offerId,
       createdAt: FieldValue.serverTimestamp(),
@@ -814,7 +1191,8 @@ export const acceptOffer = functions.https.onCall(async (data, context) => {
         ? "Your offer was accepted and an order was created."
         : "The buyer accepted your counter-offer and an order was created.",
       "offer",
-      offerId
+      orderRef.id,
+      { offerId }
     );
   }
   return { orderId: orderRef.id };
@@ -854,6 +1232,7 @@ export const rejectOffer = functions.https.onCall(async (data, context) => {
 
 export const createProduct = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   const user = await requireRole(uid, ["farmer"]);
   if (user.isVerified !== true) {
     throw new functions.https.HttpsError(
@@ -872,6 +1251,8 @@ export const createProduct = functions.https.onCall(async (data, context) => {
     || !Number.isSafeInteger(quantityAvailable) || quantityAvailable < 0) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid product details.");
   }
+  const availabilityDate = data.availabilityDate === undefined
+    ? null : optionalIsoDate(data.availabilityDate, "availability date");
   const productRef = db.collection("products").doc();
   await productRef.set({
     farmerId: uid,
@@ -894,6 +1275,7 @@ export const createProduct = functions.https.onCall(async (data, context) => {
         && u.startsWith("https://") && u.length < 2048).slice(0, 5)
       : [],
     harvestStatus: "growing",
+    availabilityDate,
     listingVersion: 1,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -922,8 +1304,14 @@ export const updateProduct = functions.https.onCall(async (data, context) => {
     || !Number.isSafeInteger(quantityAvailable) || quantityAvailable < 0) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid product details.");
   }
-  const media = Array.isArray(data.media) ? data.media.slice(0, 5) : (existing.media || []);
-  await ref.update({ name, category, description: typeof data.description === "string" ? data.description.trim().slice(0, 4000) : String(existing.description || ""), unit, location, priceMinor, price: `LKR ${(priceMinor / 100).toFixed(2)} / ${unit}`, pricePerUnit: priceMinor / 100, quantityAvailable, quantity: `${quantityAvailable} ${unit} available`, status: quantityAvailable > 0 ? requestedStatus : "Empty", isOrganic: data.isOrganic == null ? existing.isOrganic === true : data.isOrganic === true, media, updatedAt: FieldValue.serverTimestamp(), listingVersion: Number(existing.listingVersion || 1) + 1 });
+  const media = Array.isArray(data.media)
+    ? data.media.filter((u: unknown) => typeof u === "string"
+      && u.startsWith("https://") && u.length < 2048).slice(0, 5)
+    : (existing.media || []);
+  const availabilityDate = data.availabilityDate === undefined
+    ? (typeof existing.availabilityDate === "string" ? existing.availabilityDate : null)
+    : optionalIsoDate(data.availabilityDate, "availability date");
+  await ref.update({ availabilityDate, name, category, description: typeof data.description === "string" ? data.description.trim().slice(0, 4000) : String(existing.description || ""), unit, location, priceMinor, price: `LKR ${(priceMinor / 100).toFixed(2)} / ${unit}`, pricePerUnit: priceMinor / 100, quantityAvailable, quantity: `${quantityAvailable} ${unit} available`, status: quantityAvailable > 0 ? requestedStatus : "Empty", isOrganic: data.isOrganic == null ? existing.isOrganic === true : data.isOrganic === true, media, updatedAt: FieldValue.serverTimestamp(), listingVersion: Number(existing.listingVersion || 1) + 1 });
   return { success: true };
 });
 
@@ -1101,6 +1489,7 @@ export const cancelProduceRequest = functions.https.onCall(async (data, context)
 
 export const submitProduceRequestQuote = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   await requireVerifiedRole(uid, ["farmer"]);
   const requestId = String(data.requestId || ""), productId = String(data.productId || "");
   const unitPriceMinor = Number(data.unitPriceMinor), deliveryFeeMinor = Number(data.deliveryFeeMinor || 0);
@@ -1139,13 +1528,16 @@ export const acceptProduceRequestQuote = functions.https.onCall(async (data, con
   const requestId = String(data.requestId || ""), farmerId = String(data.farmerId || "");
   const requestRef = db.collection("produce_requests").doc(requestId);
   const quoteRef = requestRef.collection("quotes").doc(farmerId);
+  if (!requestId || !farmerId) throw new functions.https.HttpsError("invalid-argument", "requestId and farmerId are required.");
   const orderRef = db.collection("orders").doc();
+  const settings = await loadPlatformSettings();
   await db.runTransaction(async (tx) => {
     const requestSnap = await tx.get(requestRef), quoteSnap = await tx.get(quoteRef);
     const request = requestSnap.data(), quote = quoteSnap.data();
     if (!request || request.buyerId !== uid || request.status !== "open" || !quote || quote.status !== "pending") throw new functions.https.HttpsError("failed-precondition", "Request or quote is no longer available.");
     const productRef = db.collection("products").doc(String(quote.productId));
     const productSnap = await tx.get(productRef), product = productSnap.data();
+    const farmerProfile = (await tx.get(db.collection("users").doc(farmerId))).data();
     const available = Number(product?.quantityAvailable), quantity = Number(request.quantity), price = Number(quote.unitPriceMinor);
     if (!product || product.farmerId !== farmerId || product.status !== "Active" || available < quantity
       || !Number.isSafeInteger(price) || price < 1) throw new functions.https.HttpsError("failed-precondition", "Farmer stock or quote is no longer valid.");
@@ -1154,6 +1546,10 @@ export const acceptProduceRequestQuote = functions.https.onCall(async (data, con
     tx.update(quoteRef, { status: "accepted", orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
     tx.update(requestRef, { status: "matched", acceptedFarmerId: farmerId, orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
     tx.create(orderRef, {
+      orderNumber: orderNumberFor(orderRef.id),
+      farmerName: displayNameOf(farmerProfile, String(quote.farmerName || "Farmer")),
+      paymentMethod: "cod",
+      platformFeeMinor: platformFeeFor(subtotal, settings.platformFeeBps),
       buyerId: uid, farmerId, productId: quote.productId,
       productName: product.name || request.produceName, title: product.name || request.produceName,
       quantity: `${quantity} ${unit}`, unit, items: [{ productId: quote.productId, quantity, pricePerUnitMinor: price, lineTotalMinor: subtotal }],
@@ -1216,6 +1612,12 @@ export const reviewMarketPriceReport = functions.https.onCall(async (data, conte
   });
   const report = (await reportRef.get()).data();
   if (report?.reporterId) await writeNotification(String(report.reporterId), `Market price report ${decision === "approve" ? "approved" : "reviewed"}`, decision === "approve" ? "Your market price report is now included in the benchmark." : "Your market price report was not approved.", "market_price", reportId);
+  await writeAudit(uid, {
+    actionType: decision === "approve" ? "MARKET_PRICE_APPROVED" : "MARKET_PRICE_REJECTED",
+    targetEntity: "market_price_reports",
+    targetId: reportId,
+    details: `${report?.cropName || "Report"} (${report?.district || "-"})`,
+  });
   return { success: true };
 });
 
@@ -1332,14 +1734,28 @@ export const requestTransport = functions.https.onCall(async (data, context) => 
       "Order must be confirmed before requesting transport."
     );
   }
-  if (order.status === "confirmed") {
-    // already confirmed — ensure job exists
-  } else if (order.status === "pending") {
-    throw new functions.https.HttpsError("failed-precondition", "Confirm the order first.");
-  }
   const fee = Number.isSafeInteger(deliveryFeeMinor) && deliveryFeeMinor >= 0
+    && deliveryFeeMinor <= 10000000
     ? deliveryFeeMinor
     : undefined;
+  // An open request already exists: just update its offered fee.
+  const openJob = await db.collection("transport_jobs")
+    .where("orderId", "==", orderId)
+    .where("status", "==", "requested")
+    .limit(1)
+    .get();
+  if (!openJob.empty) {
+    const jobRef = openJob.docs[0].ref;
+    if (fee !== undefined) {
+      await jobRef.update({
+        offeredFeeMinor: fee,
+        deliveryFeeMinor: fee,
+        fee: `LKR ${(fee / 100).toFixed(2)}`,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    return { jobId: jobRef.id };
+  }
   const jobId = await createTransportJobForOrder(orderId, order as Record<string, any>, fee);
   return { jobId };
 });
@@ -1406,24 +1822,20 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
     paidBy: uid,
     updatedAt: FieldValue.serverTimestamp(),
   });
-  if (order.buyerId) {
-    await writeNotification(
-      String(order.buyerId),
-      "Payment received",
-      `The farmer confirmed your ${method === "bank_deposit" ? "bank deposit" : "cash"} payment.`,
-      "order",
-      orderId
-    );
-  }
+  // The buyer is notified by the onOrderPaymentStatusChanged trigger.
   return { success: true };
 });
 
 export const transitionTransport = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   await requireVerifiedRole(uid, ["transporter"]);
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
-  const reason = typeof data.reason === "string" ? data.reason.trim() : "";
+  const reason = typeof data.reason === "string" ? data.reason.trim().slice(0, 500) : "";
+  if (!jobId || !nextStatus) {
+    throw new functions.https.HttpsError("invalid-argument", "jobId and status are required.");
+  }
   const ref = db.collection("transport_jobs").doc(jobId);
   const snapshot = await ref.get();
   const job = snapshot.data();
@@ -1448,12 +1860,57 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
         return "delivered";
       case "CANCELLED":
         return "cancelled";
+      case "DECLINED":
+      case "DECLINE":
+        return "declined";
       default:
         return String(value ?? "");
     }
   };
   const currentStatus = normalizeStatus(job.status);
   const requestedStatus = normalizeStatus(nextStatus);
+
+  // A targeted transporter declines a request: the job stays "requested"
+  // but becomes open to every transporter, and the farmer is told.
+  if (requestedStatus === "declined") {
+    if (currentStatus !== "requested"
+      || (job.requestedTransporterId !== uid && job.transporterId !== uid)) {
+      throw new functions.https.HttpsError("failed-precondition", "This request cannot be declined.");
+    }
+    await db.runTransaction(async (transaction) => {
+      const current = (await transaction.get(ref)).data();
+      if (!current || normalizeStatus(current.status) !== "requested"
+        || (current.requestedTransporterId !== uid && current.transporterId !== uid)) {
+        throw new functions.https.HttpsError("aborted", "Request changed. Refresh and retry.");
+      }
+      transaction.update(ref, {
+        transporterId: null,
+        requestedTransporterId: FieldValue.delete(),
+        declinedBy: FieldValue.arrayUnion(uid),
+        ...(reason ? { declineReason: reason } : {}),
+        declinedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      if (current.orderId) {
+        transaction.update(db.collection("orders").doc(String(current.orderId)), {
+          requestedTransporterId: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+    });
+    if (job.farmerId) {
+      await writeNotification(
+        String(job.farmerId),
+        "Delivery request declined",
+        `The selected transporter declined the delivery for ${job.productName || "your order"}. It is now open to other transporters.`,
+        "logistics",
+        job.orderId ? String(job.orderId) : undefined,
+        { jobId }
+      );
+    }
+    return { success: true };
+  }
+
   const transitions: Record<string, string[]> = {
     requested: ["accepted"], accepted: ["pickedUp", "cancelled"],
     pickedUp: ["inTransit"], inTransit: ["delivered"], delivered: [], cancelled: [],
@@ -1501,9 +1958,32 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
   return { success: true };
 });
 
+// Full profile update, or availability-only update ({availabilityStatus}).
+// Public fields are mirrored to transporter_profiles/{uid}.
 export const updateTransporterProfile = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   await requireRole(uid, ["transporter"]);
+
+  const availabilityStatus = data.availabilityStatus === "available"
+    ? "available"
+    : data.availabilityStatus === "unavailable"
+      ? "unavailable"
+      : "";
+  const profileKeys = ["displayName", "phone", "vehicleType", "vehicleRegistration",
+    "vehicleCapacity", "vehicleCapacityUnit", "vehicleDescription", "serviceDistricts"];
+  const isAvailabilityOnly = !profileKeys.some((key) => data[key] !== undefined);
+
+  if (isAvailabilityOnly) {
+    if (!availabilityStatus) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid availability status.");
+    }
+    await db.collection("users").doc(uid).update({
+      availabilityStatus,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await syncTransporterProfile(uid);
+    return { success: true };
+  }
 
   const displayName = typeof data.displayName === "string" ? data.displayName.trim() : "";
   const phone = typeof data.phone === "string" ? data.phone.trim() : "";
@@ -1514,17 +1994,23 @@ export const updateTransporterProfile = functions.https.onCall(async (data, cont
   const vehicleCapacity = data.vehicleCapacity == null ? null : Number(data.vehicleCapacity);
   const vehicleCapacityUnit = data.vehicleCapacityUnit === "tons" ? "tons" : "kg";
   const vehicleDescription = typeof data.vehicleDescription === "string"
-    ? data.vehicleDescription.trim()
+    ? data.vehicleDescription.trim().slice(0, 500)
     : "";
-  const availabilityStatus = data.availabilityStatus === "available"
-    ? "available"
-    : data.availabilityStatus === "unavailable"
-      ? "unavailable"
-      : "";
+  let serviceDistricts: string[] | undefined;
+  if (data.serviceDistricts !== undefined) {
+    if (!Array.isArray(data.serviceDistricts) || data.serviceDistricts.length > 25
+      || data.serviceDistricts.some((d: unknown) => typeof d !== "string"
+        || d.trim().length === 0 || d.length > 80)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid service districts.");
+    }
+    serviceDistricts = [...new Set((data.serviceDistricts as string[]).map((d) => d.trim()))];
+  }
 
-  if (displayName.length < 2 || phone.length < 7 || !vehicleType
-    || !vehicleRegistration || !availabilityStatus
-    || (vehicleCapacity != null && (!Number.isFinite(vehicleCapacity) || vehicleCapacity <= 0))) {
+  if (displayName.length < 2 || displayName.length > 120 || phone.length < 7 || phone.length > 30
+    || !vehicleType || vehicleType.length > 60
+    || !vehicleRegistration || vehicleRegistration.length > 20 || !availabilityStatus
+    || (vehicleCapacity != null && (!Number.isFinite(vehicleCapacity) || vehicleCapacity <= 0
+      || vehicleCapacity > 1000000))) {
     throw new functions.https.HttpsError(
       "invalid-argument",
       "Name, phone, vehicle details, and availability are required."
@@ -1540,9 +2026,46 @@ export const updateTransporterProfile = functions.https.onCall(async (data, cont
     vehicleCapacityUnit,
     vehicleDescription,
     availabilityStatus,
+    ...(serviceDistricts ? { serviceDistricts } : {}),
     updatedAt: FieldValue.serverTimestamp(),
   });
+  await syncTransporterProfile(uid);
   return { success: true };
+});
+
+// Signed-in users: verified, non-suspended transporters (public projection).
+// Sourced from users (so existing transporters are included) and mirrored
+// into transporter_profiles as a lazy backfill.
+export const listAvailableTransporters = functions.https.onCall(async (data, context) => {
+  requireAuth(context);
+  const district = typeof data?.district === "string" ? data.district.trim().toLowerCase() : "";
+  if (district.length > 80) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid district.");
+  }
+  const snap = await db.collection("users")
+    .where("role", "==", "transporter")
+    .where("isVerified", "==", true)
+    .limit(100)
+    .get();
+  const results: Record<string, unknown>[] = [];
+  const backfill: Promise<unknown>[] = [];
+  for (const doc of snap.docs) {
+    const user = doc.data();
+    if (user.isSuspended === true || user.isDeleted === true) continue;
+    const projection = transporterProjection(doc.id, user);
+    backfill.push(db.collection("transporter_profiles").doc(doc.id).set({
+      ...projection,
+      updatedAt: FieldValue.serverTimestamp(),
+    }));
+    if (district) {
+      const districts = (projection.serviceDistricts as string[]).map((d) => d.toLowerCase());
+      const home = String(projection.district || "").toLowerCase();
+      if (home !== district && !districts.includes(district)) continue;
+    }
+    results.push(projection);
+  }
+  await Promise.all(backfill);
+  return results;
 });
 
 /** Live courier coordinates while a job is active. Cleared after delivered. */
@@ -1581,10 +2104,11 @@ export const updateTransportLocation = functions.https.onCall(async (data, conte
 
 export const submitVerification = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["farmer", "transporter"]);
+  await requireRole(uid, ["farmer", "transporter", "buyer"]);
   const documentType = typeof data.documentType === "string" ? data.documentType.trim() : "";
   const storagePath = typeof data.storagePath === "string" ? data.storagePath : "";
-  if (!documentType || !storagePath.startsWith(`verification/${uid}/`)) {
+  if (!documentType || documentType.length > 80 || storagePath.length > 1024
+    || storagePath.includes("..") || !storagePath.startsWith(`verification/${uid}/`)) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid verification document.");
   }
   const ref = db.collection("verification_docs").doc();
@@ -1603,6 +2127,7 @@ export const submitVerification = functions.https.onCall(async (data, context) =
 // Photos reference Storage objects the sender uploaded for this order.
 export const sendMessage = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
+  await assertNotMaintenance(context);
   const orderId = typeof data.orderId === "string" ? data.orderId : "";
   const recipientId = typeof data.recipientId === "string" ? data.recipientId : "";
   const ciphertext = typeof data.ciphertext === "string" ? data.ciphertext : "";
@@ -1637,10 +2162,11 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
   if (!(await convoRef.get()).exists) {
     await convoRef.set({
       orderId,
+      orderNumber: String(order.orderNumber || orderNumberFor(orderId)),
       participantIds: participants,
       lastMessage: "",
       lastMessageAt: FieldValue.serverTimestamp(),
-      unreadCounts: { [recipientId]: 0 },
+      unreadCounts: { [recipientId]: 0, [uid]: 0 },
       createdAt: FieldValue.serverTimestamp(),
     });
   }
@@ -1648,6 +2174,7 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
   await ref.set({
     orderId,
     conversationId,
+    participantIds: participants,
     senderId: uid,
     receiverId: recipientId,
     recipientId,
@@ -1661,13 +2188,16 @@ export const sendMessage = functions.https.onCall(async (data, context) => {
       ? (attachmentKind === "payment_proof" ? "Payment receipt" : "Photo")
       : ciphertext.slice(0, 140),
     lastMessageAt: FieldValue.serverTimestamp(),
+    lastSenderId: uid,
+    [`unreadCounts.${recipientId}`]: FieldValue.increment(1),
   });
   await writeNotification(
     recipientId,
     hasImage && attachmentKind === "payment_proof" ? "Payment receipt received" : "New message",
     hasImage ? "You received a photo in your order chat." : "You have a new encrypted order message.",
     "message",
-    orderId
+    orderId,
+    { conversationId, senderId: uid }
   );
   return { messageId: ref.id, conversationId };
 });
@@ -1807,11 +2337,12 @@ export const releaseEscrow = functions.https.onCall(async (data, context) => {
     releasedBy: uid,
     releasedAt: FieldValue.serverTimestamp(),
   });
-  await db.collection("audit_logs").add({
-    action: "escrow_release",
-    orderId,
-    actorId: uid,
-    createdAt: FieldValue.serverTimestamp(),
+  await writeAudit(uid, {
+    actionType: "ESCROW_RELEASE",
+    targetEntity: "orders",
+    targetId: orderId,
+    details: `Released ${String(order.orderNumber || orderId)} (LKR ${(Number(order.totalMinor || 0) / 100).toFixed(2)})`,
+    severity: "warning",
   });
   return { success: true };
 });
@@ -1820,15 +2351,46 @@ export const reviewVerification = functions.https.onCall(async (data, context) =
   const uid = await requireAdmin(context);
   const documentId = typeof data.documentId === "string" ? data.documentId : "";
   const status = data.status === "approved" || data.status === "rejected" ? data.status : "";
-  if (!documentId || !status) throw new functions.https.HttpsError("invalid-argument", "Invalid verification decision.");
+  const reason = typeof data.reason === "string" ? data.reason.trim() : "";
+  if (!documentId || !status || reason.length > 300) throw new functions.https.HttpsError("invalid-argument", "Invalid verification decision.");
   const ref = db.collection("verification_docs").doc(documentId);
   const snapshot = await ref.get();
   const document = snapshot.data();
   if (!document || document.status !== "pending") throw new functions.https.HttpsError("failed-precondition", "Document is not pending.");
-  await ref.update({ status, reviewedBy: uid, reviewedAt: FieldValue.serverTimestamp() });
-  if (status === "approved" && document.ownerId) {
-    await db.collection("users").doc(document.ownerId).update({ isVerified: true, updatedAt: FieldValue.serverTimestamp() });
+  await ref.update({
+    status,
+    reviewedBy: uid,
+    reviewedAt: FieldValue.serverTimestamp(),
+    ...(status === "rejected"
+      ? { rejectionReason: reason || "Document rejected by admin." }
+      : { rejectionReason: FieldValue.delete() }),
+  });
+  const ownerId = String(document.ownerId || document.farmerId || "");
+  if (ownerId) {
+    if (status === "approved") {
+      await db.collection("users").doc(ownerId).update({ isVerified: true, updatedAt: FieldValue.serverTimestamp() });
+      const owner = (await db.collection("users").doc(ownerId).get()).data();
+      if (owner?.role === "transporter") await syncTransporterProfile(ownerId);
+    }
+    const docLabel = String(document.documentType || "verification document");
+    await writeNotification(
+      ownerId,
+      status === "approved" ? "Verification approved" : "Verification rejected",
+      status === "approved"
+        ? `Your ${docLabel} was approved. Your account is now verified.`
+        : `Your ${docLabel} was rejected${reason ? `: ${reason}` : "."} Please upload a new document.`,
+      "verification",
+      undefined,
+      { documentId }
+    );
   }
+  await writeAudit(uid, {
+    actionType: status === "approved" ? "VERIFICATION_APPROVED" : "VERIFICATION_REJECTED",
+    targetEntity: "verification_docs",
+    targetId: documentId,
+    details: `${document.documentType || "Document"} of ${ownerId || "unknown user"}${reason ? ` — ${reason}` : ""}`,
+    severity: "info",
+  });
   return { success: true };
 });
 
@@ -1921,10 +2483,19 @@ export const submitReview = functions.https.onCall(async (data, context) => {
   if ((await reviewRef.get()).exists) {
     throw new functions.https.HttpsError("already-exists", "This order has already been reviewed.");
   }
+  const [reviewerSnap, subjectSnap] = await Promise.all([
+    db.collection("users").doc(uid).get(),
+    db.collection("users").doc(String(order.farmerId)).get(),
+  ]);
   await reviewRef.create({
     orderId,
+    orderNumber: String(order.orderNumber || orderNumberFor(orderId)),
     reviewerId: uid,
+    reviewerName: displayNameOf(reviewerSnap.data(), String(order.buyerName || "Buyer")),
     subjectId: order.farmerId,
+    subjectName: displayNameOf(subjectSnap.data(), String(order.farmerName || "Farmer")),
+    productId: order.productId || null,
+    productName: String(order.productName || ""),
     rating,
     comment,
     moderationStatus: "pending",
@@ -1962,29 +2533,66 @@ export const openDispute = functions.https.onCall(async (data, context) => {
 });
 
 export const setUserSuspended = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
+  const adminUid = await requireAdmin(context);
   const userId = typeof data.userId === "string" ? data.userId.trim() : "";
   const suspended = data.suspended === true;
   if (!userId) {
     throw new functions.https.HttpsError("invalid-argument", "userId is required.");
+  }
+  if (userId === adminUid) {
+    throw new functions.https.HttpsError("failed-precondition", "You cannot suspend your own account.");
   }
   const ref = db.collection("users").doc(userId);
   const snap = await ref.get();
   if (!snap.exists) {
     throw new functions.https.HttpsError("not-found", "User not found.");
   }
+  if (!suspended && snap.data()?.isDeleted === true) {
+    throw new functions.https.HttpsError("failed-precondition", "Deleted accounts cannot be reactivated.");
+  }
   await ref.update({
     isSuspended: suspended,
     updatedAt: FieldValue.serverTimestamp(),
   });
-  await db.collection("audit_logs").add({
-    action: suspended ? "user_suspended" : "user_unsuspended",
-    targetUserId: userId,
-    actorId: context.auth!.uid,
-    createdAt: FieldValue.serverTimestamp(),
+  try {
+    await auth.updateUser(userId, { disabled: suspended });
+    if (suspended) await auth.revokeRefreshTokens(userId);
+  } catch (err) {
+    functions.logger.warn("Auth disable toggle failed", { userId, err });
+  }
+  if (snap.data()?.role === "transporter") await syncTransporterProfile(userId);
+  await writeAudit(adminUid, {
+    actionType: suspended ? "USER_SUSPENDED" : "USER_UNSUSPENDED",
+    targetEntity: "users",
+    targetId: userId,
+    details: `${suspended ? "Suspended" : "Reinstated"} ${displayNameOf(snap.data(), userId)}`,
+    severity: suspended ? "warning" : "info",
   });
   return { success: true, userId, isSuspended: suspended };
 });
+
+// Deletes every document matched by `query` in batches (bounded).
+const deleteQueryInBatches = async (
+  query: FirebaseFirestore.Query,
+  maxRounds = 25
+): Promise<void> => {
+  for (let round = 0; round < maxRounds; round++) {
+    const snap = await query.limit(400).get();
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    if (snap.size < 400) return;
+  }
+};
+
+const deleteStoragePrefix = async (prefix: string): Promise<void> => {
+  try {
+    await admin.storage().bucket().deleteFiles({ prefix, force: true });
+  } catch (err) {
+    functions.logger.warn("Storage prefix delete failed", { prefix, err });
+  }
+};
 
 export const deleteAccount = functions.https.onCall(async (_data, context) => {
   const uid = requireAuth(context);
@@ -1993,12 +2601,16 @@ export const deleteAccount = functions.https.onCall(async (_data, context) => {
   // Anonymize user document (retain role audit shell)
   await userRef.set({
     displayName: "Deleted User",
+    name: "Deleted User",
     phone: "",
     photoUrl: FieldValue.delete(),
     email: FieldValue.delete(),
     address: FieldValue.delete(),
+    location: FieldValue.delete(),
     deviceTokens: FieldValue.delete(),
     notificationPreferences: FieldValue.delete(),
+    notificationPrefs: FieldValue.delete(),
+    chatPublicKey: FieldValue.delete(),
     isSuspended: true,
     isDeleted: true,
     deletedAt: FieldValue.serverTimestamp(),
@@ -2021,6 +2633,8 @@ export const deleteAccount = functions.https.onCall(async (_data, context) => {
         updates.buyerName = "Deleted User";
         updates.buyerCompany = "";
         updates.deliveryAddress = "[redacted]";
+      } else if (field === "farmerId") {
+        updates.farmerName = "Deleted User";
       }
       return doc.ref.update(updates);
     }));
@@ -2035,6 +2649,16 @@ export const deleteAccount = functions.https.onCall(async (_data, context) => {
     media: [],
     updatedAt: FieldValue.serverTimestamp(),
   })));
+
+  // Owned ancillary data.
+  await Promise.all([
+    db.collection("bank_details").doc(uid).delete(),
+    db.collection("chat_keys").doc(uid).delete(),
+    db.collection("transporter_profiles").doc(uid).delete(),
+  ]);
+  await deleteQueryInBatches(db.collection("notifications").where("userId", "==", uid));
+  await deleteStoragePrefix(`users/${uid}/`);
+  await deleteStoragePrefix(`verification/${uid}/`);
 
   await auth.deleteUser(uid);
   return { success: true };
@@ -2053,23 +2677,30 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
       db.collection("verification_docs").where("ownerId", "==", uid).limit(100).get(),
     ]);
 
+  const [buyerOffers, farmerOffers, reviewsWritten, reviewsReceived, disputes,
+    notifications, bankSnap, messagesSent, settlements] = await Promise.all([
+    db.collection("offers").where("buyerId", "==", uid).limit(200).get(),
+    db.collection("offers").where("farmerId", "==", uid).limit(200).get(),
+    db.collection("reviews").where("reviewerId", "==", uid).limit(200).get(),
+    db.collection("reviews").where("subjectId", "==", uid).limit(200).get(),
+    db.collection("disputes").where("openedBy", "==", uid).limit(100).get(),
+    db.collection("notifications").where("userId", "==", uid).limit(500).get(),
+    db.collection("bank_details").doc(uid).get(),
+    db.collection("messages").where("senderId", "==", uid).limit(500).get(),
+    db.collection("settlements").where("recipientId", "==", uid).limit(200).get(),
+  ]);
+
   // Also collect verification docs keyed by farmerId for older records
   const verificationByFarmer = await db.collection("verification_docs")
     .where("farmerId", "==", uid).limit(100).get();
 
-  const orderMap = new Map<string, Record<string, unknown>>();
-  for (const snap of [buyerOrders, farmerOrders, transporterOrders]) {
-    for (const doc of snap.docs) {
-      orderMap.set(doc.id, { id: doc.id, ...doc.data() });
+  const merge = (...snaps: FirebaseFirestore.QuerySnapshot[]): Record<string, unknown>[] => {
+    const map = new Map<string, Record<string, unknown>>();
+    for (const snap of snaps) {
+      for (const doc of snap.docs) map.set(doc.id, { id: doc.id, ...doc.data() });
     }
-  }
-
-  const verificationMap = new Map<string, Record<string, unknown>>();
-  for (const snap of [verificationDocs, verificationByFarmer]) {
-    for (const doc of snap.docs) {
-      verificationMap.set(doc.id, { id: doc.id, ...doc.data() });
-    }
-  }
+    return Array.from(map.values());
+  };
 
   const serialize = (value: unknown): unknown => {
     if (value === null || value === undefined) return value;
@@ -2089,8 +2720,622 @@ export const exportUserData = functions.https.onCall(async (_data, context) => {
     exportedAt: new Date().toISOString(),
     userId: uid,
     profile: userSnap.exists ? { id: userSnap.id, ...userSnap.data() } : null,
-    orders: Array.from(orderMap.values()),
+    orders: merge(buyerOrders, farmerOrders, transporterOrders),
     products: products.docs.map((d) => ({ id: d.id, ...d.data() })),
-    verificationDocs: Array.from(verificationMap.values()),
+    verificationDocs: merge(verificationDocs, verificationByFarmer),
+    offers: merge(buyerOffers, farmerOffers),
+    reviews: merge(reviewsWritten, reviewsReceived),
+    disputes: merge(disputes),
+    notifications: merge(notifications),
+    bankDetails: bankSnap.exists ? bankSnap.data() : null,
+    messagesSent: merge(messagesSent),
+    settlements: merge(settlements),
   });
 });
+
+// ─── Admin: disputes ──────────────────────────────────────────
+const DISPUTE_REFUND_PERCENT: Record<string, number> = {
+  refund_buyer: 100,
+  release_farmer: 0,
+  split_settlement: 50,
+};
+
+export const resolveDispute = functions.https.onCall(async (data, context) => {
+  const uid = await requireAdmin(context);
+  const orderId = typeof data.orderId === "string" ? data.orderId : "";
+  const resolution = typeof data.resolution === "string" ? data.resolution : "";
+  const adminNotes = typeof data.adminNotes === "string" ? data.adminNotes.trim() : "";
+  const refundPercent = DISPUTE_REFUND_PERCENT[resolution];
+  if (!orderId || refundPercent === undefined || !adminNotes || adminNotes.length > 2000) {
+    throw new functions.https.HttpsError(
+      "invalid-argument", "A valid decision and audit note are required.");
+  }
+  const orderRef = db.collection("orders").doc(orderId);
+  const result = await db.runTransaction(async (transaction) => {
+    const order = (await transaction.get(orderRef)).data();
+    if (!order || order.paymentStatus !== "disputed") {
+      throw new functions.https.HttpsError("failed-precondition", "This order has no open dispute.");
+    }
+    const disputeId = typeof order.disputeId === "string" ? order.disputeId : "";
+    if (!disputeId) {
+      throw new functions.https.HttpsError("failed-precondition", "Dispute record is missing.");
+    }
+    const disputeRef = db.collection("disputes").doc(disputeId);
+    const dispute = (await transaction.get(disputeRef)).data();
+    if (!dispute || dispute.status !== "open") {
+      throw new functions.https.HttpsError("failed-precondition", "This dispute is already closed.");
+    }
+    const totalMinor = Number(order.totalMinor);
+    if (!Number.isSafeInteger(totalMinor) || totalMinor < 0) {
+      throw new functions.https.HttpsError("failed-precondition", "Order total is invalid.");
+    }
+    const refundMinor = Math.round((totalMinor * refundPercent) / 100);
+    const settlementMinor = totalMinor - refundMinor;
+    const paymentStatus = refundPercent === 100
+      ? "refund_pending"
+      : refundPercent === 0 ? "settlement_pending" : "split_settlement_pending";
+    transaction.update(orderRef, {
+      status: resolution === "refund_buyer" ? "cancelled" : "completed",
+      disputeStatus: "resolved",
+      disputeResolution: resolution,
+      disputeAdminNotes: adminNotes,
+      disputeResolvedBy: uid,
+      disputeResolvedAt: FieldValue.serverTimestamp(),
+      refundPercent,
+      refundMinor,
+      settlementMinor,
+      paymentStatus,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(disputeRef, {
+      status: "resolved",
+      resolution,
+      adminNotes,
+      resolvedBy: uid,
+      resolvedAt: FieldValue.serverTimestamp(),
+      refundPercent,
+      refundMinor,
+      settlementMinor,
+    });
+    return {
+      disputeId,
+      refundMinor,
+      settlementMinor,
+      paymentStatus,
+      buyerId: String(order.buyerId || ""),
+      farmerId: String(order.farmerId || ""),
+      orderNumber: String(order.orderNumber || orderNumberFor(orderId)),
+    };
+  });
+
+  const label = resolution === "refund_buyer"
+    ? "a full refund to the buyer"
+    : resolution === "release_farmer" ? "payment released to the farmer" : "a 50/50 split settlement";
+  const body = `The dispute on order ${result.orderNumber} was resolved with ${label}.`;
+  await writeNotification(result.buyerId, "Dispute resolved", body, "dispute", orderId,
+    { disputeId: result.disputeId });
+  await writeNotification(result.farmerId, "Dispute resolved", body, "dispute", orderId,
+    { disputeId: result.disputeId });
+  await writeAudit(uid, {
+    actionType: "DISPUTE_RESOLVED",
+    targetEntity: "disputes",
+    targetId: result.disputeId,
+    details: `${result.orderNumber}: ${resolution} (refund ${refundPercent}%). ${adminNotes}`,
+    severity: "critical",
+  });
+  return {
+    success: true,
+    disputeId: result.disputeId,
+    refundPercent,
+    refundMinor: result.refundMinor,
+    settlementMinor: result.settlementMinor,
+    paymentStatus: result.paymentStatus,
+  };
+});
+
+// ─── Admin: advisories ────────────────────────────────────────
+export const broadcastAdvisory = functions.https.onCall(async (data, context) => {
+  const uid = await requireAdmin(context);
+  const title = requiredString(data.title, "title", 1, 120);
+  const body = requiredString(data.body, "message", 1, 2000);
+  const audience = typeof data.audience === "string" ? data.audience : "";
+  if (!["all", "farmer", "buyer", "transporter"].includes(audience)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid audience.");
+  }
+  const advisoryRef = db.collection("advisories").doc();
+  const baseQuery: FirebaseFirestore.Query = audience === "all"
+    ? db.collection("users")
+    : db.collection("users").where("role", "==", audience);
+  const usersSnap = await baseQuery.select("isSuspended", "isDeleted", "role").get();
+  const recipients = usersSnap.docs.filter((doc) => {
+    const user = doc.data();
+    return user.isSuspended !== true && user.isDeleted !== true;
+  });
+  for (let i = 0; i < recipients.length; i += 400) {
+    const batch = db.batch();
+    for (const doc of recipients.slice(i, i + 400)) {
+      batch.set(db.collection("notifications").doc(), {
+        userId: doc.id,
+        title,
+        body,
+        type: "general",
+        referenceId: advisoryRef.id,
+        advisoryId: advisoryRef.id,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+  await advisoryRef.set({
+    title,
+    body,
+    audience,
+    recipients: recipients.length,
+    createdBy: uid,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await writeAudit(uid, {
+    actionType: "ADVISORY_BROADCAST",
+    targetEntity: "advisories",
+    targetId: advisoryRef.id,
+    details: `"${title}" sent to ${audience} (${recipients.length} recipients)`,
+    severity: "info",
+  });
+  return { recipients: recipients.length, advisoryId: advisoryRef.id };
+});
+
+// ─── Admin: user management ───────────────────────────────────
+export const adminSetUserRole = functions.https.onCall(async (data, context) => {
+  const adminUid = await requireAdmin(context);
+  const targetUid = typeof data.uid === "string" ? data.uid.trim() : "";
+  const role = typeof data.role === "string" ? data.role : "";
+  if (!targetUid || !["farmer", "buyer", "transporter", "admin"].includes(role)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid user or role.");
+  }
+  if (targetUid === adminUid) {
+    throw new functions.https.HttpsError("failed-precondition", "You cannot change your own role.");
+  }
+  const ref = db.collection("users").doc(targetUid);
+  const snap = await ref.get();
+  const user = snap.data();
+  if (!user || user.isDeleted === true) {
+    throw new functions.https.HttpsError("not-found", "User not found.");
+  }
+  const previousRole = String(user.role || "");
+  await ref.update({ role, updatedAt: FieldValue.serverTimestamp() });
+  try {
+    const authUser = await auth.getUser(targetUid);
+    await auth.setCustomUserClaims(targetUid, {
+      ...(authUser.customClaims || {}),
+      role,
+      admin: role === "admin",
+    });
+    await auth.revokeRefreshTokens(targetUid);
+  } catch (err) {
+    functions.logger.warn("Custom claim update failed", { targetUid, err });
+  }
+  if (previousRole === "transporter" || role === "transporter") {
+    await syncTransporterProfile(targetUid);
+  }
+  await writeAudit(adminUid, {
+    actionType: "USER_ROLE_CHANGED",
+    targetEntity: "users",
+    targetId: targetUid,
+    details: `${displayNameOf(user, targetUid)}: ${previousRole || "none"} → ${role}`,
+    severity: role === "admin" || previousRole === "admin" ? "critical" : "warning",
+  });
+  return { success: true, uid: targetUid, role };
+});
+
+export const adminDeleteUser = functions.https.onCall(async (data, context) => {
+  const adminUid = await requireAdmin(context);
+  const targetUid = typeof data.uid === "string" ? data.uid.trim() : "";
+  if (!targetUid) {
+    throw new functions.https.HttpsError("invalid-argument", "uid is required.");
+  }
+  if (targetUid === adminUid) {
+    throw new functions.https.HttpsError("failed-precondition", "You cannot delete your own account.");
+  }
+  const ref = db.collection("users").doc(targetUid);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new functions.https.HttpsError("not-found", "User not found.");
+  }
+  await ref.update({
+    isDeleted: true,
+    isSuspended: true,
+    deletedAt: FieldValue.serverTimestamp(),
+    deletedBy: adminUid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  try {
+    await auth.updateUser(targetUid, { disabled: true });
+    await auth.revokeRefreshTokens(targetUid);
+  } catch (err) {
+    functions.logger.warn("Auth disable failed", { targetUid, err });
+  }
+  await db.collection("transporter_profiles").doc(targetUid).delete();
+  await writeAudit(adminUid, {
+    actionType: "USER_DELETED",
+    targetEntity: "users",
+    targetId: targetUid,
+    details: `Soft-deleted ${displayNameOf(snap.data(), targetUid)}`,
+    severity: "critical",
+  });
+  return { success: true, uid: targetUid };
+});
+
+// ─── Withdrawals / settlements ────────────────────────────────
+const PAYOUT_METHODS = ["CEFT", "SLIP", "Mobile Wallet"];
+const EARNING_PAYMENT_STATUSES = ["paid", "released", "settled_split"];
+
+export const requestWithdrawal = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const user = await requireRole(uid, ["farmer", "transporter"]);
+  const role = String(user.role);
+  const amount = Number(data.amount);
+  const amountMinor = Math.round(amount * 100);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10000000
+    || Math.abs(amount * 100 - amountMinor) > 1e-6) {
+    throw new functions.https.HttpsError("invalid-argument", "Enter a valid withdrawal amount.");
+  }
+  const bankName = requiredString(data.bankName, "bank name", 1, 100);
+  const accountNumber = requiredString(data.accountNumber, "account number", 4, 40);
+  if (!/^[0-9A-Za-z -]+$/.test(accountNumber)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid account number.");
+  }
+  const payoutMethod = typeof data.payoutMethod === "string" ? data.payoutMethod : "CEFT";
+  if (!PAYOUT_METHODS.includes(payoutMethod)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid payout method.");
+  }
+
+  const settlementRef = db.collection("settlements").doc();
+  await db.runTransaction(async (transaction) => {
+    let earnedMinor = 0;
+    if (role === "farmer") {
+      const orders = await transaction.get(db.collection("orders")
+        .where("farmerId", "==", uid)
+        .where("paymentStatus", "in", EARNING_PAYMENT_STATUSES));
+      for (const doc of orders.docs) {
+        const order = doc.data();
+        if (String(order.status) === "cancelled") continue;
+        const total = Number(order.totalMinor || 0);
+        const fee = Number(order.platformFeeMinor || 0);
+        // When a transporter carried the order the delivery fee is theirs.
+        const delivery = order.transporterId ? Number(order.deliveryFeeMinor || 0) : 0;
+        earnedMinor += Math.max(0, total - fee - delivery);
+      }
+    } else {
+      const jobs = await transaction.get(db.collection("transport_jobs")
+        .where("transporterId", "==", uid)
+        .where("status", "==", "delivered"));
+      for (const doc of jobs.docs) {
+        const job = doc.data();
+        earnedMinor += Math.max(0, Number(job.deliveryFeeMinor ?? job.offeredFeeMinor ?? 0));
+      }
+    }
+    const previous = await transaction.get(db.collection("settlements")
+      .where("recipientId", "==", uid));
+    let withdrawnMinor = 0;
+    for (const doc of previous.docs) {
+      const settlement = doc.data();
+      if (settlement.status === "rejected") continue;
+      withdrawnMinor += Math.round(Number(settlement.netAmount || 0) * 100);
+    }
+    const availableMinor = earnedMinor - withdrawnMinor;
+    if (amountMinor > availableMinor) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        `Amount exceeds your available balance (LKR ${(Math.max(0, availableMinor) / 100).toFixed(2)}).`
+      );
+    }
+    transaction.create(settlementRef, {
+      orderId: "",
+      orderNumber: `WD-${settlementRef.id.slice(0, 8).toUpperCase()}`,
+      recipientId: uid,
+      recipientName: displayNameOf(user, role === "farmer" ? "Farmer" : "Transporter"),
+      recipientRole: role,
+      grossAmount: amountMinor / 100,
+      platformFee: 0,
+      netAmount: amountMinor / 100,
+      bankName,
+      accountNumber,
+      payoutMethod,
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+  await writeAudit(uid, {
+    actionType: "WITHDRAWAL_REQUESTED",
+    targetEntity: "settlements",
+    targetId: settlementRef.id,
+    details: `LKR ${(amountMinor / 100).toFixed(2)} via ${payoutMethod} (${bankName})`,
+    severity: "info",
+  });
+  return { settlementId: settlementRef.id };
+});
+
+export const updateSettlementStatus = functions.https.onCall(async (data, context) => {
+  const uid = await requireAdmin(context);
+  const settlementId = typeof data.settlementId === "string" ? data.settlementId : "";
+  const status = typeof data.status === "string" ? data.status : "";
+  if (!settlementId || !["settled", "on_hold", "processing", "rejected"].includes(status)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid settlement update.");
+  }
+  const transactionReference = data.transactionReference == null
+    || (typeof data.transactionReference === "string" && data.transactionReference.trim() === "")
+    ? "" : requiredString(data.transactionReference, "transaction reference", 4, 100);
+  if (status === "settled" && !transactionReference) {
+    throw new functions.https.HttpsError(
+      "invalid-argument", "A transaction reference is required to mark a payout settled.");
+  }
+  const holdReason = data.holdReason == null
+    ? "" : requiredString(data.holdReason, "hold reason", 0, 300);
+  const ref = db.collection("settlements").doc(settlementId);
+  const settlement = await db.runTransaction(async (transaction) => {
+    const current = (await transaction.get(ref)).data();
+    if (!current) {
+      throw new functions.https.HttpsError("not-found", "Settlement not found.");
+    }
+    if (["settled", "rejected"].includes(String(current.status))) {
+      throw new functions.https.HttpsError("failed-precondition", "This payout is already closed.");
+    }
+    transaction.update(ref, {
+      status,
+      ...(transactionReference ? { transactionReference } : {}),
+      ...(status === "on_hold" || status === "rejected"
+        ? { holdReason: holdReason || FieldValue.delete() }
+        : { holdReason: FieldValue.delete() }),
+      ...(status === "settled" ? { settledAt: FieldValue.serverTimestamp() } : {}),
+      reviewedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return current;
+  });
+  const amountLabel = `LKR ${Number(settlement.netAmount || 0).toFixed(2)}`;
+  const messages: Record<string, [string, string]> = {
+    settled: ["Payout sent", `Your payout of ${amountLabel} was sent (ref ${transactionReference}).`],
+    processing: ["Payout processing", `Your payout of ${amountLabel} is being processed.`],
+    on_hold: ["Payout on hold", `Your payout of ${amountLabel} is on hold${holdReason ? `: ${holdReason}` : "."}`],
+    rejected: ["Payout rejected", `Your payout of ${amountLabel} was rejected${holdReason ? `: ${holdReason}` : "."}`],
+  };
+  const [title, body] = messages[status];
+  await writeNotification(String(settlement.recipientId || ""), title, body, "payment", undefined,
+    { settlementId });
+  await writeAudit(uid, {
+    actionType: `SETTLEMENT_${status.toUpperCase()}`,
+    targetEntity: "settlements",
+    targetId: settlementId,
+    details: `${settlement.orderNumber || settlementId} ${amountLabel} → ${status}${transactionReference ? ` (ref ${transactionReference})` : ""}${holdReason ? ` — ${holdReason}` : ""}`,
+    severity: status === "settled" || status === "rejected" ? "warning" : "info",
+  });
+  return { success: true, status };
+});
+
+// ─── Farmer: product media / QR ───────────────────────────────
+const HARVEST_STATUSES = ["growing", "harvested", "packed", "inTransit", "delivered"];
+
+const requireOwnedProduct = async (
+  uid: string,
+  productId: unknown
+): Promise<{ ref: FirebaseFirestore.DocumentReference; product: Record<string, any> }> => {
+  const id = typeof productId === "string" ? productId : "";
+  if (!id) throw new functions.https.HttpsError("invalid-argument", "productId is required.");
+  const ref = db.collection("products").doc(id);
+  const product = (await ref.get()).data();
+  if (!product || product.farmerId !== uid) {
+    throw new functions.https.HttpsError("permission-denied", "Product not found.");
+  }
+  return { ref, product };
+};
+
+export const setProductMedia = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["farmer"]);
+  const { ref, product } = await requireOwnedProduct(uid, data.productId);
+  const updates: Record<string, unknown> = {};
+  let oldVideoToDelete = "";
+  if (data.clearVideo === true) {
+    oldVideoToDelete = typeof product.videoPath === "string" ? product.videoPath : "";
+    updates.videoPath = FieldValue.delete();
+    updates.videoUrl = FieldValue.delete();
+  } else {
+    if (data.videoPath !== undefined) {
+      const videoPath = requiredString(data.videoPath, "video path", 1, 1024);
+      if (videoPath.includes("..") || !(videoPath.startsWith(`product_videos/${uid}/`)
+        || videoPath.startsWith(`products/${ref.id}/`))) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid video path.");
+      }
+      if (typeof product.videoPath === "string" && product.videoPath !== videoPath) {
+        oldVideoToDelete = product.videoPath;
+      }
+      updates.videoPath = videoPath;
+    }
+    if (data.videoUrl !== undefined) {
+      const videoUrl = requiredString(data.videoUrl, "video URL", 9, 2048);
+      if (!videoUrl.startsWith("https://")) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid video URL.");
+      }
+      updates.videoUrl = videoUrl;
+    }
+  }
+  if (data.harvestStatus !== undefined) {
+    if (typeof data.harvestStatus !== "string" || !HARVEST_STATUSES.includes(data.harvestStatus)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid harvest status.");
+    }
+    updates.harvestStatus = data.harvestStatus;
+  }
+  if (data.harvestDate !== undefined) {
+    updates.harvestDate = optionalIsoDate(data.harvestDate, "harvest date");
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new functions.https.HttpsError("invalid-argument", "No media changes supplied.");
+  }
+  await ref.update({ ...updates, updatedAt: FieldValue.serverTimestamp() });
+  if (oldVideoToDelete && (oldVideoToDelete.startsWith(`product_videos/${uid}/`)
+    || oldVideoToDelete.startsWith(`products/${ref.id}/`))) {
+    try {
+      await admin.storage().bucket().file(oldVideoToDelete).delete();
+    } catch (err) {
+      functions.logger.warn("Old product video delete failed", { productId: ref.id, err });
+    }
+  }
+  return { success: true };
+});
+
+export const generateProductQr = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["farmer"]);
+  const { ref, product } = await requireOwnedProduct(uid, data.productId);
+  const qrCode = `farmora://product/${ref.id}`;
+  await ref.update({
+    qrCode,
+    ...(product.packingDate ? {} : { packingDate: new Date().toISOString() }),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { qrCode };
+});
+
+// ─── Farmer: transport + handover ─────────────────────────────
+export const cancelTransportRequest = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["farmer"]);
+  const jobId = typeof data.jobId === "string" ? data.jobId : "";
+  if (!jobId) throw new functions.https.HttpsError("invalid-argument", "jobId is required.");
+  const ref = db.collection("transport_jobs").doc(jobId);
+  const job = await db.runTransaction(async (transaction) => {
+    const current = (await transaction.get(ref)).data();
+    if (!current || current.farmerId !== uid) {
+      throw new functions.https.HttpsError("permission-denied", "Transport request not found.");
+    }
+    if (current.status !== "requested") {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Only open transport requests can be cancelled.");
+    }
+    transaction.update(ref, {
+      status: "cancelled",
+      cancelledBy: uid,
+      cancelledAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return current;
+  });
+  const targeted = String(job.transporterId || job.requestedTransporterId || "");
+  if (targeted) {
+    await writeNotification(
+      targeted,
+      "Delivery request cancelled",
+      `The farmer cancelled the delivery request for ${job.productName || "an order"}.`,
+      "logistics",
+      job.orderId ? String(job.orderId) : undefined,
+      { jobId }
+    );
+  }
+  return { success: true };
+});
+
+export const confirmHandover = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireRole(uid, ["farmer"]);
+  const orderId = typeof data.orderId === "string" ? data.orderId : "";
+  if (!orderId) throw new functions.https.HttpsError("invalid-argument", "orderId is required.");
+  const ref = db.collection("orders").doc(orderId);
+  const order = (await ref.get()).data();
+  if (!order || order.farmerId !== uid) {
+    throw new functions.https.HttpsError("permission-denied", "Order not found.");
+  }
+  if (!["assigned", "pickedUp"].includes(String(order.status))) {
+    throw new functions.https.HttpsError(
+      "failed-precondition", "Handover is available once a transporter is assigned.");
+  }
+  await ref.update({
+    farmerHandedOverAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  if (order.buyerId) {
+    await writeNotification(
+      String(order.buyerId),
+      "Order handed over",
+      `The farmer handed over ${order.productName || "your order"} to the transporter.`,
+      "order",
+      orderId
+    );
+  }
+  return { success: true };
+});
+
+// ─── Bank deposit details (buyer-facing) ──────────────────────
+// {farmerId} -> {available}; {orderId} (buyer of a bank_deposit order) -> full details.
+export const getFarmerBankDetails = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const orderId = typeof data.orderId === "string" ? data.orderId : "";
+  const farmerId = typeof data.farmerId === "string" ? data.farmerId : "";
+  if (orderId) {
+    const order = (await db.collection("orders").doc(orderId).get()).data();
+    if (!order || (order.buyerId !== uid && order.farmerId !== uid)) {
+      throw new functions.https.HttpsError("permission-denied", "Order not found.");
+    }
+    if (order.paymentMethod !== "bank_deposit") {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "This order is not paid by bank deposit.");
+    }
+    const snapshot = order.bankDetailsSnapshot as Record<string, unknown> | undefined;
+    const bank = snapshot && snapshot.accountNumber
+      ? snapshot
+      : (await db.collection("bank_details").doc(String(order.farmerId)).get()).data();
+    if (!isUsableBank(bank as Record<string, any> | undefined)) return { available: false };
+    return {
+      available: true,
+      bankName: String(bank!.bankName),
+      branch: String(bank!.branch),
+      accountHolderName: String(bank!.accountHolderName),
+      accountNumber: String(bank!.accountNumber),
+    };
+  }
+  if (!farmerId) {
+    throw new functions.https.HttpsError("invalid-argument", "farmerId or orderId is required.");
+  }
+  const bank = (await db.collection("bank_details").doc(farmerId).get()).data();
+  return { available: isUsableBank(bank) };
+});
+
+// ─── Payment status notifications ─────────────────────────────
+export const onOrderPaymentStatusChanged = functions.firestore
+  .document("orders/{orderId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    if (before.paymentStatus === after.paymentStatus) return;
+    const orderId = context.params.orderId as string;
+    const orderNumber = String(after.orderNumber || orderNumberFor(orderId));
+    const productLabel = String(after.productName || "your order");
+    switch (after.paymentStatus) {
+      case "proof_submitted":
+        if (after.farmerId) {
+          await writeNotification(String(after.farmerId), "Payment proof submitted",
+            `The buyer uploaded a bank deposit slip for ${orderNumber} (${productLabel}). Please verify it.`,
+            "payment", orderId);
+        }
+        break;
+      case "paid":
+        if (after.buyerId) {
+          await writeNotification(String(after.buyerId), "Payment confirmed",
+            `Your payment for ${orderNumber} (${productLabel}) was confirmed.`,
+            "payment", orderId);
+        }
+        break;
+      case "rejected":
+        if (after.buyerId) {
+          const reason = typeof after.rejectionReason === "string" && after.rejectionReason
+            ? `: ${after.rejectionReason}` : ".";
+          await writeNotification(String(after.buyerId), "Payment proof rejected",
+            `The farmer rejected the deposit slip for ${orderNumber}${reason} Please upload a new slip.`,
+            "payment", orderId);
+        }
+        break;
+      default:
+        break;
+    }
+  });
