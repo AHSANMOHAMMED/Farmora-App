@@ -31,9 +31,10 @@ jobs:
           channel: stable
 
       - name: Install dependencies
-        run: |
-          flutter pub get
-          flutter pub upgrade firebase_core_web
+        run: flutter pub get
+
+      - name: Configure Gradle memory
+        run: echo "GRADLE_OPTS=-Xmx4G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m -XX:+HeapDumpOnOutOfMemoryError" >> "$GITHUB_ENV"
 
       - name: Analyze code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -65,6 +66,12 @@ jobs:
             'storeFile=../ci-upload-keystore.jks' > android/key.properties
 
       - name: Build APK
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.jvmargs="-Xmx4G
+            -XX:MaxMetaspaceSize=1G
+            -XX:ReservedCodeCacheSize=256m
+            -XX:+HeapDumpOnOutOfMemoryError"
         run: flutter build apk --release
       - name: Build Web
         run: flutter build web --release
