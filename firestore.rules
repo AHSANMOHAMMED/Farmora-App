@@ -1,15 +1,22 @@
 rules_version = '2';
-// Commerce mutations run through authenticated Cloud Functions. Client writes
-// are limited to profile and user-owned ancillary data.
+// Application data rules.
+//
+// Default backend is the free Spark plan (lib/core/config/app_backend.dart,
+// kUseCloudFunctions == false): the client writes Firestore directly through
+// lib/services/spark_backend.dart, so every client write below is validated
+// here — ownership, money fields, stock and the order / transport / payment
+// state machines. Cloud Functions (Blaze, optional) use the Admin SDK and
+// bypass these rules entirely.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function uid() { return request.auth.uid; }
+    function docPath(p) { return path('/databases/' + database + '/documents/' + p); }
     function userDoc(u) { return get(/databases/$(database)/documents/users/$(u)).data; }
     function userExists(u) { return exists(/databases/$(database)/documents/users/$(u)); }
     function admin() {
       return signedIn() && (
-        request.auth.token.admin == true
+        request.auth.token.get('admin', false) == true
         || (userExists(request.auth.uid)
           && userDoc(request.auth.uid).role == 'admin'
           && userDoc(request.auth.uid).get('isVerified', false) == true
@@ -22,26 +29,364 @@ service cloud.firestore {
     }
     function active() {
       return signedIn() && userExists(request.auth.uid)
-        && (!('isSuspended' in userDoc(request.auth.uid))
-          || userDoc(request.auth.uid).isSuspended != true)
-        && (!('isDeleted' in userDoc(request.auth.uid))
-          || userDoc(request.auth.uid).isDeleted != true);
+        && userDoc(request.auth.uid).get('isSuspended', false) != true
+        && userDoc(request.auth.uid).get('isDeleted', false) != true;
     }
+    function verified() { return userDoc(uid()).get('isVerified', false) == true; }
     function farmer() { return active() && roleIs('farmer'); }
     function buyer() { return active() && roleIs('buyer'); }
     function transporter() { return active() && roleIs('transporter'); }
+
+    function isStr(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function optStr(d, k, max) { return !(k in d) || d[k] == null || isStr(d[k], 0, max); }
+    function isInt(v, min, max) { return v is int && v >= min && v <= max; }
+    function affected() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    function orderDoc(orderId) { return get(docPath('orders/' + orderId)).data; }
+    function orderAfter(orderId) { return getAfter(docPath('orders/' + orderId)).data; }
+    function isOrderParty(order, u) {
+      return u == order.buyerId || u == order.farmerId
+        || u == order.get('transporterId', '');
+    }
     function participant(order) {
       return signedIn() && (order.buyerId == request.auth.uid
         || order.farmerId == request.auth.uid
-        || order.transporterId == request.auth.uid);
+        || order.get('transporterId', '') == request.auth.uid);
+    }
+    function participantByOrderId(orderId) {
+      return orderId is string
+        && exists(docPath('orders/' + orderId))
+        && active() && isOrderParty(orderDoc(orderId), uid());
     }
 
-    // ── Order payments (COD / Bank Deposit) ─────────────────
-    // Orders are created and moved through their lifecycle by Cloud Functions.
-    // The only client writes allowed are these payment transitions, and they
-    // may touch nothing but the payment fields listed below.
-    function orderDiff() {
-      return request.resource.data.diff(resource.data).affectedKeys();
+    // ── Users ────────────────────────────────────────────────
+    // Shape checks for the owner-editable profile fields that have one.
+    function profileFieldsValid() {
+      let d = request.resource.data;
+      return (!('farmName' in d) || d.farmName == null
+          || (d.farmName is string && d.farmName.size() <= 80))
+        && (!('farmSize' in d) || d.farmSize == null
+          || (d.farmSize is string && d.farmSize.size() <= 40))
+        && (!('mainCrops' in d) || d.mainCrops == null
+          || (d.mainCrops is list && d.mainCrops.size() <= 10))
+        && (!('serviceDistricts' in d) || d.serviceDistricts == null
+          || (d.serviceDistricts is list && d.serviceDistricts.size() <= 25))
+        && (!('availabilityStatus' in d) || d.availabilityStatus == null
+          || d.availabilityStatus in ['available', 'unavailable'])
+        && (!('vehicleCapacity' in d) || d.vehicleCapacity == null
+          || (d.vehicleCapacity is number && d.vehicleCapacity > 0
+            && d.vehicleCapacity <= 1000000))
+        && optStr(d, 'vehicleRegistration', 20)
+        && optStr(d, 'vehicleDescription', 500)
+        && (!('notificationPrefs' in d) || d.notificationPrefs == null
+          || (d.notificationPrefs is map && d.notificationPrefs.keys().hasOnly([
+            'orderUpdates', 'messages', 'promos', 'quietHoursStart', 'quietHoursEnd'])));
+    }
+    // Spark deleteAccount: the owner anonymises and flags their own profile.
+    function selfDeletion(userId) {
+      let d = request.resource.data;
+      return signedIn() && uid() == userId
+        && d.role == resource.data.role
+        && d.isDeleted == true && d.isSuspended == true
+        && affected().hasOnly([
+          'displayName', 'name', 'phone', 'photoUrl', 'email', 'address',
+          'location', 'locationUpdatedAt', 'locationAccuracy',
+          'notificationPreferences', 'notificationPrefs', 'chatPublicKey',
+          'deviceTokens', 'isSuspended', 'isDeleted', 'deletedAt', 'updatedAt'
+        ]);
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || admin());
+      allow list: if admin();
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.id == userId
+        // Admin profiles must be provisioned by a trusted Admin SDK tool.
+        && request.resource.data.role in ['farmer', 'buyer', 'transporter']
+        && request.resource.data.isVerified == false
+        && request.resource.data.get('isSuspended', false) == false
+        && !request.resource.data.keys().hasAny(['isDeleted', 'deviceTokens', 'admin'])
+        && profileFieldsValid();
+      // Admins change roles, verification, suspension and soft-deletion
+      // directly in Spark mode (see SparkBackend admin actions).
+      allow update: if admin()
+        || selfDeletion(userId)
+        || (signedIn() && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && affected().hasOnly([
+            'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
+            'farmName', 'farmSize', 'mainCrops',
+            'notificationPreferences', 'notificationPrefs', 'country', 'district', 'location',
+            'locationUpdatedAt', 'locationAccuracy',
+            'vehicleType', 'capacityKg', 'serviceDistricts', 'chatPublicKey',
+            'vehicleRegistration', 'vehicleCapacity', 'vehicleCapacityUnit',
+            'vehicleDescription', 'availabilityStatus',
+            'termsAcceptedAt', 'privacyAcceptedAt', 'phone'
+          ])
+          && profileFieldsValid());
+      allow delete: if false;
+    }
+
+    match /users/{userId}/device_tokens/{tokenId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Public end-to-end chat keys (X25519 public halves only). The app reads
+    // and writes this collection only (lib/services/firebase_service.dart).
+    match /chat_keys/{keyOwner} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid() == keyOwner
+        && request.resource.data.keys().hasOnly(['publicKey', 'updatedAt'])
+        && request.resource.data.publicKey is string
+        && request.resource.data.publicKey.size() > 0
+        && request.resource.data.publicKey.size() <= 512;
+      allow delete: if signedIn() && uid() == keyOwner;
+    }
+
+    // Public transporter card used for discovery. In Spark mode the
+    // transporter's own client writes it (sign-in, profile / availability
+    // save); `isVerified` must mirror the owner's users doc, `rating` can't
+    // be self-assigned and `isSuspended` is not a writable key (suspended
+    // accounts can't write at all; admins delete / refresh the card).
+    function transporterProfileOk(transporterId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'id', 'uid', 'displayName', 'photoUrl', 'district', 'vehicleType',
+          'vehicleRegistration', 'vehicleCapacity', 'vehicleCapacityUnit',
+          'serviceDistricts', 'availabilityStatus', 'isVerified', 'rating',
+          'updatedAt'
+        ])
+        && d.get('id', transporterId) == transporterId
+        && d.get('uid', transporterId) == transporterId
+        && d.isVerified == userDoc(transporterId).get('isVerified', false)
+        && (!('rating' in d) || d.rating == null
+          || (resource != null && resource.data.get('rating', null) == d.rating))
+        && optStr(d, 'displayName', 120)
+        && optStr(d, 'photoUrl', 2048)
+        && optStr(d, 'district', 80)
+        && optStr(d, 'vehicleType', 60)
+        && optStr(d, 'vehicleRegistration', 20)
+        && d.get('availabilityStatus', 'available') in ['available', 'unavailable']
+        && d.get('vehicleCapacityUnit', 'kg') in ['kg', 'tons']
+        && (!('vehicleCapacity' in d) || d.vehicleCapacity == null
+          || (d.vehicleCapacity is number && d.vehicleCapacity > 0
+            && d.vehicleCapacity <= 1000000))
+        && (!('serviceDistricts' in d)
+          || (d.serviceDistricts is list && d.serviceDistricts.size() <= 25));
+    }
+    match /transporter_profiles/{transporterId} {
+      allow read: if signedIn();
+      allow create, update: if admin()
+        || (transporter() && uid() == transporterId
+          && transporterProfileOk(transporterId));
+      allow delete: if admin() || (signedIn() && uid() == transporterId);
+    }
+
+    match /advisories/{advisoryId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    // Platform settings (fees, maintenance mode, session timeout). One
+    // document: platform_settings/global. Read by every signed-in user (the
+    // maintenance gate), written by admins.
+    match /platform_settings/{docId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    // Server-only checkout idempotency records (Cloud Functions mode).
+    match /idempotency_keys/{keyId} {
+      allow read, write: if false;
+    }
+
+    // ── Products ─────────────────────────────────────────────
+    function productShapeOk() {
+      let d = request.resource.data;
+      return isInt(d.priceMinor, 0, 10000000000)
+        && isInt(d.quantityAvailable, 0, 100000000)
+        && d.get('media', []).size() <= 5
+        && d.get('status', 'Active') in ['Active', 'Empty', 'Inactive', 'Deleted'];
+    }
+    function stockStatusOk() {
+      let d = request.resource.data;
+      return (d.quantityAvailable > 0 && d.status == 'Active')
+        || (d.quantityAvailable == 0 && d.status == 'Empty');
+    }
+    // Checkout reserves stock: a buyer may decrement quantity only by the
+    // quantity of the order created in the same batch (lastOrderId).
+    function buyerStockReserve(productId) {
+      let d = request.resource.data;
+      let o = orderAfter(d.lastOrderId);
+      return affected().hasOnly(['quantityAvailable', 'quantity', 'status',
+          'updatedAt', 'lastOrderId'])
+        && !exists(docPath('orders/' + d.lastOrderId))
+        && o.buyerId == uid() && o.productId == productId
+        && d.quantityAvailable is int
+        && d.quantityAvailable == resource.data.quantityAvailable - o.items[0].quantity
+        && d.quantityAvailable >= 0
+        && stockStatusOk();
+    }
+    // Buyer cancels a pending order: stock goes back exactly once.
+    function buyerStockRestore(productId) {
+      let d = request.resource.data;
+      let before = orderDoc(d.lastOrderId);
+      return affected().hasOnly(['quantityAvailable', 'quantity', 'status',
+          'updatedAt', 'lastOrderId'])
+        && before.buyerId == uid() && before.productId == productId
+        && before.get('stockRestored', false) != true
+        && orderAfter(d.lastOrderId).stockRestored == true
+        && d.quantityAvailable == resource.data.quantityAvailable + before.items[0].quantity
+        && stockStatusOk();
+    }
+    // The transporter who delivered an order clears the harvest video link.
+    function transporterClearsVideo(productId) {
+      let d = request.resource.data;
+      let o = orderDoc(d.deliveredOrderId);
+      return affected().hasOnly(['videoPath', 'videoUrl', 'harvestStatus',
+          'updatedAt', 'deliveredOrderId'])
+        && !('videoPath' in d) && !('videoUrl' in d)
+        && d.harvestStatus == 'delivered'
+        && o.get('transporterId', '') == uid()
+        && o.productId == productId && o.status == 'delivered';
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if admin() || (farmer() && verified()
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.keys().hasAll([
+          'farmerId', 'name', 'category', 'priceMinor', 'quantityAvailable', 'unit', 'location'
+        ])
+        && isStr(request.resource.data.name, 1, 120)
+        && productShapeOk());
+      allow update: if admin()
+        || (farmer() && resource.data.farmerId == uid()
+          && request.resource.data.farmerId == resource.data.farmerId
+          && productShapeOk())
+        || (buyer() && buyerStockReserve(productId))
+        || (buyer() && buyerStockRestore(productId))
+        || (transporter() && transporterClearsVideo(productId));
+      allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
+    }
+
+    // ── Orders ───────────────────────────────────────────────
+    function orderCreateKeysOk() {
+      return request.resource.data.keys().hasOnly([
+        'orderNumber', 'buyerId', 'farmerId', 'productId', 'productName', 'title',
+        'quantity', 'unit', 'listingVersion', 'items', 'requestedQuantity',
+        'subtotalMinor', 'deliveryFeeMinor', 'totalMinor', 'platformFeeMinor',
+        'currency', 'deliveryAddress', 'pickupAddress', 'location', 'buyerName',
+        'buyerCompany', 'farmerName', 'status', 'requestedTransporterId',
+        'paymentMethod', 'paymentStatus', 'bankDetailsSnapshot', 'escrowStatus',
+        'offerId', 'sourceRequestId', 'idempotencyKey', 'createdAt', 'updatedAt'
+      ]);
+    }
+    // Totals are internally consistent; unit price is checked per branch.
+    function orderMoneyShapeOk() {
+      let d = request.resource.data;
+      return isInt(d.requestedQuantity, 1, 1000000)
+        && isInt(d.deliveryFeeMinor, 0, 10000000)
+        && d.subtotalMinor is int && d.totalMinor is int
+        && d.items is list && d.items.size() == 1
+        && d.items[0].productId == d.productId
+        && d.items[0].quantity == d.requestedQuantity
+        && d.items[0].pricePerUnitMinor is int
+        && d.items[0].pricePerUnitMinor >= 0
+        && d.subtotalMinor == d.items[0].pricePerUnitMinor * d.requestedQuantity
+        && d.items[0].get('lineTotalMinor', d.subtotalMinor) == d.subtotalMinor
+        && d.totalMinor == d.subtotalMinor + d.deliveryFeeMinor
+        && (!('platformFeeMinor' in d)
+          || (d.platformFeeMinor is int && d.platformFeeMinor >= 0
+            && d.platformFeeMinor <= d.subtotalMinor))
+        && d.get('currency', 'LKR') == 'LKR'
+        && d.get('escrowStatus', 'not_funded') == 'not_funded'
+        && isStr(d.deliveryAddress, 5, 500)
+        && d.status == 'pending'
+        && d.buyerId != d.farmerId
+        && (!('requestedTransporterId' in d)
+          || userDoc(d.requestedTransporterId).role == 'transporter');
+    }
+    function newOrderPaymentOk() {
+      let d = request.resource.data;
+      return d.get('paymentStatus', 'pending') in ['pending', 'payment_required']
+        && d.get('paymentMethod', 'cod') in ['cod', 'bank_deposit']
+        && (d.get('paymentMethod', 'cod') == 'cod'
+          ? !('bankDetailsSnapshot' in d)
+          : (d.bankDetailsSnapshot.accountNumber
+              == get(docPath('bank_details/' + d.farmerId)).data.accountNumber
+            && d.bankDetailsSnapshot.bankName
+              == get(docPath('bank_details/' + d.farmerId)).data.bankName));
+    }
+    // The product's stock is decremented by this order's quantity in the
+    // same batch / transaction.
+    function stockReserved() {
+      let d = request.resource.data;
+      let before = get(docPath('products/' + d.productId)).data;
+      let after = getAfter(docPath('products/' + d.productId)).data;
+      return before.farmerId == d.farmerId
+        && before.get('status', 'Active') == 'Active'
+        && before.quantityAvailable >= d.requestedQuantity
+        && after.quantityAvailable == before.quantityAvailable - d.requestedQuantity;
+    }
+    // Catalogue checkout: unit price comes from the product.
+    function buyerCatalogOrderOk() {
+      let d = request.resource.data;
+      return !('offerId' in d) && !('sourceRequestId' in d)
+        && d.items[0].pricePerUnitMinor
+          == get(docPath('products/' + d.productId)).data.priceMinor
+        && stockReserved();
+    }
+    // Buyer accepts the farmer's counter-offer.
+    function buyerOfferOrderOk(orderId) {
+      let d = request.resource.data;
+      let offer = get(docPath('offers/' + d.offerId)).data;
+      return !('sourceRequestId' in d)
+        && offer.buyerId == uid() && offer.status == 'countered'
+        && offer.farmerId == d.farmerId && offer.productId == d.productId
+        && offer.proposedQuantity == d.requestedQuantity
+        && offer.proposedPriceMinor == d.items[0].pricePerUnitMinor
+        && getAfter(docPath('offers/' + d.offerId)).data.status == 'accepted'
+        && getAfter(docPath('offers/' + d.offerId)).data.orderId == orderId
+        && stockReserved();
+    }
+    // Buyer accepts a farmer's quote on their produce request.
+    function buyerQuoteOrderOk(orderId) {
+      let d = request.resource.data;
+      let req = get(docPath('produce_requests/' + d.sourceRequestId)).data;
+      let quote = get(docPath('produce_requests/' + d.sourceRequestId + '/quotes/' + d.farmerId)).data;
+      return !('offerId' in d)
+        && req.buyerId == uid() && req.status == 'open'
+        && quote.status == 'pending' && quote.productId == d.productId
+        && req.quantity == d.requestedQuantity
+        && quote.unitPriceMinor == d.items[0].pricePerUnitMinor
+        && quote.deliveryFeeMinor == d.deliveryFeeMinor
+        && d.get('paymentMethod', 'cod') == 'cod'
+        && getAfter(docPath('produce_requests/' + d.sourceRequestId)).data.status == 'matched'
+        && getAfter(docPath('produce_requests/' + d.sourceRequestId)).data.orderId == orderId
+        && stockReserved();
+    }
+    // Farmer accepts a buyer's pending offer.
+    function farmerOfferOrderOk(orderId) {
+      let d = request.resource.data;
+      let offer = get(docPath('offers/' + d.offerId)).data;
+      return !('sourceRequestId' in d)
+        && offer.farmerId == uid() && offer.status == 'pending'
+        && offer.buyerId == d.buyerId && offer.productId == d.productId
+        && offer.proposedQuantity == d.requestedQuantity
+        && offer.proposedPriceMinor == d.items[0].pricePerUnitMinor
+        && getAfter(docPath('offers/' + d.offerId)).data.status == 'accepted'
+        && getAfter(docPath('offers/' + d.offerId)).data.orderId == orderId
+        && stockReserved();
+    }
+
+    // Money / identity fields are immutable after creation.
+    function touchesMoney() {
+      return affected().hasAny([
+        'totalMinor', 'subtotalMinor', 'deliveryFeeMinor', 'items', 'platformFeeMinor',
+        'requestedQuantity', 'farmerId', 'buyerId', 'productId', 'offerId',
+        'sourceRequestId', 'paymentMethod', 'bankDetailsSnapshot', 'escrowStatus'
+      ]);
     }
     function payStatus() { return resource.data.get('paymentStatus', 'pending'); }
     function isBankDeposit() {
@@ -54,7 +399,7 @@ service cloud.firestore {
     // Farmer: "Mark Cash Received" after delivery, or Confirm / Reject a slip.
     function farmerPaymentTransition() {
       let d = request.resource.data;
-      return orderDiff().hasOnly(['paymentStatus', 'paidAt', 'rejectionReason',
+      return affected().hasOnly(['paymentStatus', 'paidAt', 'rejectionReason',
           'paymentConfirmedBy', 'updatedAt'])
         && d.paymentConfirmedBy == uid()
         && (
@@ -72,7 +417,7 @@ service cloud.firestore {
     // payment_slips/{orderId}/{buyerUid}_…
     function buyerProofSubmission(orderId) {
       let d = request.resource.data;
-      return orderDiff().hasOnly(['paymentStatus', 'proofImageUrl',
+      return affected().hasOnly(['paymentStatus', 'proofImageUrl',
           'proofImagePath', 'proofSubmittedAt', 'updatedAt'])
         && isBankDeposit()
         && d.paymentStatus == 'proof_submitted'
@@ -83,117 +428,208 @@ service cloud.firestore {
         && d.proofImagePath.matches('^payment_slips/' + orderId + '/' + uid() + '_[^/]+$')
         && d.proofSubmittedAt == request.time;
     }
-    function onlyStockChange() {
-      return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['quantityAvailable', 'updatedAt', 'status', 'quantity']);
-    }
-
-    // Shape checks for the owner-editable profile fields that have one.
-    function profileFieldsValid() {
+    // Any party opens a dispute (the dispute doc is written in the same batch).
+    function partyOpensDispute() {
       let d = request.resource.data;
-      return (!('farmName' in d) || d.farmName == null
-          || (d.farmName is string && d.farmName.size() <= 80))
-        && (!('farmSize' in d) || d.farmSize == null
-          || (d.farmSize is string && d.farmSize.size() <= 40))
-        && (!('mainCrops' in d) || d.mainCrops == null
-          || (d.mainCrops is list && d.mainCrops.size() <= 10))
-        && (!('serviceDistricts' in d) || d.serviceDistricts == null
-          || (d.serviceDistricts is list && d.serviceDistricts.size() <= 25))
-        && (!('notificationPrefs' in d) || d.notificationPrefs == null
-          || (d.notificationPrefs is map && d.notificationPrefs.keys().hasOnly([
-            'orderUpdates', 'messages', 'promos', 'quietHoursStart', 'quietHoursEnd'])));
+      return affected().hasOnly(['paymentStatus', 'disputeId', 'updatedAt'])
+        && d.paymentStatus == 'disputed'
+        && getAfter(docPath('disputes/' + d.disputeId)).data.openedBy == uid()
+        && resource.data.get('disputeId', null) == null;
     }
-
-    match /users/{userId} {
-      allow get: if signedIn() && (request.auth.uid == userId || admin());
-      allow list: if admin();
-      allow create: if signedIn() && request.auth.uid == userId
-        && request.resource.data.id == userId
-        // Admin profiles must be provisioned by a trusted Admin SDK tool.
-        && request.resource.data.role in ['farmer', 'buyer', 'transporter']
-        && request.resource.data.isVerified == false
-        && request.resource.data.get('isSuspended', false) == false
-        && !request.resource.data.keys().hasAny(['isDeleted', 'deviceTokens', 'admin'])
-        && profileFieldsValid();
-      allow update: if admin()
-        || (signedIn() && request.auth.uid == userId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
-            'farmName', 'farmSize', 'mainCrops',
-            'notificationPreferences', 'notificationPrefs', 'country', 'district', 'location',
-            'locationUpdatedAt', 'locationAccuracy',
-            'vehicleType', 'capacityKg', 'serviceDistricts', 'chatPublicKey',
-            'termsAcceptedAt', 'privacyAcceptedAt', 'phone'
-          ])
-          && profileFieldsValid());
-      // Accounts are removed via the deleteAccount / adminDeleteUser functions.
-      allow delete: if false;
+    // Pending → cancelled / rejected (and farmer: confirmed → cancelled)
+    // marks stock as restored exactly once.
+    function closesOrder(from, to) {
+      let d = request.resource.data;
+      return resource.data.status in from && d.status == to
+        && affected().hasOnly(['status', 'stockRestored', 'updatedAt',
+          'cancelledAt', 'cancelledBy', 'rejectedAt'])
+        && d.stockRestored == true
+        && resource.data.get('stockRestored', false) != true;
     }
-
-    match /users/{userId}/device_tokens/{tokenId} {
-      allow read, write: if signedIn() && request.auth.uid == userId;
+    function buyerOrderUpdate(orderId) {
+      let d = request.resource.data;
+      return buyerProofSubmission(orderId)
+        || partyOpensDispute()
+        || closesOrder(['pending'], 'cancelled')
+        || (resource.data.status == 'pending'
+          && affected().hasOnly(['deliveryAddress', 'updatedAt'])
+          && isStr(d.deliveryAddress, 5, 500));
     }
-
-    // Public end-to-end chat keys (X25519 public halves only).
-    match /chat_keys/{keyOwner} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && uid() == keyOwner
-        && request.resource.data.keys().hasOnly(['publicKey', 'updatedAt'])
-        && request.resource.data.publicKey is string
-        && request.resource.data.publicKey.size() > 0
-        && request.resource.data.publicKey.size() <= 512;
-      allow delete: if signedIn() && uid() == keyOwner;
+    function farmerOrderUpdate() {
+      let d = request.resource.data;
+      return farmerPaymentTransition()
+        || partyOpensDispute()
+        || (resource.data.status == 'pending' && d.status == 'confirmed' && verified()
+          && affected().hasOnly(['status', 'confirmedAt', 'updatedAt']))
+        || closesOrder(['pending'], 'rejected')
+        || closesOrder(['confirmed'], 'cancelled')
+        || (resource.data.status in ['assigned', 'pickedUp']
+          && affected().hasOnly(['farmerHandedOverAt', 'updatedAt'])
+          && d.farmerHandedOverAt == request.time);
     }
-
-    // Public transporter projection, maintained only by Cloud Functions.
-    match /transporter_profiles/{transporterId} {
-      allow read: if signedIn();
-      allow write: if false;
-    }
-
-    match /advisories/{advisoryId} {
-      allow read: if signedIn();
-      allow write: if admin();
-    }
-
-    // Platform settings (fees, maintenance mode). Clients read the public
-    // subset through getPlatformSettings; admins write via the function.
-    match /platform_settings/{docId} {
-      allow read: if signedIn();
-      allow write: if admin();
-    }
-
-    // Server-only checkout idempotency records.
-    match /idempotency_keys/{keyId} {
-      allow read, write: if false;
-    }
-
-    match /products/{productId} {
-      allow read: if true;
-      allow create: if false;
-      allow update: if admin();
-      allow delete: if admin();
+    // Transporter side of the job state machine (mirrored on the order).
+    function transporterOrderUpdate(orderId) {
+      let d = request.resource.data;
+      let r = resource.data;
+      return (
+          // Accept: assigned to the caller together with the job.
+          r.status == 'confirmed' && d.status == 'assigned'
+          && r.get('transporterId', null) == null
+          && r.get('requestedTransporterId', uid()) == uid()
+          && d.transporterId == uid() && verified()
+          && affected().hasOnly(['status', 'transporterId', 'transportJobId',
+            'assignedAt', 'updatedAt'])
+          && getAfter(docPath('transport_jobs/' + d.transportJobId)).data.orderId == orderId
+          && getAfter(docPath('transport_jobs/' + d.transportJobId)).data.transporterId == uid()
+          && getAfter(docPath('transport_jobs/' + d.transportJobId)).data.status == 'accepted')
+        || (r.get('transporterId', null) == uid() && d.transporterId == uid()
+          && ((r.status == 'assigned' && d.status == 'pickedUp')
+            || (r.status == 'pickedUp' && d.status == 'inTransit')
+            || (r.status == 'inTransit' && d.status == 'delivered'))
+          && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt',
+            'inTransitAt', 'deliveredAt']))
+        // Drop before pickup: the order goes back to confirmed (reopened).
+        || (r.get('transporterId', null) == uid() && r.status == 'assigned'
+          && d.status == 'confirmed'
+          && !('transporterId' in d) && !('requestedTransporterId' in d)
+          && affected().hasOnly(['status', 'transporterId', 'requestedTransporterId',
+            'transportJobId', 'updatedAt']))
+        // A targeted transporter declines: the request opens to everyone.
+        || (r.get('requestedTransporterId', '') == uid()
+          && !('requestedTransporterId' in d)
+          && affected().hasOnly(['requestedTransporterId', 'updatedAt']));
     }
 
     match /orders/{orderId} {
-      allow read: if participant(resource.data) || admin();
-      allow create, delete: if false;
-      allow update: if (active() && resource.data.buyerId == uid()
-          && buyerProofSubmission(orderId))
-        || (active() && resource.data.farmerId == uid()
-          && farmerPaymentTransition());
+      // Checkout reads its deterministic idempotency doc before creating it,
+      // so an active user may see that a doc does NOT exist.
+      allow get: if (resource == null && active())
+        || participant(resource.data)
+        || (signedIn() && resource.data.get('requestedTransporterId', '') == uid())
+        || admin();
+      allow list: if participant(resource.data) || admin();
+      allow create: if admin()
+        || (buyer()
+          && request.resource.data.buyerId == uid()
+          && orderCreateKeysOk() && orderMoneyShapeOk() && newOrderPaymentOk()
+          && (buyerCatalogOrderOk()
+            || ('offerId' in request.resource.data && buyerOfferOrderOk(orderId))
+            || ('sourceRequestId' in request.resource.data && buyerQuoteOrderOk(orderId))))
+        || (farmer() && verified()
+          && request.resource.data.farmerId == uid()
+          && 'offerId' in request.resource.data
+          && orderCreateKeysOk() && orderMoneyShapeOk() && newOrderPaymentOk()
+          && farmerOfferOrderOk(orderId));
+      allow update: if admin()
+        || (buyer() && resource.data.buyerId == uid() && !touchesMoney()
+          && buyerOrderUpdate(orderId))
+        || (farmer() && resource.data.farmerId == uid() && !touchesMoney()
+          && farmerOrderUpdate())
+        || (transporter() && !touchesMoney() && !affected().hasAny([
+            'paymentStatus', 'paidAt', 'proofImageUrl', 'proofImagePath'])
+          && transporterOrderUpdate(orderId))
+        || (transporter() && resource.data.get('transporterId', '') == uid()
+          && !touchesMoney() && partyOpensDispute());
+      allow delete: if admin();
+    }
+
+    // ── Transport jobs ───────────────────────────────────────
+    function jobCreateOk() {
+      let d = request.resource.data;
+      let o = orderAfter(d.orderId);
+      return d.keys().hasOnly([
+          'orderId', 'orderNumber', 'farmerId', 'buyerId', 'farmerName', 'buyerName',
+          'title', 'route', 'detail', 'fee', 'offeredFeeMinor', 'deliveryFeeMinor',
+          'pickupAddress', 'dropoffAddress', 'pickup', 'dropoff', 'productName',
+          'productId', 'quantity', 'quantityValue', 'unit', 'district', 'status',
+          'accepted', 'transporterId', 'requestedTransporterId', 'createdAt', 'updatedAt'
+        ])
+        && d.farmerId == uid() && d.status == 'requested'
+        && d.get('accepted', false) == false
+        && isInt(d.offeredFeeMinor, 0, 10000000)
+        && o.farmerId == uid() && o.buyerId == d.buyerId
+        && o.status == 'confirmed'
+        && d.get('transporterId', null) == o.get('requestedTransporterId', null)
+        && d.get('requestedTransporterId', null) == o.get('requestedTransporterId', null);
+    }
+    function farmerJobUpdate() {
+      let d = request.resource.data;
+      return resource.data.status == 'requested' && (
+        (d.status == 'cancelled' && d.cancelledBy == uid()
+          && affected().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'updatedAt']))
+        || (affected().hasOnly(['offeredFeeMinor', 'deliveryFeeMinor', 'fee', 'updatedAt'])
+          && isInt(d.offeredFeeMinor, 0, 10000000)));
+    }
+    function courierPositionOk() {
+      let d = request.resource.data;
+      return (!('courierLat' in d) || (d.courierLat is number
+          && d.courierLat >= -90 && d.courierLat <= 90))
+        && (!('courierLng' in d) || (d.courierLng is number
+          && d.courierLng >= -180 && d.courierLng <= 180));
+    }
+    function transporterJobUpdate() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return (
+          // Accept an open job (or one targeted to the caller).
+          r.status == 'requested' && d.status == 'accepted'
+          && r.get('transporterId', null) in [null, uid()]
+          && r.get('requestedTransporterId', uid()) == uid()
+          && d.transporterId == uid() && verified()
+          && affected().hasOnly(['status', 'transporterId', 'accepted', 'acceptedAt',
+            'updatedAt'])
+          && orderAfter(r.orderId).status == 'assigned'
+          && orderAfter(r.orderId).transporterId == uid())
+        // Advance in order.
+        || (r.get('transporterId', null) == uid() && d.transporterId == uid()
+          && ((r.status == 'accepted' && d.status == 'pickedUp')
+            || (r.status == 'pickedUp' && d.status == 'inTransit')
+            || (r.status == 'inTransit' && d.status == 'delivered'))
+          && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
+            'deliveredAt', 'courierLat', 'courierLng', 'locationUpdatedAt']))
+        // Live position while active.
+        || (r.get('transporterId', null) == uid()
+          && r.status in ['accepted', 'pickedUp', 'inTransit']
+          && affected().hasOnly(['courierLat', 'courierLng', 'locationUpdatedAt', 'updatedAt'])
+          && courierPositionOk())
+        // Targeted transporter declines: stays requested, open to everyone.
+        || (r.status == 'requested' && d.status == 'requested'
+          && (r.get('transporterId', null) == uid()
+            || r.get('requestedTransporterId', null) == uid())
+          && d.get('transporterId', null) == null
+          && !('requestedTransporterId' in d)
+          && d.declinedBy is list && uid() in d.declinedBy
+          && affected().hasOnly(['transporterId', 'requestedTransporterId',
+            'declinedBy', 'declineReason', 'declinedAt', 'updatedAt']))
+        // Cancel before pickup: the job is reopened for other transporters.
+        || (r.status == 'accepted' && r.get('transporterId', null) == uid()
+          && d.status == 'requested' && d.transporterId == null
+          && !('requestedTransporterId' in d) && d.accepted == false
+          && d.declinedBy is list && uid() in d.declinedBy
+          && affected().hasOnly(['status', 'transporterId', 'requestedTransporterId',
+            'accepted', 'acceptedAt', 'declinedBy', 'cancellationReason', 'droppedAt',
+            'updatedAt', 'courierLat', 'courierLng', 'locationUpdatedAt'])
+          && orderAfter(r.orderId).status == 'confirmed');
     }
 
     match /transport_jobs/{jobId} {
+      // Queries must filter on the caller's field (farmerId / buyerId /
+      // transporterId) or ask for open jobs (status == 'requested' AND
+      // transporterId == null) so the rules can be proven for the query.
       allow read: if admin()
-        || (transporter() && (resource.data.transporterId == request.auth.uid
-          || (resource.data.status == 'requested'
-            && (!resource.data.keys().hasAny(['transporterId'])
-              || resource.data.transporterId == null))))
-        || (signedIn() && resource.data.farmerId == request.auth.uid)
-        || (signedIn() && resource.data.buyerId == request.auth.uid);
-      allow create, update, delete: if false;
+        || (active() && (resource.data.get('transporterId', null) == uid()
+          || resource.data.get('requestedTransporterId', null) == uid()
+          || resource.data.get('farmerId', null) == uid()
+          || resource.data.get('buyerId', null) == uid()))
+        || (transporter() && resource.data.status == 'requested'
+          && resource.data.get('transporterId', null) == null);
+      allow create: if admin() || (farmer() && verified() && jobCreateOk());
+      allow update: if admin()
+        || (farmer() && resource.data.farmerId == uid()
+          && request.resource.data.farmerId == resource.data.farmerId
+          && farmerJobUpdate())
+        || (transporter() && transporterJobUpdate());
+      allow delete: if admin();
     }
 
     match /transportJobs/{jobId} {
@@ -209,7 +645,9 @@ service cloud.firestore {
       allow create: if (farmer() || transporter() || buyer())
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('^verification/' + uid() + '/.+');
       allow update: if admin();
       allow delete: if admin();
     }
@@ -219,8 +657,18 @@ service cloud.firestore {
         || resource.data.status == 'approved'
         || admin()
         || (signedIn() && resource.data.reviewerId == request.auth.uid);
-      // Created only by the submitReview function.
-      allow create: if false;
+      // One review per delivered order, by its buyer, pending moderation.
+      allow create: if buyer()
+        && request.resource.data.reviewerId == uid()
+        && reviewId == request.resource.data.orderId + '_' + uid()
+        && request.resource.data.moderationStatus == 'pending'
+        && !('status' in request.resource.data)
+        && isInt(request.resource.data.rating, 1, 5)
+        && isStr(request.resource.data.comment, 0, 2000)
+        && orderDoc(request.resource.data.orderId).buyerId == uid()
+        && orderDoc(request.resource.data.orderId).status == 'delivered'
+        && request.resource.data.subjectId
+          == orderDoc(request.resource.data.orderId).farmerId;
       // Admin moderation writes status / moderationNote / moderatedAt.
       allow update: if admin();
       allow delete: if admin();
@@ -228,57 +676,143 @@ service cloud.firestore {
 
     match /disputes/{disputeId} {
       allow read: if signedIn() && (resource.data.openedBy == request.auth.uid || admin());
-      // Opened only by the openDispute function; resolved by resolveDispute.
-      allow create: if false;
+      allow create: if active()
+        && request.resource.data.openedBy == uid()
+        && request.resource.data.status == 'open'
+        && isStr(request.resource.data.reason, 1, 2000)
+        && request.resource.data.get('evidenceImages', []).size() <= 5
+        && participantByOrderId(request.resource.data.orderId);
+      // Admin resolution (resolveDispute in Spark mode).
       allow update: if admin();
       allow delete: if admin();
     }
 
     match /barcodes/{barcodeId} {
-      allow read: if signedIn();
-      allow create: if farmer() || admin();
-      allow update: if buyer() || farmer() || admin();
+      allow read: if admin() || participantByOrderId(resource.data.orderId);
+      allow create: if admin() || (farmer()
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.status == 'issued'
+        && orderDoc(request.resource.data.orderId).farmerId == uid());
+      // Buyer verification only records the scan.
+      allow update: if admin() || (buyer()
+        && orderDoc(resource.data.orderId).buyerId == uid()
+        && affected().hasOnly(['status', 'verifiedBy', 'verifiedAt', 'scanCount'])
+        && request.resource.data.verifiedBy == uid());
       allow delete: if admin();
     }
 
-    // Order chat. Messages are written only by the sendMessage function and
-    // readable only by their participants. Text is end-to-end encrypted
-    // ciphertext. Older messages without participantIds fall back to the
-    // sender/recipient fields.
+    // ── Order chat ───────────────────────────────────────────
+    // Messages are readable only by their participants. Text is end-to-end
+    // encrypted ciphertext; photos reference Storage objects under
+    // chat/{orderId}/{sender}/ or the buyer's slip under payment_slips/.
+    function validAttachment(d) {
+      return d.type == 'image'
+        && d.attachmentUrl is string && d.attachmentUrl.size() < 2048
+        && d.attachmentUrl.matches('^https?://.*')
+        && d.attachmentPath is string
+        && ((d.attachmentKind == 'photo'
+            && d.attachmentPath.matches('^chat/' + d.orderId + '/' + uid() + '/[^/]+$'))
+          || (d.attachmentKind == 'payment_proof'
+            && orderDoc(d.orderId).buyerId == uid()
+            && d.attachmentPath.matches('^payment_slips/' + d.orderId + '/' + uid() + '_[^/]+$')));
+    }
+    function validNewMessage() {
+      let d = request.resource.data;
+      let convo = getAfter(docPath('conversations/' + d.conversationId)).data;
+      let hasText = d.keys().hasAny(['ciphertext']);
+      let hasImage = d.keys().hasAny(['attachmentUrl']);
+      return d.keys().hasOnly(['orderId', 'conversationId', 'participantIds',
+          'senderId', 'receiverId', 'recipientId', 'type', 'ciphertext',
+          'attachmentUrl', 'attachmentPath', 'attachmentKind', 'createdAt'])
+        && d.senderId == uid()
+        && d.receiverId == d.recipientId
+        && d.receiverId != uid()
+        && convo.orderId == d.orderId
+        && d.participantIds == convo.participantIds
+        && uid() in convo.participantIds
+        && d.receiverId in convo.participantIds
+        && participantByOrderId(d.orderId)
+        && d.createdAt == request.time
+        && d.type in ['text', 'image']
+        && (hasText || hasImage)
+        && (!hasText || (d.ciphertext is string
+          && d.ciphertext.size() >= 16 && d.ciphertext.size() <= 20000))
+        && (!hasImage || validAttachment(d));
+    }
     match /messages/{messageId} {
       allow read: if signedIn() && (request.auth.uid in resource.data.participantIds
         || resource.data.senderId == request.auth.uid
-        || resource.data.receiverId == request.auth.uid
-        || resource.data.recipientId == request.auth.uid);
-      allow create, update, delete: if false;
+        || resource.data.get('receiverId', '') == request.auth.uid
+        || resource.data.get('recipientId', '') == request.auth.uid);
+      allow create: if admin() || (active() && validNewMessage());
+      allow update, delete: if false;
     }
 
-    // Conversations are created by sendMessage. A participant may only reset
-    // their own unread counter / read marker. `get` of a missing doc is allowed
-    // so the client can check whether a thread exists yet.
+    function peerOf(ids) { return ids[0] == uid() ? ids[1] : ids[0]; }
+    // Id is o_{orderId}_{uidA}_{uidB} (sorted), so it can't be duplicated.
+    function conversationCreateOk(conversationId) {
+      let d = request.resource.data;
+      let order = orderDoc(d.orderId);
+      return d.participantIds is list
+        && d.participantIds.size() == 2
+        && d.participantIds[0] < d.participantIds[1]
+        && uid() in d.participantIds
+        && conversationId == 'o_' + d.orderId + '_'
+          + d.participantIds[0] + '_' + d.participantIds[1]
+        && isOrderParty(order, d.participantIds[0])
+        && isOrderParty(order, d.participantIds[1])
+        && d.keys().hasOnly(['orderId', 'orderNumber', 'participantIds',
+          'lastMessage', 'lastMessageAt', 'lastSenderId', 'unreadCounts',
+          'lastReadAt', 'createdAt'])
+        && d.get('unreadCounts', {}) is map
+        && d.get('unreadCounts', {}).keys().hasOnly(d.participantIds)
+        && isStr(d.get('lastMessage', ''), 0, 200);
+    }
+    // A participant resets only their own unread counter / read marker.
+    function readReset() {
+      return affected().hasOnly(['unreadCounts', 'lastReadAt'])
+        && request.resource.data.get('unreadCounts', {})
+          .diff(resource.data.get('unreadCounts', {})).affectedKeys()
+          .hasOnly([uid()])
+        && request.resource.data.get('unreadCounts', {}).get(uid(), 0) == 0
+        && request.resource.data.get('lastReadAt', {})
+          .diff(resource.data.get('lastReadAt', {})).affectedKeys()
+          .hasOnly([uid()]);
+    }
+    // The sender updates the preview and bumps the peer's unread counter by 1.
+    function senderUpdate() {
+      let d = request.resource.data;
+      let peer = peerOf(resource.data.participantIds);
+      return affected().hasOnly(['lastMessage', 'lastMessageAt', 'lastSenderId',
+          'unreadCounts'])
+        && d.lastSenderId == uid()
+        && isStr(d.lastMessage, 0, 200)
+        && d.get('unreadCounts', {}).diff(resource.data.get('unreadCounts', {}))
+          .affectedKeys().hasOnly([peer])
+        && d.get('unreadCounts', {}).get(peer, 0)
+          == resource.data.get('unreadCounts', {}).get(peer, 0) + 1;
+    }
     match /conversations/{conversationId} {
+      // `resource == null` lets a participant check whether their
+      // deterministic conversation exists before creating it.
       allow get: if signedIn()
         && (resource == null || request.auth.uid in resource.data.participantIds);
       allow list: if signedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if false;
-      allow update: if signedIn()
-        && request.auth.uid in resource.data.participantIds
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['unreadCounts', 'lastReadAt'])
-        && request.resource.data.get('unreadCounts', {})
-          .diff(resource.data.get('unreadCounts', {})).affectedKeys()
-          .hasOnly([request.auth.uid])
-        && request.resource.data.get('lastReadAt', {})
-          .diff(resource.data.get('lastReadAt', {})).affectedKeys()
-          .hasOnly([request.auth.uid]);
+      allow create: if admin() || (active() && conversationCreateOk(conversationId));
+      allow update: if admin() || (active()
+        && uid() in resource.data.participantIds
+        && request.resource.data.participantIds == resource.data.participantIds
+        && (readReset() || senderUpdate()));
       allow delete: if admin();
     }
 
-    // Farmer payout account for Bank Deposit. Private to the owner and admins;
-    // buyers get availability / order details via getFarmerBankDetails, and
-    // bank-deposit orders carry a bankDetailsSnapshot.
+    // Farmer payout account for Bank Deposit. Readable by every signed-in
+    // user on purpose: these are deposit instructions meant for buyers
+    // (checkout must know whether Bank Deposit is available and snapshot the
+    // account into the order; the order payment card shows it). Only the
+    // owner farmer writes it.
     match /bank_details/{farmerId} {
-      allow read: if signedIn() && (request.auth.uid == farmerId || admin());
+      allow read: if signedIn();
       allow create, update: if farmer() && request.auth.uid == farmerId
         && request.resource.data.keys().hasOnly([
           'farmerId', 'bankName', 'branch', 'accountHolderName',
@@ -304,41 +838,172 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    // ── Community market ─────────────────────────────────────
+    function marketUnit(u) {
+      return u in ['kg', 'g', 'ton', 'piece', 'pcs', 'box', 'crate', 'bunch', 'bag', 'liter'];
+    }
     match /market_price_reports/{reportId} {
       allow read: if admin() || (signedIn() && resource.data.reporterId == request.auth.uid);
-      allow create, update, delete: if false;
+      allow create: if (buyer() || farmer())
+        && request.resource.data.reporterId == uid()
+        && request.resource.data.reporterRole == userDoc(uid()).role
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['reporterId', 'reporterRole',
+          'cropName', 'category', 'district', 'marketName', 'unit', 'priceMinor',
+          'status', 'reportedAt', 'createdAt'])
+        && isStr(request.resource.data.cropName, 1, 100)
+        && isStr(request.resource.data.district, 1, 80)
+        && isStr(request.resource.data.marketName, 1, 100)
+        && isStr(request.resource.data.get('category', ''), 0, 50)
+        && marketUnit(request.resource.data.unit)
+        && isInt(request.resource.data.priceMinor, 1, 100000000);
+      allow update, delete: if admin();
     }
 
     match /produce_requests/{requestId} {
       allow read: if admin()
         || (signedIn() && resource.data.buyerId == request.auth.uid)
         || (farmer() && resource.data.status == 'open' && userDoc(request.auth.uid).isVerified == true);
-      allow create, update, delete: if false;
+      allow create: if buyer()
+        && request.resource.data.buyerId == uid()
+        && request.resource.data.status == 'open'
+        && request.resource.data.quoteCount == 0
+        && request.resource.data.keys().hasOnly(['buyerId', 'buyerName', 'produceName',
+          'category', 'quantity', 'unit', 'maxUnitPriceMinor', 'district',
+          'deliveryAddress', 'deliveryDate', 'notes', 'status', 'quoteCount',
+          'createdAt', 'updatedAt'])
+        && isStr(request.resource.data.produceName, 1, 100)
+        && isInt(request.resource.data.quantity, 1, 100000000)
+        && marketUnit(request.resource.data.unit)
+        && isStr(request.resource.data.deliveryAddress, 5, 500)
+        && request.resource.data.deliveryDate is timestamp
+        && isInt(request.resource.data.get('maxUnitPriceMinor', 0), 0, 100000000)
+        && isStr(request.resource.data.get('notes', ''), 0, 1000);
+      allow update: if admin()
+        // Buyer cancels an open request.
+        || (buyer() && resource.data.buyerId == uid()
+          && resource.data.status == 'open'
+          && request.resource.data.status == 'cancelled'
+          && affected().hasOnly(['status', 'updatedAt']))
+        // Buyer accepts a quote: matched together with the new order.
+        || (buyer() && resource.data.buyerId == uid()
+          && resource.data.status == 'open'
+          && request.resource.data.status == 'matched'
+          && affected().hasOnly(['status', 'acceptedFarmerId', 'orderId', 'updatedAt'])
+          && orderAfter(request.resource.data.orderId).sourceRequestId == requestId
+          && orderAfter(request.resource.data.orderId).farmerId
+            == request.resource.data.acceptedFarmerId)
+        // A verified farmer's first quote bumps the counter by one.
+        || (farmer() && verified() && resource.data.status == 'open'
+          && affected().hasOnly(['quoteCount', 'updatedAt'])
+          && request.resource.data.quoteCount == resource.data.get('quoteCount', 0) + 1
+          && !exists(docPath('produce_requests/' + requestId + '/quotes/' + uid()))
+          && existsAfter(docPath('produce_requests/' + requestId + '/quotes/' + uid())));
+      allow delete: if admin();
 
       match /quotes/{farmerId} {
         allow read: if admin()
-          || (signedIn() && get(/databases/$(database)/documents/produce_requests/$(requestId)).data.buyerId == request.auth.uid)
+          || (signedIn() && get(docPath('produce_requests/' + requestId)).data.buyerId == request.auth.uid)
           || (signedIn() && farmerId == request.auth.uid);
-        allow create, update, delete: if false;
+        allow create, update: if farmer() && verified() && farmerId == uid()
+          && request.resource.data.farmerId == uid()
+          && request.resource.data.status == 'pending'
+          && request.resource.data.keys().hasOnly(['farmerId', 'farmerName', 'productId',
+            'productName', 'unitPriceMinor', 'deliveryFeeMinor', 'message', 'status',
+            'createdAt', 'updatedAt'])
+          && (resource == null || resource.data.status == 'pending')
+          && get(docPath('produce_requests/' + requestId)).data.status == 'open'
+          && get(docPath('products/' + request.resource.data.productId)).data.farmerId == uid()
+          && isInt(request.resource.data.unitPriceMinor, 1, 100000000)
+          && isInt(request.resource.data.deliveryFeeMinor, 0, 10000000)
+          && isStr(request.resource.data.get('message', ''), 0, 500);
+        // The request's buyer accepts the quote with the new order.
+        allow update: if buyer()
+          && get(docPath('produce_requests/' + requestId)).data.buyerId == uid()
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'accepted'
+          && affected().hasOnly(['status', 'orderId', 'updatedAt'])
+          && orderAfter(request.resource.data.orderId).sourceRequestId == requestId;
+        allow delete: if admin();
       }
     }
 
+    // ── Farm workspace ───────────────────────────────────────
     match /crop_plans/{cropId} {
       allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
-      allow create, update, delete: if false;
+      allow create: if farmer() && verified()
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.status == 'planned'
+        && request.resource.data.keys().hasOnly(['farmerId', 'cropName', 'area',
+          'areaUnit', 'plantedAt', 'expectedHarvestAt', 'expectedYield', 'yieldUnit',
+          'status', 'notes', 'createdAt', 'updatedAt'])
+        && isStr(request.resource.data.cropName, 1, 100)
+        && request.resource.data.area is number
+        && request.resource.data.area > 0 && request.resource.data.area <= 100000
+        && request.resource.data.areaUnit in ['acres', 'hectares', 'perches']
+        && request.resource.data.plantedAt is timestamp
+        && request.resource.data.expectedHarvestAt is timestamp
+        && request.resource.data.expectedHarvestAt > request.resource.data.plantedAt
+        && isStr(request.resource.data.get('notes', ''), 0, 1000);
+      allow update: if farmer() && verified()
+        && resource.data.farmerId == uid()
+        && affected().hasOnly(['status', 'harvestedAt', 'notes', 'expectedYield', 'updatedAt'])
+        && request.resource.data.status in ['planned', 'planted', 'growing', 'harvested', 'cancelled']
+        && isStr(request.resource.data.get('notes', ''), 0, 1000)
+        && request.resource.data.get('expectedYield', 0) is number
+        && request.resource.data.get('expectedYield', 0) >= 0;
+      allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
     }
 
     match /farm_tasks/{taskId} {
       allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
-      allow create, update, delete: if false;
+      allow create: if farmer() && verified()
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['farmerId', 'title', 'description',
+          'cropId', 'cropName', 'dueAt', 'priority', 'status', 'createdAt', 'updatedAt'])
+        && isStr(request.resource.data.title, 1, 120)
+        && isStr(request.resource.data.get('description', ''), 0, 1000)
+        && request.resource.data.dueAt is timestamp
+        && request.resource.data.priority in ['low', 'normal', 'high'];
+      allow update: if farmer()
+        && resource.data.farmerId == uid()
+        && affected().hasOnly(['status', 'completedAt', 'title', 'dueAt',
+          'reminderDate', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'inProgress', 'completed', 'cancelled']
+        && isStr(request.resource.data.title, 1, 120)
+        && request.resource.data.dueAt is timestamp;
+      allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
     }
 
+    // ── Notifications ────────────────────────────────────────
+    // Spark: the acting client writes the other party's in-app notification
+    // (order / offer / chat / transport events). Farm-task reminders are the
+    // only self-notifications. Admins broadcast advisories.
     match /notifications/{notificationId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow update: if signedIn() && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      // Everything else is written by Cloud Functions.
-      allow create: if admin();
+        && affected().hasOnly(['read']);
+      allow create: if admin() || (active()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'title', 'body', 'type', 'referenceId', 'orderId', 'read',
+          'createdAt', 'jobId', 'offerId', 'conversationId', 'senderId',
+          'documentId', 'settlementId', 'previousJobId'
+        ])
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && (request.resource.data.userId != uid()
+          || request.resource.data.type == 'farm_task')
+        && request.resource.data.read == false
+        && request.resource.data.type in ['order', 'payment', 'message', 'offer',
+          'transport', 'logistics', 'general', 'dispute', 'review', 'verification',
+          'produce_request', 'market_price', 'farm_task']
+        && isStr(request.resource.data.title, 1, 120)
+        && isStr(request.resource.data.body, 0, 500)
+        && optStr(request.resource.data, 'referenceId', 128)
+        && optStr(request.resource.data, 'orderId', 128)
+        && (!('senderId' in request.resource.data)
+          || request.resource.data.senderId == uid()));
       allow delete: if admin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
@@ -350,14 +1015,40 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Payouts: recipients see their own; admins manage all. Withdrawals are
-    // created only by requestWithdrawal (balance-checked server-side) and
-    // moved through their lifecycle by updateSettlementStatus.
+    // ── Payouts ──────────────────────────────────────────────
+    // Recipients request their own pending payout (the client checks the
+    // balance first; see SparkBackend.requestWithdrawal). Admins move it
+    // through its lifecycle; `settled` needs a transaction reference.
     match /settlements/{settlementId} {
       allow read: if admin()
         || (signedIn() && resource.data.recipientId == request.auth.uid);
-      allow create: if false;
-      allow update: if admin();
+      allow create: if admin()
+        || ((farmer() || transporter())
+          && request.resource.data.recipientId == uid()
+          && request.resource.data.recipientRole == userDoc(uid()).role
+          && request.resource.data.status == 'pending'
+          && request.resource.data.keys().hasOnly(['orderId', 'orderNumber',
+            'recipientId', 'recipientName', 'recipientRole', 'grossAmount',
+            'platformFee', 'netAmount', 'bankName', 'accountNumber',
+            'payoutMethod', 'status', 'createdAt', 'updatedAt'])
+          && request.resource.data.grossAmount is number
+          && request.resource.data.grossAmount > 0
+          && request.resource.data.grossAmount <= 10000000
+          && request.resource.data.platformFee is number
+          && request.resource.data.platformFee >= 0
+          && request.resource.data.platformFee < request.resource.data.grossAmount
+          && request.resource.data.netAmount
+            == request.resource.data.grossAmount - request.resource.data.platformFee
+          && isStr(request.resource.data.bankName, 1, 100)
+          && isStr(request.resource.data.accountNumber, 4, 40)
+          && request.resource.data.payoutMethod in ['CEFT', 'SLIP', 'Mobile Wallet']);
+      allow update: if admin()
+        && !(resource.data.status in ['settled', 'rejected'])
+        && request.resource.data.status in ['settled', 'on_hold', 'processing', 'rejected']
+        && affected().hasOnly(['status', 'transactionReference', 'holdReason',
+          'settledAt', 'reviewedBy', 'updatedAt'])
+        && (request.resource.data.status != 'settled'
+          || isStr(request.resource.data.get('transactionReference', ''), 4, 100));
       allow delete: if false;
     }
 
@@ -380,17 +1071,55 @@ service cloud.firestore {
         && request.resource.data.logisticsProviderId == uid();
       allow update: if transporter()
         && resource.data.logisticsProviderId == uid()
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['stars', 'comment', 'ratedAt', 'updatedAt']);
+        && affected().hasOnly(['stars', 'comment', 'ratedAt', 'updatedAt']);
       allow delete: if false;
     }
 
+    // ── Offers ───────────────────────────────────────────────
+    function offerUnchangedCore() {
+      return !affected().hasAny(['buyerId', 'farmerId', 'productId', 'proposedQuantity']);
+    }
     match /offers/{offerId} {
       allow read: if signedIn()
         && (resource.data.buyerId == request.auth.uid
           || resource.data.farmerId == request.auth.uid
           || admin());
-      allow create, update: if false;
+      allow create: if admin() || (buyer()
+        && request.resource.data.buyerId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.farmerId
+          == get(docPath('products/' + request.resource.data.productId)).data.farmerId
+        && request.resource.data.farmerId != uid()
+        && isInt(request.resource.data.proposedQuantity, 1, 1000000)
+        && isInt(request.resource.data.proposedPriceMinor, 1, 10000000000)
+        && request.resource.data.keys().hasOnly(['productId', 'productName', 'unit',
+          'buyerId', 'buyerName', 'farmerId', 'farmerName', 'proposedQuantity',
+          'proposedPrice', 'proposedPriceMinor', 'status', 'createdAt', 'updatedAt']));
+      allow update: if admin()
+        || (farmer() && resource.data.farmerId == uid() && offerUnchangedCore() && (
+          // Counter a pending offer.
+          (resource.data.status == 'pending' && request.resource.data.status == 'countered'
+            && verified()
+            && affected().hasOnly(['status', 'proposedPrice', 'proposedPriceMinor',
+              'originalPriceMinor', 'counteredAt', 'updatedAt'])
+            && isInt(request.resource.data.proposedPriceMinor, 1, 10000000000))
+          // Reject.
+          || (resource.data.status in ['pending', 'countered']
+            && request.resource.data.status == 'rejected'
+            && affected().hasOnly(['status', 'updatedAt']))
+          // Accept a pending offer with the order created in the same batch.
+          || (resource.data.status == 'pending' && request.resource.data.status == 'accepted'
+            && affected().hasOnly(['status', 'orderId', 'acceptedBy', 'updatedAt'])
+            && orderAfter(request.resource.data.orderId).offerId == offerId)))
+        || (buyer() && resource.data.buyerId == uid() && offerUnchangedCore() && (
+          // Withdraw.
+          (resource.data.status in ['pending', 'countered']
+            && request.resource.data.status == 'cancelled'
+            && affected().hasOnly(['status', 'updatedAt']))
+          // Accept the farmer's counter with the order created in the same batch.
+          || (resource.data.status == 'countered' && request.resource.data.status == 'accepted'
+            && affected().hasOnly(['status', 'orderId', 'acceptedBy', 'updatedAt'])
+            && orderAfter(request.resource.data.orderId).offerId == offerId)));
       allow delete: if admin();
     }
 

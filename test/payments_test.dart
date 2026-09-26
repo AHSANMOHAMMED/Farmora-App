@@ -128,10 +128,12 @@ void main() {
       expect(data['paymentStatus'], 'paid');
       expect(data['paidAt'], isNotNull);
       expect(data['paymentConfirmedBy'], 'farmer1');
-      // Notifications come from the onOrderPaymentStatusChanged trigger,
-      // never from the client.
+      // Spark (default backend): the farmer's client notifies the buyer
+      // (the onOrderPaymentStatusChanged trigger does it with Functions).
       final notes = await db.collection('notifications').get();
-      expect(notes.docs, isEmpty);
+      expect(notes.docs, hasLength(1));
+      expect(notes.docs.single.data()['userId'], 'buyer1');
+      expect(notes.docs.single.data()['type'], 'payment');
     });
 
     test('cash cannot be marked before delivery or by the buyer', () async {

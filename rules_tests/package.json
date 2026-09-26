@@ -1,10 +1,10 @@
 {
   "name": "rules_tests",
   "version": "1.0.0",
-  "description": "",
-  "main": "users_rules.spec.js",
+  "description": "Firestore / Storage security rules tests (run inside firebase emulators:exec)",
+  "main": "helpers.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha \"*.spec.js\" --timeout 20000 --exit"
   },
   "keywords": [],
   "author": "",

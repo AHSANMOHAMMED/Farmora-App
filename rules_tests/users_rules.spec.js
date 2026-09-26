@@ -1,28 +1,15 @@
-const { assertFails, assertSucceeds, initializeTestEnvironment } = require('@firebase/rules-unit-testing');
-const fs = require('fs');
+const { assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
+const { getEnv } = require('./helpers');
 
 let testEnv;
 
-before(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: "farmora-demo",
-    firestore: {
-      host: "127.0.0.1",
-      port: 8085,
-      rules: fs.readFileSync("../firestore.rules", "utf8"),
-    }
-  });
-});
-
-after(async () => {
-  if (testEnv) await testEnv.cleanup();
-});
-
-beforeEach(async () => {
-  await testEnv.clearFirestore();
-});
+before(async () => { testEnv = await getEnv(); });
 
 describe("Users Collection Rules", () => {
+  beforeEach(async () => {
+    await testEnv.clearFirestore();
+  });
+
   it("allows normal role signup and denies self-assigned admin role", async () => {
     const farmerDb = testEnv.authenticatedContext('farmer').firestore();
     const adminDb = testEnv.authenticatedContext('attacker').firestore();
