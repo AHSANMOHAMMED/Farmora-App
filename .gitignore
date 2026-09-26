@@ -1,1 +1,51 @@
-(empty)
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains codespaces, tabs, etc.
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+android/key.properties
+android/*.jks
+android/*.keystore
+
+# Symbol processing related
+symbols/
+
+# Node / web
+node_modules/
+
+# Agent and MCP configs
+.agents/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
