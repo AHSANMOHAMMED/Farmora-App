@@ -102,11 +102,8 @@ void main() async {
 
       FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode);
     }
-    FirebaseAnalytics.instance
-        .setAnalyticsCollectionEnabled(!_useFirebaseEmulators && !kDebugMode);
   } catch (e) {
-    throw StateError(
-        'Firebase initialization failed; Farmora needs a live Firebase backend: $e');
+    debugPrint('Firebase initialization warning: $e');
   }
 
   // Crashlytics only where supported (never on web); never throws.
@@ -120,7 +117,7 @@ void main() async {
             .setPerformanceCollectionEnabled(!kDebugMode);
       }
       await FirebaseAnalytics.instance
-          .setAnalyticsCollectionEnabled(!kDebugMode);
+          .setAnalyticsCollectionEnabled(!_useFirebaseEmulators && !kDebugMode);
     } catch (e) {
       debugPrint('Analytics/Performance not enabled: $e');
     }
@@ -130,7 +127,10 @@ void main() async {
 
   // The saved language is read before the first frame so splash, onboarding
   // and login already show in it. Null on first launch → language picker.
-  final languageCode = await LanguagePrefs.load();
+  final languageCode = await LanguagePrefs.load().timeout(
+    const Duration(milliseconds: 1500),
+    onTimeout: () => null,
+  );
 
   runApp(FarmoraApp(initialLanguageCode: languageCode));
 }

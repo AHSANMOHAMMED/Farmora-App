@@ -111,9 +111,14 @@ class _SplashScreenState extends State<SplashScreen>
       _completed = true;
       widget.onInitializationComplete!();
     } else if (widget.autoNavigate) {
-      _completed = true;
-      final savedLanguage = await LanguagePrefs.load();
-      final onboardingSeen = await OnboardingPrefs.seen();
+      final savedLanguage = await LanguagePrefs.load().timeout(
+        const Duration(milliseconds: 1500),
+        onTimeout: () => null,
+      );
+      final onboardingSeen = await OnboardingPrefs.seen().timeout(
+        const Duration(milliseconds: 1500),
+        onTimeout: () => false,
+      );
       if (!mounted) return;
       // Onboarding only on the first launch; afterwards straight to the
       // AuthGate (which routes by auth + profile).

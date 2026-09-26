@@ -1197,7 +1197,10 @@ class FarmoraState extends ChangeNotifier {
 
     // Load user profile and set role
     try {
-      final profile = await _loadUserProfile(uid);
+      final profile = await _loadUserProfile(uid).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null,
+      );
       if (profile == null) {
         await FirebaseAuth.instance.signOut();
         _currentUserId = '';

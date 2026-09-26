@@ -125,23 +125,19 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
+        final initialUser = FirebaseAuth.instance.currentUser;
         return StreamBuilder<User?>(
           stream: _authChanges,
+          initialData: initialUser,
           builder: (context, snapshot) {
-            // Show loading indicator while Firebase initializes
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xff1f7a4d),
-                  ),
-                ),
-              );
+            final user = snapshot.data;
+            if (user != null) {
+              return const HomeScreen();
             }
 
-            // User is signed in → show Home (it loads the profile)
-            if (snapshot.hasData) {
-              return const HomeScreen();
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                initialUser == null) {
+              return const WelcomeScreen();
             }
 
             // No user → show Welcome / Sign-up screen

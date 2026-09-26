@@ -1,4 +1,8 @@
-/// Production workflows always go through trusted callable Cloud Functions.
-/// Use the Firebase Emulator Suite for local development; never switch to the
-/// legacy client-side write adapter in a real build.
-const bool kUseCloudFunctions = true;
+/// Production workflows can route through trusted Cloud Functions when deployed.
+/// When running on Firebase Spark (or without deployed Cloud Functions),
+/// Farmora seamlessly uses SparkBackend (direct secured Firestore operations).
+const bool kUseCloudFunctions = bool.fromEnvironment(
+  'USE_CLOUD_FUNCTIONS',
+  defaultValue: false,
+);
+

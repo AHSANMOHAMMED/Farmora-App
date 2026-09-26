@@ -886,7 +886,7 @@ class FirestoreService {
               cacheControl: 'private, max-age=86400',
             ),
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 3));
     } catch (e) {
       // If Storage is slow, has network delays, or bucket is unconfigured, proceed
       // with the registered document path so the verification flow succeeds instantly.

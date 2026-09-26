@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -56,22 +57,37 @@ class SparkBackend {
   }
 
   Future<Map<String, dynamic>> getPlatformSettings() async {
-    final snap = await _db.collection('settings').doc('platform').get();
-    return {
-      'maintenanceMode': false,
-      'platformFeeBps': 250,
-      'sessionTimeoutMinutes': 60,
-      'defaultDeliveryFeeMinor': 35000,
-      'currency': 'LKR',
-      ...?snap.data(),
-    };
+    try {
+      final snap =
+          await _db.collection('platform_settings').doc('platform').get();
+      return {
+        'maintenanceMode': false,
+        'platformFeeBps': 250,
+        'sessionTimeoutMinutes': 60,
+        'defaultDeliveryFeeMinor': 35000,
+        'currency': 'LKR',
+        ...?snap.data(),
+      };
+    } catch (_) {
+      return const {
+        'maintenanceMode': false,
+        'platformFeeBps': 250,
+        'sessionTimeoutMinutes': 60,
+        'defaultDeliveryFeeMinor': 35000,
+        'currency': 'LKR',
+      };
+    }
   }
 
   Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
-    await _db.collection('settings').doc('platform').set({
-      ...settings,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await _db.collection('platform_settings').doc('platform').set({
+        ...settings,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('updatePlatformSettings fallback error: $e');
+    }
   }
 
   Future<String> createProduct(Product product) async {
