@@ -41,6 +41,7 @@ import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
 import 'widgets/platform_gate_views.dart';
+import '../../auth/presentation/session_actions.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1083,186 +1084,257 @@ class _HomeScreenState extends State<HomeScreen>
             Padding(
               padding: EdgeInsets.all(isCollapsed ? 8.0 : 10.0),
               child: isCollapsed
-                  ? Tooltip(
-                      message: state.displayName.isNotEmpty
-                          ? state.displayName
-                          : (state.phone.isNotEmpty
-                              ? state.phone
-                              : role.name),
-                      child: InkWell(
-                        onTap: () {
-                          final profileIdx = navItems.indexWhere((item) =>
-                              item.icon == Icons.person_outline_rounded ||
-                              item.icon == Icons.settings_outlined);
-                          if (profileIdx != -1) onSelectTab(profileIdx);
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: isAdmin
-                                  ? const [
-                                      Color(0xFF00C853),
-                                      Color(0xFF00B0FF),
-                                      Color(0xFF7C4DFF),
-                                    ]
-                                  : const [
-                                      AppColors.primary,
-                                      Color(0xFF66BB6A),
-                                    ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 17,
-                            backgroundColor: Colors.white,
-                            child: Text(
-                              (state.displayName.isNotEmpty
-                                      ? state.displayName[0]
-                                      : (state.phone.isNotEmpty
-                                          ? state.phone[0]
-                                          : (isAdmin ? 'A' : 'U')))
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                                fontSize: 13,
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Tooltip(
+                          message: state.displayName.isNotEmpty
+                              ? state.displayName
+                              : (state.phone.isNotEmpty
+                                  ? state.phone
+                                  : role.name),
+                          child: InkWell(
+                            onTap: () {
+                              final profileIdx = navItems.indexWhere((item) =>
+                                  item.icon == Icons.person_outline_rounded ||
+                                  item.icon == Icons.settings_outlined);
+                              if (profileIdx != -1) {
+                                onSelectTab(profileIdx);
+                              } else if (isAdmin) {
+                                confirmAndSignOut(context);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: isAdmin
+                                      ? const [
+                                          Color(0xFF00C853),
+                                          Color(0xFF00B0FF),
+                                          Color(0xFF7C4DFF),
+                                        ]
+                                      : const [
+                                          AppColors.primary,
+                                          Color(0xFF66BB6A),
+                                        ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 17,
+                                backgroundColor: Colors.white,
+                                child: Text(
+                                  (state.displayName.isNotEmpty
+                                          ? state.displayName[0]
+                                          : (state.phone.isNotEmpty
+                                              ? state.phone[0]
+                                              : (isAdmin ? 'A' : 'U')))
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    )
-                  : InkWell(
-                      onTap: () {
-                        final profileIdx = navItems.indexWhere((item) =>
-                            item.icon == Icons.person_outline_rounded ||
-                            item.icon == Icons.settings_outlined);
-                        if (profileIdx != -1) onSelectTab(profileIdx);
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color:
-                                AppColors.outlineVariant.withValues(alpha: 0.3),
-                            width: 0.8,
+                        const SizedBox(height: 8),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.logout_rounded,
+                            color: AppColors.error,
+                            size: 20,
                           ),
+                          tooltip: context.l10n.signOut,
+                          splashRadius: 18,
+                          onPressed: () => confirmAndSignOut(context),
                         ),
-                        child: Row(
-                          children: [
-                            Stack(
+                      ],
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            final profileIdx = navItems.indexWhere((item) =>
+                                item.icon == Icons.person_outline_rounded ||
+                                item.icon == Icons.settings_outlined);
+                            if (profileIdx != -1) {
+                              onSelectTab(profileIdx);
+                            } else if (isAdmin) {
+                              confirmAndSignOut(context);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.outlineVariant
+                                    .withValues(alpha: 0.3),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: isAdmin
-                                          ? const [
-                                              Color(0xFF00C853),
-                                              Color(0xFF00B0FF),
-                                              Color(0xFF7C4DFF),
-                                            ]
-                                          : const [
-                                              AppColors.primary,
-                                              Color(0xFF66BB6A),
-                                            ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: Colors.white,
-                                    child: Text(
-                                      (state.displayName.isNotEmpty
-                                              ? state.displayName[0]
-                                              : (state.phone.isNotEmpty
-                                                  ? state.phone[0]
-                                                  : (isAdmin ? 'A' : 'U')))
-                                          .toUpperCase(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                        fontSize: 12.5,
+                                Stack(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: LinearGradient(
+                                          colors: isAdmin
+                                              ? const [
+                                                  Color(0xFF00C853),
+                                                  Color(0xFF00B0FF),
+                                                  Color(0xFF7C4DFF),
+                                                ]
+                                              : const [
+                                                  AppColors.primary,
+                                                  Color(0xFF66BB6A),
+                                                ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 16,
+                                        backgroundColor: Colors.white,
+                                        child: Text(
+                                          (state.displayName.isNotEmpty
+                                                  ? state.displayName[0]
+                                                  : (state.phone.isNotEmpty
+                                                      ? state.phone[0]
+                                                      : (isAdmin ? 'A' : 'U')))
+                                              .toUpperCase(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
                                       ),
                                     ),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        width: 9,
+                                        height: 9,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00C853),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        state.displayName.isNotEmpty
+                                            ? state.displayName
+                                            : (state.phone.isNotEmpty
+                                                ? state.phone
+                                                : (isAdmin
+                                                    ? 'Administrator'
+                                                    : 'Farmora User')),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12.5,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        state.phone.isNotEmpty
+                                            ? state.phone
+                                            : (isAdmin
+                                                ? 'Platform Operator'
+                                                : role.name),
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 9,
-                                    height: 9,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF00C853),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 1.5,
-                                      ),
-                                    ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.logout_rounded,
+                                    size: 19,
+                                    color: AppColors.error,
                                   ),
+                                  tooltip: context.l10n.signOut,
+                                  splashRadius: 18,
+                                  onPressed: () => confirmAndSignOut(context),
                                 ),
                               ],
                             ),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    state.displayName.isNotEmpty
-                                        ? state.displayName
-                                        : (state.phone.isNotEmpty
-                                            ? state.phone
-                                            : (isAdmin
-                                                ? 'Administrator'
-                                                : 'Farmora User')),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12.5,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    state.phone.isNotEmpty
-                                        ? state.phone
-                                        : (isAdmin
-                                            ? 'Platform Operator'
-                                            : role.name),
-                                    style: const TextStyle(
-                                      fontSize: 10.5,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                          ),
+                        ),
+                        if (isAdmin) ...[
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => confirmAndSignOut(context),
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                size: 16,
+                                color: AppColors.error,
+                              ),
+                              label: Text(
+                                context.l10n.signOut,
+                                style: const TextStyle(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.error.withValues(alpha: 0.35),
+                                  width: 0.9,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                visualDensity: VisualDensity.compact,
                               ),
                             ),
-                            const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18,
-                              color: AppColors.outline,
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        ],
+                      ],
                     ),
             ),
           ],

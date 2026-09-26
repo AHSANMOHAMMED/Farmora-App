@@ -17,6 +17,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
+import '../../auth/presentation/session_actions.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -35,6 +36,16 @@ class AdminDashboardScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: AppColors.textPrimary,
           elevation: 0.5,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+                tooltip: l.signOut,
+                onPressed: () => confirmAndSignOut(context),
+              ),
+            ),
+          ],
           bottom: TabBar(
             isScrollable: true,
             labelColor: AppColors.primary,
@@ -93,6 +104,38 @@ class AdminOverviewScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
         elevation: 0.5,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: OutlinedButton.icon(
+              onPressed: () => confirmAndSignOut(context),
+              icon: const Icon(
+                Icons.logout_rounded,
+                size: 16,
+                color: AppColors.error,
+              ),
+              label: Text(
+                l.signOut,
+                style: const TextStyle(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: AppColors.error.withValues(alpha: 0.4),
+                  width: 0.9,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
       ),
       body: const _OverviewTab(),
     );
