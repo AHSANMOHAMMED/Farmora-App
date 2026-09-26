@@ -88,6 +88,22 @@ service cloud.firestore {
         .hasOnly(['quantityAvailable', 'updatedAt', 'status', 'quantity']);
     }
 
+    // Shape checks for the owner-editable profile fields that have one.
+    function profileFieldsValid() {
+      let d = request.resource.data;
+      return (!('farmName' in d) || d.farmName == null
+          || (d.farmName is string && d.farmName.size() <= 80))
+        && (!('farmSize' in d) || d.farmSize == null
+          || (d.farmSize is string && d.farmSize.size() <= 40))
+        && (!('mainCrops' in d) || d.mainCrops == null
+          || (d.mainCrops is list && d.mainCrops.size() <= 10))
+        && (!('serviceDistricts' in d) || d.serviceDistricts == null
+          || (d.serviceDistricts is list && d.serviceDistricts.size() <= 25))
+        && (!('notificationPrefs' in d) || d.notificationPrefs == null
+          || (d.notificationPrefs is map && d.notificationPrefs.keys().hasOnly([
+            'orderUpdates', 'messages', 'promos', 'quietHoursStart', 'quietHoursEnd'])));
+    }
+
     match /users/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || admin());
       allow list: if admin();
@@ -95,23 +111,62 @@ service cloud.firestore {
         && request.resource.data.id == userId
         // Admin profiles must be provisioned by a trusted Admin SDK tool.
         && request.resource.data.role in ['farmer', 'buyer', 'transporter']
-        && request.resource.data.isVerified == false;
+        && request.resource.data.isVerified == false
+        && request.resource.data.get('isSuspended', false) == false
+        && !request.resource.data.keys().hasAny(['isDeleted', 'deviceTokens', 'admin'])
+        && profileFieldsValid();
       allow update: if admin()
         || (signedIn() && request.auth.uid == userId
           && request.resource.data.role == resource.data.role
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName', 'name', 'languageCode', 'photoUrl', 'address', 'updatedAt',
             'farmName', 'farmSize', 'mainCrops',
-            'notificationPreferences', 'country', 'district', 'location',
+            'notificationPreferences', 'notificationPrefs', 'country', 'district', 'location',
             'locationUpdatedAt', 'locationAccuracy',
             'vehicleType', 'capacityKg', 'serviceDistricts', 'chatPublicKey',
             'termsAcceptedAt', 'privacyAcceptedAt', 'phone'
-          ]));
-      allow delete: if signedIn() && request.auth.uid == userId;
+          ])
+          && profileFieldsValid());
+      // Accounts are removed via the deleteAccount / adminDeleteUser functions.
+      allow delete: if false;
     }
 
     match /users/{userId}/device_tokens/{tokenId} {
       allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // Public end-to-end chat keys (X25519 public halves only).
+    match /chat_keys/{keyOwner} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid() == keyOwner
+        && request.resource.data.keys().hasOnly(['publicKey', 'updatedAt'])
+        && request.resource.data.publicKey is string
+        && request.resource.data.publicKey.size() > 0
+        && request.resource.data.publicKey.size() <= 512;
+      allow delete: if signedIn() && uid() == keyOwner;
+    }
+
+    // Public transporter projection, maintained only by Cloud Functions.
+    match /transporter_profiles/{transporterId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /advisories/{advisoryId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    // Platform settings (fees, maintenance mode). Clients read the public
+    // subset through getPlatformSettings; admins write via the function.
+    match /platform_settings/{docId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
+    // Server-only checkout idempotency records.
+    match /idempotency_keys/{keyId} {
+      allow read, write: if false;
     }
 
     match /products/{productId} {
@@ -151,8 +206,9 @@ service cloud.firestore {
         || resource.data.ownerId == request.auth.uid
         || admin()
       );
-      allow create: if (farmer() || transporter())
+      allow create: if (farmer() || transporter() || buyer())
         && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
         && request.resource.data.status == 'pending';
       allow update: if admin();
       allow delete: if admin();
@@ -163,8 +219,8 @@ service cloud.firestore {
         || resource.data.status == 'approved'
         || admin()
         || (signedIn() && resource.data.reviewerId == request.auth.uid);
-      allow create: if buyer()
-        && request.resource.data.reviewerId == request.auth.uid;
+      // Created only by the submitReview function.
+      allow create: if false;
       // Admin moderation writes status / moderationNote / moderatedAt.
       allow update: if admin();
       allow delete: if admin();
@@ -172,8 +228,8 @@ service cloud.firestore {
 
     match /disputes/{disputeId} {
       allow read: if signedIn() && (resource.data.openedBy == request.auth.uid || admin());
-      allow create: if active()
-        && request.resource.data.openedBy == request.auth.uid;
+      // Opened only by the openDispute function; resolved by resolveDispute.
+      allow create: if false;
       allow update: if admin();
       allow delete: if admin();
     }
@@ -185,33 +241,44 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
-    // Order chat. Messages are readable only by their sender/recipient, who
-    // must be parties to the order. Text is end-to-end encrypted ciphertext;
-    // photos reference Storage objects under chat/{orderId}/{sender}/ or the
-    // sender's payment slip under payment_slips/{orderId}/.
+    // Order chat. Messages are written only by the sendMessage function and
+    // readable only by their participants. Text is end-to-end encrypted
+    // ciphertext. Older messages without participantIds fall back to the
+    // sender/recipient fields.
     match /messages/{messageId} {
-      allow read: if signedIn() && (resource.data.senderId == request.auth.uid
+      allow read: if signedIn() && (request.auth.uid in resource.data.participantIds
+        || resource.data.senderId == request.auth.uid
         || resource.data.receiverId == request.auth.uid
         || resource.data.recipientId == request.auth.uid);
-      allow create: if signedIn()
-        && request.resource.data.senderId == request.auth.uid
-        && request.resource.data.keys().hasAll(['ciphertext', 'senderId', 'orderId']);
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
 
+    // Conversations are created by sendMessage. A participant may only reset
+    // their own unread counter / read marker. `get` of a missing doc is allowed
+    // so the client can check whether a thread exists yet.
     match /conversations/{conversationId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if signedIn()
-        && request.auth.uid in request.resource.data.participantIds;
+      allow get: if signedIn()
+        && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow list: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if false;
       allow update: if signedIn()
-        && request.auth.uid in resource.data.participantIds;
+        && request.auth.uid in resource.data.participantIds
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['unreadCounts', 'lastReadAt'])
+        && request.resource.data.get('unreadCounts', {})
+          .diff(resource.data.get('unreadCounts', {})).affectedKeys()
+          .hasOnly([request.auth.uid])
+        && request.resource.data.get('lastReadAt', {})
+          .diff(resource.data.get('lastReadAt', {})).affectedKeys()
+          .hasOnly([request.auth.uid]);
       allow delete: if admin();
     }
 
-    // Farmer payout account for Bank Deposit. Readable by signed-in users so
-    // checkout can tell whether Bank Deposit is available for a farmer.
+    // Farmer payout account for Bank Deposit. Private to the owner and admins;
+    // buyers get availability / order details via getFarmerBankDetails, and
+    // bank-deposit orders carry a bankDetailsSnapshot.
     match /bank_details/{farmerId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (request.auth.uid == farmerId || admin());
       allow create, update: if farmer() && request.auth.uid == farmerId
         && request.resource.data.keys().hasOnly([
           'farmerId', 'bankName', 'branch', 'accountHolderName',
@@ -270,7 +337,8 @@ service cloud.firestore {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow update: if signedIn() && resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if signedIn();
+      // Everything else is written by Cloud Functions.
+      allow create: if admin();
       allow delete: if admin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
@@ -282,49 +350,22 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Market price benchmarks: public read, admin-managed.
-    match /market_prices/{priceId} {
-      allow read: if true;
-      allow write: if admin();
-    }
-
-    // Treasury payouts: recipients see their own; admins manage all.
-    // Client-created payouts are constrained field-by-field: self-recipient,
-    // pending status only, bounded consistent amounts — so a malicious client
-    // cannot forge a settled payout or impersonate another beneficiary.
-    // Actual disbursement happens only through the admin approval flow.
+    // Payouts: recipients see their own; admins manage all. Withdrawals are
+    // created only by requestWithdrawal (balance-checked server-side) and
+    // moved through their lifecycle by updateSettlementStatus.
     match /settlements/{settlementId} {
       allow read: if admin()
         || (signedIn() && resource.data.recipientId == request.auth.uid);
-      allow create: if admin()
-        || (signedIn()
-          && request.resource.data.recipientId == request.auth.uid
-          && request.resource.data.recipientRole in ['farmer', 'transporter', 'buyer']
-          && request.resource.data.status == 'pending'
-          && request.resource.data.grossAmount is number
-          && request.resource.data.grossAmount > 0
-          && request.resource.data.grossAmount <= 10000000
-          && request.resource.data.platformFee is number
-          && request.resource.data.platformFee >= 0
-          && request.resource.data.platformFee < request.resource.data.grossAmount
-          && request.resource.data.netAmount is number
-          && request.resource.data.netAmount > 0
-          && request.resource.data.netAmount < request.resource.data.grossAmount
-          && request.resource.data.bankName is string
-          && request.resource.data.bankName.size() > 0
-          && request.resource.data.bankName.size() <= 100
-          && request.resource.data.accountNumber is string
-          && request.resource.data.accountNumber.size() >= 4
-          && request.resource.data.accountNumber.size() <= 40
-          && request.resource.data.payoutMethod in ['CEFT', 'SLIP', 'Mobile Wallet']);
+      allow create: if false;
       allow update: if admin();
       allow delete: if false;
     }
 
-    // Transporter issue reports for active hauls.
+    // Transporter issue reports for active hauls (client uses add()).
     match /transport_job_issues/{reportId} {
-      allow read: if admin()
-        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
+      allow read: if signedIn() && (resource == null
+        || admin()
+        || resource.data.logisticsProviderId == request.auth.uid);
       allow create: if transporter()
         && request.resource.data.logisticsProviderId == uid();
       allow update, delete: if false;
@@ -332,11 +373,16 @@ service cloud.firestore {
 
     // Transporter delivery ratings.
     match /transport_job_ratings/{ratingId} {
-      allow read: if admin()
-        || (signedIn() && resource.data.logisticsProviderId == request.auth.uid);
+      allow read: if signedIn() && (resource == null
+        || admin()
+        || resource.data.logisticsProviderId == request.auth.uid);
       allow create: if transporter()
         && request.resource.data.logisticsProviderId == uid();
-      allow update, delete: if false;
+      allow update: if transporter()
+        && resource.data.logisticsProviderId == uid()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['stars', 'comment', 'ratedAt', 'updatedAt']);
+      allow delete: if false;
     }
 
     match /offers/{offerId} {
@@ -354,12 +400,6 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.reporterId == request.auth.uid;
       allow update, delete: if false;
-    }
-
-    // Platform settings (fees, maintenance mode): readable, admin-managed.
-    match /settings/{docId} {
-      allow read: if signedIn();
-      allow write: if admin();
     }
   }
 }

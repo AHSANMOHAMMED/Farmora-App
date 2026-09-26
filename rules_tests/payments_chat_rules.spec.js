@@ -10,7 +10,7 @@ const {
 const fs = require('fs');
 const {
   doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs,
-  serverTimestamp, deleteField, writeBatch,
+  serverTimestamp, deleteField, deleteDoc,
 } = require('firebase/firestore');
 const { ref, uploadBytes, getBytes } = require('firebase/storage');
 
@@ -71,49 +71,25 @@ async function seed(orderOverrides = {}) {
 const db = (uid) => env.authenticatedContext(uid).firestore();
 const storage = (uid) => env.authenticatedContext(uid).storage();
 
-function checkoutOrder(extra = {}) {
-  return {
-    buyerId: 'buyer1', farmerId: 'farmer1', productId: 'prod1',
-    status: 'pending', requestedQuantity: 2, subtotalMinor: 70000,
-    deliveryFeeMinor: 35000, totalMinor: 105000,
-    deliveryAddress: '12 Galle Road, Colombo', paymentMethod: 'cod',
-    paymentStatus: 'pending', ...extra,
-  };
-}
-
-describe('checkout', () => {
+// Orders, offers and products are created by Cloud Functions (createOrder,
+// acceptOffer, createProduct …); clients can no longer write them directly.
+describe('checkout (server-owned)', () => {
   beforeEach(() => seed());
 
-  it('buyer can place a COD order priced from the catalog', async () => {
-    await assertSucceeds(setDoc(doc(db('buyer1'), 'orders', 'new1'), checkoutOrder()));
+  it('buyer cannot create an order directly', async () => {
+    await assertFails(setDoc(doc(db('buyer1'), 'orders', 'new1'), {
+      buyerId: 'buyer1', farmerId: 'farmer1', productId: 'prod1', status: 'pending',
+      totalMinor: 105000, paymentMethod: 'cod', paymentStatus: 'payment_required',
+    }));
   });
 
-  it('buyer can place a bank deposit order with the farmer\'s account', async () => {
-    await assertSucceeds(setDoc(doc(db('buyer1'), 'orders', 'new2'), checkoutOrder({
-      paymentMethod: 'bank_deposit',
-      bankDetailsSnapshot: { accountNumber: '12345678' },
-    })));
+  it('idempotency records are server-only', async () => {
+    await assertFails(getDoc(doc(db('buyer1'), 'idempotency_keys', 'k1')));
+    await assertFails(setDoc(doc(db('buyer1'), 'idempotency_keys', 'k1'), { orderId: 'x' }));
   });
 
-  it('rejects a tampered total', async () => {
-    await assertFails(setDoc(doc(db('buyer1'), 'orders', 'new3'),
-      checkoutOrder({ subtotalMinor: 100, totalMinor: 35100 })));
-  });
-
-  it('rejects an order created as already paid', async () => {
-    await assertFails(setDoc(doc(db('buyer1'), 'orders', 'new4'),
-      checkoutOrder({ paymentStatus: 'paid' })));
-  });
-
-  it('rejects an unknown payment method', async () => {
-    await assertFails(setDoc(doc(db('buyer1'), 'orders', 'new5'),
-      checkoutOrder({ paymentMethod: 'crypto' })));
-  });
-
-  it('checkout can read its not-yet-created idempotency order doc', async () => {
-    // SparkBackend.createOrder reads orders/idem_… inside a transaction first.
-    await assertSucceeds(getDoc(doc(db('buyer1'), 'orders', 'idem_does_not_exist')));
-    // Existing orders stay private to their participants.
+  it('existing orders stay private to their participants', async () => {
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'orders', ORDER)));
     await assertFails(getDoc(doc(db('stranger'), 'orders', ORDER)));
   });
 
@@ -125,42 +101,35 @@ describe('checkout', () => {
     await assertSucceeds(getDocs(query(collection(db('farmer1'), 'transport_jobs'),
       where('orderId', '==', ORDER), where('farmerId', '==', 'farmer1'),
       where('status', 'in', ['requested', 'accepted', 'pickedUp', 'inTransit']))));
-    // The unscoped query (the old code) is rejected by the rules.
+    // The unscoped query is rejected by the rules.
     await assertFails(getDocs(query(collection(db('farmer1'), 'transport_jobs'),
       where('orderId', '==', ORDER),
       where('status', 'in', ['requested', 'accepted', 'pickedUp', 'inTransit']))));
   });
 
-  it('buyer can only decrease product stock', async () => {
-    await assertSucceeds(updateDoc(doc(db('buyer1'), 'products', 'prod1'), { quantityAvailable: 48 }));
-    await assertFails(updateDoc(doc(db('buyer1'), 'products', 'prod1'), { quantityAvailable: 99 }));
+  it('buyers cannot touch product stock or pricing', async () => {
+    await assertFails(updateDoc(doc(db('buyer1'), 'products', 'prod1'), { quantityAvailable: 48 }));
     await assertFails(updateDoc(doc(db('buyer1'), 'products', 'prod1'), { priceMinor: 1 }));
   });
 });
 
-describe('products', () => {
+describe('bank details', () => {
   beforeEach(() => seed());
 
-  it('farmer can create a product with image URLs', async () => {
-    await assertSucceeds(setDoc(doc(db('farmer1'), 'products', 'p2'), {
-      farmerId: 'farmer1', name: 'Beans', category: 'Vegetables', priceMinor: 20000,
-      quantityAvailable: 10, unit: 'kg', location: 'Kandy',
-      media: ['https://firebasestorage.googleapis.com/v0/b/x/o/a'],
-    }));
+  it('only the owner (or an admin) can read payout details', async () => {
+    await assertSucceeds(getDoc(doc(db('farmer1'), 'bank_details', 'farmer1')));
+    await assertFails(getDoc(doc(db('buyer1'), 'bank_details', 'farmer1')));
   });
 
-  it('farmer cannot create a product for someone else', async () => {
-    await assertFails(setDoc(doc(db('farmer1'), 'products', 'p3'), {
-      farmerId: 'farmer2', name: 'Beans', category: 'Vegetables', priceMinor: 1,
-      quantityAvailable: 1, unit: 'kg', location: 'Kandy',
+  it('farmer can save their own payout account', async () => {
+    await assertSucceeds(setDoc(doc(db('farmer1'), 'bank_details', 'farmer1'), {
+      farmerId: 'farmer1', bankName: 'HNB', branch: 'Galle',
+      accountHolderName: 'F One', accountNumber: '87654321', updatedAt: serverTimestamp(),
     }));
-  });
-
-  it('owner can replace images; blank farmerId (old edit bug) is rejected', async () => {
-    await assertSucceeds(updateDoc(doc(db('farmer1'), 'products', 'prod1'), {
-      media: ['https://x/a'], imageUrls: ['https://x/a'], updatedAt: serverTimestamp(),
+    await assertFails(setDoc(doc(db('buyer1'), 'bank_details', 'buyer1'), {
+      farmerId: 'buyer1', bankName: 'HNB', branch: 'Galle',
+      accountHolderName: 'B One', accountNumber: '87654321',
     }));
-    await assertFails(updateDoc(doc(db('farmer1'), 'products', 'prod1'), { farmerId: '' }));
   });
 });
 
@@ -223,83 +192,144 @@ describe('deposit slip + payment confirmation', () => {
 describe('order chat', () => {
   beforeEach(() => seed());
 
-  const convo = () => ({
-    orderId: ORDER, participantIds: ['buyer1', 'farmer1'], lastMessage: '',
-    lastMessageAt: serverTimestamp(), unreadCounts: {}, createdAt: serverTimestamp(),
-  });
-
-  async function openConvo() {
-    await setDoc(doc(db('buyer1'), 'conversations', CONVO), convo());
+  async function seedConvo() {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const adminDb = ctx.firestore();
+      await setDoc(doc(adminDb, 'conversations', CONVO), {
+        orderId: ORDER, participantIds: ['buyer1', 'farmer1'], lastMessage: '',
+        unreadCounts: { buyer1: 0, farmer1: 3 }, lastReadAt: {},
+      });
+      await setDoc(doc(adminDb, 'messages', 'm1'), {
+        orderId: ORDER, conversationId: CONVO, participantIds: ['buyer1', 'farmer1'],
+        senderId: 'buyer1', receiverId: 'farmer1', recipientId: 'farmer1',
+        type: 'text', ciphertext: 'farmora3:' + 'x'.repeat(40),
+      });
+      // Legacy message written before participantIds existed.
+      await setDoc(doc(adminDb, 'messages', 'legacy'), {
+        orderId: ORDER, conversationId: CONVO, senderId: 'buyer1',
+        receiverId: 'farmer1', type: 'text', ciphertext: 'farmora3:' + 'y'.repeat(40),
+      });
+    });
   }
 
-  function message(extra) {
-    return {
-      orderId: ORDER, conversationId: CONVO, senderId: 'buyer1',
-      receiverId: 'farmer1', recipientId: 'farmer1',
-      createdAt: serverTimestamp(), ...extra,
-    };
-  }
-
-  it('buyer can check for and create the deterministic conversation', async () => {
+  it('a missing conversation can be checked but not created by clients', async () => {
     await assertSucceeds(getDoc(doc(db('buyer1'), 'conversations', CONVO)));
-    await assertSucceeds(setDoc(doc(db('buyer1'), 'conversations', CONVO), convo()));
-  });
-
-  it('outsiders cannot create a conversation on the order', async () => {
-    await assertFails(setDoc(doc(db('stranger'), 'conversations', 'o_order1_farmer1_stranger'), {
-      ...convo(), participantIds: ['farmer1', 'stranger'],
+    await assertFails(setDoc(doc(db('buyer1'), 'conversations', CONVO), {
+      orderId: ORDER, participantIds: ['buyer1', 'farmer1'],
     }));
   });
 
-  it('conversation id must match its order and participants', async () => {
-    await assertFails(setDoc(doc(db('buyer1'), 'conversations', 'random'), convo()));
+  it('only participants can read a conversation', async () => {
+    await seedConvo();
+    await assertSucceeds(getDoc(doc(db('farmer1'), 'conversations', CONVO)));
+    await assertFails(getDoc(doc(db('stranger'), 'conversations', CONVO)));
+    await assertSucceeds(getDocs(query(collection(db('buyer1'), 'conversations'),
+      where('participantIds', 'array-contains', 'buyer1'))));
   });
 
-  it('buyer sends encrypted text and a photo; farmer can read', async () => {
-    await openConvo();
-    const buyerDb = db('buyer1');
-    const b = writeBatch(buyerDb);
-    b.set(doc(buyerDb, 'messages', 'm1'),
-      message({ type: 'text', ciphertext: 'farmora3:' + 'x'.repeat(40) }));
-    b.update(doc(buyerDb, 'conversations', CONVO),
-      { lastMessage: 'farmora3:xx', lastMessageAt: serverTimestamp() });
-    await assertSucceeds(b.commit());
-    await assertSucceeds(setDoc(doc(db('buyer1'), 'messages', 'm2'), message({
-      type: 'image', attachmentUrl: 'https://firebasestorage.googleapis.com/x',
-      attachmentPath: `chat/${ORDER}/buyer1/p.jpg`, attachmentKind: 'photo',
-    })));
-    await assertSucceeds(getDoc(doc(db('farmer1'), 'messages', 'm2')));
-    await assertFails(getDoc(doc(db('stranger'), 'messages', 'm2')));
+  it('a participant may reset only their own unread counter', async () => {
+    await seedConvo();
+    await assertSucceeds(updateDoc(doc(db('farmer1'), 'conversations', CONVO), {
+      'unreadCounts.farmer1': 0, 'lastReadAt.farmer1': serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(db('farmer1'), 'conversations', CONVO), {
+      'unreadCounts.buyer1': 0,
+    }));
+    await assertFails(updateDoc(doc(db('farmer1'), 'conversations', CONVO), {
+      lastMessage: 'spoofed',
+    }));
   });
 
-  it('buyer sends the deposit slip in chat', async () => {
-    await openConvo();
-    await assertSucceeds(setDoc(doc(db('buyer1'), 'messages', 'm3'), message({
-      type: 'image', attachmentUrl: SLIP_URL,
-      attachmentPath: `payment_slips/${ORDER}/buyer1_1.jpg`,
-      attachmentKind: 'payment_proof',
-    })));
+  it('messages are written only by the sendMessage function', async () => {
+    await seedConvo();
+    await assertFails(setDoc(doc(db('buyer1'), 'messages', 'x1'), {
+      orderId: ORDER, conversationId: CONVO, senderId: 'buyer1',
+      participantIds: ['buyer1', 'farmer1'], ciphertext: 'farmora3:' + 'x'.repeat(40),
+    }));
   });
 
-  it('rejects plaintext, spoofed senders and foreign attachment paths', async () => {
-    await openConvo();
-    await assertFails(setDoc(doc(db('buyer1'), 'messages', 'x1'),
-      message({ type: 'text', ciphertext: 'hi' })));
-    await assertFails(setDoc(doc(db('farmer1'), 'messages', 'x2'),
-      message({ type: 'text', ciphertext: 'farmora3:' + 'x'.repeat(40) })));
-    await assertFails(setDoc(doc(db('buyer1'), 'messages', 'x3'), message({
-      type: 'image', attachmentUrl: 'https://x',
-      attachmentPath: `chat/${ORDER}/farmer1/p.jpg`, attachmentKind: 'photo',
-    })));
-  });
-
-  it('farmer can list messages addressed to them', async () => {
-    await openConvo();
-    await setDoc(doc(db('buyer1'), 'messages', 'm4'),
-      message({ type: 'text', ciphertext: 'farmora3:' + 'x'.repeat(40) }));
+  it('participants read messages; strangers cannot', async () => {
+    await seedConvo();
+    await assertSucceeds(getDoc(doc(db('farmer1'), 'messages', 'm1')));
+    await assertSucceeds(getDoc(doc(db('farmer1'), 'messages', 'legacy')));
+    await assertFails(getDoc(doc(db('stranger'), 'messages', 'm1')));
     await assertSucceeds(getDocs(query(collection(db('farmer1'), 'messages'),
-      where('conversationId', '==', CONVO), where('orderId', '==', ORDER),
-      where('receiverId', '==', 'farmer1'))));
+      where('conversationId', '==', CONVO),
+      where('participantIds', 'array-contains', 'farmer1'))));
+  });
+
+  it('chat public keys: anyone signed in reads, only the owner writes', async () => {
+    await assertSucceeds(setDoc(doc(db('buyer1'), 'chat_keys', 'buyer1'), {
+      publicKey: 'a'.repeat(44), updatedAt: serverTimestamp(),
+    }));
+    await assertSucceeds(getDoc(doc(db('farmer1'), 'chat_keys', 'buyer1')));
+    await assertFails(setDoc(doc(db('farmer1'), 'chat_keys', 'buyer1'), {
+      publicKey: 'b'.repeat(44),
+    }));
+    await assertFails(setDoc(doc(db('buyer1'), 'chat_keys', 'buyer1'), {
+      publicKey: 'a'.repeat(44), extra: true,
+    }));
+  });
+});
+
+describe('server-owned collections', () => {
+  beforeEach(() => seed());
+
+  it('transporter profiles are readable but never client-written', async () => {
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'transporter_profiles', 'trans1')));
+    await assertFails(setDoc(doc(db('trans1'), 'transporter_profiles', 'trans1'), {
+      isVerified: true,
+    }));
+  });
+
+  it('reviews, disputes, settlements and notifications cannot be forged', async () => {
+    await assertFails(setDoc(doc(db('buyer1'), 'reviews', 'r1'), {
+      reviewerId: 'buyer1', rating: 5,
+    }));
+    await assertFails(setDoc(doc(db('buyer1'), 'disputes', 'd1'), {
+      openedBy: 'buyer1', reason: 'x',
+    }));
+    await assertFails(setDoc(doc(db('farmer1'), 'settlements', 's1'), {
+      recipientId: 'farmer1', recipientRole: 'farmer', status: 'pending',
+      grossAmount: 100, platformFee: 1, netAmount: 99, bankName: 'BOC',
+      accountNumber: '12345678', payoutMethod: 'CEFT',
+    }));
+    await assertFails(setDoc(doc(db('buyer1'), 'notifications', 'n1'), {
+      userId: 'farmer1', title: 'Fake', body: 'Fake', read: false,
+    }));
+  });
+
+  it('users cannot delete their own profile document', async () => {
+    await assertFails(deleteDoc(doc(db('buyer1'), 'users', 'buyer1')));
+  });
+
+  it('platform settings and advisories are readable by signed-in users', async () => {
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'platform_settings', 'global')));
+    await assertFails(setDoc(doc(db('buyer1'), 'platform_settings', 'global'), {
+      maintenanceMode: true,
+    }));
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'advisories', 'a1')));
+    await assertFails(setDoc(doc(db('buyer1'), 'advisories', 'a1'), { title: 'x' }));
+  });
+});
+
+describe('transporter ratings and issues', () => {
+  beforeEach(() => seed());
+
+  it('transporter reports issues via add() and edits only rating fields', async () => {
+    await assertSucceeds(setDoc(doc(db('trans1'), 'transport_job_issues', 'auto1'), {
+      logisticsProviderId: 'trans1', jobId: 'job1', note: 'Flat tyre',
+    }));
+    await assertSucceeds(getDoc(doc(db('trans1'), 'transport_job_ratings', 'missing')));
+    await assertSucceeds(setDoc(doc(db('trans1'), 'transport_job_ratings', 'job1'), {
+      logisticsProviderId: 'trans1', stars: 4, comment: 'ok',
+    }));
+    await assertSucceeds(updateDoc(doc(db('trans1'), 'transport_job_ratings', 'job1'), {
+      stars: 5, updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(db('trans1'), 'transport_job_ratings', 'job1'), {
+      logisticsProviderId: 'someone-else',
+    }));
   });
 });
 
