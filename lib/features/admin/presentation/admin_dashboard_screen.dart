@@ -78,6 +78,27 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 }
 
+class AdminOverviewScreen extends StatelessWidget {
+  const AdminOverviewScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          l.adminDashTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0.5,
+      ),
+      body: const _OverviewTab(),
+    );
+  }
+}
+
 class _OverviewTab extends StatefulWidget {
   const _OverviewTab();
 

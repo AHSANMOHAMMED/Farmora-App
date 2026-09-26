@@ -25,6 +25,18 @@ import '../../admin/presentation/verification_review_screen.dart';
 import '../../admin/presentation/user_management_screen.dart';
 import '../../admin/presentation/logistics_management_screen.dart';
 import '../../admin/presentation/system_settings_screen.dart';
+import '../../admin/presentation/platform_analytics_screen.dart';
+import '../../admin/presentation/dispute_resolution_screen.dart';
+import '../../admin/presentation/review_management_screen.dart';
+import '../../admin/presentation/market_price_management_screen.dart';
+import '../../admin/presentation/market_price_review_screen.dart';
+import '../../admin/presentation/settlement_management_screen.dart';
+import '../../admin/presentation/broadcast_advisory_screen.dart';
+import '../../admin/presentation/audit_log_screen.dart';
+import '../../admin/presentation/server_maintenance_screen.dart';
+import '../../../models/review_model.dart';
+import '../../../models/verification_model.dart';
+import '../../../models/dispute_model.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
@@ -199,34 +211,127 @@ class _HomeScreenState extends State<HomeScreen> {
             activeIcon: Icons.person_rounded),
       ];
     } else if (role == Role.admin) {
+      final pendingVerifications = state.verificationDocs
+          .where((d) => d.status == VerificationStatus.pending)
+          .length;
+      final pendingDisputes = state.adminStats.openDisputes > 0
+          ? state.adminStats.openDisputes
+          : state.disputes
+              .where((d) =>
+                  d.status == DisputeStatus.open ||
+                  d.status == DisputeStatus.underReview)
+              .length;
+      final pendingReviews =
+          state.reviews.where((r) => r.status == ReviewStatus.pending).length;
+
       screens = const [
-        AdminDashboardScreen(),
+        // Platform
+        AdminOverviewScreen(),
+        PlatformAnalyticsScreen(),
+        // Operations
         VerificationReviewScreen(),
         UserManagementScreen(),
+        DisputeResolutionScreen(),
+        ReviewManagementScreen(),
+        // Market & Fleet
+        MarketPriceManagementScreen(),
+        MarketPriceReviewScreen(),
         LogisticsManagementScreen(),
+        // Finance & Audit
+        SettlementManagementScreen(),
+        BroadcastAdvisoryScreen(),
+        AuditLogScreen(),
+        // System
+        ServerMaintenanceScreen(),
         SystemSettingsScreen(),
       ];
       navItems = [
+        // Platform
         _NavItem(
-            label: l10n.homeNavDashboard,
-            icon: Icons.dashboard_outlined,
-            activeIcon: Icons.dashboard_rounded),
+          label: l10n.adminDashTabOverview,
+          icon: Icons.dashboard_outlined,
+          activeIcon: Icons.dashboard_rounded,
+          section: 'Platform',
+        ),
         _NavItem(
-            label: l10n.homeNavVerify,
-            icon: Icons.verified_user_outlined,
-            activeIcon: Icons.verified_user_rounded),
+          label: l10n.adminDashTabAnalytics,
+          icon: Icons.insights_outlined,
+          activeIcon: Icons.insights_rounded,
+        ),
+        // Operations
         _NavItem(
-            label: l10n.homeNavUsers,
-            icon: Icons.people_outline_rounded,
-            activeIcon: Icons.people_rounded),
+          label: l10n.homeNavVerify,
+          icon: Icons.verified_user_outlined,
+          activeIcon: Icons.verified_user_rounded,
+          section: 'Operations',
+          badgeCount: pendingVerifications,
+          badgeColor: const Color(0xFFE65100),
+        ),
         _NavItem(
-            label: l10n.homeNavLogistics,
-            icon: Icons.local_shipping_outlined,
-            activeIcon: Icons.local_shipping_rounded),
+          label: l10n.homeNavUsers,
+          icon: Icons.people_outline_rounded,
+          activeIcon: Icons.people_rounded,
+        ),
         _NavItem(
-            label: l10n.homeNavSettings,
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings_rounded),
+          label: l10n.adminDashTabDisputes,
+          icon: Icons.gavel_outlined,
+          activeIcon: Icons.gavel_rounded,
+          badgeCount: pendingDisputes,
+          badgeColor: AppColors.error,
+        ),
+        _NavItem(
+          label: l10n.adminDashTabReviews,
+          icon: Icons.rate_review_outlined,
+          activeIcon: Icons.rate_review_rounded,
+          badgeCount: pendingReviews,
+          badgeColor: const Color(0xFF0288D1),
+        ),
+        // Market & Fleet
+        _NavItem(
+          label: l10n.adminDashTabMarket,
+          icon: Icons.trending_up_rounded,
+          activeIcon: Icons.trending_up_rounded,
+          section: 'Market & Fleet',
+        ),
+        const _NavItem(
+          label: 'Price Reports',
+          icon: Icons.fact_check_outlined,
+          activeIcon: Icons.fact_check_rounded,
+        ),
+        _NavItem(
+          label: l10n.homeNavLogistics,
+          icon: Icons.local_shipping_outlined,
+          activeIcon: Icons.local_shipping_rounded,
+        ),
+        // Finance & Audit
+        _NavItem(
+          label: l10n.adminDashTabTreasury,
+          icon: Icons.account_balance_wallet_outlined,
+          activeIcon: Icons.account_balance_wallet_rounded,
+          section: 'Finance & Audit',
+        ),
+        _NavItem(
+          label: l10n.adminDashTabAdvisories,
+          icon: Icons.campaign_outlined,
+          activeIcon: Icons.campaign_rounded,
+        ),
+        _NavItem(
+          label: l10n.adminDashTabAudit,
+          icon: Icons.shield_outlined,
+          activeIcon: Icons.shield_rounded,
+        ),
+        // System
+        _NavItem(
+          label: l10n.adminDashTabServer,
+          icon: Icons.cloud_sync_outlined,
+          activeIcon: Icons.cloud_sync_rounded,
+          section: 'System Control',
+        ),
+        _NavItem(
+          label: l10n.homeNavSettings,
+          icon: Icons.settings_outlined,
+          activeIcon: Icons.settings_rounded,
+        ),
       ];
     } else {
       screens = const [
@@ -308,7 +413,58 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
+        // On mobile, if there are more than 5 tabs (e.g. Admin with 14 operations),
+        // show primary 5 on bottom bar and provide full sidebar in the drawer.
+        final List<_NavItem> mobileNavItems;
+        final int mobileSelectedIndex;
+        final ValueChanged<int> onMobileSelect;
+
+        if (navItems.length > 5) {
+          mobileNavItems = [
+            navItems[0], // Overview
+            navItems[1], // Analytics
+            navItems[2], // Verifications
+            navItems[3], // Users
+            navItems.last, // System Settings
+          ];
+          if (safeTabIndex == navItems.length - 1) {
+            mobileSelectedIndex = 4;
+          } else if (safeTabIndex < 4) {
+            mobileSelectedIndex = safeTabIndex;
+          } else {
+            mobileSelectedIndex = 0;
+          }
+          onMobileSelect = (i) {
+            if (i == 4) {
+              setState(() => tabIndex = navItems.length - 1);
+            } else {
+              setState(() => tabIndex = i);
+            }
+          };
+        } else {
+          mobileNavItems = navItems;
+          mobileSelectedIndex = safeTabIndex;
+          onMobileSelect = (i) => setState(() => tabIndex = i);
+        }
+
         return Scaffold(
+          drawer: role == Role.admin
+              ? Drawer(
+                  child: _buildSidebar(
+                    context: context,
+                    state: state,
+                    role: role,
+                    navItems: navItems,
+                    selectedIndex: safeTabIndex,
+                    isCollapsed: false,
+                    onToggleCollapse: () => Navigator.of(context).pop(),
+                    onSelectTab: (index) {
+                      setState(() => tabIndex = index);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                )
+              : null,
           body: IndexedStack(
             index: safeTabIndex,
             children: screens,
@@ -331,8 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
               elevation: 0,
               // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
               indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-              selectedIndex: safeTabIndex,
-              onDestinationSelected: (i) => setState(() => tabIndex = i),
+              selectedIndex: mobileSelectedIndex,
+              onDestinationSelected: onMobileSelect,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               // Small labels so Tamil/Sinhala fit six tabs on a 360px phone.
               labelTextStyle: WidgetStateProperty.resolveWith(
@@ -347,9 +503,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       : AppColors.onSurfaceVariant,
                 ),
               ),
-              destinations: navItems.asMap().entries.map(
+              destinations: mobileNavItems.asMap().entries.map(
                 (e) {
-                  final isSelected = safeTabIndex == e.key;
+                  final isSelected = mobileSelectedIndex == e.key;
                   final item = e.value;
                   return NavigationDestination(
                     icon: Icon(
@@ -380,7 +536,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onToggleCollapse,
     required ValueChanged<int> onSelectTab,
   }) {
-    final double sidebarWidth = isCollapsed ? 76.0 : 256.0;
+    final isAdmin = role == Role.admin;
+    final double sidebarWidth = isCollapsed ? 76.0 : (isAdmin ? 276.0 : 256.0);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -400,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: isCollapsed
                   ? Column(
                       children: [
-                        _buildBrandIcon(),
+                        _buildBrandIcon(role: role),
                         const SizedBox(height: 12),
                         IconButton(
                           icon: const Icon(Icons.menu_rounded,
@@ -413,55 +570,99 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : Row(
                       children: [
-                        _buildBrandIcon(),
+                        _buildBrandIcon(role: role),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text(
-                                'Farmora',
-                                style: TextStyle(
-                                  fontSize: 18,
+                              Text(
+                                isAdmin ? 'Farmora Console' : 'Farmora',
+                                style: const TextStyle(
+                                  fontSize: 17.5,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
                                   letterSpacing: -0.3,
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      role.name.toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                        letterSpacing: 0.5,
+                              isAdmin
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryLight,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'SUPER ADMIN',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.primary,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF00C853),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 3),
+                                        const Text(
+                                          'LIVE',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF00C853),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryLight,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            role.name.toUpperCase(),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          if (state.isVerified) ...[
+                                            const SizedBox(width: 3),
+                                            const Icon(
+                                              Icons.verified_rounded,
+                                              size: 11,
+                                              color: AppColors.primary,
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
-                                    if (state.isVerified) ...[
-                                      const SizedBox(width: 3),
-                                      const Icon(
-                                        Icons.verified_rounded,
-                                        size: 11,
-                                        color: AppColors.primary,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -480,7 +681,7 @@ class _HomeScreenState extends State<HomeScreen> {
               thickness: 1,
               color: AppColors.outlineVariant.withValues(alpha: 0.25),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
             // Navigation items list
             Expanded(
@@ -490,98 +691,207 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, i) {
                   final item = navItems[i];
                   final isSelected = selectedIndex == i;
+                  final showSectionHeader = item.section != null && !isCollapsed;
 
+                  Widget tile;
                   if (isCollapsed) {
-                    return Padding(
+                    Widget iconWidget = Icon(
+                      isSelected ? item.activeIcon : item.icon,
+                      size: 22,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.onSurfaceVariant,
+                    );
+                    if (item.badgeCount > 0) {
+                      iconWidget = Badge.count(
+                        count: item.badgeCount,
+                        backgroundColor: item.badgeColor ?? AppColors.primary,
+                        textColor: Colors.white,
+                        child: iconWidget,
+                      );
+                    }
+
+                    tile = Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Tooltip(
-                        message: item.label,
+                        message: item.badgeCount > 0
+                            ? '${item.label} (${item.badgeCount})'
+                            : item.label,
                         preferBelow: false,
                         child: InkWell(
                           onTap: () => onSelectTab(i),
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            height: 48,
+                            height: 46,
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppColors.primary.withValues(alpha: 0.12)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Center(
-                              child: Icon(
+                            child: Center(child: iconWidget),
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    tile = Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.5),
+                      child: InkWell(
+                        onTap: () => onSelectTab(i),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.10)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
                                 isSelected ? item.activeIcon : item.icon,
-                                size: 22,
+                                size: 19,
                                 color: isSelected
                                     ? AppColors.primary
                                     : AppColors.onSurfaceVariant,
                               ),
-                            ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (item.badgeCount > 0) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: item.badgeColor ?? AppColors.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    item.badgeCount > 99
+                                        ? '99+'
+                                        : '${item.badgeCount}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              if (isSelected)
+                                Container(
+                                  width: 3.5,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
                     );
                   }
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: InkWell(
-                      onTap: () => onSelectTab(i),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.10)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isSelected ? item.activeIcon : item.icon,
-                              size: 20,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.onSurfaceVariant,
+                  if (showSectionHeader) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (i > 0) const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+                          child: Text(
+                            item.section!.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.outline.withValues(alpha: 0.75),
+                              letterSpacing: 1.1,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item.label,
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.onSurfaceVariant,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (isSelected)
-                              Container(
-                                width: 4,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  );
+                        tile,
+                      ],
+                    );
+                  }
+                  return tile;
                 },
               ),
             ),
+
+            // Live status banner for admin
+            if (isAdmin && !isCollapsed) ...[
+              Container(
+                margin: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: state.maintenanceMode
+                      ? AppColors.errorContainer.withValues(alpha: 0.4)
+                      : AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: state.maintenanceMode
+                        ? AppColors.error.withValues(alpha: 0.3)
+                        : AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      state.maintenanceMode
+                          ? Icons.warning_amber_rounded
+                          : Icons.shield_rounded,
+                      size: 14,
+                      color: state.maintenanceMode
+                          ? AppColors.error
+                          : AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.maintenanceMode
+                            ? 'Maintenance Mode'
+                            : 'All Systems Live',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: state.maintenanceMode
+                              ? AppColors.error
+                              : AppColors.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // Footer: User card & Quick switch
             Divider(
@@ -615,7 +925,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ? state.displayName[0]
                                     : (state.phone.isNotEmpty
                                         ? state.phone[0]
-                                        : 'U'))
+                                        : (isAdmin ? 'A' : 'U')))
                                 .toUpperCase(),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
@@ -654,7 +964,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? state.displayName[0]
                                         : (state.phone.isNotEmpty
                                             ? state.phone[0]
-                                            : 'U'))
+                                            : (isAdmin ? 'A' : 'U')))
                                     .toUpperCase(),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -674,7 +984,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? state.displayName
                                         : (state.phone.isNotEmpty
                                             ? state.phone
-                                            : 'Farmora User'),
+                                            : (isAdmin
+                                                ? 'Administrator'
+                                                : 'Farmora User')),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
@@ -686,7 +998,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     state.phone.isNotEmpty
                                         ? state.phone
-                                        : role.name,
+                                        : (isAdmin
+                                            ? 'Platform Operator'
+                                            : role.name),
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textMuted,
@@ -713,32 +1027,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  static Widget _buildBrandIcon() {
+  static Widget _buildBrandIcon({Role role = Role.farmer}) {
+    final isAdmin = role == Role.admin;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            AppColors.splashGradientStart,
-            AppColors.splashGradientEnd,
-          ],
+        gradient: LinearGradient(
+          colors: isAdmin
+              ? const [Color(0xFF004D1A), Color(0xFF007E2B)]
+              : const [
+                  AppColors.splashGradientStart,
+                  AppColors.splashGradientEnd,
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
+            color: (isAdmin ? const Color(0xFF004D1A) : AppColors.primary)
+                .withValues(alpha: 0.25),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: const Icon(
-        Icons.agriculture_rounded,
+      child: Icon(
+        isAdmin
+            ? Icons.admin_panel_settings_rounded
+            : Icons.agriculture_rounded,
         color: Colors.white,
-        size: 20,
+        size: isAdmin ? 22 : 20,
       ),
     );
   }
@@ -748,8 +1068,18 @@ class _NavItem {
   final String label;
   final IconData icon;
   final IconData activeIcon;
-  const _NavItem(
-      {required this.label, required this.icon, required this.activeIcon});
+  final String? section;
+  final int badgeCount;
+  final Color? badgeColor;
+
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    this.section,
+    this.badgeCount = 0,
+    this.badgeColor,
+  });
 }
 
 /// Alias for backward compatibility
