@@ -62,4 +62,8 @@ class ChatOutboxService {
       return [];
     }
   }
+
+  static Future<void> syncPending() async {
+    // Implement sync here
+  }
 }

@@ -577,18 +577,21 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _openPhone(String phone) async {
     if (phone.trim().isEmpty) return;
-    await launchUrl(Uri(scheme: 'tel', path: phone));
+    await launchUrl(Uri(scheme: 'tel', path: phone), mode: LaunchMode.externalApplication);
   }
 
   Future<void> _openWhatsApp(String phone) async {
     if (phone.trim().isEmpty) return;
     await launchUrl(
-        Uri.parse('https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}'));
+        Uri.parse('https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}'),
+        mode: LaunchMode.externalApplication);
   }
 
   Future<void> _openLocation(String location) async {
-    await launchUrl(Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(location)}'));
+    await launchUrl(
+        Uri.parse(
+            'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(location)}'),
+        mode: LaunchMode.externalApplication);
   }
 
   bool _isSuitable(TransporterController state, CollectionJob job) {

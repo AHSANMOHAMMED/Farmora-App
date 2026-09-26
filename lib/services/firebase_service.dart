@@ -362,6 +362,7 @@ class FirestoreService {
     required String deliveryAddress,
     required String idempotencyKey,
     String paymentMethod = PaymentMethod.cod,
+    String? transporterId,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.createOrder(
@@ -371,6 +372,7 @@ class FirestoreService {
         deliveryAddress: deliveryAddress,
         idempotencyKey: idempotencyKey,
         paymentMethod: paymentMethod,
+        transporterId: transporterId,
       );
     }
     final result = await _functions.httpsCallable('createOrder').call({
@@ -381,6 +383,7 @@ class FirestoreService {
       'idempotencyKey': idempotencyKey,
       'paymentMethod': paymentMethod,
       if (offerId != null) 'offerId': offerId,
+      if (transporterId != null) 'transporterId': transporterId,
     });
     return result.data['orderId'] as String;
   }

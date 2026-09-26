@@ -129,6 +129,7 @@ class SparkBackend {
     required String deliveryAddress,
     required String idempotencyKey,
     String paymentMethod = PaymentMethod.cod,
+    String? transporterId,
   }) async {
     final uid = _uid;
     if (idempotencyKey.length < 16 || idempotencyKey.length > 256) {
@@ -222,6 +223,7 @@ class SparkBackend {
         'escrowStatus': 'not_funded',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        if (transporterId != null) 'transporterId': transporterId,
       });
       transaction.update(productRef, {
         'quantityAvailable': available - quantity,

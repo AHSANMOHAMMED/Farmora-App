@@ -358,6 +358,7 @@ class FarmoraState extends ChangeNotifier {
   Future<bool> placeOrder({
     String? deliveryAddress,
     String? paymentMethod,
+    String? transporterId,
   }) async {
     if (_cartItems.isEmpty || _placingOrder) return false;
     final method = paymentMethod ?? paymentMethodDraft;
@@ -366,7 +367,7 @@ class FarmoraState extends ChangeNotifier {
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
     final key =
         _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
-    final fingerprint = '$key|$address|$method';
+    final fingerprint = '$key|$address|$method|$transporterId';
     if (_checkoutAttemptFingerprint != fingerprint) {
       final random = Random.secure();
       _checkoutAttemptFingerprint = fingerprint;
@@ -395,6 +396,7 @@ class FarmoraState extends ChangeNotifier {
             deliveryAddress: address,
             idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
             paymentMethod: method,
+            transporterId: transporterId,
           );
         }
       }

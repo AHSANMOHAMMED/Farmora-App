@@ -1,3 +1,5 @@
+import 'package:farmora/services/chat_outbox_service.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -110,6 +112,8 @@ void main() async {
   // The saved language is read before the first frame so splash, onboarding
   // and login already show in it. Null on first launch → language picker.
   final languageCode = await LanguagePrefs.load();
+
+  ChatOutboxService.syncPending().catchError((_) {});
 
   runApp(FarmoraApp(initialLanguageCode: languageCode));
 }
