@@ -49,17 +49,35 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   int tabIndex = 0;
   bool _isSidebarCollapsed = false;
 
   /// Installed app version (package_info_plus); null until read / on error.
   String? _appVersion;
 
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1700),
+    )..repeat(reverse: true);
+    _pulseAnimation = CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAppVersion() async {
@@ -249,88 +267,116 @@ class _HomeScreenState extends State<HomeScreen> {
         // Platform
         _NavItem(
           label: l10n.adminDashTabOverview,
+          subtitle: 'Platform KPIs & GMV',
           icon: Icons.dashboard_outlined,
           activeIcon: Icons.dashboard_rounded,
           section: 'Platform',
+          accentColor: const Color(0xFF00C853),
         ),
         _NavItem(
           label: l10n.adminDashTabAnalytics,
+          subtitle: 'Regional & Categories',
           icon: Icons.insights_outlined,
           activeIcon: Icons.insights_rounded,
+          accentColor: const Color(0xFF7C4DFF),
         ),
         // Operations
         _NavItem(
           label: l10n.homeNavVerify,
+          subtitle: 'KYC & Farmer Docs',
           icon: Icons.verified_user_outlined,
           activeIcon: Icons.verified_user_rounded,
           section: 'Operations',
           badgeCount: pendingVerifications,
-          badgeColor: const Color(0xFFE65100),
+          badgeColor: const Color(0xFFFF6D00),
+          accentColor: const Color(0xFFFF9100),
         ),
         _NavItem(
           label: l10n.homeNavUsers,
+          subtitle: 'Accounts & Roles',
           icon: Icons.people_outline_rounded,
           activeIcon: Icons.people_rounded,
+          accentColor: const Color(0xFF00B0FF),
         ),
         _NavItem(
           label: l10n.adminDashTabDisputes,
+          subtitle: 'Arbitration & Claims',
           icon: Icons.gavel_outlined,
           activeIcon: Icons.gavel_rounded,
           badgeCount: pendingDisputes,
           badgeColor: AppColors.error,
+          accentColor: const Color(0xFFFF5252),
         ),
         _NavItem(
           label: l10n.adminDashTabReviews,
+          subtitle: 'Feedback Moderation',
           icon: Icons.rate_review_outlined,
           activeIcon: Icons.rate_review_rounded,
           badgeCount: pendingReviews,
           badgeColor: const Color(0xFF0288D1),
+          accentColor: const Color(0xFF448AFF),
         ),
         // Market & Fleet
         _NavItem(
           label: l10n.adminDashTabMarket,
+          subtitle: 'National Price Board',
           icon: Icons.trending_up_rounded,
           activeIcon: Icons.trending_up_rounded,
           section: 'Market & Fleet',
+          accentColor: const Color(0xFF00BFA5),
         ),
         const _NavItem(
           label: 'Price Reports',
+          subtitle: 'Field Submissions',
           icon: Icons.fact_check_outlined,
           activeIcon: Icons.fact_check_rounded,
+          accentColor: Color(0xFFFFAB00),
         ),
         _NavItem(
           label: l10n.homeNavLogistics,
+          subtitle: 'Fleet & Dispatch',
           icon: Icons.local_shipping_outlined,
           activeIcon: Icons.local_shipping_rounded,
+          accentColor: const Color(0xFF2979FF),
         ),
         // Finance & Audit
         _NavItem(
           label: l10n.adminDashTabTreasury,
+          subtitle: 'Escrow & Settlements',
           icon: Icons.account_balance_wallet_outlined,
           activeIcon: Icons.account_balance_wallet_rounded,
           section: 'Finance & Audit',
+          accentColor: const Color(0xFF00E676),
         ),
         _NavItem(
           label: l10n.adminDashTabAdvisories,
+          subtitle: 'Emergency Broadcasts',
           icon: Icons.campaign_outlined,
           activeIcon: Icons.campaign_rounded,
+          accentColor: const Color(0xFFFF6D00),
         ),
         _NavItem(
           label: l10n.adminDashTabAudit,
+          subtitle: 'Security Event Logs',
           icon: Icons.shield_outlined,
           activeIcon: Icons.shield_rounded,
+          accentColor: const Color(0xFF607D8B),
         ),
         // System
         _NavItem(
           label: l10n.adminDashTabServer,
+          subtitle: 'Cloud Functions & Uptime',
           icon: Icons.cloud_sync_outlined,
           activeIcon: Icons.cloud_sync_rounded,
           section: 'System Control',
+          accentColor: const Color(0xFFAA00FF),
         ),
         _NavItem(
           label: l10n.homeNavSettings,
+          subtitle: 'Platform Parameters',
           icon: Icons.settings_outlined,
           activeIcon: Icons.settings_rounded,
+          accentColor: const Color(0xFF455A64),
         ),
       ];
     } else {
@@ -537,13 +583,22 @@ class _HomeScreenState extends State<HomeScreen> {
     required ValueChanged<int> onSelectTab,
   }) {
     final isAdmin = role == Role.admin;
-    final double sidebarWidth = isCollapsed ? 76.0 : (isAdmin ? 276.0 : 256.0);
+    final double sidebarWidth = isCollapsed ? 76.0 : (isAdmin ? 282.0 : 256.0);
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOutCubic,
       width: sidebarWidth,
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -552,17 +607,20 @@ class _HomeScreenState extends State<HomeScreen> {
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: isCollapsed ? 12.0 : 16.0,
-                vertical: 18.0,
+                vertical: 16.0,
               ),
               child: isCollapsed
                   ? Column(
                       children: [
-                        _buildBrandIcon(role: role),
-                        const SizedBox(height: 12),
+                        _AnimatedBrandBadge(
+                          animation: _pulseAnimation,
+                          role: role,
+                        ),
+                        const SizedBox(height: 14),
                         IconButton(
                           icon: const Icon(Icons.menu_rounded,
                               size: 20, color: AppColors.outline),
-                          tooltip: 'Expand sidebar',
+                          tooltip: 'Expand navigation',
                           splashRadius: 18,
                           onPressed: onToggleCollapse,
                         ),
@@ -570,7 +628,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : Row(
                       children: [
-                        _buildBrandIcon(role: role),
+                        _AnimatedBrandBadge(
+                          animation: _pulseAnimation,
+                          role: role,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -580,53 +641,57 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 isAdmin ? 'Farmora Console' : 'Farmora',
                                 style: const TextStyle(
-                                  fontSize: 17.5,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
                                   letterSpacing: -0.3,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 3),
                               isAdmin
                                   ? Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 5,
+                                            horizontal: 6,
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primaryLight,
+                                            color: const Color(0xFF00C853)
+                                                .withValues(alpha: 0.12),
                                             borderRadius:
                                                 BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: const Color(0xFF00C853)
+                                                  .withValues(alpha: 0.25),
+                                              width: 0.8,
+                                            ),
                                           ),
                                           child: const Text(
                                             'SUPER ADMIN',
                                             style: TextStyle(
-                                              fontSize: 9.5,
+                                              fontSize: 9,
                                               fontWeight: FontWeight.w800,
-                                              color: AppColors.primary,
-                                              letterSpacing: 0.5,
+                                              color: Color(0xFF007E2B),
+                                              letterSpacing: 0.6,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 5),
-                                        Container(
-                                          width: 6,
-                                          height: 6,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF00C853),
-                                            shape: BoxShape.circle,
-                                          ),
+                                        const SizedBox(width: 6),
+                                        _LivePulseDot(
+                                          animation: _pulseAnimation,
+                                          color: const Color(0xFF00E676),
+                                          size: 6.5,
                                         ),
-                                        const SizedBox(width: 3),
+                                        const SizedBox(width: 4),
                                         const Text(
                                           'LIVE',
                                           style: TextStyle(
-                                            fontSize: 9,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.w800,
                                             color: Color(0xFF00C853),
+                                            letterSpacing: 0.5,
                                           ),
                                         ),
                                       ],
@@ -691,28 +756,47 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, i) {
                   final item = navItems[i];
                   final isSelected = selectedIndex == i;
-                  final showSectionHeader = item.section != null && !isCollapsed;
+                  final showSectionHeader =
+                      item.section != null && !isCollapsed;
+                  final itemAccent = item.accentColor ?? AppColors.primary;
 
                   Widget tile;
                   if (isCollapsed) {
-                    Widget iconWidget = Icon(
-                      isSelected ? item.activeIcon : item.icon,
-                      size: 22,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.onSurfaceVariant,
+                    Widget iconWidget = Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? itemAccent.withValues(alpha: 0.16)
+                            : itemAccent.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected
+                              ? itemAccent.withValues(alpha: 0.35)
+                              : Colors.transparent,
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        size: 20,
+                        color: isSelected
+                            ? itemAccent
+                            : AppColors.onSurfaceVariant,
+                      ),
                     );
+
                     if (item.badgeCount > 0) {
                       iconWidget = Badge.count(
                         count: item.badgeCount,
-                        backgroundColor: item.badgeColor ?? AppColors.primary,
+                        backgroundColor: item.badgeColor ?? itemAccent,
                         textColor: Colors.white,
                         child: iconWidget,
                       );
                     }
 
                     tile = Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 3),
                       child: Tooltip(
                         message: item.badgeCount > 0
                             ? '${item.label} (${item.badgeCount})'
@@ -721,94 +805,162 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: InkWell(
                           onTap: () => onSelectTab(i),
                           borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            height: 46,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.12)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Center(child: iconWidget),
-                          ),
+                          child: Center(child: iconWidget),
                         ),
                       ),
                     );
                   } else {
                     tile = Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
                       child: InkWell(
                         onTap: () => onSelectTab(i),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 11,
-                            vertical: 9,
+                            horizontal: 8,
+                            vertical: 7,
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.10)
+                                ? itemAccent.withValues(alpha: 0.08)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? itemAccent.withValues(alpha: 0.20)
+                                  : Colors.transparent,
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                isSelected ? item.activeIcon : item.icon,
-                                size: 19,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 11),
-                              Expanded(
-                                child: Text(
-                                  item.label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : AppColors.onSurfaceVariant,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (item.badgeCount > 0) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: item.badgeColor ?? AppColors.primary,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    item.badgeCount > 99
-                                        ? '99+'
-                                        : '${item.badgeCount}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                              ],
+                              // Neon Indicator Pill
                               if (isSelected)
                                 Container(
                                   width: 3.5,
-                                  height: 16,
+                                  height: 24,
+                                  margin: const EdgeInsets.only(right: 7),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(2),
+                                    color: itemAccent,
+                                    borderRadius: BorderRadius.circular(3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            itemAccent.withValues(alpha: 0.6),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              // Ambient Icon Box
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? itemAccent.withValues(alpha: 0.16)
+                                      : itemAccent.withValues(alpha: 0.07),
+                                  borderRadius: BorderRadius.circular(8.5),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? itemAccent.withValues(alpha: 0.35)
+                                        : itemAccent.withValues(alpha: 0.12),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  isSelected ? item.activeIcon : item.icon,
+                                  size: 18,
+                                  color: isSelected
+                                      ? itemAccent
+                                      : AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Title and Subtitle
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      item.label,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? itemAccent
+                                            : AppColors.textPrimary,
+                                        letterSpacing: -0.1,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (item.subtitle != null) ...[
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        item.subtitle!,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w400,
+                                          color: isSelected
+                                              ? itemAccent
+                                                  .withValues(alpha: 0.85)
+                                              : AppColors.textMuted,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              // Badge with animated breathing glow
+                              if (item.badgeCount > 0) ...[
+                                AnimatedBuilder(
+                                  animation: _pulseAnimation,
+                                  builder: (context, _) {
+                                    final bColor =
+                                        item.badgeColor ?? itemAccent;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6.5,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: bColor,
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: bColor.withValues(
+                                              alpha: 0.35 +
+                                                  (_pulseAnimation.value *
+                                                      0.35),
+                                            ),
+                                            blurRadius: 4 +
+                                                (_pulseAnimation.value * 4),
+                                            spreadRadius:
+                                                _pulseAnimation.value * 1.2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        item.badgeCount > 99
+                                            ? '99+'
+                                            : '${item.badgeCount}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -827,9 +979,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Text(
                             item.section!.toUpperCase(),
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.outline.withValues(alpha: 0.75),
+                              color: AppColors.outline.withValues(alpha: 0.8),
                               letterSpacing: 1.1,
                             ),
                           ),
@@ -846,46 +998,75 @@ class _HomeScreenState extends State<HomeScreen> {
             // Live status banner for admin
             if (isAdmin && !isCollapsed) ...[
               Container(
-                margin: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+                margin: const EdgeInsets.fromLTRB(10, 6, 10, 8),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: state.maintenanceMode
-                      ? AppColors.errorContainer.withValues(alpha: 0.4)
-                      : AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: state.maintenanceMode
+                        ? [
+                            AppColors.errorContainer.withValues(alpha: 0.45),
+                            AppColors.errorContainer.withValues(alpha: 0.20),
+                          ]
+                        : const [
+                            Color(0xFFF0FDF4),
+                            Color(0xFFE8F5E9),
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: state.maintenanceMode
                         ? AppColors.error.withValues(alpha: 0.3)
-                        : AppColors.primary.withValues(alpha: 0.2),
+                        : const Color(0xFF00C853).withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      state.maintenanceMode
-                          ? Icons.warning_amber_rounded
-                          : Icons.shield_rounded,
-                      size: 14,
+                    _LivePulseDot(
+                      animation: _pulseAnimation,
                       color: state.maintenanceMode
                           ? AppColors.error
-                          : AppColors.primary,
+                          : const Color(0xFF00C853),
+                      size: 6.5,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        state.maintenanceMode
-                            ? 'Maintenance Mode'
-                            : 'All Systems Live',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: state.maintenanceMode
-                              ? AppColors.error
-                              : AppColors.primary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            state.maintenanceMode
+                                ? 'Maintenance Active'
+                                : 'All Systems Operational',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: state.maintenanceMode
+                                  ? AppColors.error
+                                  : const Color(0xFF007E2B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            state.maintenanceMode
+                                ? 'Public traffic redirected'
+                                : '99.9% Uptime • Real-Time Sync',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w500,
+                              color: state.maintenanceMode
+                                  ? AppColors.error.withValues(alpha: 0.8)
+                                  : const Color(0xFF2E7D32),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -900,7 +1081,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.outlineVariant.withValues(alpha: 0.25),
             ),
             Padding(
-              padding: EdgeInsets.all(isCollapsed ? 8.0 : 12.0),
+              padding: EdgeInsets.all(isCollapsed ? 8.0 : 10.0),
               child: isCollapsed
                   ? Tooltip(
                       message: state.displayName.isNotEmpty
@@ -916,21 +1097,40 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (profileIdx != -1) onSelectTab(profileIdx);
                         },
                         borderRadius: BorderRadius.circular(20),
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.15),
-                          child: Text(
-                            (state.displayName.isNotEmpty
-                                    ? state.displayName[0]
-                                    : (state.phone.isNotEmpty
-                                        ? state.phone[0]
-                                        : (isAdmin ? 'A' : 'U')))
-                                .toUpperCase(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                              fontSize: 13,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: isAdmin
+                                  ? const [
+                                      Color(0xFF00C853),
+                                      Color(0xFF00B0FF),
+                                      Color(0xFF7C4DFF),
+                                    ]
+                                  : const [
+                                      AppColors.primary,
+                                      Color(0xFF66BB6A),
+                                    ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 17,
+                            backgroundColor: Colors.white,
+                            child: Text(
+                              (state.displayName.isNotEmpty
+                                      ? state.displayName[0]
+                                      : (state.phone.isNotEmpty
+                                          ? state.phone[0]
+                                          : (isAdmin ? 'A' : 'U')))
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
@@ -946,34 +1146,78 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
+                          horizontal: 8,
+                          vertical: 7,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                AppColors.outlineVariant.withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 17,
-                              backgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.15),
-                              child: Text(
-                                (state.displayName.isNotEmpty
-                                        ? state.displayName[0]
-                                        : (state.phone.isNotEmpty
-                                            ? state.phone[0]
-                                            : (isAdmin ? 'A' : 'U')))
-                                    .toUpperCase(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                  fontSize: 13,
+                            Stack(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: isAdmin
+                                          ? const [
+                                              Color(0xFF00C853),
+                                              Color(0xFF00B0FF),
+                                              Color(0xFF7C4DFF),
+                                            ]
+                                          : const [
+                                              AppColors.primary,
+                                              Color(0xFF66BB6A),
+                                            ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Colors.white,
+                                    child: Text(
+                                      (state.displayName.isNotEmpty
+                                              ? state.displayName[0]
+                                              : (state.phone.isNotEmpty
+                                                  ? state.phone[0]
+                                                  : (isAdmin ? 'A' : 'U')))
+                                          .toUpperCase(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 9,
+                                    height: 9,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF00C853),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 9),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -989,7 +1233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 : 'Farmora User')),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                      fontSize: 12.5,
                                       color: AppColors.textPrimary,
                                     ),
                                     maxLines: 1,
@@ -1002,7 +1246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ? 'Platform Operator'
                                             : role.name),
                                     style: const TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       color: AppColors.textMuted,
                                     ),
                                     maxLines: 1,
@@ -1026,40 +1270,163 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
 
-  static Widget _buildBrandIcon({Role role = Role.farmer}) {
-    final isAdmin = role == Role.admin;
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isAdmin
-              ? const [Color(0xFF004D1A), Color(0xFF007E2B)]
-              : const [
-                  AppColors.splashGradientStart,
-                  AppColors.splashGradientEnd,
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: (isAdmin ? const Color(0xFF004D1A) : AppColors.primary)
-                .withValues(alpha: 0.25),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+/// Realistic animated pulsing live indicator dot with outward radiating aura.
+class _LivePulseDot extends StatelessWidget {
+  final Animation<double> animation;
+  final Color color;
+  final double size;
+
+  const _LivePulseDot({
+    required this.animation,
+    this.color = const Color(0xFF00E676),
+    this.size = 8.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return SizedBox(
+          width: size * 2.2,
+          height: size * 2.2,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Radiating expanding wave
+              Container(
+                width: size * (1.2 + (animation.value * 0.9)),
+                height: size * (1.2 + (animation.value * 0.9)),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(
+                    alpha: (0.35 * (1.0 - animation.value * 0.65))
+                        .clamp(0.0, 1.0),
+                  ),
+                ),
+              ),
+              // Inner glowing core
+              Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.8),
+                      blurRadius: 4 + (animation.value * 3),
+                      spreadRadius: animation.value * 1.2,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Icon(
-        isAdmin
-            ? Icons.admin_panel_settings_rounded
-            : Icons.agriculture_rounded,
-        color: Colors.white,
-        size: isAdmin ? 22 : 20,
-      ),
+        );
+      },
+    );
+  }
+}
+
+/// Realistic 3D depth brand badge with ambient glow and top specular highlight.
+class _AnimatedBrandBadge extends StatelessWidget {
+  final Animation<double> animation;
+  final Role role;
+
+  const _AnimatedBrandBadge({
+    required this.animation,
+    this.role = Role.farmer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAdmin = role == Role.admin;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final glowSpread = animation.value * 1.5;
+        final glowAlpha = 0.22 + (animation.value * 0.15);
+
+        return Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isAdmin
+                  ? const [
+                      Color(0xFF003815),
+                      Color(0xFF007E2B),
+                      Color(0xFF00C853),
+                    ]
+                  : const [
+                      AppColors.splashGradientStart,
+                      AppColors.primary,
+                      AppColors.splashGradientEnd,
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: [
+              BoxShadow(
+                color: (isAdmin
+                        ? const Color(0xFF00C853)
+                        : AppColors.primary)
+                    .withValues(alpha: glowAlpha),
+                blurRadius: 6 + glowSpread * 2,
+                spreadRadius: glowSpread,
+                offset: const Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 3,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Specular gloss highlight on top half
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 17,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(10),
+                    ),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.22),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+              Icon(
+                isAdmin
+                    ? Icons.admin_panel_settings_rounded
+                    : Icons.agriculture_rounded,
+                color: Colors.white,
+                size: isAdmin ? 22 : 20,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1071,6 +1438,8 @@ class _NavItem {
   final String? section;
   final int badgeCount;
   final Color? badgeColor;
+  final Color? accentColor;
+  final String? subtitle;
 
   const _NavItem({
     required this.label,
@@ -1079,6 +1448,8 @@ class _NavItem {
     this.section,
     this.badgeCount = 0,
     this.badgeColor,
+    this.accentColor,
+    this.subtitle,
   });
 }
 
