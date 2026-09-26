@@ -5,6 +5,9 @@ class MarketPriceIndex {
   final String cropName;
   final String category;
   final String district;
+  final String marketName;
+  final String unit;
+  final int reportCount;
   final double minPricePerKg;
   final double maxPricePerKg;
   final double averagePricePerKg;
@@ -16,6 +19,9 @@ class MarketPriceIndex {
     required this.cropName,
     required this.category,
     required this.district,
+    this.marketName = '',
+    this.unit = 'kg',
+    this.reportCount = 0,
     required this.minPricePerKg,
     required this.maxPricePerKg,
     required this.averagePricePerKg,
@@ -29,6 +35,9 @@ class MarketPriceIndex {
       'cropName': cropName,
       'category': category,
       'district': district,
+      'marketName': marketName,
+      'unit': unit,
+      'reportCount': reportCount,
       'minPricePerKg': minPricePerKg,
       'maxPricePerKg': maxPricePerKg,
       'averagePricePerKg': averagePricePerKg,
@@ -43,6 +52,9 @@ class MarketPriceIndex {
       cropName: map['cropName']?.toString() ?? '',
       category: map['category']?.toString() ?? 'Vegetables',
       district: map['district']?.toString() ?? 'Dambulla',
+      marketName: map['marketName']?.toString() ?? '',
+      unit: map['unit']?.toString() ?? 'kg',
+      reportCount: firebaseInt(map['reportCount']) ?? 0,
       minPricePerKg: firebaseDouble(map['minPricePerKg']) ?? 0.0,
       maxPricePerKg: firebaseDouble(map['maxPricePerKg']) ?? 0.0,
       averagePricePerKg: firebaseDouble(map['averagePricePerKg']) ?? 0.0,
@@ -56,6 +68,9 @@ class MarketPriceIndex {
     String? cropName,
     String? category,
     String? district,
+    String? marketName,
+    String? unit,
+    int? reportCount,
     double? minPricePerKg,
     double? maxPricePerKg,
     double? averagePricePerKg,
@@ -67,6 +82,9 @@ class MarketPriceIndex {
       cropName: cropName ?? this.cropName,
       category: category ?? this.category,
       district: district ?? this.district,
+      marketName: marketName ?? this.marketName,
+      unit: unit ?? this.unit,
+      reportCount: reportCount ?? this.reportCount,
       minPricePerKg: minPricePerKg ?? this.minPricePerKg,
       maxPricePerKg: maxPricePerKg ?? this.maxPricePerKg,
       averagePricePerKg: averagePricePerKg ?? this.averagePricePerKg,

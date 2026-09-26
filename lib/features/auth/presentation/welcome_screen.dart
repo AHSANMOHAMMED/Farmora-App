@@ -18,7 +18,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -32,7 +32,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             const FarmoraLogo(size: 80),
             const SizedBox(height: 20),
             Text(
-              l10n.welcome,
+              l10n?.welcome ?? 'Welcome to Farmora',
               style: const TextStyle(
                 fontSize: 40,
                 height: 1.05,
@@ -42,7 +42,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              l10n.splashSubtitle,
+              l10n?.splashSubtitle ?? 'Fresh produce directly from local farmers',
               style: const TextStyle(
                 fontSize: 17,
                 color: AppColors.textSecondary,
@@ -51,7 +51,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
             const SizedBox(height: 36),
             Text(
-              l10n.selectRole,
+              l10n?.selectRole ?? 'Select your role',
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 17,
@@ -103,7 +103,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Text(
-                    l10n.createAccount,
+                    l10n?.createAccount ?? 'Create Account',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -120,7 +120,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 ),
                 icon: const Icon(Icons.login_rounded),
-                label: Text(l10n.signIn),
+                label: Text(l10n?.signIn ?? 'Sign In'),
               ),
             ),
           ],

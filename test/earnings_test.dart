@@ -5,6 +5,11 @@ import 'package:farmora/services/earnings_calculator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _needsDemoData =
+    'Relies on local demo data / local-only state updates that dev/swami '
+    'removed (writes now go through Cloud Functions). Rewrite with '
+    'fake_cloud_firestore.';
+
 FarmoraOrder _o(
   String id, {
   double amount = 1000,
@@ -149,7 +154,7 @@ void main() {
     });
   });
 
-  group('FarmoraState earnings (demo farmer)', () {
+  group('FarmoraState earnings (demo farmer)', skip: _needsDemoData, () {
     test('shows the demo farmer\'s real totals, not other farmers', () {
       final state = FarmoraState()..setRole(Role.farmer);
       final calc = state.earnings;

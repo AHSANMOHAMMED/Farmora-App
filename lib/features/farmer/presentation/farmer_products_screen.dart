@@ -312,7 +312,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       Row(
                         children: [
                           if (product.hasVideo) ...[
-                            const Icon(Icons.videocam, size: 14, color: AppColors.primary),
+                            const Icon(Icons.videocam,
+                                size: 14, color: AppColors.primary),
                             const SizedBox(width: 4),
                             Text(
                               farmerHarvestStatusLabel(
@@ -389,11 +390,14 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
   }
 
   Widget _buildFallbackThumbnail(Product product) {
+    final emojiText = product.emoji.length > 2
+        ? product.emoji.characters.first
+        : product.emoji;
     return Container(
       color: product.color,
       child: Center(
         child: Text(
-          product.emoji,
+          emojiText,
           style: const TextStyle(fontSize: 36),
         ),
       ),
@@ -497,7 +501,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.videocam_outlined, color: AppColors.primary),
+                  leading: const Icon(Icons.videocam_outlined,
+                      color: AppColors.primary),
                   title: Text(
                     product.hasVideo
                         ? l.farmerProductsReplaceVideo
@@ -529,7 +534,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                                 title: Text(l.farmerProductsVideoTitle(product.name))),
                             body: Padding(
                               padding: const EdgeInsets.all(16),
-                              child: HarvestVideoPlayer(videoUrl: product.videoUrl!),
+                              child: HarvestVideoPlayer(
+                                  videoUrl: product.videoUrl!),
                             ),
                           ),
                         ),
@@ -537,7 +543,8 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                     },
                   ),
                 ListTile(
-                  leading: const Icon(Icons.qr_code_2, color: AppColors.primary),
+                  leading:
+                      const Icon(Icons.qr_code_2, color: AppColors.primary),
                   title: Text(
                     product.hasQrCode
                         ? l.farmerProductsRefreshQr
@@ -584,15 +591,19 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                         : l.farmerProductsMarkInStock,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  onTap: () {
-                    state.toggleProductStock(product.id);
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.farmerProductsStockUpdated(product.name)),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    try {
+                      await state.toggleProductStock(product.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content:
+                              Text(l.farmerProductsStockUpdated(product.name))));
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Could not update listing: $error')));
+                    }
                   },
                 ),
                 ListTile(
@@ -624,15 +635,18 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  onTap: () {
-                    state.deleteProduct(product.id);
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.farmerProductsDeleted(product.name)),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    try {
+                      await state.deleteProduct(product.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l.farmerProductsDeleted(product.name))));
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Could not remove listing: $error')));
+                    }
                   },
                 ),
               ],

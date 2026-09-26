@@ -2,6 +2,7 @@ import '../core/localization/app_format.dart';
 import '../core/localization/l10n.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
+import '../core/utils/firebase_values.dart';
 
 import 'bank_details.dart';
 
@@ -65,6 +66,7 @@ class FarmoraOrder {
   final String buyerId;
   final String farmerId;
   final String transporterId;
+
   /// Product linked to this order. Used to clean up the harvest video on
   /// delivery (videos are auto-deleted once an order completes).
   final String productId;
@@ -136,7 +138,8 @@ class FarmoraOrder {
     'in transit',
   };
 
-  String get _norm => status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+  String get _norm =>
+      status.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
 
   bool get isPending => _norm == 'pending';
   bool get isAccepted => activeStatuses.contains(_norm);
@@ -145,8 +148,7 @@ class FarmoraOrder {
       status.toLowerCase() == 'declined' || status.toLowerCase() == 'rejected';
   bool get isCancelled => isDeclined || _norm == 'cancelled' || _norm == 'canceled';
 
-  double get total =>
-      totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
+  double get total => totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
 
   String get displayTotal {
     if (totalMinor > 0) {
@@ -178,7 +180,6 @@ class FarmoraOrder {
     }
   }
 
-  bool get isPaid => paymentState == PaymentState.paid;
   bool get isBankDeposit => paymentMethod == PaymentMethod.bankDeposit;
 
   /// Money still owed to the farmer: unpaid, not cancelled/refunded/disputed.
@@ -213,7 +214,9 @@ class FarmoraOrder {
         PaymentState.refunded => L10n.current.statusRefunded,
         PaymentState.disputed => L10n.current.statusDisputed,
       };
-  bool get isDisputed => disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
+  bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'released';
+  bool get isDisputed =>
+      disputeId != null && disputeId!.isNotEmpty || paymentStatus == 'disputed';
   bool get canReview => isCompleted && !isDisputed;
 
   FarmoraOrder copyWith({
@@ -398,10 +401,10 @@ class FarmoraOrder {
       escrowStatus: (data['escrowStatus'] ?? 'not_funded').toString(),
       deliveryStatus: (data['deliveryStatus'] ?? '').toString(),
       disputeId: data['disputeId'] as String?,
-      createdAt: parseFirestoreDate(data['createdAt']) ??
+      createdAt: firebaseDate(data['createdAt']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       paymentMethod: (data['paymentMethod'] ?? PaymentMethod.cod).toString(),
-      paidAt: parseFirestoreDate(data['paidAt']),
+      paidAt: firebaseDate(data['paidAt']),
       proofImageUrl: data['proofImageUrl'] as String?,
       rejectionReason: data['rejectionReason'] as String?,
       bankDetailsSnapshot: data['bankDetailsSnapshot'] is Map

@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../core/localization/l10n.dart';
+import '../../../core/config/app_backend.dart';
+import '../../../services/firebase_service.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
 
@@ -28,51 +30,48 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   @override
   Stream<List<CollectionJob>> watchJobs(String logisticsProviderId) {
-    final controller = StreamController<List<CollectionJob>>();
-    List<CollectionJob> available = const [];
-    List<CollectionJob> assigned = const [];
-    var availableReady = false;
-    var assignedReady = false;
-
+    late final StreamController<List<CollectionJob>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? availableSub;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? assignedSub;
+    final available = <String, CollectionJob>{};
+    final assigned = <String, CollectionJob>{};
     void emit() {
-      if (!availableReady || !assignedReady || controller.isClosed) return;
-      final merged = <String, CollectionJob>{
-        for (final job in available) job.id: job,
-        for (final job in assigned) job.id: job,
-      }.values.toList()
+      final merged = {...available, ...assigned}.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      controller.add(merged);
+      controller.add(List.unmodifiable(merged));
     }
 
-    final availableSubscription = _jobs
-        .where('status', isEqualTo: 'requested')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        available = snapshot.docs.map(_fromDocument).toList();
-        availableReady = true;
-        emit();
+    controller = StreamController<List<CollectionJob>>(
+      onListen: () {
+        availableSub = _jobs
+            .where('status', isEqualTo: 'requested')
+            .where('transporterId', isNull: true)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          available
+            ..clear()
+            ..addEntries(snapshot.docs.map((doc) =>
+                MapEntry(doc.id, _fromDocument(doc))));
+          emit();
+        }, onError: controller.addError);
+        assignedSub = _jobs
+            .where('transporterId', isEqualTo: logisticsProviderId)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          assigned
+            ..clear()
+            ..addEntries(snapshot.docs.map((doc) =>
+                MapEntry(doc.id, _fromDocument(doc))));
+          emit();
+        }, onError: controller.addError);
       },
-      onError: controller.addError,
-    );
-    final assignedSubscription = _jobs
-        .where('transporterId', isEqualTo: logisticsProviderId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        assigned = snapshot.docs.map(_fromDocument).toList();
-        assignedReady = true;
-        emit();
+      onCancel: () async {
+        await availableSub?.cancel();
+        await assignedSub?.cancel();
       },
-      onError: controller.addError,
     );
-
-    controller.onCancel = () async {
-      await availableSubscription.cancel();
-      await assignedSubscription.cancel();
-    };
     return controller.stream;
   }
 
@@ -82,6 +81,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       final snapshots = await Future.wait([
         _jobs
             .where('status', isEqualTo: 'requested')
+            .where('transporterId', isNull: true)
             .orderBy('createdAt', descending: true)
             .get(),
         _jobs
@@ -168,6 +168,10 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
 
   Future<void> _transition(String jobId, String status,
       {String? reason}) async {
+    if (!kUseCloudFunctions) {
+      await FirestoreService().transitionTransport(jobId, status);
+      return;
+    }
     await _functions.httpsCallable('transitionTransport').call<void>({
       'jobId': jobId,
       'status': status,

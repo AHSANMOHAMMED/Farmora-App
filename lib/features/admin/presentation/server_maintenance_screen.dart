@@ -4,8 +4,6 @@ import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
-import '../../../core/utils/app_errors.dart';
-import '../../../services/firebase_service.dart';
 
 class ServerMaintenanceScreen extends StatefulWidget {
   const ServerMaintenanceScreen({super.key});
@@ -297,7 +295,7 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
 
           const SizedBox(height: 24),
 
-          // Operational Actions (Purge Cache, Backup, Seed)
+          // Operational Actions
           Text(
             l.adminServerActionsTitle,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
@@ -321,47 +319,6 @@ class _ServerMaintenanceScreenState extends State<ServerMaintenanceScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(l.adminServerPurgeSnack)),
                     );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.cloud_upload_rounded, color: Colors.teal),
-                  title: Text(l.adminServerBackupTitle),
-                  subtitle: Text(l.adminServerBackupSubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.adminServerBackupSnack('gs://farmora-backups/')),
-                        backgroundColor: Colors.teal,
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.add_business_rounded, color: AppColors.primary),
-                  title: Text(l.adminServerSeedTitle),
-                  subtitle: Text(l.adminServerSeedSubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l.adminServerSeeding)),
-                    );
-                    try {
-                      await FirestoreService().seedDatabase();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminServerSeedSuccess)),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminServerSeedNotice(userMessage(e, action: 'seed marketplace data')))),
-                        );
-                      }
-                    }
                   },
                 ),
               ],

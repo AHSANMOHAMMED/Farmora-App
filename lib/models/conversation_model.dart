@@ -1,4 +1,4 @@
-import 'order.dart' show parseFirestoreDate;
+import '../core/utils/firebase_values.dart';
 
 class FarmoraConversation {
   final String id;
@@ -25,7 +25,7 @@ class FarmoraConversation {
       orderId: (data['orderId'] ?? '').toString(),
       participantIds: List<String>.from(data['participantIds'] ?? []),
       lastMessage: (data['lastMessage'] ?? '').toString(),
-      lastMessageAt: parseFirestoreDate(data['lastMessageAt']),
+      lastMessageAt: firebaseDate(data['lastMessageAt']),
       unreadCounts: Map<String, int>.from(
         (data['unreadCounts'] as Map? ?? {}).map(
           (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
@@ -88,6 +88,8 @@ class FarmoraMessage {
       hasImage && attachmentKind == ChatAttachmentKind.paymentProof;
 
   factory FarmoraMessage.fromMap(String id, Map<String, dynamic> data) {
+    DateTime parseTs(dynamic v) =>
+        firebaseDate(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
     return FarmoraMessage(
       id: id,
       conversationId: (data['conversationId'] ?? '').toString(),
@@ -99,9 +101,8 @@ class FarmoraMessage {
       attachmentPath: data['attachmentPath'] as String?,
       attachmentKind:
           (data['attachmentKind'] ?? ChatAttachmentKind.photo).toString(),
-      readAt: parseFirestoreDate(data['readAt']),
-      // Pending server timestamps are null locally; sort those last.
-      createdAt: parseFirestoreDate(data['createdAt']) ?? DateTime.now(),
+      readAt: firebaseDate(data['readAt']),
+      createdAt: parseTs(data['createdAt']),
     );
   }
 }

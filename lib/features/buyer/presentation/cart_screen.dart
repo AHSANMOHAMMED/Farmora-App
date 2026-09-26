@@ -7,9 +7,67 @@ import '../../payments/presentation/payment_method_selector.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
+import '../../../services/firebase_service.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
+
+  Future<String?> _chooseTransporter(BuildContext context) async {
+    var transporters = await FirestoreService().getAvailableTransporters();
+    if (!context.mounted) return null;
+    if (transporters.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No available transporters are registered yet.')),
+      );
+      return null;
+    }
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose a transporter'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: transporters.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final transporter = transporters[index];
+              final name =
+                  (transporter['displayName'] ?? 'Transporter').toString();
+              final district = (transporter['district'] ?? '').toString();
+              final vehicle = (transporter['vehicleType'] ?? '').toString();
+              final capacity = transporter['vehicleCapacity'];
+              final details = [
+                if (district.isNotEmpty) district,
+                if (vehicle.isNotEmpty) vehicle,
+                if (capacity != null) '$capacity kg capacity',
+              ].join(' • ');
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage:
+                      (transporter['photoUrl'] ?? '').toString().isNotEmpty
+                          ? NetworkImage(transporter['photoUrl'].toString())
+                          : null,
+                  child: (transporter['photoUrl'] ?? '').toString().isEmpty
+                      ? const Icon(Icons.local_shipping_outlined)
+                      : null,
+                ),
+                title: Text(name),
+                subtitle: Text(
+                  details.isEmpty ? 'Verified transporter' : details,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(dialogContext)
+                    .pop(transporter['uid'].toString()),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -153,14 +211,23 @@ class CartScreen extends StatelessWidget {
                                     ? SafeImage(
                                         path: item.product.imagePath!,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Center(child: Text(
-                                          item.product.emoji,
+                                        errorBuilder: (_, __, ___) => Center(
+                                            child: Text(
+                                          item.product.emoji.length > 2
+                                              ? item.product.emoji.characters
+                                                  .first
+                                              : item.product.emoji,
                                           style: const TextStyle(fontSize: 32),
                                         )),
                                       )
-                                    : Text(
-                                        item.product.emoji,
-                                        style: const TextStyle(fontSize: 32),
+                                    : Center(
+                                        child: Text(
+                                          item.product.emoji.length > 2
+                                              ? item.product.emoji.characters
+                                                  .first
+                                              : item.product.emoji,
+                                          style: const TextStyle(fontSize: 32),
+                                        ),
                                       ),
                               ),
                             ),
@@ -227,7 +294,8 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                     child: Text(
                                       '${item.quantity}',
                                       style: const TextStyle(
@@ -318,7 +386,8 @@ class CartScreen extends StatelessWidget {
                           onPressed: state.placingOrder
                               ? null
                               : () async {
-                                  final address = state.deliveryAddressDraft.trim();
+                                  final address =
+                                      state.deliveryAddressDraft.trim();
                                   if (address.length < 5) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -328,12 +397,22 @@ class CartScreen extends StatelessWidget {
                                     );
                                     return;
                                   }
-                                  final ok = await state.placeOrder(deliveryAddress: address);
+                                  final transporterId =
+                                      await _chooseTransporter(context);
+                                  if (transporterId == null) return;
+                                  final ok = await state.placeOrder(
+                                    deliveryAddress: address,
+                                    transporterId: transporterId,
+                                  );
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(ok ? l.buyerOrderPlaced : l.buyerOrderPlaceFailed),
-                                      backgroundColor: ok ? AppColors.primary : AppColors.onSurfaceVariant,
+                                      content: Text(ok
+                                          ? 'Request sent. Order will confirm after transporter accepts.'
+                                          : l.buyerOrderPlaceFailed),
+                                      backgroundColor: ok
+                                          ? AppColors.primary
+                                          : AppColors.onSurfaceVariant,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -349,8 +428,13 @@ class CartScreen extends StatelessWidget {
                             elevation: 2,
                           ),
                           icon: context.watch<FarmoraState>().placingOrder
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.check_circle_outline, size: 20),
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_outline,
+                                  size: 20),
                           label: Text(
                             context.watch<FarmoraState>().placingOrder ? l.buyerPlacingOrder : l.placeOrder,
                             maxLines: 1,

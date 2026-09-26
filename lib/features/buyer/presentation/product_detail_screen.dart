@@ -9,6 +9,7 @@ import '../../../providers/farmora_state.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
+import '../../transporter/presentation/nearby_transporters_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Product product;
@@ -215,6 +216,103 @@ class ProductDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
+                // Transport & Logistics Information Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.local_shipping_outlined,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Transport & Delivery',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Islandwide verified transport network',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'This produce is eligible for verified logistics pickup directly from the farm to your doorstep.',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: AppColors.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NearbyTransportersScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.near_me_rounded, size: 18),
+                          label: const Text('Find Nearby Transporters'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Description
                 if (product.description.isNotEmpty) ...[
                   Text(
@@ -368,11 +466,12 @@ class ProductDetailScreen extends StatelessWidget {
   }
 
   Widget _buildFallbackImage() {
+    final emojiText = product.emoji.length > 2 ? product.emoji.characters.first : product.emoji;
     return Container(
       color: product.color,
       child: Center(
         child: Text(
-          product.emoji,
+          emojiText,
           style: const TextStyle(fontSize: 80),
         ),
       ),

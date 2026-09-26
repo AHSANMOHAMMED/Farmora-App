@@ -248,34 +248,6 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
               MaterialPageRoute(builder: (_) => const AuditLogScreen()),
             ),
           ),
-          const Divider(),
-          ListTile(
-            title: Text(l.adminSettingsSeedTitle),
-            subtitle: Text(l.adminSettingsSeedSubtitle),
-            trailing: const Icon(Icons.add_box),
-            onTap: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.adminServerSeeding)),
-              );
-              try {
-                await FirestoreService().seedDatabase();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l.adminSettingsSeeded)),
-                  );
-                }
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l.adminSettingsSeedFailed(
-                          userMessage(error, action: 'seed marketplace data'))),
-                    ),
-                  );
-                }
-              }
-            },
-          ),
         ],
       ),
     );

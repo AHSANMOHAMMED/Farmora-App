@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cached_network_image/cached_network_image.dart';
 
 class SafeImage extends StatelessWidget {
@@ -21,13 +22,34 @@ class SafeImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (path.isEmpty) {
-      return errorBuilder?.call(context, Exception('Empty path'), null) ?? const Icon(Icons.broken_image, color: Colors.grey);
+      return errorBuilder?.call(context, Exception('Empty path'), null) ??
+          const Icon(Icons.broken_image, color: Colors.grey);
+    }
+
+    if (path.startsWith('data:image')) {
+      try {
+        final commaIdx = path.indexOf(',');
+        final base64Str = commaIdx != -1 ? path.substring(commaIdx + 1) : path;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: fit,
+          width: width,
+          height: height,
+          errorBuilder: errorBuilder ??
+              (context, error, stackTrace) =>
+                  const Icon(Icons.broken_image, color: Colors.grey),
+        );
+      } catch (e, st) {
+        return errorBuilder?.call(context, e, st) ??
+            const Icon(Icons.broken_image, color: Colors.grey);
+      }
     }
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
+      // cached_network_image's web cache adapter can fail on Firebase Storage
+      // download URLs. Let the browser load the tokenized URL directly.
       if (kIsWeb) {
-        // On web, fetching bytes needs CORS on the Storage bucket. Fall back
-        // to an <img> element so Firebase Storage URLs render either way.
         return Image.network(
           path,
           fit: fit,
@@ -60,9 +82,9 @@ class SafeImage extends StatelessWidget {
           color: Colors.grey.shade200,
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
-        errorWidget: (context, url, error) => errorBuilder != null 
-          ? errorBuilder!(context, error, null)
-          : const Icon(Icons.broken_image, color: Colors.grey),
+        errorWidget: (context, url, error) => errorBuilder != null
+            ? errorBuilder!(context, error, null)
+            : const Icon(Icons.broken_image, color: Colors.grey),
       );
     } else {
       return Image.asset(
@@ -70,7 +92,9 @@ class SafeImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: errorBuilder ?? (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
+        errorBuilder: errorBuilder ??
+            (context, error, stackTrace) =>
+                const Icon(Icons.broken_image, color: Colors.grey),
       );
     }
   }

@@ -25,6 +25,8 @@ import '../../admin/presentation/user_management_screen.dart';
 import '../../admin/presentation/logistics_management_screen.dart';
 import '../../admin/presentation/system_settings_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
+import '../../buyer/presentation/buyer_market_screen.dart';
+import 'widgets/awaiting_verification_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -69,7 +71,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final l10n = context.l10n;
 
-    if (role == Role.farmer) {
+    final isUnverified = role != Role.admin && !state.isVerified;
+    if (isUnverified) {
+      screens = [
+        const AwaitingVerificationView(),
+        role == Role.transporter
+            ? const TransporterProfileScreen()
+            : const ProfileScreen(),
+      ];
+      navItems = [
+        const _NavItem(
+          label: 'Verification',
+          icon: Icons.hourglass_top_outlined,
+          activeIcon: Icons.hourglass_top_rounded,
+        ),
+        _NavItem(
+          label: l10n.profile,
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+        ),
+      ];
+    } else if (role == Role.farmer) {
       // Stitch bottom nav: Home, Products, Orders, Earnings, Profile
       screens = const [
         DashboardScreen(),
@@ -174,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         DashboardScreen(),
         BuyerProductsScreen(),
         BuyerOffersScreen(),
+        BuyerMarketScreen(),
         BuyerOrdersScreen(),
         ProfileScreen(),
       ];
@@ -190,6 +213,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: l10n.homeNavOffers,
             icon: Icons.local_offer_outlined,
             activeIcon: Icons.local_offer_rounded),
+        const _NavItem(
+            label: 'Requests',
+            icon: Icons.campaign_outlined,
+            activeIcon: Icons.campaign_rounded),
         _NavItem(
             label: l10n.homeNavOrders,
             icon: Icons.receipt_long_outlined,
@@ -201,9 +228,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
 
+    final safeTabIndex = tabIndex >= screens.length ? 0 : tabIndex;
     return Scaffold(
       body: IndexedStack(
-        index: tabIndex,
+        index: safeTabIndex,
         children: screens,
       ),
       // Stitch: fixed bottom-0 w-full bg-surface/80 backdrop-blur shadow-[0_-1px_8px] h-20
@@ -224,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           // Stitch: selected = text-primary font-bold, unselected = text-on-surface-variant
           indicatorColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-          selectedIndex: tabIndex,
+          selectedIndex: safeTabIndex,
           onDestinationSelected: (i) => setState(() => tabIndex = i),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           // Small labels so Tamil/Sinhala fit six tabs on a 360px phone.
@@ -242,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           destinations: navItems.asMap().entries.map(
             (e) {
-              final isSelected = tabIndex == e.key;
+              final isSelected = safeTabIndex == e.key;
               final item = e.value;
               return NavigationDestination(
                 icon: Icon(

@@ -8,6 +8,7 @@ import '../../../core/widgets/async_state_view.dart';
 import '../../../models/notification_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
+import '../../transporter/presentation/transport_request_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -364,9 +365,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return InkWell(
-      onTap: () {
+      onTap: () async {
         if (!notif.read) {
           state.markNotificationRead(notif.id);
+        }
+        if (notif.type.toLowerCase() != 'logistics' ||
+            notif.referenceId == null ||
+            notif.referenceId!.isEmpty ||
+            state.currentUserId.isEmpty) {
+          return;
+        }
+        try {
+          final job = await _service.getTransportJobForOrder(
+            orderId: notif.referenceId!,
+            transporterId: state.currentUserId,
+          );
+          if (!mounted) return;
+          if (job == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Delivery request is no longer available.')),
+            );
+            return;
+          }
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TransportRequestDetailScreen(job: job),
+            ),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open delivery request: $e')),
+          );
         }
       },
       borderRadius: BorderRadius.circular(14),
