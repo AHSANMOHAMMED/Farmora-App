@@ -6,6 +6,7 @@ import '../../../core/localization/language_prefs.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../onboarding/presentation/language_selection_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
+import '../../auth/presentation/auth_gate.dart';
 
 /// Clean and modern splash screen for the Farmora mobile application.
 ///
@@ -22,7 +23,7 @@ class SplashScreen extends StatefulWidget {
 
   /// Whether to automatically navigate on completion: to the
   /// [LanguageSelectionScreen] on first launch (no saved language), then
-  /// [OnboardingScreen].
+  /// [OnboardingScreen] (first launch only), then [AuthGate].
   final bool autoNavigate;
 
   /// Whether to use the raster image asset instead of vector custom paint.
@@ -112,13 +113,18 @@ class _SplashScreenState extends State<SplashScreen>
     } else if (widget.autoNavigate) {
       _completed = true;
       final savedLanguage = await LanguagePrefs.load();
+      final onboardingSeen = await OnboardingPrefs.seen();
       if (!mounted) return;
+      // Onboarding only on the first launch; afterwards straight to the
+      // AuthGate (which routes by auth + profile).
+      final Widget afterLanguage =
+          onboardingSeen ? const AuthGate() : const OnboardingScreen();
       final Widget next = savedLanguage == null
           ? LanguageSelectionScreen(
               onSelected: (context) => Navigator.of(context)
-                  .pushReplacement(_fadeRoute(const OnboardingScreen())),
+                  .pushReplacement(_fadeRoute(afterLanguage)),
             )
-          : const OnboardingScreen();
+          : afterLanguage;
       Navigator.of(context).pushReplacement(_fadeRoute(next));
     }
   }

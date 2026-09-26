@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/user_role.dart';
 import 'verification_review_screen.dart';
 
@@ -39,7 +40,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final l = context.l10n;
 
     final filteredUsers = state.users.where((user) {
-      final name = (user['name'] ?? '').toString().toLowerCase();
+      final name = (user['name'] ?? user['displayName'] ?? '').toString().toLowerCase();
       final phone = (user['phone'] ?? '').toString().toLowerCase();
       final email = (user['email'] ?? '').toString().toLowerCase();
       final uid = (user['uid'] ?? user['id'] ?? '').toString().toLowerCase();
@@ -197,16 +198,45 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  /// Users with an admin call in flight.
+  final Set<String> _busyUids = {};
+
+  /// Awaits one admin action; shows [success] only after it returns and
+  /// `userMessage(e)` on failure.
+  Future<void> _runUserAction(
+    String uid,
+    Future<void> Function() action, {
+    required String success,
+    required String actionName,
+  }) async {
+    if (_busyUids.contains(uid)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busyUids.add(uid));
+    try {
+      await action();
+      messenger.showSnackBar(SnackBar(content: Text(success)));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(userMessage(e, action: actionName))));
+    } finally {
+      if (mounted) setState(() => _busyUids.remove(uid));
+    }
+  }
+
   void _showUserActionSheet(BuildContext context, Map<String, dynamic> user, FarmoraState state) {
     final l = context.l10n;
     final uid = (user['uid'] ?? user['id'] ?? '').toString();
-    final name = (user['name'] ?? l.adminUsersUnknownUser).toString();
+    final name = (user['name'] ?? user['displayName'] ?? l.adminUsersUnknownUser).toString();
     final role = (user['role'] ?? 'farmer').toString();
     final phone = (user['phone'] ?? l.adminUsersNotProvided).toString();
     final email = (user['email'] ?? l.adminUsersNotProvided).toString();
     final district = (user['district'] ?? l.adminUsersDefaultDistrict).toString();
     final verified = user['isVerified'] == true;
     final suspended = user['isSuspended'] == true;
+    final deleted = user['isDeleted'] == true;
+    final isSelf = uid.isNotEmpty && uid == state.currentUserId;
+    final busy = _busyUids.contains(uid);
+    final canAct = uid.isNotEmpty && !busy && !deleted;
 
     showModalBottomSheet(
       context: context,
@@ -217,7 +247,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       builder: (bCtx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -265,54 +296,69 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const SizedBox(height: 10),
 
               Text(l.adminUsersActionsTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              if (deleted) ...[
+                const SizedBox(height: 8),
+                const Text('This account has been deleted.',
+                    style: TextStyle(fontSize: 12, color: AppColors.error)),
+              ] else if (busy) ...[
+                const SizedBox(height: 8),
+                const LinearProgressIndicator(),
+              ],
               const SizedBox(height: 12),
 
               // Verify / Unverify Action
               ListTile(
                 contentPadding: EdgeInsets.zero,
+                enabled: canAct,
                 leading: Icon(
                   verified ? Icons.cancel_outlined : Icons.verified_user_rounded,
                   color: verified ? Colors.orange : Colors.blue,
                 ),
                 title: Text(verified ? l.adminUsersRevokeBadge : l.adminUsersGrantBadge),
                 subtitle: Text(verified ? l.adminUsersRevokeBadgeSubtitle : l.adminUsersGrantBadgeSubtitle),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(bCtx);
-                  await state.setUserVerified(userId: uid, verified: !verified);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(!verified ? l.adminUsersVerifiedSnack : l.adminUsersRevokedSnack)),
-                    );
-                  }
+                  _runUserAction(
+                    uid,
+                    () => state.setUserVerified(userId: uid, verified: !verified),
+                    success: !verified ? l.adminUsersVerifiedSnack : l.adminUsersRevokedSnack,
+                    actionName: 'update verification',
+                  );
                 },
               ),
 
               // Suspend / Unsuspend Action
               ListTile(
                 contentPadding: EdgeInsets.zero,
+                enabled: canAct && !isSelf,
                 leading: Icon(
                   suspended ? Icons.lock_open_rounded : Icons.block_rounded,
                   color: suspended ? Colors.green : AppColors.error,
                 ),
                 title: Text(suspended ? l.adminUsersLiftSuspension : l.adminUsersSuspend),
-                subtitle: Text(suspended ? l.adminUsersLiftSuspensionSubtitle : l.adminUsersSuspendSubtitle),
-                onTap: () async {
+                subtitle: Text(isSelf
+                    ? 'You cannot suspend your own account.'
+                    : (suspended ? l.adminUsersLiftSuspensionSubtitle : l.adminUsersSuspendSubtitle)),
+                onTap: () {
                   Navigator.pop(bCtx);
-                  await state.setUserSuspended(uid, !suspended);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(suspended ? l.adminUsersRestoredSnack : l.adminUsersSuspendedSnack)),
-                    );
-                  }
+                  _runUserAction(
+                    uid,
+                    () => state.setUserSuspended(uid, !suspended),
+                    success: suspended ? l.adminUsersRestoredSnack : l.adminUsersSuspendedSnack,
+                    actionName: suspended ? 'lift the suspension' : 'suspend the user',
+                  );
                 },
               ),
 
               // Change Role Action
               ListTile(
                 contentPadding: EdgeInsets.zero,
+                enabled: canAct && !isSelf,
                 leading: const Icon(Icons.switch_account_rounded, color: AppColors.primary),
                 title: Text(l.adminUsersChangeRole),
-                subtitle: Text(l.adminUsersCurrentRole(_roleLabel(role))),
+                subtitle: Text(isSelf
+                    ? 'You cannot change your own role.'
+                    : l.adminUsersCurrentRole(_roleLabel(role))),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.pop(bCtx);
@@ -336,6 +382,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 },
               ),
 
+              // Delete user
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                enabled: canAct && !isSelf,
+                leading: const Icon(Icons.delete_forever_rounded, color: AppColors.error),
+                title: const Text('Delete user'),
+                subtitle: Text(isSelf
+                    ? 'You cannot delete your own account here.'
+                    : 'Disables sign-in and marks the account as deleted.'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _confirmDeleteUser(context, uid, name, state);
+                },
+              ),
+
               const SizedBox(height: 8),
               Center(
                 child: Text(
@@ -346,12 +407,51 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
   }
 
+  Future<void> _confirmDeleteUser(
+      BuildContext context, String uid, String name, FarmoraState state) async {
+    final l = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete $name?'),
+        content: const Text(
+            'The account will be disabled and marked as deleted. The user '
+            'can no longer sign in. This action is audited.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete user'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _runUserAction(
+      uid,
+      () => state.adminDeleteUser(uid),
+      success: '$name was deleted.',
+      actionName: 'delete the user',
+    );
+  }
+
   void _showChangeRoleDialog(BuildContext context, String uid, String name, String currentRole, FarmoraState state) {
+    if (uid == state.currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot change your own role.')),
+      );
+      return;
+    }
     String selected = currentRole.toLowerCase();
     final l = context.l10n;
     showDialog(
@@ -379,15 +479,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
             FilledButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await state.updateUserRole(userId: uid, role: selected);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l.adminUsersRoleUpdated(name, _roleLabel(selected)))),
-                  );
-                }
-              },
+              onPressed: selected == currentRole.toLowerCase()
+                  ? null
+                  : () {
+                      Navigator.pop(ctx);
+                      _runUserAction(
+                        uid,
+                        () => state.adminSetUserRole(userId: uid, role: selected),
+                        success: l.adminUsersRoleUpdated(name, _roleLabel(selected)),
+                        actionName: 'change the role',
+                      );
+                    },
               child: Text(l.adminUsersConfirmRoleChange),
             ),
           ],
@@ -406,7 +508,7 @@ class _UserListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final name = (user['name'] ?? l.adminUsersUnknownUser).toString();
+    final name = (user['name'] ?? user['displayName'] ?? l.adminUsersUnknownUser).toString();
     final role = (user['role'] ?? 'farmer').toString();
     final district = (user['district'] ?? l.adminUsersDefaultDistrict).toString();
     final phone = (user['phone'] ?? '').toString();
@@ -467,7 +569,16 @@ class _UserListCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (suspended)
+            if (user['isDeleted'] == true)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('Deleted', style: TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.bold)),
+              )
+            else if (suspended)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(

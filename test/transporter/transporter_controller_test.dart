@@ -28,7 +28,8 @@ void main() {
     expect(completed.success, isTrue);
     expect(controller.activeJobs.any((job) => job.id == '101'), isFalse);
     expect(controller.completedJobs.any((job) => job.id == '101'), isTrue);
-    expect(controller.notifications.first.jobId, '101');
+    // Notifications come from Firestore only (no local fake entries).
+    expect(controller.notifications, isEmpty);
   });
 
   test('open jobs get a suitability score in the valid range', () async {

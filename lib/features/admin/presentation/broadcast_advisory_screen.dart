@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../providers/farmora_state.dart';
 
 class BroadcastAdvisoryScreen extends StatefulWidget {
@@ -18,6 +19,14 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
   String _targetRole = 'all';
   String _priority = 'normal';
   bool _sending = false;
+  int? _lastRecipients;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _messageCtrl.dispose();
+    super.dispose();
+  }
 
   /// Ready-made advisories, written in the admin's current language.
   List<Map<String, String>> _templates(AppLocalizations l) => [
@@ -144,6 +153,7 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            key: ValueKey('audience-$_targetRole'),
                             initialValue: _targetRole,
                             isExpanded: true,
                             decoration: InputDecoration(
@@ -164,13 +174,16 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                                       overflow: TextOverflow.ellipsis),
                                 ),
                             ],
-                            onChanged: (v) =>
-                                setState(() => _targetRole = v ?? 'all'),
+                            onChanged: _sending
+                                ? null
+                                : (v) =>
+                                    setState(() => _targetRole = v ?? 'all'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            key: ValueKey('priority-$_priority'),
                             initialValue: _priority,
                             isExpanded: true,
                             decoration: InputDecoration(
@@ -241,27 +254,65 @@ class _BroadcastAdvisoryScreenState extends State<BroadcastAdvisoryScreen> {
                                   return;
                                 }
 
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
                                 setState(() => _sending = true);
-                                await state.broadcastPlatformAdvisory(
-                                  title: _titleCtrl.text.trim(),
-                                  message: _messageCtrl.text.trim(),
-                                  targetRole: _targetRole,
-                                  priority: _priority,
-                                );
-                                setState(() => _sending = false);
-
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                try {
+                                  final recipients =
+                                      await state.broadcastPlatformAdvisory(
+                                    title: _titleCtrl.text.trim(),
+                                    message: _messageCtrl.text.trim(),
+                                    targetRole: _targetRole,
+                                    priority: _priority,
+                                  );
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _sending = false;
+                                    _lastRecipients = recipients;
+                                  });
+                                  messenger.showSnackBar(
                                     SnackBar(
-                                      content: Text(l.adminBroadcastSent),
+                                      content: Text(
+                                          '${l.adminBroadcastSent} '
+                                          '($recipients recipients)'),
                                     ),
                                   );
                                   _titleCtrl.clear();
                                   _messageCtrl.clear();
+                                } catch (e) {
+                                  if (mounted) {
+                                    setState(() => _sending = false);
+                                  }
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(userMessage(e,
+                                          action: 'broadcast the advisory')),
+                                    ),
+                                  );
                                 }
                               },
                       ),
                     ),
+                    if (_lastRecipients != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              size: 16, color: Colors.green),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Last advisory delivered to '
+                              '$_lastRecipients recipient'
+                              '${_lastRecipients == 1 ? '' : 's'}.',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

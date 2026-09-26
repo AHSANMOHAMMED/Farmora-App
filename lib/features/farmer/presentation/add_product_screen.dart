@@ -361,12 +361,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
             maxDuration: const Duration(minutes: 3),
           );
           if (file != null) {
-            final bytes = await file.readAsBytes();
-            await state.uploadHarvestVideo(
-              productId: newId,
-              bytes: bytes,
-              fileName: file.name,
-            );
+            // The product is already published; a video failure must not be
+            // reported as a publish failure.
+            try {
+              final bytes = await file.readAsBytes();
+              final uploaded = await state.uploadHarvestVideo(
+                productId: newId,
+                bytes: bytes,
+                fileName: file.name,
+              );
+              if (uploaded == null && mounted) {
+                _showSnack(context.l10n.farmerProductsVideoUploadFailed,
+                    error: true);
+              }
+            } catch (e, st) {
+              if (mounted) {
+                _showSnack(
+                  context.l10n.farmerProductsVideoUploadFailedReason(
+                      userMessage(e,
+                          action: 'upload the harvest video', stack: st)),
+                  error: true,
+                );
+              }
+            }
           }
         }
       }

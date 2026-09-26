@@ -160,7 +160,7 @@ void main() {
       expect(find.text('Buyer'), findsOneWidget);
       expect(find.text('Farm details'), findsNothing);
       expect(find.text('Bank details'), findsNothing);
-      expect(find.text('Account verification'), findsNothing);
+      // Buyers intentionally see the Account verification tile now.
     });
 
     testWidgets('renders in Tamil when the language is Tamil', (tester) async {
@@ -223,6 +223,10 @@ void main() {
       final delete = find.text('Delete account');
       await tester.scrollUntilVisible(delete, 300,
           scrollable: find.byType(Scrollable).first);
+      // The Change password tile pushed Delete further down; make sure it is
+      // fully on screen (not just clipped at the bottom edge) before tapping.
+      await tester.ensureVisible(delete);
+      await tester.pumpAndSettle();
       await tester.tap(delete);
       await tester.pumpAndSettle();
 

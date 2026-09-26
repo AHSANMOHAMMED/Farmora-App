@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
@@ -13,18 +14,116 @@ import '../../messaging/presentation/conversations_screen.dart';
 import '../../payments/presentation/order_payment_card.dart';
 import 'logistics_tracking_screen.dart';
 
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends StatefulWidget {
   final FarmoraOrder order;
 
   const OrderDetailScreen({super.key, required this.order});
 
   @override
+  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+}
+
+class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  /// True while a backend call started from this screen is in flight.
+  bool _busy = false;
+
+  /// Cached transporter public-profile stream (recreated only when the
+  /// assigned transporter changes, not on every rebuild).
+  String? _driverId;
+  Stream<Map<String, dynamic>?>? _driverStream;
+
+  Stream<Map<String, dynamic>?> _driverProfile(String transporterId) {
+    if (_driverStream == null || _driverId != transporterId) {
+      _driverId = transporterId;
+      _driverStream =
+          FirestoreService().transporterPublicProfileStream(transporterId);
+    }
+    return _driverStream!;
+  }
+
+  /// Driver row: the transporter's display name, falling back to
+  /// "Assigned transporter" while loading or when no public profile exists.
+  Widget _buildDriverRow(String label, String? transporterId, AppLocalizations l) {
+    if (transporterId == null || transporterId.isEmpty) {
+      return _buildSummaryRow(label, l.statusPending);
+    }
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _driverProfile(transporterId),
+      builder: (context, snapshot) {
+        final name =
+            (snapshot.data?['displayName'] ?? '').toString().trim();
+        return _buildSummaryRow(
+            label, name.isNotEmpty ? name : l.farmerTrackAssignedTransporter);
+      },
+    );
+  }
+
+  /// Runs [action] with the busy flag set; shows [success] only after it
+  /// completes and `userMessage(e)` on failure. Returns true on success.
+  Future<bool> _run(
+    Future<void> Function() action, {
+    required String success,
+    required String errorAction,
+    bool popOnSuccess = false,
+    Color? successColor,
+  }) async {
+    if (_busy) return false;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _busy = true);
+    try {
+      await action();
+      messenger.showSnackBar(SnackBar(
+        content: Text(success),
+        backgroundColor: successColor ?? AppColors.primary,
+      ));
+      if (popOnSuccess && mounted) navigator.pop();
+      return true;
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(userMessage(e, action: errorAction)),
+        backgroundColor: AppColors.error,
+      ));
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _callBuyer(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'\s+'), ''));
+    try {
+      final ok = await launchUrl(uri);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start a call to $phone.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(userMessage(e, action: 'call the buyer'))));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
     final state = context.watch<FarmoraState>();
     final currentOrder = state.orders.firstWhere(
       (o) => o.id == order.id,
       orElse: () => order,
     );
+    final canConfirmHandover = (currentOrder.statusKey == 'assigned' ||
+            currentOrder.statusKey == 'pickedUp') &&
+        currentOrder.farmerHandedOverAt == null;
+    final buyerPhone = currentOrder.buyerPhone.trim();
+    final linkedJobForOrder =
+        state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
+    final canRequestTransport = linkedJobForOrder == null ||
+        linkedJobForOrder.isRequested ||
+        linkedJobForOrder.status == 'cancelled';
     final linkedJob = state.jobs.where((j) => j.orderId == currentOrder.id).firstOrNull;
     final l = context.l10n;
 
@@ -71,7 +170,7 @@ class OrderDetailScreen extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                      l.farmerOrderNumberUpper(currentOrder.orderNumber.toUpperCase()),
+                      l.farmerOrderNumberUpper(currentOrder.displayNumber.toUpperCase()),
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontFamily: 'Inter',
@@ -219,15 +318,13 @@ class OrderDetailScreen extends StatelessWidget {
                           ),
                           Row(
                             children: [
-                              _buildActionCircle(
-                                icon: Icons.call_outlined,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(l.farmerOrderCalling(currentOrder.buyerName))),
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 8),
+                              if (buyerPhone.isNotEmpty) ...[
+                                _buildActionCircle(
+                                  icon: Icons.call_outlined,
+                                  onTap: () => _callBuyer(buyerPhone),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
                               _buildActionCircle(
                                 icon: Icons.chat_bubble_outline,
                                 onTap: () => Navigator.of(context).push(
@@ -333,7 +430,7 @@ class OrderDetailScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              currentOrder.totalAmount,
+                              currentOrder.displayTotal,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 fontSize: 20,
@@ -407,11 +504,50 @@ class OrderDetailScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildSummaryRow(l.farmerOrderDriver, linkedJob.transporterId != null ? l.farmerOrderDriverAssigned(linkedJob.transporterId!) : l.statusPending),
+                        _buildDriverRow(l.farmerOrderDriver, linkedJob.transporterId, l),
                         _buildDivider(),
                         _buildSummaryRow(l.farmerOrderFee, linkedJob.fee),
                       ],
                     ),
+                  ),
+                ],
+                if (canConfirmHandover) ...[
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _run(
+                                () => state.confirmHandover(currentOrder.id),
+                                success:
+                                    'Handover confirmed for ${currentOrder.displayNumber}.',
+                                errorAction: 'confirm the handover',
+                              ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                      ),
+                      icon: const Icon(Icons.handshake_outlined, size: 20),
+                      label: const Text('Confirm handed to transporter'),
+                    ),
+                  ),
+                ] else if (currentOrder.farmerHandedOverAt != null &&
+                    !currentOrder.isCompleted) ...[
+                  const SizedBox(height: 20),
+                  const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                            'You confirmed the handover to the transporter.'),
+                      ),
+                    ],
                   ),
                 ],
               ],
@@ -441,16 +577,15 @@ class OrderDetailScreen extends StatelessWidget {
                     Expanded(
                       flex: 1,
                       child: OutlinedButton(
-                        onPressed: () {
-                          state.declineOrder(currentOrder.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(l.orderRejected),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        },
+                        onPressed: _busy
+                            ? null
+                            : () => _run(
+                                  () => state.declineOrder(currentOrder.id),
+                                  success: l.orderRejected,
+                                  successColor: AppColors.error,
+                                  errorAction: 'decline the order',
+                                  popOnSuccess: true,
+                                ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
                           side: const BorderSide(color: AppColors.errorContainer, width: 2),
@@ -475,16 +610,14 @@ class OrderDetailScreen extends StatelessWidget {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          state.acceptOrder(currentOrder.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(l.farmerOrderAcceptedBalance),
-                              backgroundColor: AppColors.primary,
-                            ),
-                          );
-                          Navigator.of(context).pop();
-                        },
+                        onPressed: _busy
+                            ? null
+                            : () => _run(
+                                  () => state.acceptOrder(currentOrder.id),
+                                  success: l.farmerOrderAcceptedBalance,
+                                  errorAction: 'accept the order',
+                                  popOnSuccess: true,
+                                ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -561,10 +694,13 @@ class OrderDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (canRequestTransport) ...[
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () async {
+                        onPressed: _busy
+                            ? null
+                            : () async {
                           final feeController = TextEditingController(
                             text: currentOrder.deliveryFeeMinor > 0
                                 ? (currentOrder.deliveryFeeMinor / 100)
@@ -599,26 +735,29 @@ class OrderDetailScreen extends StatelessWidget {
                               ],
                             ),
                           );
-                          if (fee == null || fee < 0) return;
+                          if (fee == null || fee < 0 || !context.mounted) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          setState(() => _busy = true);
                           try {
                             await state.requestTransportForOrder(
                               currentOrder.id,
                               deliveryFeeMinor: fee,
                             );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(l.farmerOrderTransportRequested),
-                                  backgroundColor: AppColors.primary,
-                                ),
-                              );
-                            }
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(l.farmerOrderTransportRequested),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
                           } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(l.farmerOrderTransportRequestFailed(describeError(e)))),
-                              );
-                            }
+                            messenger.showSnackBar(
+                              SnackBar(
+                                  content: Text(l.farmerOrderTransportRequestFailed(
+                                      userMessage(e,
+                                          action: 'request transport')))),
+                            );
+                          } finally {
+                            if (mounted) setState(() => _busy = false);
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -643,6 +782,7 @@ class OrderDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                    ],
                   ],
                 ),
               ),
@@ -737,7 +877,7 @@ class _AuthenticityBarcodeCardState extends State<_AuthenticityBarcodeCard> {
       setState(() => _scanPayload = result['scanPayload']);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = describeError(e));
+      setState(() => _error = userMessage(e, action: 'issue the order barcode'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

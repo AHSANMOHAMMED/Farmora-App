@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/app_errors.dart';
 import '../../../../models/user_role.dart';
 import '../../../../models/verification_model.dart';
 import '../../../../providers/farmora_state.dart';
@@ -267,16 +268,27 @@ class AwaitingVerificationView extends StatelessWidget {
               const SizedBox(height: 12),
 
               OutlinedButton.icon(
-                onPressed: () {
-                  if (state.currentUserId.isNotEmpty) {
-                    state.initFromFirestore(state.currentUserId);
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    await state.refreshProfile();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(state.isVerified
+                            ? 'Your account is verified.'
+                            : 'Verification is still under review.'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(userMessage(e,
+                            action: 'refresh verification status')),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Checking latest verification status...'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Refresh Status'),

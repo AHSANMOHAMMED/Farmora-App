@@ -1,5 +1,6 @@
 import '../core/localization/l10n.dart';
 import 'package:flutter/material.dart';
+import '../core/utils/firebase_values.dart';
 
 enum DisputeStatus {
   open,
@@ -93,29 +94,36 @@ class Dispute {
     };
   }
 
+  /// Tolerates both the callable-written schema (`openedBy`, `reason` text,
+  /// `adminNotes`, Timestamp dates) and the legacy ISO-string shape.
   factory Dispute.fromMap(String id, Map<String, dynamic> data) {
+    final rawReason = (data['reason'] ?? '').toString();
+    final evidence = data['evidenceImages'] ?? data['evidenceUrls'];
+    final rawStatus = (data['status'] ?? 'open')
+        .toString()
+        .replaceAll('_', '')
+        .toLowerCase();
     return Dispute(
       id: id,
-      orderId: data['orderId'] ?? '',
-      orderNumber: data['orderNumber'] ?? '',
-      userId: data['userId'] ?? '',
-      userName: data['userName'] ?? '',
+      orderId: (data['orderId'] ?? '').toString(),
+      orderNumber: (data['orderNumber'] ?? '').toString(),
+      userId: (data['userId'] ?? data['openedBy'] ?? '').toString(),
+      userName: (data['userName'] ?? data['openedByName'] ?? '').toString(),
       reason: DisputeReason.values.firstWhere(
-        (e) => e.name == (data['reason']?.toString().split(':').first.trim() ?? ''),
+        (e) => e.name == rawReason.split(':').first.trim(),
         orElse: () => DisputeReason.other,
       ),
-      description: data['description'] ?? '',
+      description: (data['description'] ?? rawReason).toString(),
       status: DisputeStatus.values.firstWhere(
-        (e) => e.name == data['status'],
+        (e) => e.name.toLowerCase() == rawStatus,
         orElse: () => DisputeStatus.open,
       ),
-      adminResponse: data['adminResponse'] as String?,
-      createdAt: DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String()),
-      resolvedAt: data['resolvedAt'] != null 
-          ? DateTime.parse(data['resolvedAt']) 
-          : null,
-      evidenceImages: data['evidenceImages'] != null 
-          ? List<String>.from(data['evidenceImages']) 
+      adminResponse:
+          (data['adminResponse'] ?? data['adminNotes'])?.toString(),
+      createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
+      resolvedAt: firebaseDate(data['resolvedAt']),
+      evidenceImages: evidence is List
+          ? evidence.map((e) => e.toString()).toList()
           : null,
     );
   }

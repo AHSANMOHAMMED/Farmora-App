@@ -75,3 +75,10 @@ String buyerHarvestStatusLabel(AppLocalizations l, HarvestStatus status) {
       return l.statusDelivered;
   }
 }
+
+/// Stock the farmer listed for [product]; 0 means unknown (no client cap).
+int buyerAvailableQty(Product product) {
+  if (product.quantityAvailable > 0) return product.quantityAvailable;
+  final match = RegExp(r'\d+(\.\d+)?').firstMatch(product.quantity);
+  return match == null ? 0 : (double.tryParse(match.group(0)!) ?? 0).floor();
+}

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import '../../../models/dispute_model.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 
@@ -34,23 +36,42 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
         _ => statusLabel(raw, l),
       };
 
+  bool _isResolved(Dispute d) =>
+      d.status == DisputeStatus.resolved || d.status == DisputeStatus.rejected;
+
+  FarmoraOrder? _orderFor(FarmoraState state, Dispute d) {
+    for (final o in state.orders) {
+      if (o.id == d.orderId) return o;
+    }
+    return null;
+  }
+
+  String _orderRef(Dispute d, FarmoraOrder? order) {
+    if (d.orderNumber.isNotEmpty) return d.orderNumber;
+    if (order != null) return order.displayNumber;
+    return d.orderId.isNotEmpty ? d.orderId : d.id;
+  }
+
+  String _formatDate(DateTime d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)} '
+        '${two(d.hour)}:${two(d.minute)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final state = context.watch<FarmoraState>();
-    final allOrders = state.orders;
-    final disputedOrders = allOrders
-        .where((o) => o.disputeId != null && o.disputeId!.isNotEmpty)
-        .toList();
+    final disputes = state.disputes;
 
-    final filtered = disputedOrders.where((o) {
-      final isResolved = o.paymentStatus == 'refunded' ||
-          o.paymentStatus == 'released' ||
-          o.paymentStatus == 'settled_split';
-      if (_selectedFilter == 'Open') return !isResolved;
-      if (_selectedFilter == 'Resolved') return isResolved;
-      return true;
-    }).toList();
+    final open = disputes.where((d) => !_isResolved(d)).toList();
+    final resolved = disputes.where(_isResolved).toList();
+    final showSections = _selectedFilter == 'All';
+    final filtered = switch (_selectedFilter) {
+      'Open' => open,
+      'Resolved' => resolved,
+      _ => [...open, ...resolved],
+    };
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -73,10 +94,15 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               runSpacing: 8,
               children: ['Open', 'Resolved', 'All'].map((tab) {
                 final isSelected = _selectedFilter == tab;
+                final count = switch (tab) {
+                  'Open' => open.length,
+                  'Resolved' => resolved.length,
+                  _ => disputes.length,
+                };
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
-                    label: Text(_filterLabel(l, tab)),
+                    label: Text('${_filterLabel(l, tab)} ($count)'),
                     selected: isSelected,
                     onSelected: (_) => setState(() => _selectedFilter = tab),
                     selectedColor: AppColors.primary,
@@ -115,13 +141,24 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
+                : ListView(
                     padding: const EdgeInsets.all(16),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final order = filtered[index];
-                      return _buildDisputeCard(context, order, state);
-                    },
+                    children: showSections
+                        ? [
+                            if (open.isNotEmpty)
+                              _sectionHeader(l.statusOpen, open.length),
+                            for (final d in open)
+                              _buildDisputeCard(context, d, state),
+                            if (resolved.isNotEmpty)
+                              _sectionHeader(
+                                  l.statusResolved, resolved.length),
+                            for (final d in resolved)
+                              _buildDisputeCard(context, d, state),
+                          ]
+                        : [
+                            for (final d in filtered)
+                              _buildDisputeCard(context, d, state),
+                          ],
                   ),
           ),
         ],
@@ -129,12 +166,39 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
     );
   }
 
+  Widget _sectionHeader(String title, int count) => Padding(
+        padding: const EdgeInsets.only(bottom: 10, top: 4),
+        child: Text(
+          '$title ($count)',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+
+  String _partyName(FarmoraOrder? order, String uid) {
+    if (order == null || uid.isEmpty) return uid;
+    if (uid == order.buyerId && order.buyerName.isNotEmpty) {
+      return '${order.buyerName} (buyer)';
+    }
+    if (uid == order.farmerId && order.farmerName.isNotEmpty) {
+      return '${order.farmerName} (farmer)';
+    }
+    return uid;
+  }
+
   Widget _buildDisputeCard(
-      BuildContext context, FarmoraOrder order, FarmoraState state) {
+      BuildContext context, Dispute dispute, FarmoraState state) {
     final l = context.l10n;
-    final isResolved = order.paymentStatus == 'refunded' ||
-        order.paymentStatus == 'released' ||
-        order.paymentStatus == 'settled_split';
+    final isResolved = _isResolved(dispute);
+    final order = _orderFor(state, dispute);
+    final openedBy = dispute.userName.isNotEmpty
+        ? dispute.userName
+        : _partyName(order, dispute.userId);
+    final evidence = dispute.evidenceImages ?? const <String>[];
+    final statusColor = dispute.getStatusColor();
 
     return Card(
       elevation: 0,
@@ -157,64 +221,68 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               children: [
                 Expanded(
                   child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isResolved
-                            ? Colors.green.shade50
-                            : Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        (isResolved ? l.statusResolved : l.statusDisputed)
-                            .toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isResolved
-                              ? Colors.green.shade800
-                              : Colors.orange.shade800,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          dispute.getStatusDisplayName().toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        order.orderNumber.isNotEmpty
-                            ? order.orderNumber
-                            : order.id,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _orderRef(dispute, order),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  order.displayTotal,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: AppColors.primary,
+                    ],
                   ),
                 ),
+                if (order != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    order.displayTotal,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              order.productName.isNotEmpty ? order.productName : order.title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
+            if (order != null)
+              Text(
+                order.productName.isNotEmpty ? order.productName : order.title,
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             const SizedBox(height: 4),
             Text(
-              l.adminDisputeReference(order.disputeId ?? ''),
+              l.adminDisputeReference(dispute.id),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Opened by ${openedBy.isNotEmpty ? openedBy : '-'}'
+              ' · ${_formatDate(dispute.createdAt)}',
               style:
                   const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
@@ -229,33 +297,96 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    l.adminDisputeClaimReason,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary,
-                    ),
+                  Row(
+                    children: [
+                      Icon(dispute.getReasonIcon(),
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${l.adminDisputeClaimReason} · '
+                          '${dispute.getReasonDisplayName()}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l.adminDisputeDefaultReason,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    dispute.description.trim().isNotEmpty
+                        ? dispute.description
+                        : l.adminDisputeDefaultReason,
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textPrimary),
                   ),
                 ],
               ),
             ),
+            if (evidence.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              const Text(
+                'Evidence',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 72,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: evidence.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) => GestureDetector(
+                    onTap: () => _showEvidence(context, evidence[i]),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        evidence[i],
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 72,
+                          height: 72,
+                          color: AppColors.surfaceContainerLow,
+                          child: const Icon(Icons.broken_image_outlined,
+                              color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (isResolved &&
+                (dispute.adminResponse ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                '${l.adminDisputeNotesLabel}: ${dispute.adminResponse}',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    l.adminDisputeEscrowStatus(
-                        _escrowStatusLabel(l, order.paymentStatus)),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
+                  child: order == null
+                      ? const SizedBox.shrink()
+                      : Text(
+                          l.adminDisputeEscrowStatus(
+                              _escrowStatusLabel(l, order.paymentStatus)),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
                 ),
                 const SizedBox(width: 8),
                 if (!isResolved)
@@ -266,25 +397,34 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                       backgroundColor: AppColors.primary,
                       visualDensity: VisualDensity.compact,
                     ),
-                    onPressed: () =>
-                        _showArbitrationModal(context, order, state),
+                    onPressed: dispute.orderId.isEmpty
+                        ? null
+                        : () => _showArbitrationModal(
+                            context, dispute, order, state),
                   )
                 else
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: Colors.green, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        l.statusSettled,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            color: Colors.green, size: 16),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            dispute.resolvedAt != null
+                                ? '${l.statusSettled} · '
+                                    '${_formatDate(dispute.resolvedAt!)}'
+                                : l.statusSettled,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -294,10 +434,29 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
     );
   }
 
-  void _showArbitrationModal(
-      BuildContext context, FarmoraOrder order, FarmoraState state) {
+  void _showEvidence(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Padding(
+              padding: EdgeInsets.all(32),
+              child: Icon(Icons.broken_image_outlined, size: 48),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showArbitrationModal(BuildContext context, Dispute dispute,
+      FarmoraOrder? order, FarmoraState state) {
     final l = context.l10n;
     String resolution = 'refund_buyer';
+    bool busy = false;
     final notesCtrl =
         TextEditingController(text: l.adminDisputeDefaultNotes);
 
@@ -316,117 +475,141 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
             top: 20,
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      l.adminDisputeArbitrateTitle,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: l.commonClose,
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l.adminDisputeOrderAmount(order.orderNumber, order.displayTotal),
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l.adminDisputeSelectOutcome,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              RadioGroup<String>(
-                groupValue: resolution,
-                onChanged: (v) =>
-                    setModalState(() => resolution = v ?? 'refund_buyer'),
-                child: Column(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    RadioListTile<String>(
-                      title: Text(l.adminDisputeRefundTitle),
-                      subtitle: Text(l.adminDisputeRefundSubtitle),
-                      value: 'refund_buyer',
-                      activeColor: AppColors.primary,
+                    Expanded(
+                      child: Text(
+                        l.adminDisputeArbitrateTitle,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    RadioListTile<String>(
-                      title: Text(l.adminDisputeReleaseTitle),
-                      subtitle: Text(l.adminDisputeReleaseSubtitle),
-                      value: 'release_farmer',
-                      activeColor: AppColors.primary,
-                    ),
-                    RadioListTile<String>(
-                      title: Text(l.adminDisputeSplitTitle),
-                      subtitle: Text(l.adminDisputeSplitSubtitle),
-                      value: 'split_settlement',
-                      activeColor: AppColors.primary,
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: l.commonClose,
+                      onPressed: busy ? null : () => Navigator.pop(ctx),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesCtrl,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: l.adminDisputeNotesLabel,
-                  border: const OutlineInputBorder(),
+                const SizedBox(height: 8),
+                Text(
+                  l.adminDisputeOrderAmount(
+                      _orderRef(dispute, order), order?.displayTotal ?? '-'),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13),
                 ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () async {
-                    if (notesCtrl.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.adminDisputeNotesRequired),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.pop(ctx);
-                    try {
-                      await state.resolveDisputeArbitration(
-                        orderId: order.id,
-                        resolution: resolution,
-                        adminNotes: notesCtrl.text.trim(),
-                      );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.adminDisputeRecorded)),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(l.adminDisputeResolveFailed)),
-                        );
-                      }
-                    }
+                const SizedBox(height: 16),
+                Text(
+                  l.adminDisputeSelectOutcome,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                RadioGroup<String>(
+                  groupValue: resolution,
+                  onChanged: (v) {
+                    if (busy) return;
+                    setModalState(() => resolution = v ?? 'refund_buyer');
                   },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: const Size.fromHeight(48),
+                  child: Column(
+                    children: [
+                      RadioListTile<String>(
+                        title: Text(l.adminDisputeRefundTitle),
+                        subtitle: Text(l.adminDisputeRefundSubtitle),
+                        value: 'refund_buyer',
+                        activeColor: AppColors.primary,
+                      ),
+                      RadioListTile<String>(
+                        title: Text(l.adminDisputeReleaseTitle),
+                        subtitle: Text(l.adminDisputeReleaseSubtitle),
+                        value: 'release_farmer',
+                        activeColor: AppColors.primary,
+                      ),
+                      RadioListTile<String>(
+                        title: Text(l.adminDisputeSplitTitle),
+                        subtitle: Text(l.adminDisputeSplitSubtitle),
+                        value: 'split_settlement',
+                        activeColor: AppColors.primary,
+                      ),
+                    ],
                   ),
-                  child: Text(l.adminDisputeRecordDecision),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesCtrl,
+                  enabled: !busy,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: l.adminDisputeNotesLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            final notes = notesCtrl.text.trim();
+                            if (notes.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l.adminDisputeNotesRequired),
+                                ),
+                              );
+                              return;
+                            }
+                            setModalState(() => busy = true);
+                            try {
+                              await state.resolveDisputeArbitration(
+                                orderId: dispute.orderId,
+                                resolution: resolution,
+                                adminNotes: notes,
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(l.adminDisputeRecorded)),
+                                );
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                setModalState(() => busy = false);
+                              }
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(userMessage(e,
+                                        action: 'resolve the dispute')),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    child: busy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text(l.adminDisputeRecordDecision),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -2,17 +2,26 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/localization/l10n.dart';
 
-/// X25519 + AES-GCM chat crypto. Public keys live on the user profile;
-/// private keys stay in secure storage (`farmora_x25519_sk`).
+/// X25519 + AES-GCM chat crypto. Public keys live in `chat_keys/{uid}`;
+/// private keys stay in secure storage, one per account on this device
+/// (`farmora_x25519_sk_<uid>`), so two accounts on one phone never share a
+/// key pair.
 class ChatCrypto {
   ChatCrypto._();
   static final ChatCrypto instance = ChatCrypto._();
 
-  static const _skKey = 'farmora_x25519_sk';
+  /// Pre-per-account key name. Adopted by the first account that signs in
+  /// on this device so its existing conversations stay readable.
+  static const _legacySkKey = 'farmora_x25519_sk';
+
+  /// Secure-storage key name for [uid]'s private key.
+  static String storageKeyFor(String uid) => '${_legacySkKey}_$uid';
   static const ciphertextPrefix = 'farmora2:';
   static const currentCiphertextPrefix = 'farmora3:';
 
@@ -22,19 +31,50 @@ class ChatCrypto {
   final _hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
 
   SimpleKeyPair? _cachedPair;
+  String? _cachedUid;
+
+  String _currentUid() {
+    try {
+      if (Firebase.apps.isEmpty) return '';
+      return FirebaseAuth.instance.currentUser?.uid ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// Forgets the in-memory key pair (call on sign-out). The private key stays
+  /// in secure storage so the same account can read its history later.
+  void reset() {
+    _cachedPair = null;
+    _cachedUid = null;
+  }
 
   Future<SimpleKeyPair> ensureKeyPair() async {
-    if (_cachedPair != null) return _cachedPair!;
-    final existing = await _storage.read(key: _skKey);
+    final uid = _currentUid();
+    if (_cachedPair != null && _cachedUid == uid) return _cachedPair!;
+    _cachedPair = null;
+    final keyName = uid.isEmpty ? _legacySkKey : storageKeyFor(uid);
+    var existing = await _storage.read(key: keyName);
+    if ((existing == null || existing.isEmpty) && uid.isNotEmpty) {
+      // One-time migration of the device-wide key to this account.
+      final legacy = await _storage.read(key: _legacySkKey);
+      if (legacy != null && legacy.isNotEmpty) {
+        await _storage.write(key: keyName, value: legacy);
+        await _storage.delete(key: _legacySkKey);
+        existing = legacy;
+      }
+    }
     if (existing != null && existing.isNotEmpty) {
       final seed = base64Url.decode(existing);
       _cachedPair = await _x25519.newKeyPairFromSeed(seed);
+      _cachedUid = uid;
       return _cachedPair!;
     }
     final pair = await _x25519.newKeyPair();
     final seed = await pair.extractPrivateKeyBytes();
-    await _storage.write(key: _skKey, value: base64UrlEncode(seed));
+    await _storage.write(key: keyName, value: base64UrlEncode(seed));
     _cachedPair = pair;
+    _cachedUid = uid;
     return pair;
   }
 

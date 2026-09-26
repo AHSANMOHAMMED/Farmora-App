@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/utils/firebase_values.dart';
 
 enum ProductStatus {
   active,
@@ -261,9 +262,7 @@ class Product {
       status: data['status'] ?? 'Active',
       isOrganic: data['isOrganic'] ?? true,
       description: data['description'] ?? '',
-      availabilityDate: data['availabilityDate'] != null
-          ? DateTime.tryParse(data['availabilityDate'] as String)
-          : null,
+      availabilityDate: firebaseDate(data['availabilityDate']),
       images: mergedImages,
       trustLevel: data['trustLevel'] ?? 'Standard',
       priceMinor: priceMinor,
@@ -277,12 +276,8 @@ class Product {
       videoPath: data['videoPath'] as String?,
       videoUrl: data['videoUrl'] as String?,
       qrCode: data['qrCode'] as String?,
-      harvestDate: data['harvestDate'] != null
-          ? DateTime.tryParse(data['harvestDate'].toString())
-          : null,
-      packingDate: data['packingDate'] != null
-          ? DateTime.tryParse(data['packingDate'].toString())
-          : null,
+      harvestDate: firebaseDate(data['harvestDate']),
+      packingDate: firebaseDate(data['packingDate']),
       harvestStatus: HarvestStatus.values.firstWhere(
         (e) => e.name == (data['harvestStatus'] ?? 'growing'),
         orElse: () => HarvestStatus.growing,

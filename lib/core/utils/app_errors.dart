@@ -36,6 +36,24 @@ String describeError(Object error, {String action = 'complete this action'}) {
   if (error is ArgumentError) return l.errorInvalidDetails;
 
   if (error is FirebaseFunctionsException) {
+    // Callables explain business-rule refusals ("Amount exceeds available
+    // balance", "Farmora is under maintenance") in English. Show that text
+    // when the app is in English; other languages get the localized mapping.
+    final serverText = (error.message ?? '').trim();
+    const explained = {
+      'failed-precondition',
+      'invalid-argument',
+      'already-exists',
+      'resource-exhausted',
+      'out-of-range',
+      'unavailable',
+    };
+    if (explained.contains(error.code) &&
+        serverText.isNotEmpty &&
+        serverText.toLowerCase() != 'internal' &&
+        l.localeName.startsWith('en')) {
+      return serverText;
+    }
     return switch (error.code) {
       // On web a missing (undeployed) callable fails CORS and surfaces as
       // `internal` with no details — the classic "internal [0]" error.

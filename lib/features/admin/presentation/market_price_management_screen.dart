@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/market_price_index.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../models/user_role.dart';
@@ -306,6 +307,36 @@ class _MarketPriceManagementScreenState
     );
   }
 
+  bool _saving = false;
+
+  /// Awaits a market-price write; success is shown only after it returns.
+  Future<void> _runPriceAction(
+      Future<void> Function() action, String success) async {
+    if (_saving) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    try {
+      await action();
+      messenger.showSnackBar(SnackBar(content: Text(success)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'save the market price'))));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Validates a min/max price pair; returns an error text or null.
+  String? _priceError(double? minVal, double? maxVal) {
+    if (minVal == null || maxVal == null || minVal <= 0 || maxVal <= 0) {
+      return 'Enter valid minimum and maximum prices.';
+    }
+    if (minVal > maxVal) {
+      return 'The minimum price cannot exceed the maximum price.';
+    }
+    return null;
+  }
+
   void _confirmDeletePrice(
       BuildContext context, MarketPriceIndex item, FarmoraState state) {
     final l = context.l10n;
@@ -324,10 +355,8 @@ class _MarketPriceManagementScreenState
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () {
               Navigator.pop(ctx);
-              state.removeMarketPrice(item.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.adminMarketDeleted(item.cropName))),
-              );
+              _runPriceAction(() => state.removeMarketPrice(item.id),
+                  l.adminMarketDeleted(item.cropName));
             },
             child: Text(l.commonDelete),
           ),
@@ -424,19 +453,23 @@ class _MarketPriceManagementScreenState
             ),
             FilledButton(
               onPressed: () {
-                final minVal =
-                    double.tryParse(minCtrl.text) ?? item.minPricePerKg;
-                final maxVal =
-                    double.tryParse(maxCtrl.text) ?? item.maxPricePerKg;
-                state.updateMarketPrice(
-                  item.id,
-                  minPrice: minVal,
-                  maxPrice: maxVal,
-                  trend: trend,
-                );
+                final minVal = double.tryParse(minCtrl.text.trim());
+                final maxVal = double.tryParse(maxCtrl.text.trim());
+                final error = _priceError(minVal, maxVal);
+                if (error != null) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(error)));
+                  return;
+                }
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l.adminMarketUpdated(item.cropName))),
+                _runPriceAction(
+                  () => state.updateMarketPrice(
+                    item.id,
+                    minPrice: minVal!,
+                    maxPrice: maxVal!,
+                    trend: trend,
+                  ),
+                  l.adminMarketUpdated(item.cropName),
                 );
               },
               child: Text(l.commonSave),
@@ -541,28 +574,35 @@ class _MarketPriceManagementScreenState
             ),
             FilledButton(
               onPressed: () {
-                if (nameCtrl.text.trim().isEmpty) return;
-                final minVal = double.tryParse(minCtrl.text) ?? 100.0;
-                final maxVal = double.tryParse(maxCtrl.text) ?? 150.0;
+                final cropName = nameCtrl.text.trim();
+                if (cropName.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Enter a crop name.')));
+                  return;
+                }
+                final minVal = double.tryParse(minCtrl.text.trim());
+                final maxVal = double.tryParse(maxCtrl.text.trim());
+                final error = _priceError(minVal, maxVal);
+                if (error != null) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(error)));
+                  return;
+                }
                 final newId = 'mpi-${DateTime.now().millisecondsSinceEpoch}';
-                state.addMarketPrice(
+                Navigator.pop(ctx);
+                _runPriceAction(() => state.addMarketPrice(
                   MarketPriceIndex(
                     id: newId,
-                    cropName: nameCtrl.text.trim(),
+                    cropName: cropName,
                     category: category,
                     district: districtCtrl.text.trim(),
-                    minPricePerKg: minVal,
-                    maxPricePerKg: maxVal,
+                    minPricePerKg: minVal!,
+                    maxPricePerKg: maxVal!,
                     averagePricePerKg: (minVal + maxVal) / 2,
                     trend: trend,
                     updatedAt: DateTime.now(),
                   ),
-                );
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(l.adminMarketAdded(nameCtrl.text.trim()))),
-                );
+                ), l.adminMarketAdded(cropName));
               },
               child: Text(l.adminMarketAddRate),
             ),

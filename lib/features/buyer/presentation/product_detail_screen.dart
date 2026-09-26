@@ -8,6 +8,7 @@ import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 
@@ -421,8 +422,10 @@ class ProductDetailScreen extends StatelessWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    state.addToCart(product);
+                                  onPressed: () async {
+                                    final qty = await _pickQuantity(context, product);
+                                    if (qty == null || !context.mounted) return;
+                                    state.addToCart(product, quantity: qty);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(l.buyerAddedToCart(product.name)),
@@ -508,12 +511,117 @@ class ProductDetailScreen extends StatelessWidget {
     );
   }
 
+
+  /// Quantity to add to the cart, capped at the farmer's available stock.
+  Future<int?> _pickQuantity(BuildContext context, Product product) {
+    final max = buyerAvailableQty(product);
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        var qty = 1;
+        final l = ctx.l10n;
+        final unitLabel = buyerUnitLabel(l, product.unit);
+        return StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  max > 0
+                      ? '${buyerProductPrice(l, product)} • $max $unitLabel available'
+                      : buyerProductPrice(l, product),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: qty > 1 ? () => setSheet(() => qty--) : null,
+                      icon: const Icon(Icons.remove),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        '$qty $unitLabel',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      onPressed: max > 0 && qty >= max
+                          ? null
+                          : () => setSheet(() => qty++),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    AppFormat.lkr(product.effectivePricePerUnit * qty,
+                        decimals: 2),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop(qty),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.add_shopping_cart_rounded),
+                    label: Text(l.buyerAddToCart),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showMakeOfferDialog(BuildContext context, Product product) {
-    final quantityController = TextEditingController(text: '10');
-    final initialPrice = product.pricePerUnit > 0
-        ? product.pricePerUnit.toStringAsFixed(0)
+    final max = buyerAvailableQty(product);
+    final quantityController = TextEditingController(
+        text: (max > 0 && max < 10 ? max : 10).toString());
+    final initialPrice = product.effectivePricePerUnit > 0
+        ? product.effectivePricePerUnit.toStringAsFixed(0)
         : product.price.replaceAll(RegExp(r'[^0-9.]'), '');
     final priceController = TextEditingController(text: initialPrice);
+    var submitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -525,127 +633,189 @@ class ProductDetailScreen extends StatelessWidget {
       builder: (ctx) {
         final l = ctx.l10n;
         final unitLabel = buyerUnitLabel(l, product.unit);
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      l.buyerMakeAnOffer,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
+        return StatefulBuilder(builder: (ctx, setSheet) {
+          final qty = int.tryParse(quantityController.text.trim()) ?? 0;
+          final price = double.tryParse(priceController.text.trim()) ?? 0.0;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l.buyerMakeAnOffer,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ),
+                    IconButton(
+                      tooltip: l.commonClose,
+                      icon: const Icon(Icons.close),
+                      onPressed:
+                          submitting ? null : () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l.buyerNegotiateFor(
+                    product.name,
+                    l.buyerPricePerUnit(
+                        AppFormat.lkr(product.effectivePricePerUnit),
+                        unitLabel),
                   ),
-                  IconButton(
-                    tooltip: l.commonClose,
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: quantityController,
+                  enabled: !submitting,
+                  onChanged: (_) => setSheet(() {}),
+                  decoration: InputDecoration(
+                    labelText: l.buyerQuantityInUnit(unitLabel),
+                    hintText: l.buyerQuantityHint,
+                    helperText:
+                        max > 0 ? 'Available: $max $unitLabel' : null,
+                    filled: true,
+                    fillColor: AppColors.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: priceController,
+                  enabled: !submitting,
+                  onChanged: (_) => setSheet(() {}),
+                  decoration: InputDecoration(
+                    labelText: l.buyerProposedUnitPriceIn(unitLabel),
+                    hintText: l.buyerPriceHint,
+                    prefixText: 'LKR ',
+                    filled: true,
+                    fillColor: AppColors.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+                if (qty > 0 && price > 0) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    '${AppFormat.number(qty)} $unitLabel × '
+                    '${l.buyerPricePerUnit(AppFormat.lkr(price), unitLabel)} = '
+                    '${AppFormat.lkr(price * qty, decimals: 2)}',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l.buyerNegotiateFor(
-                  product.name,
-                  l.buyerPricePerUnit(AppFormat.lkr(product.pricePerUnit), unitLabel),
-                ),
-                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: quantityController,
-                decoration: InputDecoration(
-                  labelText: l.buyerQuantityInUnit(unitLabel),
-                  hintText: l.buyerQuantityHint,
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: submitting
+                        ? null
+                        : () async {
+                            if (qty < 1 || price <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(l.buyerEnterValidQtyPrice)),
+                              );
+                              return;
+                            }
+                            if (max > 0 && qty > max) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(
+                                        'Only $max $unitLabel is available.')),
+                              );
+                              return;
+                            }
+                            setSheet(() => submitting = true);
+                            try {
+                              await context.read<FarmoraState>().makeOffer(
+                                    productId: product.id,
+                                    productName: product.name,
+                                    farmerId: product.farmerId,
+                                    quantity: qty,
+                                    price: price,
+                                  );
+                            } catch (e, st) {
+                              if (ctx.mounted) {
+                                setSheet(() => submitting = false);
+                              }
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(userMessage(e,
+                                        action: 'send the offer', stack: st)),
+                                    backgroundColor: AppColors.error,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l.buyerOfferSent(
+                                      l.buyerPricePerUnit(
+                                          AppFormat.lkr(price), unitLabel))),
+                                  backgroundColor: AppColors.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: submitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : Text(
+                            l.buyerSubmitProposal,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
                   ),
                 ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: priceController,
-                decoration: InputDecoration(
-                  labelText: l.buyerProposedUnitPriceIn(unitLabel),
-                  hintText: l.buyerPriceHint,
-                  prefixText: 'LKR ',
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final qty = int.tryParse(quantityController.text) ?? 0;
-                    final price = double.tryParse(priceController.text) ?? 0.0;
-
-                    if (qty < 1 || price <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.buyerEnterValidQtyPrice)),
-                      );
-                      return;
-                    }
-
-                    final state = context.read<FarmoraState>();
-                    await state.makeOffer(
-                      productId: product.id,
-                      productName: product.name,
-                      farmerId: product.farmerId,
-                      quantity: qty,
-                      price: price,
-                    );
-
-                    if (context.mounted) {
-                      Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.buyerOfferSent(l.buyerPricePerUnit(AppFormat.lkr(price), unitLabel))),
-                          backgroundColor: AppColors.primary,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    l.buyerSubmitProposal,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+              ],
+            ),
+          );
+        });
       },
     );
   }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/farmer_header.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
@@ -19,6 +20,43 @@ class FarmerOrdersScreen extends StatefulWidget {
 class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
   int _selectedTab = 0; // 0: Pending, 1: Accepted, 2: Completed
   String _searchQuery = '';
+
+  /// Orders with an accept/decline call in flight.
+  final Set<String> _busyOrderIds = {};
+
+  Future<void> _runOrderAction(
+    FarmoraOrder order, {
+    required bool accept,
+  }) async {
+    if (_busyOrderIds.contains(order.id)) return;
+    final state = context.read<FarmoraState>();
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    setState(() => _busyOrderIds.add(order.id));
+    try {
+      if (accept) {
+        await state.acceptOrder(order.id);
+      } else {
+        await state.declineOrder(order.id);
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: accept ? AppColors.primary : null,
+          content: Text(accept
+              ? l.farmerOrderAcceptedSnack(order.displayNumber)
+              : l.farmerOrderDeclinedSnack(order.displayNumber)),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        backgroundColor: AppColors.error,
+        content: Text(userMessage(e,
+            action: accept ? 'accept the order' : 'decline the order')),
+      ));
+    } finally {
+      if (mounted) setState(() => _busyOrderIds.remove(order.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +78,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
         return o.productName.toLowerCase().contains(q) ||
             o.title.toLowerCase().contains(q) ||
             o.buyerCompany.toLowerCase().contains(q) ||
-            o.orderNumber.toLowerCase().contains(q);
+            o.displayNumber.toLowerCase().contains(q);
       }).toList();
     }
 
@@ -268,9 +306,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                         ),
                       ),
                       Text(
-                        order.createdAt.millisecondsSinceEpoch > 0
-                            ? AppFormat.relative(order.createdAt)
-                            : order.timestamp,
+                        '${order.displayNumber} · ${order.createdAt.millisecondsSinceEpoch > 0 ? AppFormat.relative(order.createdAt) : order.timestamp}',
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,
@@ -429,7 +465,7 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            order.totalAmount,
+                            order.displayTotal,
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 18,
@@ -454,15 +490,10 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           child: SizedBox(
                             height: 48,
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                state.declineOrder(order.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(context.l10n
-                                          .farmerOrderDeclinedSnack(
-                                              order.orderNumber))),
-                                );
-                              },
+                              onPressed: _busyOrderIds.contains(order.id)
+                                  ? null
+                                  : () => _runOrderAction(order,
+                                      accept: false),
                               style: OutlinedButton.styleFrom(
                                 // Stitch: bg-surface-container text-on-surface rounded-lg
                                 backgroundColor: AppColors.surfaceContainer,
@@ -491,17 +522,10 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                           child: SizedBox(
                             height: 48,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                state.acceptOrder(order.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: AppColors.primary,
-                                    content: Text(context.l10n
-                                        .farmerOrderAcceptedSnack(
-                                            order.orderNumber)),
-                                  ),
-                                );
-                              },
+                              onPressed: _busyOrderIds.contains(order.id)
+                                  ? null
+                                  : () => _runOrderAction(order,
+                                      accept: true),
                               style: ElevatedButton.styleFrom(
                                 // Stitch: bg-primary text-on-primary rounded-lg shadow-md
                                 backgroundColor: AppColors.primary,

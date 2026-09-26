@@ -4,16 +4,18 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../providers/farmora_state.dart';
-import '../../home/presentation/home_screen.dart';
+import 'auth_blocked_banner.dart';
+import 'auth_gate.dart';
 import 'auth_l10n.dart';
 import 'auth_language_button.dart';
-import 'phone_otp_dialog.dart';
+import 'forgot_password_screen.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible login screen for Farmora.
 ///
 /// Features large touch-friendly input fields, password visibility toggle,
-/// primary green action button, OTP login option, and registration linking.
+/// primary green action button, forgot-password (SMS OTP reset) and
+/// registration linking.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -61,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
       );
     }
@@ -76,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
     if (success) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
       );
     } else {
@@ -90,40 +92,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _startPhoneOtpLogin() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.enterYourPhoneNumberFirst)),
-      );
-      return;
-    }
-    setState(() => _isLoading = true);
-    final state = context.read<FarmoraState>();
-    final sent = await state.sendPhoneOtp(phone);
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    if (!sent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authErrorText(
-              state.authError, context.l10n, context.l10n.authCouldNotSendOtp)),
-        ),
-      );
-      return;
-    }
-    final verified = await showPhoneOtpDialog(
-      context: context,
-      phone: phone,
-      verify: state.verifyPhoneOtpLogin,
-      resend: () => state.sendPhoneOtp(phone),
-      error: () => state.authError,
+  Future<void> _openForgotPassword() async {
+    final reset = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ForgotPasswordScreen(initialPhone: _phoneController.text.trim()),
+      ),
     );
-    if (!mounted || !verified) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (route) => false,
-    );
+    if (reset == true && mounted) _passwordController.clear();
   }
 
   @override
@@ -167,6 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  const AuthBlockedBanner(
+                      padding: EdgeInsets.only(bottom: 12)),
 
                   // 2. Welcome Back Greeting
                   Builder(builder: (context) {
@@ -369,7 +347,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: _startPhoneOtpLogin,
+                            onPressed: _isLoading ? null : _openForgotPassword,
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -437,41 +415,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // 5. "Login with OTP" Option
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _startPhoneOtpLogin,
-                            icon: const Icon(
-                              Icons.sms_outlined,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                            label: Text(
-                              context.l10n.authLoginWithOtp,
-                              maxLines: 2,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.forestGreen,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 50),
-                              side: BorderSide(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                                width: 1.5,
-                              ),
-                              backgroundColor: AppColors.primaryContainer
-                                  .withValues(alpha: 0.4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:farmora/providers/farmora_state.dart';
 import 'package:farmora/app.dart';
+import 'package:farmora/features/admin/presentation/admin_dashboard_screen.dart';
 import 'package:farmora/core/localization/l10n.dart';
 import 'package:farmora/features/auth/presentation/auth_l10n.dart';
 import 'package:farmora/features/auth/presentation/login_screen.dart';
@@ -95,7 +96,6 @@ void main() {
         Role.farmer,
         Role.buyer,
         Role.transporter,
-        Role.admin,
       ]) {
         testWidgets('${role.name} dashboard in ${locale.languageCode}',
             (tester) async {
@@ -112,6 +112,21 @@ void main() {
         });
       }
 
+      // Admins land on AdminDashboardScreen (DashboardScreen has no admin
+      // branch any more).
+      testWidgets('admin dashboard in ${locale.languageCode}', (tester) async {
+        _phoneViewport(tester);
+        final state = FarmoraState()..setRole(Role.admin);
+        await tester
+            .pumpWidget(_app(const AdminDashboardScreen(), state, locale));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final l = lookupAppLocalizations(locale);
+        expect(find.text(l.adminDashTitle), findsWidgets);
+        expect(find.text(l.adminDashQuickHub), findsWidgets);
+        expect(find.text('Quick Operations Hub'), findsNothing);
+      });
+
       testWidgets('login screen in ${locale.languageCode}', (tester) async {
         _phoneViewport(tester);
         await tester
@@ -119,7 +134,7 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull);
         final l = lookupAppLocalizations(locale);
-        expect(find.text(l.authLoginWithOtp), findsOneWidget);
+        expect(find.text(l.forgotPassword), findsOneWidget);
         expect(find.text('Login'), findsNothing);
       });
 

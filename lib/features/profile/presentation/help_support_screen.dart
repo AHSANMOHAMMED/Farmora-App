@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
 
@@ -114,6 +115,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     value: '+94 11 234 5678',
                     color: AppColors.primary,
                     bg: const Color(0xFFE8F5E9),
+                    uri: Uri(scheme: 'tel', path: '+94112345678'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -124,6 +126,11 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     value: 'support@farmora.lk',
                     color: const Color(0xFF1565C0),
                     bg: const Color(0xFFE3F2FD),
+                    uri: Uri(
+                      scheme: 'mailto',
+                      path: 'support@farmora.lk',
+                      query: 'subject=Farmora%20support',
+                    ),
                   ),
                 ),
               ],
@@ -136,6 +143,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               color: const Color(0xFF2E7D32),
               bg: const Color(0xFFE8F5E9),
               wide: true,
+              uri: Uri.parse('https://wa.me/94771234567'),
             ),
             const SizedBox(height: 24),
 
@@ -216,55 +224,79 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     required String value,
     required Color color,
     required Color bg,
+    required Uri uri,
     bool wide = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 20),
+        onTap: () => _open(uri, value),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.onSurfaceVariant)),
-                const SizedBox(height: 2),
-                Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: color)),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurfaceVariant)),
+                    const SizedBox(height: 2),
+                    Text(value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: color)),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> _open(Uri uri, String label) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not open $uri: $e');
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open $label on this device.')),
+      );
+    }
   }
 }

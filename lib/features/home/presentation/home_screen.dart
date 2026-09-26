@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
@@ -27,6 +28,7 @@ import '../../admin/presentation/system_settings_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
+import 'widgets/platform_gate_views.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,6 +39,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int tabIndex = 0;
+
+  /// Installed app version (package_info_plus); null until read / on error.
+  String? _appVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (e) {
+      // Unknown version: the update gate stays open.
+      debugPrint('App version unavailable: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,12 +87,27 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    // Platform gates (admins are exempt so they can switch them off).
+    if (role != Role.admin) {
+      if (state.maintenanceMode) return const MaintenanceView();
+      final version = _appVersion;
+      if (version != null && isVersionLower(version, state.minAppVersion)) {
+        return UpdateRequiredView(
+          currentVersion: version,
+          minimumVersion: state.minAppVersion,
+        );
+      }
+    }
+
     List<Widget> screens;
     List<_NavItem> navItems;
 
     final l10n = context.l10n;
 
-    final isUnverified = role != Role.admin && !state.isVerified;
+    // Farmers and transporters trade only once verified; buyers are not
+    // gated (they can still submit documents from their profile).
+    final isUnverified = (role == Role.farmer || role == Role.transporter) &&
+        !state.isVerified;
     if (isUnverified) {
       screens = [
         const AwaitingVerificationView(),

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../models/user_role.dart';
+import 'admin_csv_export.dart';
 
 class AuditLogScreen extends StatefulWidget {
   const AuditLogScreen({super.key});
@@ -231,14 +232,46 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     );
   }
 
-  void _exportAuditLogCsv(BuildContext context, List<AuditLog> logs) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.adminAuditExported(logs.length)),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-      ),
+  Future<void> _exportAuditLogCsv(
+      BuildContext context, List<AuditLog> logs) async {
+    if (logs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to export.')),
+      );
+      return;
+    }
+    final csv = buildCsv(
+      const [
+        'id',
+        'timestamp',
+        'severity',
+        'action_type',
+        'actor_id',
+        'actor_name',
+        'actor_role',
+        'target_entity',
+        'target_id',
+        'details',
+      ],
+      [
+        for (final log in logs)
+          [
+            log.id,
+            log.timestamp,
+            log.severity,
+            log.actionType,
+            log.actorId,
+            log.actorName,
+            log.actorRole,
+            log.targetEntity,
+            log.targetId,
+            log.details,
+          ],
+      ],
     );
+    final stamp = DateTime.now().toIso8601String().substring(0, 10);
+    await exportCsv(context,
+        fileName: 'farmora_audit_log_$stamp.csv', csv: csv);
   }
 
   @override

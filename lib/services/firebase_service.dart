@@ -18,6 +18,8 @@ import '../models/review_model.dart';
 import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
 import '../models/market_price_index.dart';
+import '../models/admin_stats.dart';
+import '../models/dispute_model.dart';
 import 'service_errors.dart';
 import 'spark_backend.dart';
 
@@ -61,11 +63,17 @@ class FirestoreService {
         .call({'token': token});
   }
 
+  /// Public platform settings (any signed-in user): maintenanceMode,
+  /// maintenanceNotice, platformFeeBps, sessionTimeoutMinutes,
+  /// defaultDeliveryFeeMinor, escrowReleaseHours, minAppVersion.
   Future<Map<String, dynamic>> getPlatformSettings() async {
     if (!kUseCloudFunctions) return _spark.getPlatformSettings();
     final result = await _functions.httpsCallable('getPlatformSettings').call();
     return Map<String, dynamic>.from(result.data as Map);
   }
+
+  /// Alias of [getPlatformSettings].
+  Future<Map<String, dynamic>> getPublicSettings() => getPlatformSettings();
 
   Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
     if (!kUseCloudFunctions) {
@@ -95,6 +103,7 @@ class FirestoreService {
             .toList());
   }
 
+  /// Admin only (rules): other roles' notifications are written by functions.
   Future<void> sendInAppNotification({
     required String userId,
     required String title,
@@ -102,19 +111,15 @@ class FirestoreService {
     String type = 'general',
     String? referenceId,
   }) async {
-    try {
-      await _db.collection('notifications').add({
-        'userId': userId,
-        'title': title,
-        'body': body,
-        'type': type,
-        'read': false,
-        'referenceId': referenceId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {
-      // Notification failure shouldn't crash main operation
-    }
+    await _db.collection('notifications').add({
+      'userId': userId,
+      'title': title,
+      'body': body,
+      'type': type,
+      'read': false,
+      'referenceId': referenceId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -124,19 +129,22 @@ class FirestoreService {
         .update({'read': true});
   }
 
+  Future<void> deleteNotification(String notificationId) async {
+    await _db.collection('notifications').doc(notificationId).delete();
+  }
+
   Future<void> markAllNotificationsRead(String userId) async {
-    try {
-      final batch = _db.batch();
-      final snap = await _db
-          .collection('notifications')
-          .where('userId', isEqualTo: userId)
-          .where('read', isEqualTo: false)
-          .get();
-      for (final doc in snap.docs) {
-        batch.update(doc.reference, {'read': true});
-      }
-      await batch.commit();
-    } catch (_) {}
+    final snap = await _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('read', isEqualTo: false)
+        .get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.update(doc.reference, {'read': true});
+    }
+    await batch.commit();
   }
 
   Future<void> updateUserLanguage(String languageCode) async {
@@ -211,9 +219,16 @@ class FirestoreService {
   }
 
   /// Real-time stream of all products
-  Stream<List<Product>> productsStream({int limit = 50}) {
-    return _db
-        .collection('products')
+  ///
+  /// [activeOnly] (buyer catalogue) returns only `status == 'Active'`
+  /// listings (index: products status ASC + createdAt DESC). Admins pass
+  /// false to see every listing. Farmers use [productsByFarmerStream] so
+  /// they still see their own Empty/Inactive products.
+  Stream<List<Product>> productsStream(
+      {int limit = 50, bool activeOnly = true}) {
+    Query<Map<String, dynamic>> query = _db.collection('products');
+    if (activeOnly) query = query.where('status', isEqualTo: 'Active');
+    return query
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -267,10 +282,14 @@ class FirestoreService {
     );
   }
 
+  /// Farmer accepts a `pending` offer, or the buyer accepts a `countered`
+  /// one. The buyer passes delivery address / payment method / transporter.
   Future<String> acceptOffer({
     required String offerId,
     int deliveryFeeMinor = 50000,
     String? deliveryAddress,
+    String? paymentMethod,
+    String? transporterId,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.acceptOffer(
@@ -281,15 +300,27 @@ class FirestoreService {
     final result = await _functions.httpsCallable('acceptOffer').call({
       'offerId': offerId,
       'deliveryFeeMinor': deliveryFeeMinor,
-      if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
+      if (deliveryAddress != null && deliveryAddress.isNotEmpty)
+        'deliveryAddress': deliveryAddress,
+      if (paymentMethod != null) 'paymentMethod': paymentMethod,
+      if (transporterId != null && transporterId.isNotEmpty)
+        'transporterId': transporterId,
     });
     return result.data['orderId'] as String;
   }
 
+  /// Farmer counters with a new PER-UNIT price in LKR.
   Future<void> counterOffer({
     required String offerId,
     required double counterPrice,
   }) async {
+    if (counterPrice <= 0) {
+      throw UserArgumentError(L10n.current.svcCounterPriceRequired);
+    }
+    if (!kUseCloudFunctions) {
+      await _spark.counterOffer(offerId: offerId, proposedPrice: counterPrice);
+      return;
+    }
     await _functions.httpsCallable('counterOffer').call({
       'offerId': offerId,
       'counterPrice': counterPrice,
@@ -318,14 +349,7 @@ class FirestoreService {
       if (proposedPrice == null || proposedPrice <= 0) {
         throw UserArgumentError(L10n.current.svcCounterPriceRequired);
       }
-      if (!kUseCloudFunctions) {
-        await _spark.counterOffer(offerId: id, proposedPrice: proposedPrice);
-        return;
-      }
-      await _functions.httpsCallable('counterOffer').call({
-        'offerId': id,
-        'proposedPriceMinor': (proposedPrice * 100).round(),
-      });
+      await counterOffer(offerId: id, counterPrice: proposedPrice);
       return;
     }
     await _db.collection('offers').doc(id).update({
@@ -470,14 +494,26 @@ class FirestoreService {
     });
   }
 
+  /// Admin: change [userId]'s role (users doc + custom claims) via
+  /// `adminSetUserRole`. Kept name for existing callers.
   Future<void> updateUserRole({
     required String userId,
     required String role,
+  }) =>
+      adminSetUserRole(uid: userId, role: role);
+
+  Future<void> adminSetUserRole({
+    required String uid,
+    required String role,
   }) async {
-    await _db.collection('users').doc(userId).update({
-      'role': role,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await _functions
+        .httpsCallable('adminSetUserRole')
+        .call({'uid': uid, 'role': role});
+  }
+
+  /// Admin: soft-delete an account (disabled + flagged deleted).
+  Future<void> adminDeleteUser(String uid) async {
+    await _functions.httpsCallable('adminDeleteUser').call({'uid': uid});
   }
 
   Future<void> releaseEscrow({required String orderId}) async {
@@ -488,45 +524,43 @@ class FirestoreService {
     await _functions.httpsCallable('releaseEscrow').call({'orderId': orderId});
   }
 
+  /// Admin: resolve an order dispute. [resolution] is one of
+  /// `refund_buyer`, `release_farmer`, `split_settlement`.
   Future<void> resolveDispute({
     required String orderId,
     required String resolution,
     required String adminNotes,
-    double refundPercent = 100.0,
   }) async {
-    if (!kUseCloudFunctions) {
-      await _db.collection('orders').doc(orderId).update({
-        'disputeStatus': 'resolved',
-        'disputeResolution': resolution,
-        'adminNotes': adminNotes,
-        'status': resolution == 'refund_buyer' ? 'cancelled' : 'completed',
-        'paymentStatus': resolution == 'refund_buyer' ? 'refunded' : 'released',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      return;
-    }
     await _functions.httpsCallable('resolveDispute').call({
       'orderId': orderId,
       'resolution': resolution,
       'adminNotes': adminNotes,
-      'refundPercent': refundPercent,
     });
   }
 
-  Future<void> publishAdvisory({
+  /// Admin: publish an advisory and notify [audience] ('all', 'farmer',
+  /// 'buyer', 'transporter'). Returns the number of recipients.
+  Future<int> broadcastAdvisory({
+    required String title,
+    required String body,
+    required String audience,
+  }) async {
+    final result = await _functions.httpsCallable('broadcastAdvisory').call({
+      'title': title,
+      'body': body,
+      'audience': audience,
+    });
+    final data = result.data;
+    return data is Map ? (data['recipients'] as num?)?.toInt() ?? 0 : 0;
+  }
+
+  /// Legacy name for [broadcastAdvisory].
+  Future<int> publishAdvisory({
     required String title,
     required String message,
     required String targetRole,
-    String priority = 'normal',
-  }) async {
-    await _db.collection('advisories').add({
-      'title': title,
-      'message': message,
-      'targetRole': targetRole,
-      'priority': priority,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
+  }) =>
+      broadcastAdvisory(title: title, body: message, audience: targetRole);
 
   Future<Map<String, dynamic>> exportUserData() async {
     if (!kUseCloudFunctions) return _spark.exportUserData();
@@ -555,67 +589,107 @@ class FirestoreService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
-  Future<void> requestPayout({
+  /// Farmer/transporter: request a payout of [amount] LKR. The server checks
+  /// the available balance and creates the settlement. Returns its id.
+  Future<String> requestWithdrawal({
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    String payoutMethod = 'CEFT',
+  }) async {
+    final result = await _functions.httpsCallable('requestWithdrawal').call({
+      'amount': amount,
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'payoutMethod': payoutMethod,
+    });
+    final data = result.data;
+    return data is Map ? (data['settlementId'] ?? '').toString() : '';
+  }
+
+  /// Legacy name for [requestWithdrawal].
+  Future<String> requestPayout({
     required double amount,
     required String bankName,
     required String accountNumber,
     String method = 'CEFT',
-  }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    await _db.collection('settlements').add({
-      'recipientId': uid,
-      'recipientRole': 'farmer',
-      'bankName': bankName,
-      'accountNumber': accountNumber,
-      'grossAmount': amount,
-      'netAmount': amount * 0.95,
-      'platformFee': amount * 0.05,
-      'payoutMethod': method,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
+  }) =>
+      requestWithdrawal(
+        amount: amount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        payoutMethod: method,
+      );
+
+  // ── Chat keys (chat_keys/{uid}) ─────────────────────────────
 
   Future<void> publishChatPublicKey(String publicKeyB64) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
-    await _db.collection('users').doc(uid).update({
-      'chatPublicKey': publicKeyB64,
+    await _db.collection('chat_keys').doc(uid).set({
+      'publicKey': publicKeyB64,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<String?> fetchChatPublicKey(String userId) async {
-    final snap = await _db.collection('users').doc(userId).get();
-    final key = snap.data()?['chatPublicKey'];
+    if (userId.isEmpty) return null;
+    final snap = await _db.collection('chat_keys').doc(userId).get();
+    final key = snap.data()?['publicKey'];
     return key is String && key.isNotEmpty ? key : null;
   }
 
+  /// Updates transporter fields through the `updateTransporterProfile`
+  /// callable (which mirrors public fields to `transporter_profiles`). Only
+  /// the fields passed are sent, so `availabilityStatus` alone is valid.
+  /// [capacityKg] is a legacy alias for [vehicleCapacity] in kg.
   Future<void> updateTransporterProfile({
+    String? displayName,
+    String? phone,
     String? vehicleType,
-    int? capacityKg,
+    String? vehicleRegistration,
+    num? vehicleCapacity,
+    String? vehicleCapacityUnit,
+    String? vehicleDescription,
+    String? availabilityStatus,
     List<String>? serviceDistricts,
+    int? capacityKg,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
-    final updates = <String, dynamic>{
-      'updatedAt': FieldValue.serverTimestamp(),
+    final capacity = vehicleCapacity ?? capacityKg;
+    final payload = <String, dynamic>{
+      if (displayName != null) 'displayName': displayName,
+      if (phone != null) 'phone': phone,
+      if (vehicleType != null) 'vehicleType': vehicleType,
+      if (vehicleRegistration != null)
+        'vehicleRegistration': vehicleRegistration,
+      if (capacity != null) 'vehicleCapacity': capacity,
+      if (capacity != null)
+        'vehicleCapacityUnit': vehicleCapacityUnit ?? 'kg'
+      else if (vehicleCapacityUnit != null)
+        'vehicleCapacityUnit': vehicleCapacityUnit,
+      if (vehicleDescription != null) 'vehicleDescription': vehicleDescription,
+      if (availabilityStatus != null) 'availabilityStatus': availabilityStatus,
+      if (serviceDistricts != null) 'serviceDistricts': serviceDistricts,
     };
-    if (vehicleType != null) updates['vehicleType'] = vehicleType;
-    if (capacityKg != null) updates['capacityKg'] = capacityKg;
-    if (serviceDistricts != null) {
-      updates['serviceDistricts'] = serviceDistricts;
-    }
-    await _db.collection('users').doc(uid).update(updates);
+    if (payload.isEmpty) return;
+    await _functions.httpsCallable('updateTransporterProfile').call(payload);
   }
 
+  /// Public transporter card (`transporter_profiles/{id}`), readable by any
+  /// signed-in user. Emits null while the profile does not exist.
   Stream<Map<String, dynamic>?> transporterPublicProfileStream(
     String transporterId,
   ) {
-    return _db.collection('users').doc(transporterId).snapshots().map((doc) {
+    return _db
+        .collection('transporter_profiles')
+        .doc(transporterId)
+        .snapshots()
+        .map((doc) {
       if (!doc.exists) return null;
       final data = doc.data() ?? <String, dynamic>{};
       return <String, dynamic>{
+        ...data,
+        'uid': doc.id,
         'displayName': data['displayName'] ?? data['name'] ?? '',
         'photoUrl': data['photoUrl'] ?? '',
         'vehicleType': data['vehicleType'] ?? '',
@@ -666,6 +740,7 @@ class FirestoreService {
       'quantityAvailable': quantityAvailable,
       'media': media,
       'isOrganic': product.isOrganic,
+      'availabilityDate': product.availabilityDate?.toIso8601String(),
     });
     return result.data['productId'] as String;
   }
@@ -681,7 +756,8 @@ class FirestoreService {
     });
   }
 
-  Future<void> transitionTransport(String jobId, String status) async {
+  Future<void> transitionTransport(String jobId, String status,
+      {String? reason}) async {
     if (!kUseCloudFunctions) {
       await _spark.transitionTransport(jobId, status);
       return;
@@ -689,7 +765,41 @@ class FirestoreService {
     await _functions.httpsCallable('transitionTransport').call({
       'jobId': jobId,
       'status': status,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
     });
+  }
+
+  /// Transporter declines a job that was requested for them.
+  Future<void> declineTransportJob(String jobId) =>
+      transitionTransport(jobId, 'declined');
+
+  /// Farmer cancels a still-`requested` transport request.
+  Future<void> cancelTransportRequest(String jobId) async {
+    await _functions
+        .httpsCallable('cancelTransportRequest')
+        .call({'jobId': jobId});
+  }
+
+  /// Farmer confirms the goods were handed to the transporter
+  /// (sets `farmerHandedOverAt`; no status change).
+  Future<void> confirmHandover(String orderId) async {
+    await _functions
+        .httpsCallable('confirmHandover')
+        .call({'orderId': orderId});
+  }
+
+  /// With [farmerId]: `{available: bool}` for checkout. With [orderId]
+  /// (buyer of a bank-deposit order): the full bank details.
+  Future<Map<String, dynamic>> getFarmerBankDetails({
+    String? farmerId,
+    String? orderId,
+  }) async {
+    final result = await _functions.httpsCallable('getFarmerBankDetails').call({
+      if (farmerId != null) 'farmerId': farmerId,
+      if (orderId != null) 'orderId': orderId,
+    });
+    final data = result.data;
+    return data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{};
   }
 
   Future<void> updateTransportJobLocation({
@@ -868,17 +978,49 @@ class FirestoreService {
     }
   }
 
-  /// Opens (creating if needed) the chat for [orderId] with [peerId].
+  /// Deterministic conversation id for an order chat between two users.
+  static String conversationIdFor(String orderId, String a, String b) {
+    final ids = [a, b]..sort();
+    return 'o_${orderId}_${ids[0]}_${ids[1]}';
+  }
+
+  /// Opens the chat for [orderId] with [peerId]. Never creates it on the
+  /// client: when the conversation does not exist yet a local
+  /// [FarmoraConversation] (with `exists == false`) is returned and the first
+  /// `sendMessage` call creates it server-side.
   Future<FarmoraConversation> ensureConversation({
     required String orderId,
     required String peerId,
   }) async {
-    final id = await _spark.ensureConversation(orderId: orderId, peerId: peerId);
+    final uid = _requireUid;
+    if (peerId.isEmpty || peerId == uid) {
+      throw UserStateError(L10n.current.svcNoChatPeer);
+    }
+    final id = conversationIdFor(orderId, uid, peerId);
+    final local = FarmoraConversation(
+      id: id,
+      orderId: orderId,
+      participantIds: [uid, peerId]..sort(),
+      exists: false,
+    );
     final snap = await _db.collection('conversations').doc(id).get();
-    return FarmoraConversation.fromMap(id, snap.data() ?? {
-      'orderId': orderId,
-      'participantIds': [_requireUid, peerId],
-    });
+    final data = snap.data();
+    if (!snap.exists || data == null) return local;
+    return FarmoraConversation.fromMap(id, data);
+  }
+
+  /// Resets the caller's unread counter for [conversationId]. A conversation
+  /// that does not exist yet has nothing to mark.
+  Future<void> markConversationRead(String conversationId) async {
+    final uid = _requireUid;
+    try {
+      await _db.collection('conversations').doc(conversationId).update({
+        'unreadCounts.$uid': 0,
+        'lastReadAt.$uid': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (e) {
+      if (e.code != 'not-found') rethrow;
+    }
   }
 
   /// Sends encrypted text and/or a Storage photo to a conversation.
@@ -915,6 +1057,7 @@ class FirestoreService {
     required String orderId,
     required String recipientId,
     required String ciphertext,
+    String? conversationId,
   }) async {
     if (!kUseCloudFunctions) {
       return _spark.sendEncryptedMessage(
@@ -925,6 +1068,7 @@ class FirestoreService {
     }
     final result = await _functions.httpsCallable('sendMessage').call({
       'orderId': orderId,
+      if (conversationId != null) 'conversationId': conversationId,
       'recipientId': recipientId,
       'ciphertext': ciphertext,
     });
@@ -944,11 +1088,14 @@ class FirestoreService {
             .toList());
   }
 
+  /// Messages of [conversationId] visible to the signed-in user (rules only
+  /// allow reading messages whose `participantIds` contain the caller).
   Stream<List<FarmoraMessage>> messagesStream(String conversationId,
       {int limit = 100}) {
     return _db
         .collection('messages')
         .where('conversationId', isEqualTo: conversationId)
+        .where('participantIds', arrayContains: _requireUid)
         .orderBy('createdAt')
         .limit(limit)
         .snapshots()
@@ -1006,21 +1153,38 @@ class FirestoreService {
     };
   }
 
-  /// Generate and persist QR payload for a packed product.
-  /// Prefer [issueOrderBarcode] for delivery authenticity verification.
+  /// Generates the product QR (`farmora://product/<id>`) through the
+  /// `generateProductQr` callable (owner farmer). [farmerId] is ignored and
+  /// kept for existing callers. Returns the QR payload.
   Future<String> generateProductQr({
     required String productId,
-    required String farmerId,
+    String? farmerId,
   }) async {
-    final payload =
-        'FARMORA:$productId:$farmerId:${DateTime.now().millisecondsSinceEpoch}';
-    await _db.collection('products').doc(productId).update({
-      'qrCode': payload,
-      'packingDate': DateTime.now().toIso8601String(),
-      'harvestStatus': 'packed',
-      'updatedAt': FieldValue.serverTimestamp(),
+    final result = await _functions
+        .httpsCallable('generateProductQr')
+        .call({'productId': productId});
+    final data = result.data;
+    final qr = data is Map ? data['qrCode']?.toString() : null;
+    return qr ?? 'farmora://product/$productId';
+  }
+
+  /// Owner farmer: update only the given media fields of a product.
+  Future<void> setProductMedia({
+    required String productId,
+    String? videoPath,
+    String? videoUrl,
+    bool clearVideo = false,
+    String? harvestStatus,
+    DateTime? harvestDate,
+  }) async {
+    await _functions.httpsCallable('setProductMedia').call({
+      'productId': productId,
+      if (videoPath != null) 'videoPath': videoPath,
+      if (videoUrl != null) 'videoUrl': videoUrl,
+      if (clearVideo) 'clearVideo': true,
+      if (harvestStatus != null) 'harvestStatus': harvestStatus,
+      if (harvestDate != null) 'harvestDate': harvestDate.toIso8601String(),
     });
-    return payload;
   }
 
   /// Upload harvest video for a product and return download URL + storage path.
@@ -1041,17 +1205,25 @@ class FirestoreService {
     final ref = _storage.ref(path);
     await ref.putData(bytes, SettableMetadata(contentType: contentType));
     final url = await ref.getDownloadURL();
-    await _db.collection('products').doc(productId).update({
-      'videoPath': path,
-      'videoUrl': url,
-      'harvestStatus': 'harvested',
-      'harvestDate': DateTime.now().toIso8601String(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await setProductMedia(
+        productId: productId,
+        videoPath: path,
+        videoUrl: url,
+        harvestStatus: 'harvested',
+        harvestDate: DateTime.now(),
+      );
+    } catch (_) {
+      // Don't leave an orphaned upload behind when the product update fails.
+      try {
+        await ref.delete();
+      } catch (_) {}
+      rethrow;
+    }
     return {'path': path, 'url': url};
   }
 
-  /// Delete a product video from Storage and clear Firestore fields.
+  /// Delete a product video from Storage and clear the product's fields.
   Future<void> deleteProductVideo({
     required String productId,
     String? storagePath,
@@ -1063,14 +1235,11 @@ class FirestoreService {
       } else if (downloadUrl != null && downloadUrl.isNotEmpty) {
         await _storage.refFromURL(downloadUrl).delete();
       }
-    } catch (_) {
-      // Ignore missing-file errors; still clear Firestore fields.
+    } catch (e) {
+      // A missing file must not block clearing the product fields.
+      debugPrint('Product video delete skipped: $e');
     }
-    await _db.collection('products').doc(productId).update({
-      'videoPath': null,
-      'videoUrl': null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await setProductMedia(productId: productId, clearVideo: true);
   }
 
   /// Mark order delivered and auto-delete linked product video.
@@ -1186,9 +1355,16 @@ class FirestoreService {
 
   // ── Admin: Treasury Settlements (Firestore-backed) ──────────
 
-  Stream<List<SettlementPayout>> settlementsStream({int limit = 200}) {
-    return _db
-        .collection('settlements')
+  /// All settlements (admin), or only [recipientId]'s own payouts.
+  Stream<List<SettlementPayout>> settlementsStream({
+    int limit = 200,
+    String? recipientId,
+  }) {
+    Query<Map<String, dynamic>> query = _db.collection('settlements');
+    if (recipientId != null) {
+      query = query.where('recipientId', isEqualTo: recipientId);
+    }
+    return query
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -1197,15 +1373,10 @@ class FirestoreService {
             .toList());
   }
 
-  Future<void> createSettlement(SettlementPayout s) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    await _db.collection('settlements').doc(s.id).set({
-      ...s.toMap(),
-      if (uid != null) 'createdBy': uid,
-      'serverCreatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
+  /// Admin: move a settlement to `settled` (needs [transactionReference]),
+  /// `on_hold` ([holdReason]), `processing` or `rejected`.
+  /// [clearHoldReason] is accepted for existing callers; the server clears
+  /// the hold reason when a payout leaves `on_hold`.
   Future<void> updateSettlementStatus(
     String settlementId, {
     required String status,
@@ -1213,15 +1384,54 @@ class FirestoreService {
     String? holdReason,
     bool clearHoldReason = false,
   }) async {
-    await _db.collection('settlements').doc(settlementId).update({
+    await _functions.httpsCallable('updateSettlementStatus').call({
+      'settlementId': settlementId,
       'status': status,
       if (transactionReference != null)
         'transactionReference': transactionReference,
       if (holdReason != null) 'holdReason': holdReason,
-      if (clearHoldReason) 'holdReason': null,
-      if (status == 'settled') 'settledAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  // ── Admin: Disputes & stats ─────────────────────────────────
+
+  Stream<List<Dispute>> disputesStream({int limit = 200}) {
+    return _db
+        .collection('disputes')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => Dispute.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  /// Platform totals from server-side aggregate queries (admin).
+  Future<AdminStats> adminStats() async {
+    final users = _db.collection('users');
+    Future<int> countOf(Query<Map<String, dynamic>> q) async =>
+        (await q.count().get()).count ?? 0;
+    final results = await Future.wait<Object?>([
+      countOf(users),
+      countOf(users.where('role', isEqualTo: 'farmer')),
+      countOf(users.where('role', isEqualTo: 'buyer')),
+      countOf(users.where('role', isEqualTo: 'transporter')),
+      countOf(users.where('role', isEqualTo: 'admin')),
+      _db.collection('orders').aggregate(count(), sum('totalMinor')).get(),
+      countOf(_db.collection('disputes').where('status', isEqualTo: 'open')),
+    ]);
+    final orders = results[5] as AggregateQuerySnapshot;
+    return AdminStats(
+      totalUsers: results[0] as int,
+      farmers: results[1] as int,
+      buyers: results[2] as int,
+      transporters: results[3] as int,
+      admins: results[4] as int,
+      totalOrders: orders.count ?? 0,
+      grossVolumeMinor: (orders.getSum('totalMinor') ?? 0).round(),
+      openDisputes: results[6] as int,
+      fetchedAt: DateTime.now(),
+    );
   }
 
   // ── Admin: Market Price Index (Firestore-backed) ────────────
@@ -1251,6 +1461,7 @@ class FirestoreService {
   Future<void> reviewVerificationDoc({
     required String documentId,
     required String status,
+    String? reason,
   }) async {
     if (!kUseCloudFunctions) {
       await _spark.reviewVerification(documentId: documentId, status: status);
@@ -1259,14 +1470,18 @@ class FirestoreService {
     await _functions.httpsCallable('reviewVerification').call({
       'documentId': documentId,
       'status': status,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     });
   }
 
+  /// Saves notification preferences as `users/{uid}.notificationPrefs`
+  /// ({orderUpdates, messages, promos, quietHoursStart, quietHoursEnd}),
+  /// the field the notification functions read.
   Future<void> updateNotificationPreferences(Map<String, dynamic> prefs) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw UserStateError(L10n.current.errorSignInAgain);
     await _db.collection('users').doc(uid).update({
-      'notificationPreferences': prefs,
+      'notificationPrefs': prefs,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -1389,9 +1604,8 @@ class FirestoreService {
     throw UnsupportedError('Use transitionTransport Cloud Function.');
   }
 
-  Future<void> deleteTransportJob(String id) async {
-    throw UnsupportedError('Transport jobs cannot be deleted from the client.');
-  }
+  /// Legacy name: a farmer "deletes" a request by cancelling it.
+  Future<void> deleteTransportJob(String id) => cancelTransportRequest(id);
 
   /// Real-time stream of transport jobs
   Stream<List<TransportJob>> jobsStream({int limit = 50}) {
@@ -1465,63 +1679,49 @@ class FirestoreService {
         .handleError((e) => debugPrint('Job stream for order skipped: $e'));
   }
 
-  /// Verified transporters available for nearby discovery. Returns a public
-  /// projection only (no phone/email/address) — contact happens through
-  /// order-scoped in-app messaging, never direct details.
-  Stream<List<Map<String, dynamic>>> transportersStream({int limit = 100}) {
-    return _db
-        .collection('users')
-        .where('role', isEqualTo: 'transporter')
-        .where('isVerified', isEqualTo: true)
-        .where('isSuspended', isNotEqualTo: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map((doc) {
-              final d = doc.data();
-              return {
-                'uid': doc.id,
-                'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
-                'photoUrl': d['photoUrl'] ?? '',
-                'district': d['district'] ?? '',
-                'vehicleType': d['vehicleType'] ?? '',
-                'vehicleRegistration': d['vehicleRegistration'] ?? '',
-                'vehicleCapacity': d['vehicleCapacity'],
-                'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
-                'availabilityStatus': d['availabilityStatus'] ?? '',
-                'isVerified': d['isVerified'] == true,
-                'location': d['location'],
-                'locationUpdatedAt': d['locationUpdatedAt'],
-              };
-            }).toList());
-  }
-
-  Future<List<Map<String, dynamic>>> getAvailableTransporters({
-    int limit = 100,
+  /// Verified, non-suspended transporters (public projection from
+  /// `transporter_profiles`) via the `listAvailableTransporters` callable.
+  Future<List<Map<String, dynamic>>> listAvailableTransporters({
+    String? district,
   }) async {
-    final snap = await _db
-        .collection('users')
-        .where('role', isEqualTo: 'transporter')
-        .limit(limit)
-        .get();
-    return snap.docs
-        .where((doc) => doc.data()['isSuspended'] != true)
-        .map((doc) {
-      final d = doc.data();
-      return {
-        'uid': doc.id,
+    final result = await _functions.httpsCallable('listAvailableTransporters')
+        .call({if (district != null && district.isNotEmpty) 'district': district});
+    final data = result.data;
+    final list = data is List
+        ? data
+        : (data is Map ? (data['transporters'] as List? ?? const []) : const []);
+    return list.whereType<Map>().map((raw) {
+      final d = Map<String, dynamic>.from(raw);
+      final uid = (d['uid'] ?? d['id'] ?? '').toString();
+      return <String, dynamic>{
+        ...d,
+        'uid': uid,
         'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
         'photoUrl': d['photoUrl'] ?? '',
         'district': d['district'] ?? '',
         'vehicleType': d['vehicleType'] ?? '',
         'vehicleRegistration': d['vehicleRegistration'] ?? '',
-        'vehicleCapacity': d['vehicleCapacity'],
+        'vehicleCapacity': d['vehicleCapacity'] ?? d['capacityKg'],
         'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
         'availabilityStatus': d['availabilityStatus'] ?? '',
-        'location': d['location'],
-        'locationUpdatedAt': d['locationUpdatedAt'],
+        'isVerified': d['isVerified'] != false,
       };
-    }).toList();
+    }).where((t) => (t['uid'] as String).isNotEmpty).toList();
   }
+
+  /// One-shot stream of [listAvailableTransporters] (kept for callers that
+  /// listen). Re-subscribe to refresh.
+  Stream<List<Map<String, dynamic>>> transportersStream({
+    int limit = 100,
+    String? district,
+  }) =>
+      Stream.fromFuture(listAvailableTransporters(district: district));
+
+  Future<List<Map<String, dynamic>>> getAvailableTransporters({
+    int limit = 100,
+    String? district,
+  }) =>
+      listAvailableTransporters(district: district);
 
   /// Persist the signed-in user's last known location on their profile.
   /// Used for "nearby" discovery — never exposes a continuous trail.

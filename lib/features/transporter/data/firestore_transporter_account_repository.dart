@@ -25,9 +25,35 @@ class FirestoreTransporterAccountRepository
         if (data == null) {
           throw StateError('Transporter profile was not found.');
         }
-        return TransporterProfile.fromMap(document.id, data);
+        return TransporterProfile.fromMap(document.id, _unifyCapacity(data));
       },
     );
+  }
+
+  /// `vehicleCapacity` (+ unit) is canonical; older profiles only have
+  /// `capacityKg` (written by the verification screen).
+  static Map<String, dynamic> _unifyCapacity(Map<String, dynamic> data) {
+    if (data['vehicleCapacity'] is num || data['capacityKg'] is! num) {
+      return data;
+    }
+    return {
+      ...data,
+      'vehicleCapacity': data['capacityKg'],
+      'vehicleCapacityUnit': 'kg',
+    };
+  }
+
+  @override
+  Stream<List<String>> watchServiceDistricts(String providerId) {
+    return _firestore
+        .collection('users')
+        .doc(providerId)
+        .snapshots()
+        .map((document) => (document.data()?['serviceDistricts'] as List? ??
+                const [])
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList());
   }
 
   @override
@@ -47,7 +73,8 @@ class FirestoreTransporterAccountRepository
                     L10n.current.jobNotificationFallbackTitle,
                 message: data['body']?.toString() ?? '',
                 createdAt: _date(data['createdAt']) ?? DateTime.now(),
-                jobId: data['jobId']?.toString(),
+                jobId: (data['jobId'] ?? data['transportJobId'])?.toString(),
+                orderId: (data['orderId'] ?? data['referenceId'])?.toString(),
                 isRead: data['read'] == true,
               );
             }).toList());
@@ -87,15 +114,24 @@ class FirestoreTransporterAccountRepository
     required String vehicleCapacityUnit,
     required String vehicleDescription,
     required bool isAvailable,
+    List<String>? serviceDistricts,
   }) async {
     await _functions.httpsCallable('updateTransporterProfile').call<void>({
       'displayName': name,
       'phone': phone,
       'vehicleType': vehicleType,
       'vehicleRegistration': vehicleRegistration,
-      'vehicleCapacity': vehicleCapacity,
+      if (vehicleCapacity != null) 'vehicleCapacity': vehicleCapacity,
       'vehicleCapacityUnit': vehicleCapacityUnit,
       'vehicleDescription': vehicleDescription,
+      'availabilityStatus': isAvailable ? 'available' : 'unavailable',
+      if (serviceDistricts != null) 'serviceDistricts': serviceDistricts,
+    });
+  }
+
+  @override
+  Future<void> updateAvailability(bool isAvailable) async {
+    await _functions.httpsCallable('updateTransporterProfile').call<void>({
       'availabilityStatus': isAvailable ? 'available' : 'unavailable',
     });
   }

@@ -13,6 +13,7 @@ class TransporterNotification {
   final String message;
   final DateTime createdAt;
   final String? jobId;
+  final String? orderId;
   final bool isRead;
 
   const TransporterNotification({
@@ -22,6 +23,7 @@ class TransporterNotification {
     required this.message,
     required this.createdAt,
     this.jobId,
+    this.orderId,
     this.isRead = false,
   });
 
@@ -32,6 +34,7 @@ class TransporterNotification {
         message: message,
         createdAt: createdAt,
         jobId: jobId,
+        orderId: orderId,
         isRead: isRead ?? this.isRead,
       );
 }

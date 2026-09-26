@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/firebase_values.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
@@ -236,7 +237,7 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
       title: const Text('Plan a crop'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Crop name')),
         TextField(controller: area, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Farm area')),
-        DropdownButtonFormField(value: areaUnit, decoration: const InputDecoration(labelText: 'Area unit'), items: const [DropdownMenuItem(value: 'acres', child: Text('Acres')), DropdownMenuItem(value: 'hectares', child: Text('Hectares')), DropdownMenuItem(value: 'perches', child: Text('Perches'))], onChanged: (v) => setDialog(() => areaUnit = v ?? 'acres')),
+        DropdownButtonFormField(initialValue: areaUnit, decoration: const InputDecoration(labelText: 'Area unit'), items: const [DropdownMenuItem(value: 'acres', child: Text('Acres')), DropdownMenuItem(value: 'hectares', child: Text('Hectares')), DropdownMenuItem(value: 'perches', child: Text('Perches'))], onChanged: (v) => setDialog(() => areaUnit = v ?? 'acres')),
         TextField(controller: notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
         TextButton(onPressed: () async { final d = await showDatePicker(context: ctx, initialDate: planted, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365))); if (d != null) setDialog(() => planted = d); }, child: Text('Planted: ${MaterialLocalizations.of(ctx).formatMediumDate(planted)}')),
         TextButton(onPressed: () async { final d = await showDatePicker(context: ctx, initialDate: harvest, firstDate: planted.add(const Duration(days: 1)), lastDate: DateTime.now().add(const Duration(days: 900))); if (d != null) setDialog(() => harvest = d); }, child: Text('Expected harvest: ${MaterialLocalizations.of(ctx).formatMediumDate(harvest)}')),
@@ -256,7 +257,7 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
       title: const Text('Add farm reminder'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: title, decoration: const InputDecoration(labelText: 'Task')),
         TextField(controller: description, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
-        DropdownButtonFormField(value: priority, decoration: const InputDecoration(labelText: 'Priority'), items: const [DropdownMenuItem(value: 'low', child: Text('Low')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'high', child: Text('High'))], onChanged: (v) => setDialog(() => priority = v ?? 'normal')),
+        DropdownButtonFormField(initialValue: priority, decoration: const InputDecoration(labelText: 'Priority'), items: const [DropdownMenuItem(value: 'low', child: Text('Low')), DropdownMenuItem(value: 'normal', child: Text('Normal')), DropdownMenuItem(value: 'high', child: Text('High'))], onChanged: (v) => setDialog(() => priority = v ?? 'normal')),
         TextButton(onPressed: () async { final d = await showDatePicker(context: ctx, initialDate: due, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 730))); if (d != null) setDialog(() => due = d); }, child: Text('Due: ${MaterialLocalizations.of(ctx).formatMediumDate(due)}')),
       ])), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save reminder'))],
     )));
@@ -273,7 +274,7 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
     final price = TextEditingController(), fee = TextEditingController(text: '0');
     final result = await showDialog<(Product, int, int)?>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDialog) => AlertDialog(
       title: Text('Quote ${request['produceName']}'), content: Column(mainAxisSize: MainAxisSize.min, children: [
-        DropdownButtonFormField<Product>(value: selected, items: matches.map((p) => DropdownMenuItem(value: p, child: Text('${p.name} · ${p.quantityAvailable} ${p.unit}'))).toList(), onChanged: (v) => setDialog(() => selected = v ?? selected)),
+        DropdownButtonFormField<Product>(initialValue: selected, items: matches.map((p) => DropdownMenuItem(value: p, child: Text('${p.name} · ${p.quantityAvailable} ${p.unit}'))).toList(), onChanged: (v) => setDialog(() => selected = v ?? selected)),
         TextField(controller: price, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Price per ${request['unit']} (LKR)')),
         TextField(controller: fee, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Delivery fee (LKR)')),
       ]), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () { final p = double.tryParse(price.text), f = double.tryParse(fee.text); if (p != null && p > 0 && f != null && f >= 0) Navigator.pop(ctx, (selected, (p * 100).round(), (f * 100).round())); }, child: const Text('Send quote'))],
@@ -284,7 +285,7 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
 
   Future<void> _run(Future<void> Function() action) async {
     try { await action(); if (mounted) _message('Saved successfully.'); }
-    catch (e) { if (mounted) _message('Could not save: $e'); }
+    catch (e) { if (mounted) _message(userMessage(e, action: 'save farm data')); }
   }
 
   void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));

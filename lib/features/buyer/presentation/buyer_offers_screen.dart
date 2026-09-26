@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../models/offer.dart';
 import '../../../providers/farmora_state.dart';
 import 'buyer_products_screen.dart';
 import 'buyer_orders_screen.dart';
+import 'buyer_l10n.dart';
+import 'accept_counter_offer_dialog.dart';
 
 class BuyerOffersScreen extends StatefulWidget {
   const BuyerOffersScreen({super.key});
@@ -17,6 +20,90 @@ class BuyerOffersScreen extends StatefulWidget {
 
 class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
   int _selectedFilter = 0; // 0: All, 1: Pending, 2: Countered, 3: Accepted, 4: Rejected
+
+  /// Offer ids with a backend call in flight (buttons disabled).
+  final Set<String> _busy = {};
+
+  Future<void> _runOfferAction(
+    String offerId,
+    Future<void> Function() action, {
+    required String success,
+    required String errorAction,
+  }) async {
+    if (_busy.contains(offerId)) return;
+    setState(() => _busy.add(offerId));
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(success),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e, st) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(userMessage(e, action: errorAction, stack: st)),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _busy.remove(offerId));
+    }
+  }
+
+  Future<bool> _confirm(String title, String message) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.cancel)),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(title)),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  Future<void> _declineCounter(FarmoraState state, FarmoraOffer offer) async {
+    final l = context.l10n;
+    if (!await _confirm(l.decline, "Decline the farmer's counter-offer?")) {
+      return;
+    }
+    await _runOfferAction(offer.id, () => state.rejectOffer(offer.id),
+        success: 'Counter-offer declined.',
+        errorAction: 'decline the counter-offer');
+  }
+
+  Future<void> _withdraw(FarmoraState state, FarmoraOffer offer) async {
+    final l = context.l10n;
+    if (!await _confirm(l.buyerWithdrawOffer, 'Withdraw this offer?')) return;
+    await _runOfferAction(offer.id, () => state.cancelOffer(offer.id),
+        success: 'Offer withdrawn.', errorAction: 'withdraw the offer');
+  }
+
+  Future<void> _acceptCounter(FarmoraOffer offer) async {
+    if (_busy.contains(offer.id)) return;
+    setState(() => _busy.add(offer.id));
+    try {
+      final ok = await showAcceptCounterOfferDialog(context, offer);
+      if (!ok || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(context.l10n.buyerCounterAccepted),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _busy.remove(offer.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +350,10 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
 
   Widget _buildOfferCard(BuildContext context, FarmoraState state, FarmoraOffer offer) {
     final l = context.l10n;
-    String perKg(double price) => l.buyerPricePerUnit(AppFormat.lkr(price), l.unitKg);
+    final unitLabel = buyerUnitLabel(l, offer.unit);
+    String perKg(double price) =>
+        l.buyerPricePerUnit(AppFormat.lkr(price, decimals: price % 1 == 0 ? 0 : 2), unitLabel);
+    final busy = _busy.contains(offer.id);
     final isPending = offer.status.toLowerCase() == 'pending';
     final isCountered = offer.status.toLowerCase() == 'countered';
     final isAccepted = offer.status.toLowerCase() == 'accepted';
@@ -345,7 +435,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     const SizedBox(height: 2),
                     Text(
                       l.buyerOfferRequestedQty(
-                        l.buyerQuantityWithUnit(AppFormat.number(offer.proposedQuantity), l.unitKg),
+                        l.buyerQuantityWithUnit(AppFormat.number(offer.proposedQuantity), unitLabel),
                       ),
                       style: const TextStyle(
                         fontFamily: 'Inter',
@@ -387,6 +477,10 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                         color: AppColors.onSurface,
                       ),
                     ),
+                    Text(
+                      '× ${AppFormat.number(offer.proposedQuantity)} $unitLabel',
+                      style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                    ),
                   ],
                 ),
                 ),
@@ -402,7 +496,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      AppFormat.lkr(offer.proposedPrice * offer.proposedQuantity, decimals: 2),
+                      AppFormat.lkr(offer.totalPrice, decimals: 2),
                       textAlign: TextAlign.end,
                       style: const TextStyle(
                         fontSize: 16,
@@ -454,7 +548,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => state.rejectOffer(offer.id),
+                    onPressed: busy ? null : () => _declineCounter(state, offer),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
@@ -466,18 +560,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () async {
-                      await state.acceptOffer(offer.id);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l.buyerCounterAccepted),
-                            backgroundColor: AppColors.primary,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: busy ? null : () => _acceptCounter(offer),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -494,7 +577,7 @@ class _BuyerOffersScreenState extends State<BuyerOffersScreen> {
               children: [
                 Flexible(
                   child: OutlinedButton.icon(
-                  onPressed: () => state.cancelOffer(offer.id),
+                  onPressed: busy ? null : () => _withdraw(state, offer),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
                     side: const BorderSide(color: AppColors.error),

@@ -90,7 +90,7 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(Icons.receipt_long, l.buyerOrderNumberLabel, widget.order.orderNumber),
+          _buildInfoRow(Icons.receipt_long, l.buyerOrderNumberLabel, widget.order.displayNumber),
           _buildInfoRow(Icons.attach_money, l.commonTotal, AppFormat.lkr(widget.order.total, decimals: 2)),
           _buildInfoRow(Icons.calendar_today, l.buyerDate, _formatDate(widget.order.createdAt)),
         ],
@@ -344,15 +344,15 @@ class _SubmitReviewScreenState extends State<SubmitReviewScreen> {
             content: Text(context.l10n.reviewSubmittedSuccessfully),
           ),
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
-    } catch (error) {
+    } catch (error, st) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.error,
             content: Text(context.l10n.reviewSubmitFailed(
-                userMessage(error, action: 'submit review'))),
+                userMessage(error, action: 'submit review', stack: st))),
           ),
         );
       }

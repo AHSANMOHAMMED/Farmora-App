@@ -6,7 +6,9 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../application/transporter_controller.dart';
 import 'collection_job_details_screen.dart';
+import 'transporter_payouts_screen.dart';
 import 'widgets/collection_job_card.dart';
+import 'widgets/transporter_actions.dart';
 import 'widgets/transporter_states.dart';
 
 class LogisticsDashboardScreen extends StatelessWidget {
@@ -43,7 +45,10 @@ class LogisticsDashboardScreen extends StatelessWidget {
               const SizedBox(height: 20),
               _AvailabilityBanner(
                 available: state.isAvailable,
-                onChanged: state.setAvailability,
+                onChanged: (value) async {
+                  final result = await state.setAvailability(value);
+                  if (context.mounted) showTransporterResult(context, result);
+                },
               ),
               const SizedBox(height: 20),
               Row(
@@ -79,11 +84,15 @@ class LogisticsDashboardScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              if (state.completedJobs
-                  .any((job) => job.deliveryFeeMinor != null)) ...[
-                const SizedBox(height: 12),
-                _EarningsStrip(state: state),
-              ],
+              const SizedBox(height: 12),
+              _EarningsStrip(
+                state: state,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TransporterPayoutsScreen(),
+                  ),
+                ),
+              ),
               const SizedBox(height: 26),
               Row(
                 children: [
@@ -309,8 +318,9 @@ class _SummaryCard extends StatelessWidget {
 
 class _EarningsStrip extends StatelessWidget {
   final TransporterController state;
+  final VoidCallback onTap;
 
-  const _EarningsStrip({required this.state});
+  const _EarningsStrip({required this.state, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -319,27 +329,34 @@ class _EarningsStrip extends StatelessWidget {
       margin: EdgeInsets.zero,
       elevation: 0,
       color: AppColors.primaryLight,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            const Icon(Icons.payments_outlined, color: AppColors.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(context.l10n.earnings,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(Icons.payments_outlined, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Text(context.l10n.earnings,
                   style: const TextStyle(fontWeight: FontWeight.w800)),
-            ),
-            Text(
-              context.l10n.transporterEarningsSummary(
-                money(state.todayEarningsMinor),
-                money(state.thisWeekEarningsMinor),
-                money(state.totalEarningsMinor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.l10n.transporterEarningsSummary(
+                    money(state.todayEarningsMinor),
+                    money(state.thisWeekEarningsMinor),
+                    money(state.totalEarningsMinor),
+                  ),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.w700),
+                ),
               ),
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                  color: AppColors.primary, fontWeight: FontWeight.w700),
-            ),
-          ],
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.primary),
+            ],
+          ),
         ),
       ),
     );

@@ -86,6 +86,22 @@ class FarmoraOrder {
   final String? rejectionReason;
   final BankDetails? bankDetailsSnapshot;
 
+  /// Farmer display name snapshotted on the order by the backend.
+  final String farmerName;
+
+  /// Unit of [quantity] (e.g. 'kg').
+  final String unit;
+
+  /// Platform commission (minor units) deducted from the farmer payout.
+  final int platformFeeMinor;
+
+  /// Transporter the buyer picked at checkout (before they accept the job).
+  final String requestedTransporterId;
+
+  /// When the farmer confirmed handing the goods to the transporter.
+  final DateTime? farmerHandedOverAt;
+  final DateTime? updatedAt;
+
   FarmoraOrder({
     required this.id,
     this.orderNumber = '',
@@ -127,6 +143,12 @@ class FarmoraOrder {
     this.proofImageUrl,
     this.rejectionReason,
     this.bankDetailsSnapshot,
+    this.farmerName = '',
+    this.unit = '',
+    this.platformFeeMinor = 0,
+    this.requestedTransporterId = '',
+    this.farmerHandedOverAt,
+    this.updatedAt,
   }) : createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   static const activeStatuses = {
@@ -149,6 +171,50 @@ class FarmoraOrder {
   bool get isCancelled => isDeclined || _norm == 'cancelled' || _norm == 'canceled';
 
   double get total => totalMinor > 0 ? totalMinor / 100.0 : totalAmountNumber;
+
+  /// Farmer's share after the platform fee (LKR major units).
+  double get farmerNet => (totalMinor - platformFeeMinor) / 100.0;
+
+  /// Platform fee in LKR major units.
+  double get platformFee => platformFeeMinor / 100.0;
+
+  /// Human order reference: backend `orderNumber`, else a short id.
+  String get displayNumber => orderNumber.isNotEmpty
+      ? orderNumber
+      : 'FM-${(id.length > 8 ? id.substring(0, 8) : id).toUpperCase()}';
+
+  /// Canonical lifecycle key for any stored status spelling. One of:
+  /// pending, confirmed, assigned, pickedUp, inTransit, delivered,
+  /// completed, cancelled, rejected.
+  String get statusKey => normalizeStatus(status);
+
+  /// Timeline step for progress UIs: 0 placed/pending, 1 confirmed/assigned,
+  /// 2 picked up/in transit, 3 delivered/completed. Cancelled and rejected
+  /// orders report 0 — check [isCancelled] first.
+  int get statusStep => switch (statusKey) {
+        'confirmed' || 'assigned' => 1,
+        'pickedUp' || 'inTransit' => 2,
+        'delivered' || 'completed' => 3,
+        _ => 0,
+      };
+
+  /// Maps legacy/display status spellings ('Accepted', 'In transit',
+  /// 'picked_up', 'Declined', ...) onto the backend lifecycle keys.
+  static String normalizeStatus(String raw) {
+    final n = raw.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    return switch (n) {
+      '' || 'pending' || 'placed' || 'new' => 'pending',
+      'accepted' || 'confirmed' => 'confirmed',
+      'assigned' => 'assigned',
+      'pickedup' || 'collected' => 'pickedUp',
+      'intransit' => 'inTransit',
+      'delivered' => 'delivered',
+      'completed' => 'completed',
+      'cancelled' || 'canceled' => 'cancelled',
+      'declined' || 'rejected' => 'rejected',
+      _ => raw,
+    };
+  }
 
   String get displayTotal {
     if (totalMinor > 0) {
@@ -260,6 +326,12 @@ class FarmoraOrder {
     String? proofImageUrl,
     String? rejectionReason,
     BankDetails? bankDetailsSnapshot,
+    String? farmerName,
+    String? unit,
+    int? platformFeeMinor,
+    String? requestedTransporterId,
+    DateTime? farmerHandedOverAt,
+    DateTime? updatedAt,
   }) {
     return FarmoraOrder(
       id: id ?? this.id,
@@ -302,6 +374,13 @@ class FarmoraOrder {
       proofImageUrl: proofImageUrl ?? this.proofImageUrl,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       bankDetailsSnapshot: bankDetailsSnapshot ?? this.bankDetailsSnapshot,
+      farmerName: farmerName ?? this.farmerName,
+      unit: unit ?? this.unit,
+      platformFeeMinor: platformFeeMinor ?? this.platformFeeMinor,
+      requestedTransporterId:
+          requestedTransporterId ?? this.requestedTransporterId,
+      farmerHandedOverAt: farmerHandedOverAt ?? this.farmerHandedOverAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -353,6 +432,9 @@ class FarmoraOrder {
       if (rejectionReason != null) 'rejectionReason': rejectionReason,
       if (bankDetailsSnapshot != null)
         'bankDetailsSnapshot': bankDetailsSnapshot!.toMap(),
+      'farmerName': farmerName,
+      'unit': unit,
+      'platformFeeMinor': platformFeeMinor,
     };
   }
 
@@ -364,53 +446,74 @@ class FarmoraOrder {
       iconData = Icons.restaurant_rounded;
     }
 
+    String str(Object? v) => v == null ? '' : v.toString();
+    final items = (data['items'] as List? ?? [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    final firstItem =
+        items.isNotEmpty ? items.first : const <String, dynamic>{};
+    final unit = str(data['unit'] ?? firstItem['unit']);
+    final rawQuantity =
+        data['quantity'] ?? data['quantityValue'] ?? firstItem['quantity'];
+    final quantity = rawQuantity is num
+        ? '${rawQuantity % 1 == 0 ? rawQuantity.toInt() : rawQuantity}'
+            '${unit.isNotEmpty ? ' $unit' : ''}'
+        : str(rawQuantity);
+
     return FarmoraOrder(
       id: id,
-      orderNumber: data['orderNumber'] ?? '',
-      title: data['title'] ?? '',
-      productName: data['productName'] ?? '',
-      quantity: data['quantity'] ?? '',
-      grade: data['grade'] ?? '',
-      unitPrice: data['unitPrice'] ?? '',
-      totalAmount: data['totalAmount'] ?? '',
-      totalAmountNumber: (data['totalAmountNumber'] as num?)?.toDouble() ?? 0.0,
-      buyerName: data['buyerName'] ?? '',
-      buyerCompany: data['buyerCompany'] ?? '',
-      buyerAvatar: data['buyerAvatar'] ?? '',
-      buyerPhone: data['buyerPhone'] ?? '',
-      deliveryAddress: data['deliveryAddress'] ?? '',
-      detail: data['detail'] ?? '',
-      status: data['status'] ?? 'Pending',
-      progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
-      color: Color(data['color'] as int? ?? 0xFF3478C5),
-      timestamp: data['timestamp'] ?? '',
-      requestedDate: data['requestedDate'] ?? '',
+      orderNumber: str(data['orderNumber']),
+      title: str(data['title']),
+      productName: str(data['productName'] ??
+          firstItem['productName'] ??
+          firstItem['name']),
+      quantity: quantity,
+      grade: str(data['grade']),
+      unitPrice: str(data['unitPrice']),
+      totalAmount: str(data['totalAmount']),
+      totalAmountNumber: firebaseDouble(data['totalAmountNumber']) ?? 0.0,
+      buyerName: str(data['buyerName']),
+      buyerCompany: str(data['buyerCompany']),
+      buyerAvatar: str(data['buyerAvatar']),
+      buyerPhone: str(data['buyerPhone']),
+      deliveryAddress: str(data['deliveryAddress']),
+      detail: str(data['detail']),
+      status: data['status'] == null ? 'Pending' : str(data['status']),
+      progress: firebaseDouble(data['progress']) ?? 0.0,
+      color: Color(firebaseInt(data['color']) ?? 0xFF3478C5),
+      timestamp: str(data['timestamp']),
+      requestedDate: str(data['requestedDate']),
       buyerIcon: iconData,
-      buyerId: (data['buyerId'] ?? '').toString(),
-      farmerId: (data['farmerId'] ?? '').toString(),
-      transporterId: (data['transporterId'] ?? '').toString(),
-      productId: (data['productId'] ?? '').toString(),
-      items: (data['items'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList(),
-      subtotalMinor: (data['subtotalMinor'] as num?)?.toInt() ?? 0,
-      deliveryFeeMinor: (data['deliveryFeeMinor'] as num?)?.toInt() ?? 0,
-      totalMinor: (data['totalMinor'] as num?)?.toInt() ?? 0,
-      currency: (data['currency'] ?? 'LKR').toString(),
-      paymentStatus: (data['paymentStatus'] ?? 'payment_required').toString(),
-      escrowStatus: (data['escrowStatus'] ?? 'not_funded').toString(),
-      deliveryStatus: (data['deliveryStatus'] ?? '').toString(),
-      disputeId: data['disputeId'] as String?,
+      buyerId: str(data['buyerId']),
+      farmerId: str(data['farmerId']),
+      transporterId: str(data['transporterId']),
+      productId: str(data['productId'] ?? firstItem['productId']),
+      items: items,
+      subtotalMinor: firebaseInt(data['subtotalMinor']) ?? 0,
+      deliveryFeeMinor: firebaseInt(data['deliveryFeeMinor']) ?? 0,
+      totalMinor: firebaseInt(data['totalMinor']) ?? 0,
+      currency: str(data['currency'] ?? 'LKR'),
+      paymentStatus: str(data['paymentStatus'] ?? 'payment_required'),
+      escrowStatus: str(data['escrowStatus'] ?? 'not_funded'),
+      deliveryStatus: str(data['deliveryStatus']),
+      disputeId: data['disputeId']?.toString(),
       createdAt: firebaseDate(data['createdAt']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      paymentMethod: (data['paymentMethod'] ?? PaymentMethod.cod).toString(),
+      paymentMethod: str(data['paymentMethod'] ?? PaymentMethod.cod),
       paidAt: firebaseDate(data['paidAt']),
-      proofImageUrl: data['proofImageUrl'] as String?,
-      rejectionReason: data['rejectionReason'] as String?,
+      proofImageUrl: data['proofImageUrl']?.toString(),
+      rejectionReason: data['rejectionReason']?.toString(),
       bankDetailsSnapshot: data['bankDetailsSnapshot'] is Map
           ? BankDetails.fromMap(
               Map<String, dynamic>.from(data['bankDetailsSnapshot'] as Map))
           : null,
+      farmerName: str(data['farmerName']),
+      unit: unit,
+      platformFeeMinor: firebaseInt(data['platformFeeMinor']) ?? 0,
+      requestedTransporterId: str(data['requestedTransporterId']),
+      farmerHandedOverAt: firebaseDate(data['farmerHandedOverAt']),
+      updatedAt: firebaseDate(data['updatedAt']),
     );
   }
 }

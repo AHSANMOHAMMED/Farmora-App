@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/localization/l10n.dart';
+import '../core/utils/firebase_values.dart';
 
 enum VerificationStatus {
   pending,
@@ -22,6 +23,16 @@ class VerificationDoc {
   final String? frontImage;
   final String? backImage;
 
+  /// Admin's reason when rejected (`rejectionReason`, legacy `errorMessage`).
+  final String? rejectionReason;
+
+  /// Firebase Storage path of the uploaded file.
+  final String? storagePath;
+
+  /// Uid of the user the document belongs to (`ownerId`, legacy `farmerId`).
+  final String? ownerId;
+  final DateTime? createdAt;
+
   const VerificationDoc({
     required this.id,
     required this.title,
@@ -35,6 +46,10 @@ class VerificationDoc {
     this.hasFrontBack = false,
     this.frontImage,
     this.backImage,
+    this.rejectionReason,
+    this.storagePath,
+    this.ownerId,
+    this.createdAt,
   });
 
   /// [title] in the app language when it is a known document type (stored
@@ -92,6 +107,10 @@ class VerificationDoc {
     bool? hasFrontBack,
     String? frontImage,
     String? backImage,
+    String? rejectionReason,
+    String? storagePath,
+    String? ownerId,
+    DateTime? createdAt,
   }) {
     return VerificationDoc(
       id: id ?? this.id,
@@ -106,6 +125,10 @@ class VerificationDoc {
       hasFrontBack: hasFrontBack ?? this.hasFrontBack,
       frontImage: frontImage ?? this.frontImage,
       backImage: backImage ?? this.backImage,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      storagePath: storagePath ?? this.storagePath,
+      ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -178,6 +201,17 @@ class VerificationDoc {
       hasFrontBack: data['hasFrontBack'] ?? false,
       frontImage: data['frontImage'] as String?,
       backImage: data['backImage'] as String?,
+      rejectionReason: _optString(data['rejectionReason']) ??
+          _optString(data['errorMessage']),
+      storagePath: _optString(data['storagePath']),
+      ownerId: _optString(data['ownerId']) ?? _optString(data['farmerId']),
+      createdAt: firebaseDate(data['createdAt']),
     );
+  }
+
+  static String? _optString(dynamic value) {
+    if (value == null) return null;
+    final s = value.toString().trim();
+    return s.isEmpty ? null : s;
   }
 }

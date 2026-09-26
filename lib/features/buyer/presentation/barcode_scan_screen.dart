@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../services/firebase_service.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({super.key});
@@ -29,7 +30,9 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(result);
-    } catch (_) {
+    } catch (e, st) {
+      // Logged/reported; the user sees the specific barcode message.
+      userMessage(e, action: 'verify the harvest barcode', stack: st);
       if (mounted) {
         _showError(context.l10n.buyerBarcodeVerifyFailed);
       }

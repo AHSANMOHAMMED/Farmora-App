@@ -9,6 +9,7 @@ import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/farmer_header.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../../models/order.dart';
+import '../../../models/settlement_model.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/earnings_calculator.dart';
 import '../../payments/presentation/order_payment_card.dart'
@@ -47,7 +48,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content:
-            Text(context.l10n.farmerEarningsRefreshFailed(describeError(e))),
+            Text(context.l10n.farmerEarningsRefreshFailed(
+                userMessage(e, action: 'refresh earnings'))),
         backgroundColor: AppColors.error,
       ));
     }
@@ -257,6 +259,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   ),
                 ),
               ),
+            const SizedBox(height: 16),
+            const _WithdrawalSection(),
           ],
         ),
       ),
@@ -1021,4 +1025,307 @@ class _CrossHatchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Payout withdrawals: informational available balance, a request dialog
+/// backed by the `requestWithdrawal` callable (which re-checks the balance
+/// server-side), and the farmer's own settlement requests.
+class _WithdrawalSection extends StatefulWidget {
+  const _WithdrawalSection();
+
+  @override
+  State<_WithdrawalSection> createState() => _WithdrawalSectionState();
+}
+
+class _WithdrawalSectionState extends State<_WithdrawalSection> {
+  static const _payoutMethods = ['CEFT', 'SLIP', 'Mobile Wallet'];
+  static const _earningStatuses = {'paid', 'released', 'settled_split'};
+  bool _submitting = false;
+
+  /// Mirrors the server rule: paid, non-cancelled orders of this farmer, net
+  /// of the platform fee (and of the delivery fee when a transporter carried
+  /// it), minus every settlement that was not rejected.
+  static double _availableBalance(FarmoraState state) {
+    final uid = state.currentUserId;
+    var earnedMinor = 0;
+    for (final o in state.orders) {
+      if (uid.isEmpty || o.farmerId != uid) continue;
+      if (o.isCancelled) continue;
+      if (!_earningStatuses.contains(o.paymentStatus.toLowerCase().trim())) {
+        continue;
+      }
+      final delivery = o.transporterId.isNotEmpty ? o.deliveryFeeMinor : 0;
+      final net = o.totalMinor - o.platformFeeMinor - delivery;
+      if (net > 0) earnedMinor += net;
+    }
+    var withdrawnMinor = 0;
+    for (final s in _ownSettlements(state)) {
+      if (s.status.toLowerCase() == 'rejected') continue;
+      withdrawnMinor += (s.netAmount * 100).round();
+    }
+    final available = earnedMinor - withdrawnMinor;
+    return available > 0 ? available / 100 : 0;
+  }
+
+  static List<SettlementPayout> _ownSettlements(FarmoraState state) {
+    final uid = state.currentUserId;
+    final list = state.settlements
+        .where((s) => uid.isNotEmpty && s.recipientId == uid)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> _openRequestDialog(double available) async {
+    final state = context.read<FarmoraState>();
+    final bank = state.myBankDetails;
+    final amountCtrl = TextEditingController(
+        text: available > 0 ? available.toStringAsFixed(2) : '');
+    final bankCtrl = TextEditingController(text: bank.bankName);
+    final accountCtrl = TextEditingController(text: bank.accountNumber);
+    var method = _payoutMethods.first;
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Request withdrawal'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Available: ${AppFormat.lkr(available, decimals: 2)}',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: amountCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Amount',
+                      prefixText: 'LKR ',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      final amount = double.tryParse((v ?? '').trim());
+                      if (amount == null || amount <= 0) {
+                        return 'Enter a valid amount';
+                      }
+                      if (amount > available + 0.001) {
+                        return 'Amount exceeds your available balance';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: bankCtrl,
+                    decoration: InputDecoration(
+                      labelText: method == 'Mobile Wallet'
+                          ? 'Wallet provider (e.g. eZ Cash)'
+                          : 'Bank name',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v ?? '').trim().isEmpty
+                        ? 'Enter the bank or wallet name'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: accountCtrl,
+                    decoration: InputDecoration(
+                      labelText: method == 'Mobile Wallet'
+                          ? 'Wallet number'
+                          : 'Account number',
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      final t = (v ?? '').trim();
+                      if (t.length < 4 ||
+                          !RegExp(r'^[0-9A-Za-z -]+$').hasMatch(t)) {
+                        return 'Enter a valid account number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: method,
+                    decoration: const InputDecoration(
+                      labelText: 'Payout method',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final m in _payoutMethods)
+                        DropdownMenuItem(value: m, child: Text(m)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setDialogState(() => method = v);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(ctx.l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Request'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    final bankName = bankCtrl.text.trim();
+    final accountNumber = accountCtrl.text.trim();
+    amountCtrl.dispose();
+    bankCtrl.dispose();
+    accountCtrl.dispose();
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _submitting = true);
+    try {
+      await state.requestWithdrawal(
+        amount: amount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        payoutMethod: method,
+      );
+      messenger.showSnackBar(SnackBar(
+        backgroundColor: AppColors.primary,
+        content: Text(
+            'Withdrawal of ${AppFormat.lkr(amount, decimals: 2)} requested.'),
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        backgroundColor: AppColors.error,
+        content: Text(userMessage(e, action: 'request a withdrawal')),
+      ));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<FarmoraState>();
+    final available = _availableBalance(state);
+    final settlements = _ownSettlements(state);
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Withdrawals', style: _titleStyle),
+          const SizedBox(height: 12),
+          const Text(
+            'Available balance',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            AppFormat.lkr(available, decimals: 2),
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _submitting || available <= 0
+                  ? null
+                  : () => _openRequestDialog(available),
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.account_balance_wallet_outlined,
+                      size: 18),
+              label: const Text('Request withdrawal'),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Paid orders after the platform fee, less earlier withdrawals. '
+            'The final amount is confirmed by Farmora when you request.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 11,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (settlements.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No withdrawal requests yet.',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            for (final s in settlements)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.payments_outlined,
+                    color: AppColors.primary),
+                title: Text(
+                  AppFormat.lkr(s.netAmount, decimals: 2),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  [
+                    '${s.payoutMethod} · ${s.bankName}',
+                    AppFormat.date(s.createdAt),
+                    if ((s.holdReason ?? '').trim().isNotEmpty)
+                      s.holdReason!.trim(),
+                  ].join('\n'),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                isThreeLine: (s.holdReason ?? '').trim().isNotEmpty,
+                trailing: StatusChip(label: s.status),
+              ),
+        ],
+      ),
+    );
+  }
 }

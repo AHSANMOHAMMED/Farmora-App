@@ -44,7 +44,11 @@ class FarmoraApp extends StatelessWidget {
       ],
       child: Consumer<FarmoraState>(
         builder: (context, state, _) {
-          return MaterialApp(
+          // Any touch counts as activity for the session inactivity timeout.
+          return Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (_) => state.recordActivity(),
+            child: MaterialApp(
             debugShowCheckedModeBanner: false,
             // Brand name: the same in every language.
             onGenerateTitle: (context) => context.l10n.appName,
@@ -68,6 +72,7 @@ class FarmoraApp extends StatelessWidget {
               return child ?? const SizedBox.shrink();
             },
             home: showSplash ? const SplashScreen() : const AuthGate(),
+            ),
           );
         },
       ),

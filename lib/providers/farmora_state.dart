@@ -21,6 +21,10 @@ import '../models/market_price_index.dart';
 import '../models/review_model.dart';
 import '../models/audit_log_model.dart';
 import '../models/settlement_model.dart';
+import '../models/admin_stats.dart';
+import '../models/dispute_model.dart';
+import '../services/chat_crypto.dart';
+import '../services/chat_outbox_service.dart';
 import '../services/delivery_location_service.dart';
 import '../services/firebase_service.dart' as kajana_service;
 import '../services/service_errors.dart';
@@ -60,6 +64,10 @@ class FarmoraState extends ChangeNotifier {
   StreamSubscription<List<MarketPriceIndex>>? _marketPricesSub;
   StreamSubscription<String>? _deviceTokenSub;
   StreamSubscription<BankDetails>? _bankDetailsSub;
+  StreamSubscription<List<Dispute>>? _disputesSub;
+  StreamSubscription<List<FarmoraConversation>>? _conversationsSub;
+  String? _fcmToken;
+  _AppLifecycleHook? _lifecycleHook;
   bool _ordersLoading = false;
   bool signedIn = false;
 
@@ -100,6 +108,14 @@ class FarmoraState extends ChangeNotifier {
   /// Default cart delivery fee in LKR major units (from platform settings).
   double defaultDeliveryFeeLkr = 350.0;
   Role role = Role.farmer;
+
+  /// Why the last sign-in was refused or the session ended (suspended /
+  /// deleted account, inactivity timeout). Cleared on the next sign-in.
+  String? authBlockedReason;
+
+  /// `users/{uid}.notificationPrefs` ({orderUpdates, messages, promos,
+  /// quietHoursStart, quietHoursEnd}).
+  Map<String, dynamic> notificationPrefs = const {};
 
   /// Locale driven by [language].
   Locale get locale => Locale(languageCode);
@@ -150,7 +166,19 @@ class FarmoraState extends ChangeNotifier {
   // Treasury & Bank Escrow Settlements
   final List<SettlementPayout> _settlements = [];
 
+  // Order chats the user takes part in (newest first)
+  final List<FarmoraConversation> _conversations = [];
+
+  // Admin: open/resolved disputes (newest first)
+  final List<Dispute> _disputes = [];
+
+  // Admin: aggregate platform totals
+  AdminStats _adminStats = AdminStats.empty;
+  bool _adminStatsLoading = false;
+
   // Server Maintenance & Platform Config
+  bool _settingsLoaded = false;
+  int _sessionTimeoutMinutes = 60;
   bool _maintenanceMode = false;
   String _maintenanceNotice =
       'Platform scheduled maintenance in progress. Marketplace trades will resume shortly.';
@@ -191,8 +219,24 @@ class FarmoraState extends ChangeNotifier {
   List<Review> get reviews => List.unmodifiable(_reviews);
   List<AuditLog> get auditLogs => List.unmodifiable(_auditLogs);
   List<SettlementPayout> get settlements => List.unmodifiable(_settlements);
+  List<Dispute> get disputes => List.unmodifiable(_disputes);
+  List<FarmoraConversation> get conversations =>
+      List.unmodifiable(_conversations);
+
+  /// Unread chat messages across all conversations (for badges).
+  int get unreadMessagesCount => _conversations.fold(
+      0, (sum, c) => sum + c.unreadFor(_currentUserId));
+  AdminStats get adminStats => _adminStats;
+  bool get adminStatsLoading => _adminStatsLoading;
+  bool get settingsLoaded => _settingsLoaded;
+
+  /// Inactivity sign-out after this many minutes (0 disables it).
+  int get sessionTimeoutMinutes => _sessionTimeoutMinutes;
   bool get maintenanceMode => _maintenanceMode;
   String get maintenanceNotice => _maintenanceNotice;
+
+  /// Platform commission in basis points (500 = 5%).
+  int get platformFeeBps => (_commissionRate * 100).round();
   double get commissionRate => _commissionRate;
   int get escrowReleaseHours => _escrowReleaseHours;
   String get minAppVersion => _minAppVersion;
@@ -285,15 +329,32 @@ class FarmoraState extends ChangeNotifier {
       (sum, item) =>
           sum + (item.product.effectivePricePerUnit * item.quantity));
 
+  /// Units of [product] a buyer can order: `quantityAvailable`, else the
+  /// number in the legacy `quantity` text (mirrors the buyer screens'
+  /// `buyerAvailableQty`).
+  static int _availableUnits(Product product) {
+    if (product.quantityAvailable > 0) return product.quantityAvailable;
+    final match = RegExp(r'\d+(\.\d+)?').firstMatch(product.quantity);
+    return match == null ? 0 : (double.tryParse(match.group(0)!) ?? 0).floor();
+  }
+
+  /// Caps [quantity] at the product's stock. Unknown stock (0) is not capped;
+  /// the backend still validates stock when the order is placed.
+  static int _capToStock(Product product, int quantity) {
+    final available = _availableUnits(product);
+    return available > 0 && quantity > available ? available : quantity;
+  }
+
   void addToCart(Product product, {int quantity = 1}) {
     final existingIndex =
         _cartItems.indexWhere((c) => c.product.id == product.id);
     if (existingIndex != -1) {
       final existing = _cartItems[existingIndex];
-      _cartItems[existingIndex] =
-          existing.copyWith(quantity: existing.quantity + quantity);
+      _cartItems[existingIndex] = existing.copyWith(
+          quantity: _capToStock(product, existing.quantity + quantity));
     } else {
-      _cartItems.add(CartItem(product: product, quantity: quantity));
+      _cartItems.add(CartItem(
+          product: product, quantity: _capToStock(product, quantity)));
     }
     notifyListeners();
   }
@@ -309,7 +370,9 @@ class FarmoraState extends ChangeNotifier {
       if (quantity <= 0) {
         _cartItems.removeAt(index);
       } else {
-        _cartItems[index] = _cartItems[index].copyWith(quantity: quantity);
+        final item = _cartItems[index];
+        _cartItems[index] =
+            item.copyWith(quantity: _capToStock(item.product, quantity));
       }
       notifyListeners();
     }
@@ -328,14 +391,24 @@ class FarmoraState extends ChangeNotifier {
   DateTime? _lastOrderAt;
 
   double get cartSubtotal => cartTotal;
+
+  /// One delivery fee per farmer in the cart (each farmer ships separately).
   double get cartDeliveryFee =>
-      _cartItems.isEmpty ? 0.0 : defaultDeliveryFeeLkr;
+      defaultDeliveryFeeLkr *
+      _cartItems.map((c) => c.product.farmerId).toSet().length;
   double get cartGrandTotal => cartSubtotal + cartDeliveryFee;
 
   String deliveryAddressDraft = '';
   String paymentMethodDraft = PaymentMethod.cod;
   String? _lastOrderError;
   String? get lastOrderError => _lastOrderError;
+
+  /// Clears a stale checkout error (e.g. when the cart screen is reopened).
+  void clearLastOrderError() {
+    if (_lastOrderError == null) return;
+    _lastOrderError = null;
+    notifyListeners();
+  }
 
   void setPaymentMethodDraft(String method) {
     if (paymentMethodDraft == method) return;
@@ -351,10 +424,18 @@ class FarmoraState extends ChangeNotifier {
     if (_currentUserId.isEmpty || _cartItems.isEmpty || _placingOrder) {
       return false;
     }
-    if (transporterId == null || transporterId.isEmpty) return false;
+    if (transporterId == null || transporterId.isEmpty) {
+      _lastOrderError = 'Choose a transporter for this delivery.';
+      notifyListeners();
+      return false;
+    }
     final method = paymentMethod ?? paymentMethodDraft;
     final address = (deliveryAddress ?? deliveryAddressDraft).trim();
-    if (address.length < 5) return false;
+    if (address.length < 5) {
+      _lastOrderError = 'Enter a complete delivery address.';
+      notifyListeners();
+      return false;
+    }
     // Idempotency: same cart snapshot within 30s is treated as a repeated tap.
     final key =
         _cartItems.map((c) => '${c.product.id}:${c.quantity}').join('|');
@@ -378,11 +459,16 @@ class FarmoraState extends ChangeNotifier {
     try {
       // The server owns order/job IDs, stock validation, and persistence. The
       // Firestore subscriptions update the UI after each successful write.
+      // Delivery fee: the full fee on the first order of each farmer, 0 on
+      // that farmer's other orders (they ship together).
+      final feeMinor = (defaultDeliveryFeeLkr * 100).round();
+      final farmersCharged = <String>{};
       for (final item in _cartItems) {
+        final firstForFarmer = farmersCharged.add(item.product.farmerId);
         await _firestoreService.createSecureOrder(
           productId: item.product.id,
           quantity: item.quantity,
-          deliveryFeeMinor: (cartDeliveryFee * 100).round(),
+          deliveryFeeMinor: firstForFarmer ? feeMinor : 0,
           transporterId: transporterId,
           deliveryAddress: address,
           idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
@@ -426,19 +512,163 @@ class FarmoraState extends ChangeNotifier {
   }
 
   // Actions
-  Future<void> signOut() async {
+
+  /// Signs out and clears everything tied to the account: push token,
+  /// chat key cache, offline chat outbox, live subscriptions and data.
+  Future<void> signOut({String? reason}) async {
+    final uid = _currentUserId;
+    final token = _fcmToken;
+    _stopSessionTimer();
+    _lifecycleHook?.detach();
+    _lifecycleHook = null;
+    if (token != null && token.isNotEmpty && uid.isNotEmpty) {
+      try {
+        await _firestoreService.unregisterDeviceToken(token);
+      } catch (e) {
+        debugPrint('Device token unregister skipped: $e');
+      }
+    }
+    _fcmToken = null;
+    if (uid.isNotEmpty) {
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e) {
+        debugPrint('FCM token delete skipped: $e');
+      }
+      try {
+        await ChatOutboxService.clear(uid);
+      } catch (e) {
+        debugPrint('Chat outbox clear skipped: $e');
+      }
+    }
+    ChatCrypto.instance.reset();
     signedIn = false;
     _currentUserId = '';
     _profileLoaded = false;
     isVerified = false;
+    authBlockedReason = reason;
     disposeFirestoreSubscriptions();
     _deviceTokenSub?.cancel();
     _deviceTokenSub = null;
+    _clearAccountData();
     // Stop any live location broadcast — privacy requires it.
     DeliveryLocationService.instance.stopAll();
     UserLocationService.instance.stopSharing();
     await _authService.signOut();
     notifyListeners();
+  }
+
+  /// Drops every list/field loaded for the previous account.
+  void _clearAccountData() {
+    _products.clear();
+    _orders.clear();
+    _jobs.clear();
+    _users.clear();
+    _verificationDocs.clear();
+    _notifications.clear();
+    _offers.clear();
+    _reviews.clear();
+    _auditLogs.clear();
+    _settlements.clear();
+    _marketPrices.clear();
+    _disputes.clear();
+    _conversations.clear();
+    _cartItems.clear();
+    _adminStats = AdminStats.empty;
+    notificationPrefs = const {};
+    _recalculateStats();
+  }
+
+  // ── Session inactivity timeout ─────────────────────────────
+  Timer? _sessionTimer;
+  DateTime _lastActivity = DateTime.now();
+
+  /// Call on user interaction (app-level pointer Listener). Cheap: only
+  /// records the time; a once-a-minute timer checks for inactivity.
+  void recordActivity() {
+    _lastActivity = DateTime.now();
+  }
+
+  void _startSessionTimer() {
+    _sessionTimer?.cancel();
+    _lastActivity = DateTime.now();
+    if (_sessionTimeoutMinutes <= 0) return;
+    _sessionTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_currentUserId.isEmpty || _sessionTimeoutMinutes <= 0) return;
+      final idle = DateTime.now().difference(_lastActivity);
+      if (idle >= Duration(minutes: _sessionTimeoutMinutes)) {
+        signOut(
+          reason: 'You were signed out after $_sessionTimeoutMinutes minutes '
+              'of inactivity.',
+        );
+      }
+    });
+  }
+
+  void _stopSessionTimer() {
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
+  }
+
+  // ── Offline chat outbox ─────────────────────────────────────
+  bool _flushingOutbox = false;
+
+  /// Re-sends encrypted chat messages queued while offline. Called after
+  /// sign-in and when the app resumes. Stops at the first connectivity
+  /// failure; messages the server rejects are dropped (they would never
+  /// succeed). Returns how many messages were sent.
+  Future<int> flushChatOutbox() async {
+    final uid = _currentUserId;
+    if (uid.isEmpty || _flushingOutbox) return 0;
+    _flushingOutbox = true;
+    var sent = 0;
+    try {
+      final pending = await ChatOutboxService.getPending(uid: uid);
+      for (final msg in pending) {
+        try {
+          await _firestoreService.sendEncryptedMessage(
+            orderId: msg.orderId,
+            recipientId: msg.recipientId,
+            ciphertext: msg.ciphertext,
+            conversationId: msg.conversationId,
+          );
+          await ChatOutboxService.remove(msg, uid: uid);
+          sent++;
+        } catch (e) {
+          if (ChatOutboxService.shouldQueue(e)) break;
+          debugPrint('Queued chat message rejected, dropping: $e');
+          await ChatOutboxService.remove(msg, uid: uid);
+        }
+      }
+    } catch (e) {
+      debugPrint('Chat outbox flush skipped: $e');
+    } finally {
+      _flushingOutbox = false;
+    }
+    return sent;
+  }
+
+  /// Publishes this device's chat public key so peers can encrypt to it
+  /// before the user first opens a chat. Best-effort.
+  Future<void> _publishChatKey() async {
+    try {
+      final key = await ChatCrypto.instance.publicKeyBase64();
+      await _firestoreService.publishChatPublicKey(key);
+    } catch (e) {
+      debugPrint('Chat key publish skipped: $e');
+    }
+  }
+
+  /// Marks [conversationId] read for the signed-in user. Throws.
+  Future<void> markConversationRead(String conversationId) async {
+    _requireSignedIn();
+    await _firestoreService.markConversationRead(conversationId);
+  }
+
+  void _onAppResumed() {
+    if (_currentUserId.isEmpty) return;
+    flushChatOutbox();
+    _loadPlatformSettings();
   }
 
   void setRole(Role r) {
@@ -547,130 +777,59 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Product writes go through callables; the products stream refreshes the
+  /// catalogue. All of these throw so the screen can show the error.
   Future<void> updateProduct(Product p) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
     await _firestoreService.updateProduct(p.id, p.toMap());
-    final index = _products.indexWhere((prod) => prod.id == p.id);
-    if (index != -1) {
-      _products[index] = p;
-      notifyListeners();
-    }
   }
 
   Future<void> toggleProductStock(String id) async {
-    final index = _products.indexWhere((p) => p.id == id);
-    if (index != -1) {
-      final current = _products[index];
-      final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
-      await _firestoreService.updateProduct(id, {'status': newStatus});
-      _products[index] = current.copyWith(status: newStatus);
-      notifyListeners();
-    }
+    final current = _products.where((p) => p.id == id).firstOrNull;
+    if (current == null) return;
+    final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
+    await _firestoreService.updateProduct(id, {'status': newStatus});
   }
 
   Future<void> deleteProduct(String id) async {
     await _firestoreService.deleteProduct(id);
-    _products.removeWhere((p) => p.id == id);
-    notifyListeners();
   }
 
-  void acceptOrder(String orderId) {
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(status: 'Accepted', progress: 0.6);
-      _recalculateStats();
-      notifyListeners();
-    }
-    if (_currentUserId.isNotEmpty) {
-      _firestoreService.updateOrderStatus(orderId, 'Accepted', 0.6);
+  // ── Order lifecycle (callables; the orders stream shows the result) ──
+
+  void _requireSignedIn() {
+    if (_currentUserId.isEmpty) {
+      throw UserStateError(L10n.current.errorSignInAgain);
     }
   }
 
-  void completeOrder(String orderId) {
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(status: 'Delivered', progress: 1.0);
-      _recalculateStats();
-      notifyListeners();
-    }
-    if (_currentUserId.isNotEmpty) {
-      _firestoreService.updateOrderStatus(orderId, 'Delivered', 1.0);
-    }
-    // Harvest-trust flow: the product video is auto-deleted after delivery.
-    _cleanupVideoForDeliveredOrder(orderId);
+  /// Farmer accepts a pending order (server creates the transport job).
+  Future<void> acceptOrder(String orderId) async {
+    _requireSignedIn();
+    await _firestoreService.transitionOrder(orderId, 'confirmed');
   }
 
-  /// Fire-and-forget cleanup of the harvest video linked to a delivered
-  /// order. Resolves the product id from the order (or by product name when
-  /// the order predates the productId field).
-  Future<void> _cleanupVideoForDeliveredOrder(String orderId) async {
-    final orderIdx = _orders.indexWhere((o) => o.id == orderId);
-    if (orderIdx == -1 || _currentUserId.isEmpty) return;
-    final order = _orders[orderIdx];
-
-    String productId = order.productId;
-    if (productId.isEmpty && order.productName.isNotEmpty) {
-      productId = _products
-              .where((p) =>
-                  p.name == order.productName &&
-                  (order.farmerId.isEmpty || p.farmerId == order.farmerId))
-              .map((p) => p.id)
-              .firstOrNull ??
-          '';
-    }
-    if (productId.isEmpty) return;
-
-    final productIdx = _products.indexWhere((p) => p.id == productId);
-    final videoPath = productIdx != -1 ? _products[productIdx].videoPath : null;
-    final videoUrl = productIdx != -1 ? _products[productIdx].videoUrl : null;
-    if ((videoPath == null || videoPath.isEmpty) &&
-        (videoUrl == null || videoUrl.isEmpty)) {
-      return; // No video linked — nothing to clean up.
-    }
-
-    try {
-      await deliverOrderAndCleanupVideo(
-        orderId: orderId,
-        productId: productId,
-        videoStoragePath: videoPath,
-        videoDownloadUrl: videoUrl,
-      );
-      if (productIdx != -1) {
-        _products[productIdx] = _products[productIdx].copyWith(
-          videoPath: '',
-          videoUrl: '',
-          harvestStatus: HarvestStatus.delivered,
-        );
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Harvest video cleanup note: $e');
-    }
+  /// Farmer declines a pending order.
+  Future<void> declineOrder(String orderId) async {
+    _requireSignedIn();
+    await _firestoreService.transitionOrder(orderId, 'rejected');
   }
 
-  void declineOrder(String orderId) {
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(status: 'Declined', progress: 0.0);
-      _recalculateStats();
-      notifyListeners();
-    }
-    if (_currentUserId.isNotEmpty) {
-      _firestoreService.updateOrderStatus(orderId, 'Declined', 0.0);
-    }
+  /// Buyer (or farmer) cancels an order.
+  Future<void> cancelOrder(String orderId) async {
+    _requireSignedIn();
+    await _firestoreService.transitionOrder(orderId, 'cancelled');
   }
 
-  void cancelOrder(String orderId) {
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(status: 'Cancelled', progress: 0.0);
-      _recalculateStats();
-      notifyListeners();
-    }
-    if (_currentUserId.isNotEmpty) {
-      _firestoreService.updateOrderStatus(orderId, 'Cancelled', 0.0);
-    }
+  /// Farmer confirms the goods were handed to the transporter
+  /// (`confirmHandover`; sets `farmerHandedOverAt`, no status change).
+  Future<void> confirmHandover(String orderId) async {
+    _requireSignedIn();
+    await _firestoreService.confirmHandover(orderId);
   }
+
+  /// Legacy name for the farmer "handed over" action — see [confirmHandover].
+  Future<void> completeOrder(String orderId) => confirmHandover(orderId);
 
   // ── Payments (COD / Bank Deposit) ───────────────────────
 
@@ -682,9 +841,18 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<BankDetails> bankDetailsForFarmer(String farmerId) async {
-    if (_currentUserId.isEmpty || farmerId.isEmpty) return BankDetails.empty;
-    return _paymentService.getBankDetails(farmerId);
+  /// Checkout: whether [farmerId] accepts bank deposits (callable; buyers
+  /// cannot read other users' bank details).
+  Future<bool> farmerAcceptsBankDeposit(String farmerId) async {
+    if (_currentUserId.isEmpty || farmerId.isEmpty) return false;
+    return _paymentService.farmerAcceptsBankDeposit(farmerId);
+  }
+
+  /// Account the buyer pays into for [order]: the order's
+  /// `bankDetailsSnapshot`, else fetched for the buyer by the server.
+  Future<BankDetails> bankDetailsForOrder(FarmoraOrder order) async {
+    if (_currentUserId.isEmpty) return BankDetails.empty;
+    return _paymentService.bankDetailsForOrder(order);
   }
 
   /// Bank Deposit is offered only when every farmer in the cart has an account.
@@ -692,7 +860,7 @@ class FarmoraState extends ChangeNotifier {
     if (_cartItems.isEmpty || _currentUserId.isEmpty) return false;
     final farmerIds = _cartItems.map((c) => c.product.farmerId).toSet();
     for (final farmerId in farmerIds) {
-      if (!(await bankDetailsForFarmer(farmerId)).isComplete) return false;
+      if (!await farmerAcceptsBankDeposit(farmerId)) return false;
     }
     return true;
   }
@@ -782,28 +950,23 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  /// Signed in: write to Firestore and let the orders stream refresh the UI.
-  /// Demo mode: apply the same transition locally.
+  /// Writes to Firestore; the orders stream refreshes the UI. Throws when
+  /// signed out or when the transition is refused.
   Future<void> _applyPayment(
     String orderId, {
     required Future<void> Function() remote,
     required bool Function(FarmoraOrder order) allowed,
     required FarmoraOrder Function(FarmoraOrder order) local,
   }) async {
-    if (_currentUserId.isNotEmpty) {
-      await remote();
-      return;
-    }
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx == -1 || !allowed(_orders[idx])) {
+    if (_currentUserId.isEmpty) {
       throw UserStateError(L10n.current.statePaymentActionUnavailable);
     }
-    _orders[idx] = local(_orders[idx]);
-    _recalculateStats();
-    notifyListeners();
+    await remote();
   }
 
   // ── Offers & Negotiation CRUD ───────────────────────────
+  // All offer changes go through callables; the offers stream shows them.
+
   Future<void> makeOffer({
     required String productId,
     required String productName,
@@ -812,69 +975,46 @@ class FarmoraState extends ChangeNotifier {
     required double price,
   }) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
-    final offerId = await _firestoreService.createOffer(
+    await _firestoreService.createOffer(
       productId: productId,
       proposedQuantity: quantity,
       proposedPrice: price,
     );
-    final newOffer = FarmoraOffer(
-      id: offerId,
-      productId: productId,
-      productName: productName,
-      buyerId: _currentUserId,
-      farmerId: farmerId,
-      proposedQuantity: quantity,
-      proposedPrice: price,
-      status: 'pending',
-      createdAt: DateTime.now(),
-    );
-    _offers.insert(0, newOffer);
-    notifyListeners();
   }
 
-  Future<void> acceptOffer(String offerId) async {
+  /// Farmer accepts a `pending` offer, or the buyer accepts a `countered`
+  /// one. For the buyer, [deliveryAddress] (defaults to the checkout draft),
+  /// [paymentMethod] and [transporterId] are used for the created order.
+  Future<void> acceptOffer(
+    String offerId, {
+    String? deliveryAddress,
+    String? paymentMethod,
+    String? transporterId,
+  }) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
+    final address = deliveryAddress ??
+        (role == Role.buyer ? deliveryAddressDraft.trim() : null);
     await _firestoreService.acceptOffer(
       offerId: offerId,
       deliveryFeeMinor: (defaultDeliveryFeeLkr * 100).round(),
-      deliveryAddress: role == Role.buyer ? deliveryAddressDraft.trim() : null,
+      deliveryAddress: address,
+      paymentMethod: paymentMethod,
+      transporterId: transporterId,
     );
-    final idx = _offers.indexWhere((o) => o.id == offerId);
-    if (idx != -1) {
-      _offers[idx] = _offers[idx].copyWith(
-        status: 'accepted',
-        updatedAt: DateTime.now(),
-      );
-      notifyListeners();
-    }
   }
 
   Future<void> rejectOffer(String offerId) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
     await _firestoreService.rejectOffer(offerId);
-    final idx = _offers.indexWhere((o) => o.id == offerId);
-    if (idx != -1) {
-      _offers[idx] =
-          _offers[idx].copyWith(status: 'rejected', updatedAt: DateTime.now());
-      notifyListeners();
-    }
   }
 
+  /// Farmer counters with a new PER-UNIT price (LKR).
   Future<void> counterOffer(String offerId, double counterPrice) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
     await _firestoreService.counterOffer(
       offerId: offerId,
       counterPrice: counterPrice,
     );
-    final idx = _offers.indexWhere((o) => o.id == offerId);
-    if (idx != -1) {
-      _offers[idx] = _offers[idx].copyWith(
-        status: 'countered',
-        proposedPrice: counterPrice,
-        updatedAt: DateTime.now(),
-      );
-      notifyListeners();
-    }
   }
 
   Future<void> cancelOffer(String offerId) async {
@@ -888,10 +1028,16 @@ class FarmoraState extends ChangeNotifier {
     await _firestoreService.transitionTransport(jobId, 'accepted');
   }
 
-  void updateJobStatus(String jobId, String status) {
-    if (_currentUserId.isNotEmpty) {
-      _firestoreService.transitionTransport(jobId, status);
-    }
+  Future<void> updateJobStatus(String jobId, String status,
+      {String? reason}) async {
+    _requireSignedIn();
+    await _firestoreService.transitionTransport(jobId, status, reason: reason);
+  }
+
+  /// Transporter declines a request addressed to them.
+  Future<void> declineTransportJob(String jobId) async {
+    _requireSignedIn();
+    await _firestoreService.declineTransportJob(jobId);
   }
 
   Future<void> createTransportJob(TransportJob job) async {
@@ -911,58 +1057,54 @@ class FarmoraState extends ChangeNotifier {
     );
   }
 
-  void updateTransportJob(String jobId, Map<String, dynamic> data) {
-    _firestoreService.updateTransportJob(jobId, data);
+  /// Farmer cancels a still-`requested` transport request.
+  Future<void> cancelTransportRequest(String jobId) async {
+    _requireSignedIn();
+    await _firestoreService.cancelTransportRequest(jobId);
   }
 
-  void deleteTransportJob(String jobId) {
-    _firestoreService.deleteTransportJob(jobId);
-    _jobs.removeWhere((j) => j.id == jobId);
-    notifyListeners();
-  }
+  /// Legacy name for [cancelTransportRequest].
+  Future<void> deleteTransportJob(String jobId) =>
+      cancelTransportRequest(jobId);
 
   Future<void> updateOrderAddress(String orderId, String newAddress) async {
     await _firestoreService.updateOrderAddressCallable(
       orderId: orderId,
       deliveryAddress: newAddress,
     );
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(deliveryAddress: newAddress);
-      notifyListeners();
-    }
   }
 
+  /// Transporter vehicle/service fields via the `updateTransporterProfile`
+  /// callable. [capacityKg] is the legacy alias of [vehicleCapacity] in kg.
   Future<void> updateTransporterProfile({
     String? vehicleType,
     int? capacityKg,
+    num? vehicleCapacity,
+    String? vehicleCapacityUnit,
     List<String>? serviceDistricts,
+    String? availabilityStatus,
   }) async {
+    final capacity = vehicleCapacity ?? capacityKg;
     await _firestoreService.updateTransporterProfile(
       vehicleType: vehicleType,
-      capacityKg: capacityKg,
+      vehicleCapacity: capacity,
+      vehicleCapacityUnit: vehicleCapacityUnit,
       serviceDistricts: serviceDistricts,
+      availabilityStatus: availabilityStatus,
     );
     if (vehicleType != null) this.vehicleType = vehicleType;
-    if (capacityKg != null) this.capacityKg = capacityKg;
+    if (capacity != null) {
+      final unit = vehicleCapacityUnit ?? 'kg';
+      this.capacityKg = (capacity * (unit == 'tons' ? 1000 : 1)).round();
+    }
     if (serviceDistricts != null) this.serviceDistricts = serviceDistricts;
     notifyListeners();
   }
 
+  /// Admin: suspend/unsuspend (also disables the Auth account server-side).
   Future<void> setUserSuspended(String userId, bool suspended) async {
-    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
-    if (idx != -1) {
-      final updated = Map<String, dynamic>.from(_users[idx]);
-      updated['isSuspended'] = suspended;
-      _users[idx] = updated;
-      notifyListeners();
-    }
-    try {
-      await _firestoreService.setUserSuspended(
-          userId: userId, suspended: suspended);
-    } catch (e) {
-      debugPrint('Firebase suspend user notice: $e');
-    }
+    await _firestoreService.setUserSuspended(
+        userId: userId, suspended: suspended);
   }
 
   Future<void> releaseEscrow(String orderId) async {
@@ -979,46 +1121,35 @@ class FarmoraState extends ChangeNotifier {
   }
 
   // ── Harvest video / QR / auto-delete / profile / trust ──
+  /// Uploads the harvest video and links it to the product (the products
+  /// stream shows it). Throws on failure.
   Future<Map<String, String>?> uploadHarvestVideo({
     required String productId,
     required List<int> bytes,
     required String fileName,
   }) async {
     if (_currentUserId.isEmpty) return null;
-    final result = await _firestoreService.uploadProductVideo(
+    return _firestoreService.uploadProductVideo(
       productId: productId,
       bytes: Uint8List.fromList(bytes),
       fileName: fileName,
     );
-    final idx = _products.indexWhere((p) => p.id == productId);
-    if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(
-        videoPath: result['path'],
-        videoUrl: result['url'],
-        harvestStatus: HarvestStatus.harvested,
-        harvestDate: DateTime.now(),
-      );
-      notifyListeners();
-    }
-    return result;
   }
 
+  /// Removes the product's harvest video.
+  Future<void> deleteHarvestVideo(Product product) async {
+    _requireSignedIn();
+    await _firestoreService.deleteProductVideo(
+      productId: product.id,
+      storagePath: product.videoPath,
+      downloadUrl: product.videoUrl,
+    );
+  }
+
+  /// Generates the product QR via `generateProductQr`. Returns the payload.
   Future<String?> generateQrForProduct(String productId) async {
     if (_currentUserId.isEmpty) return null;
-    final payload = await _firestoreService.generateProductQr(
-      productId: productId,
-      farmerId: _currentUserId,
-    );
-    final idx = _products.indexWhere((p) => p.id == productId);
-    if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(
-        qrCode: payload,
-        packingDate: DateTime.now(),
-        harvestStatus: HarvestStatus.packed,
-      );
-      notifyListeners();
-    }
-    return payload;
+    return _firestoreService.generateProductQr(productId: productId);
   }
 
   Future<void> deliverOrderAndCleanupVideo({
@@ -1040,15 +1171,15 @@ class FarmoraState extends ChangeNotifier {
     required String newCountry,
     required String newDistrict,
   }) async {
-    country = newCountry;
-    district = newDistrict;
-    notifyListeners();
     if (_currentUserId.isNotEmpty) {
       await _firestoreService.updateUserLocation(
         country: newCountry,
         district: newDistrict,
       );
     }
+    country = newCountry;
+    district = newDistrict;
+    notifyListeners();
   }
 
   String trustLevelForProduct(Product p) {
@@ -1087,13 +1218,30 @@ class FarmoraState extends ChangeNotifier {
         notifyListeners();
         return;
       }
+      // Suspended / deleted accounts may not use the app.
+      if (profile['isDeleted'] == true || profile['isSuspended'] == true) {
+        final deleted = profile['isDeleted'] == true;
+        await FirebaseAuth.instance.signOut();
+        _currentUserId = '';
+        signedIn = false;
+        isVerified = false;
+        authBlockedReason = deleted
+            ? 'This account has been deleted.'
+            : 'This account has been suspended. Contact Farmora support.';
+        notifyListeners();
+        return;
+      }
       role = accountRole;
+      authBlockedReason = null;
       await _syncLanguageWithProfile(profile);
       _applyProfileFields(profile);
       _profileLoaded = true;
       notifyListeners();
       _registerDeviceToken();
       _loadPlatformSettings();
+      _lifecycleHook ??= _AppLifecycleHook.attach(_onAppResumed);
+      _publishChatKey();
+      flushChatOutbox();
     } catch (_) {
       await FirebaseAuth.instance.signOut();
       _currentUserId = '';
@@ -1111,7 +1259,8 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
     final productsStream = role == Role.farmer
         ? _firestoreService.productsByFarmerStream(uid)
-        : _firestoreService.productsStream();
+        // Buyers/transporters see the Active catalogue; admins see all.
+        : _firestoreService.productsStream(activeOnly: !isAdmin);
     _productsSub = productsStream.listen(
       (firestoreProducts) {
         _products.clear();
@@ -1205,6 +1354,18 @@ class FarmoraState extends ChangeNotifier {
       onError: (e) => debugPrint('Firestore notifications stream error: $e'),
     );
 
+    _conversationsSub?.cancel();
+    _conversationsSub =
+        _firestoreService.conversationsForUserStream(uid).listen(
+      (items) {
+        _conversations
+          ..clear()
+          ..addAll(items);
+        notifyListeners();
+      },
+      onError: (e) => debugPrint('Firestore conversations stream error: $e'),
+    );
+
     // Subscribe to offers stream
     _offersSub?.cancel();
     final offersStream = role == Role.farmer
@@ -1235,7 +1396,6 @@ class FarmoraState extends ChangeNotifier {
       _auditLogsSub?.cancel();
       _auditLogsSub = _firestoreService.auditLogsStream().listen(
         (firestoreLogs) {
-          if (firestoreLogs.isEmpty) return;
           _auditLogs
             ..clear()
             ..addAll(firestoreLogs);
@@ -1244,22 +1404,20 @@ class FarmoraState extends ChangeNotifier {
         onError: (e) => debugPrint('Firestore audit stream error: $e'),
       );
 
-      _settlementsSub?.cancel();
-      _settlementsSub = _firestoreService.settlementsStream().listen(
-        (firestoreSettlements) {
-          if (firestoreSettlements.isEmpty) return;
-          _settlements
+      _disputesSub?.cancel();
+      _disputesSub = _firestoreService.disputesStream().listen(
+        (firestoreDisputes) {
+          _disputes
             ..clear()
-            ..addAll(firestoreSettlements);
+            ..addAll(firestoreDisputes);
           notifyListeners();
         },
-        onError: (e) => debugPrint('Firestore settlements stream error: $e'),
+        onError: (e) => debugPrint('Firestore disputes stream error: $e'),
       );
 
       _marketPricesSub?.cancel();
       _marketPricesSub = _firestoreService.marketPricesStream().listen(
         (firestorePrices) {
-          if (firestorePrices.isEmpty) return;
           _marketPrices
             ..clear()
             ..addAll(firestorePrices);
@@ -1267,6 +1425,28 @@ class FarmoraState extends ChangeNotifier {
         },
         onError: (e) => debugPrint('Firestore market prices stream error: $e'),
       );
+    }
+
+    // Settlements: admins see every payout; farmers and transporters see
+    // their own withdrawal requests.
+    _settlementsSub?.cancel();
+    if (role != Role.buyer) {
+      _settlementsSub = _firestoreService
+          .settlementsStream(recipientId: isAdmin ? null : uid)
+          .listen(
+        (firestoreSettlements) {
+          _settlements
+            ..clear()
+            ..addAll(firestoreSettlements);
+          notifyListeners();
+        },
+        onError: (e) => debugPrint('Firestore settlements stream error: $e'),
+      );
+    }
+
+    if (isAdmin) {
+      refreshAdminStats().catchError(
+          (Object e) => debugPrint('Admin stats load failed: $e'));
     }
 
     _bankDetailsSub?.cancel();
@@ -1295,9 +1475,35 @@ class FarmoraState extends ChangeNotifier {
     _settlementsSub?.cancel();
     _marketPricesSub?.cancel();
     _bankDetailsSub?.cancel();
+    _disputesSub?.cancel();
+    _conversationsSub?.cancel();
     _myBankDetails = BankDetails.empty;
   }
 
+  @override
+  void dispose() {
+    _stopSessionTimer();
+    _lifecycleHook?.detach();
+    _lifecycleHook = null;
+    disposeFirestoreSubscriptions();
+    _deviceTokenSub?.cancel();
+    super.dispose();
+  }
+
+  /// Admin: reload aggregate platform totals (pull-to-refresh). Throws.
+  Future<void> refreshAdminStats() async {
+    if (_currentUserId.isEmpty || role != Role.admin) return;
+    _adminStatsLoading = true;
+    notifyListeners();
+    try {
+      _adminStats = await _firestoreService.adminStats();
+    } finally {
+      _adminStatsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Admin only (rules). Throws on failure.
   Future<void> sendInAppNotification({
     required String userId,
     required String title,
@@ -1305,39 +1511,35 @@ class FarmoraState extends ChangeNotifier {
     String type = 'general',
     String? referenceId,
   }) async {
-    try {
-      await _firestoreService.sendInAppNotification(
-        userId: userId,
-        title: title,
-        body: body,
-        type: type,
-        referenceId: referenceId,
-      );
-    } catch (e) {
-      debugPrint('sendInAppNotification error: $e');
-    }
+    await _firestoreService.sendInAppNotification(
+      userId: userId,
+      title: title,
+      body: body,
+      type: type,
+      referenceId: referenceId,
+    );
   }
 
+  /// The notifications stream reflects the change. Throws on failure.
   Future<void> markNotificationRead(String id) async {
-    try {
-      await _firestoreService.markNotificationRead(id);
-    } catch (e) {
-      debugPrint('markNotificationRead error: $e');
-    }
-    final idx = _notifications.indexWhere((n) => n.id == id);
-    if (idx != -1) {
-      _notifications[idx] = _notifications[idx].copyWith(read: true);
-      notifyListeners();
-    }
+    await _firestoreService.markNotificationRead(id);
   }
 
   Future<void> markAllNotificationsRead() async {
-    if (_currentUserId.isNotEmpty) {
-      await _firestoreService.markAllNotificationsRead(_currentUserId);
-    }
-    for (int i = 0; i < _notifications.length; i++) {
-      _notifications[i] = _notifications[i].copyWith(read: true);
-    }
+    if (_currentUserId.isEmpty) return;
+    await _firestoreService.markAllNotificationsRead(_currentUserId);
+  }
+
+  Future<void> deleteNotification(String id) async {
+    await _firestoreService.deleteNotification(id);
+  }
+
+  /// Saves `notificationPrefs` ({orderUpdates, messages, promos,
+  /// quietHoursStart, quietHoursEnd}) on the profile. Throws on failure.
+  Future<void> updateNotificationPrefs(Map<String, dynamic> prefs) async {
+    _requireSignedIn();
+    await _firestoreService.updateNotificationPreferences(prefs);
+    notificationPrefs = Map.unmodifiable(prefs);
     notifyListeners();
   }
 
@@ -1347,6 +1549,7 @@ class FarmoraState extends ChangeNotifier {
       await messaging.requestPermission(alert: true, badge: true, sound: true);
       final token = await messaging.getToken();
       if (token == null || token.isEmpty) return;
+      _fcmToken = token;
       final platform = kIsWeb
           ? 'web'
           : defaultTargetPlatform == TargetPlatform.iOS
@@ -1358,6 +1561,7 @@ class FarmoraState extends ChangeNotifier {
       );
       _deviceTokenSub?.cancel();
       _deviceTokenSub = messaging.onTokenRefresh.listen((nextToken) {
+        _fcmToken = nextToken;
         _firestoreService.registerDeviceToken(
           token: nextToken,
           platform: platform,
@@ -1429,55 +1633,66 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Removed: verification documents change only through upload +
+  /// `submitVerification` and the admin `reviewVerification` callable; the
+  /// verification stream shows the result. Kept so old call sites compile.
+  @Deprecated('Re-upload via uploadVerificationDocument + submitVerification')
   void updateVerificationDoc(String docId,
       {String? fileName,
       String? fileSizeInfo,
       String? imagePreview,
       VerificationStatus? status,
       String? errorMessage}) {
-    final index = _verificationDocs.indexWhere((d) => d.id == docId);
-    if (index != -1) {
-      _verificationDocs[index] = _verificationDocs[index].copyWith(
-        fileName: fileName,
-        fileSizeInfo: fileSizeInfo,
-        imagePreview: imagePreview,
-        status: status ?? VerificationStatus.approved,
-        errorMessage: errorMessage,
-      );
+    debugPrint('updateVerificationDoc ignored: local-only edits are removed.');
+  }
+
+  /// Reloads public platform settings (every signed-in user). Throws.
+  Future<void> refreshPlatformSettings() async {
+    final settings = await _firestoreService.getPlatformSettings();
+    _applyPlatformSettings(settings);
+  }
+
+  void _applyPlatformSettings(Map<String, dynamic> settings) {
+    final feeMinor = (settings['defaultDeliveryFeeMinor'] as num?)?.toInt();
+    if (feeMinor != null && feeMinor >= 0) {
+      defaultDeliveryFeeLkr = feeMinor / 100.0;
+    }
+    final maintenance = settings['maintenanceMode'];
+    if (maintenance is bool) _maintenanceMode = maintenance;
+    final notice = settings['maintenanceNotice'];
+    if (notice is String && notice.isNotEmpty) _maintenanceNotice = notice;
+    final feeBps = (settings['platformFeeBps'] as num?)?.toInt();
+    if (feeBps != null && feeBps >= 0) _commissionRate = feeBps / 100.0;
+    final escrowHours = (settings['escrowReleaseHours'] as num?)?.toInt();
+    if (escrowHours != null && escrowHours > 0) {
+      _escrowReleaseHours = escrowHours;
+    }
+    final minVersion = settings['minAppVersion'];
+    if (minVersion is String && minVersion.isNotEmpty) {
+      _minAppVersion = minVersion;
+    }
+    final timeout = (settings['sessionTimeoutMinutes'] as num?)?.toInt();
+    final timeoutChanged = timeout != null &&
+        timeout >= 0 &&
+        timeout != _sessionTimeoutMinutes;
+    if (timeout != null && timeout >= 0) _sessionTimeoutMinutes = timeout;
+    _settingsLoaded = true;
+    if (_currentUserId.isNotEmpty &&
+        (timeoutChanged || _sessionTimer == null)) {
+      _startSessionTimer();
     }
     notifyListeners();
   }
 
   Future<void> _loadPlatformSettings() async {
     try {
-      final settings = await _firestoreService.getPlatformSettings();
-      final feeMinor = (settings['defaultDeliveryFeeMinor'] as num?)?.toInt();
-      if (feeMinor != null && feeMinor >= 0) {
-        defaultDeliveryFeeLkr = feeMinor / 100.0;
+      await refreshPlatformSettings();
+    } catch (e) {
+      // Keep last known / defaults; the gate re-checks on resume.
+      debugPrint('Platform settings load failed: $e');
+      if (_currentUserId.isNotEmpty && _sessionTimer == null) {
+        _startSessionTimer();
       }
-      final maintenance = settings['maintenanceMode'];
-      if (maintenance is bool) {
-        _maintenanceMode = maintenance;
-      }
-      final notice = settings['maintenanceNotice'];
-      if (notice is String && notice.isNotEmpty) {
-        _maintenanceNotice = notice;
-      }
-      final feeBps = (settings['platformFeeBps'] as num?)?.toInt();
-      if (feeBps != null && feeBps >= 0) {
-        _commissionRate = feeBps / 100.0;
-      }
-      final escrowHours = (settings['escrowReleaseHours'] as num?)?.toInt();
-      if (escrowHours != null && escrowHours > 0) {
-        _escrowReleaseHours = escrowHours;
-      }
-      final minVersion = settings['minAppVersion'];
-      if (minVersion is String && minVersion.isNotEmpty) {
-        _minAppVersion = minVersion;
-      }
-      notifyListeners();
-    } catch (_) {
-      // Keep last known / defaults.
     }
   }
 
@@ -1505,6 +1720,16 @@ class FarmoraState extends ChangeNotifier {
         .map((e) => e.toString())
         .where((e) => e.isNotEmpty)
         .toList();
+    final prefs = profile['notificationPrefs'];
+    notificationPrefs = prefs is Map
+        ? Map<String, dynamic>.unmodifiable(Map<String, dynamic>.from(prefs))
+        : const {};
+    // `vehicleCapacity` (+ unit) is canonical; `capacityKg` is legacy.
+    final capacity = profile['vehicleCapacity'];
+    if (capacity is num) {
+      final unit = (profile['vehicleCapacityUnit'] ?? 'kg').toString();
+      capacityKg = (capacity * (unit == 'tons' ? 1000 : 1)).round();
+    }
     final created = profile['createdAt'];
     memberSince = switch (created) {
       Timestamp t => t.toDate(),
@@ -1546,6 +1771,7 @@ class FarmoraState extends ChangeNotifier {
 
   Future<bool> sendPhoneOtp(String phone) async {
     authError = null;
+    authBlockedReason = null;
     try {
       await _authService.sendPhoneOtp(phone);
       notifyListeners();
@@ -1557,26 +1783,10 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifyPhoneOtpLogin(String code) async {
-    authError = null;
-    try {
-      final result = await _authService.loginWithPhoneOtp(code);
-      role = result.role;
-      signedIn = true;
-      notifyListeners();
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) initFromFirestore(user.uid);
-      return true;
-    } catch (error) {
-      authError = error.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<bool> signInWithBackend(
       {required String phone, required String password}) async {
     authError = null;
+    authBlockedReason = null;
     try {
       final result = await _authService.login(phone: phone, password: password);
       role = result.role;
@@ -1594,20 +1804,25 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  /// [phoneOtpCode]: SMS code from a prior [sendPhoneOtp]; when given, the
+  /// phone number is linked to the new account (enables OTP reset).
   Future<bool> registerWithBackend(
       {required String name,
       required String phone,
       required String password,
       required Role role,
-      String? district}) async {
+      String? district,
+      String? phoneOtpCode}) async {
     authError = null;
+    authBlockedReason = null;
     try {
       final result = await _authService.register(
           name: name,
           phone: phone,
           password: password,
           role: role,
-          district: district);
+          district: district,
+          phoneOtpCode: phoneOtpCode);
       this.role = result.role;
       signedIn = true;
       notifyListeners();
@@ -1625,6 +1840,7 @@ class FarmoraState extends ChangeNotifier {
 
   Future<bool> signInWithGoogle() async {
     authError = null;
+    authBlockedReason = null;
     try {
       final result = await _authService.loginWithGoogle();
       role = result.role;
@@ -1648,6 +1864,7 @@ class FarmoraState extends ChangeNotifier {
       required Role role,
       String? district}) async {
     authError = null;
+    authBlockedReason = null;
     try {
       final result = await _authService.registerWithGoogle(
           name: name, phone: phone, role: role);
@@ -1666,41 +1883,69 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  /// Forgot password, step 1: sends an SMS code. Returns the verification
+  /// id for [resetPasswordWithOtp]. Throws [FarmoraAuthException].
+  Future<String> sendPasswordResetOtp(String phone) =>
+      _authService.sendPasswordResetOtp(phone);
+
+  /// Forgot password, step 2. Leaves the user signed out; they then log in
+  /// with the new password. Throws [FarmoraAuthException].
+  Future<void> resetPasswordWithOtp({
+    required String verificationId,
+    required String code,
+    required String newPassword,
+  }) =>
+      _authService.resetPasswordWithOtp(
+        verificationId: verificationId,
+        code: code,
+        newPassword: newPassword,
+      );
+
+  /// Signed-in password change (re-authenticates first). Throws.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) =>
+      _authService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+  /// Links the phone verified with [sendPhoneOtp] to the signed-in account.
+  Future<void> linkPhoneWithOtp(String code) =>
+      _authService.linkPhoneWithOtp(code);
+
   // ── Admin Platform & Market Management ──────────────────────────────
-  void updateMarketPrice(
+  /// Admin market-price writes: awaited, rethrown; the market prices stream
+  /// shows the change. Audited after success.
+  Future<void> updateMarketPrice(
     String id, {
     required double minPrice,
     required double maxPrice,
     required String trend,
-  }) {
-    final idx = _marketPrices.indexWhere((p) => p.id == id);
-    if (idx != -1) {
-      final existing = _marketPrices[idx];
-      final updated = existing.copyWith(
-        minPricePerKg: minPrice,
-        maxPricePerKg: maxPrice,
-        averagePricePerKg: (minPrice + maxPrice) / 2,
-        trend: trend,
-        updatedAt: DateTime.now(),
-      );
-      _marketPrices[idx] = updated;
-      notifyListeners();
-      _persistToFirestore(() => _firestoreService.upsertMarketPrice(updated));
-      logAuditEvent(
-        actionType: 'MARKET_PRICE_UPDATE',
-        targetEntity: 'MarketPrice',
-        targetId: id,
-        details:
-            'Updated ${existing.cropName}: LKR $minPrice–$maxPrice/kg, trend $trend.',
-        severity: 'info',
-      );
-    }
+  }) async {
+    final existing = _marketPrices.where((p) => p.id == id).firstOrNull;
+    if (existing == null) return;
+    final updated = existing.copyWith(
+      minPricePerKg: minPrice,
+      maxPricePerKg: maxPrice,
+      averagePricePerKg: (minPrice + maxPrice) / 2,
+      trend: trend,
+      updatedAt: DateTime.now(),
+    );
+    await _firestoreService.upsertMarketPrice(updated);
+    logAuditEvent(
+      actionType: 'MARKET_PRICE_UPDATE',
+      targetEntity: 'MarketPrice',
+      targetId: id,
+      details:
+          'Updated ${existing.cropName}: LKR $minPrice–$maxPrice/kg, trend $trend.',
+      severity: 'info',
+    );
   }
 
-  void addMarketPrice(MarketPriceIndex item) {
-    _marketPrices.insert(0, item);
-    notifyListeners();
-    _persistToFirestore(() => _firestoreService.upsertMarketPrice(item));
+  Future<void> addMarketPrice(MarketPriceIndex item) async {
+    await _firestoreService.upsertMarketPrice(item);
     logAuditEvent(
       actionType: 'MARKET_PRICE_CREATE',
       targetEntity: 'MarketPrice',
@@ -1711,11 +1956,9 @@ class FarmoraState extends ChangeNotifier {
     );
   }
 
-  /// Remove a market price benchmark locally and in Firestore.
-  void removeMarketPrice(String priceId) {
-    _marketPrices.removeWhere((p) => p.id == priceId);
-    notifyListeners();
-    _persistToFirestore(() => _firestoreService.deleteMarketPrice(priceId));
+  /// Remove a market price benchmark in Firestore.
+  Future<void> removeMarketPrice(String priceId) async {
+    await _firestoreService.deleteMarketPrice(priceId);
     logAuditEvent(
       actionType: 'MARKET_PRICE_DELETE',
       targetEntity: 'MarketPrice',
@@ -1736,139 +1979,35 @@ class FarmoraState extends ChangeNotifier {
     return null;
   }
 
+  /// Admin: resolve a dispute via `resolveDispute` (the function updates
+  /// order + dispute, notifies both parties and audits). [refundPercent] is
+  /// ignored — the server derives it from [resolution].
   Future<void> resolveDisputeArbitration({
     required String orderId,
     required String resolution,
     required String adminNotes,
     double refundPercent = 100.0,
   }) async {
-    final idx = _orders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      final o = _orders[idx];
-      String newStatus = o.status;
-      String newPaymentStatus = o.paymentStatus;
-
-      if (resolution == 'refund_buyer') {
-        newStatus = 'cancelled';
-        newPaymentStatus = 'refunded';
-      } else if (resolution == 'release_farmer') {
-        newStatus = 'completed';
-        newPaymentStatus = 'released';
-      } else {
-        newStatus = 'completed';
-        newPaymentStatus = 'settled_split';
-      }
-
-      _orders[idx] = o.copyWith(
-        status: newStatus,
-        paymentStatus: newPaymentStatus,
-      );
-
-      _transactions.add(EarningsTransaction(
-        id: 'tx-arb-${DateTime.now().millisecondsSinceEpoch}',
-        orderNumber: o.orderNumber,
-        date: DateTime.now().toIso8601String().substring(0, 10),
-        amount: o.total,
-      ));
-
-      // Stored notification text cannot carry parameters (see firestore.rules
-      // for notifications), so it is written in the admin's app language.
-      final l = L10n.current;
-      final resolutionLabel = switch (resolution) {
-        'refund_buyer' => l.stateResolutionRefundBuyer,
-        'release_farmer' => l.stateResolutionReleaseFarmer,
-        'split_settlement' => l.stateResolutionSplit,
-        _ => resolution,
-      };
-      final disputeBody =
-          l.stateDisputeResolvedBody(resolutionLabel, adminNotes);
-      if (o.buyerId.isNotEmpty) {
-        sendInAppNotification(
-          userId: o.buyerId,
-          title: l.stateDisputeResolvedTitle(o.orderNumber),
-          body: disputeBody,
-          type: 'order',
-          referenceId: o.id,
-        );
-      }
-      if (o.farmerId.isNotEmpty) {
-        sendInAppNotification(
-          userId: o.farmerId,
-          title: l.stateDisputeSettledTitle(o.orderNumber),
-          body: disputeBody,
-          type: 'order',
-          referenceId: o.id,
-        );
-      }
-
-      try {
-        await _firestoreService.resolveDispute(
-          orderId: orderId,
-          resolution: resolution,
-          adminNotes: adminNotes,
-          refundPercent: refundPercent,
-        );
-      } catch (e) {
-        debugPrint('Firestore dispute resolve error: $e');
-      }
-
-      logAuditEvent(
-        actionType: 'DISPUTE_ARBITRATION',
-        targetEntity: 'Order',
-        targetId: orderId,
-        details:
-            'Arbitrated dispute with outcome "$resolution". Notes: $adminNotes',
-        severity: 'critical',
-      );
-
-      notifyListeners();
-    }
+    await _firestoreService.resolveDispute(
+      orderId: orderId,
+      resolution: resolution,
+      adminNotes: adminNotes,
+    );
   }
 
-  Future<void> broadcastPlatformAdvisory({
+  /// Admin: broadcast via `broadcastAdvisory`. Returns the recipient count.
+  /// [priority] is kept for existing callers and not sent.
+  Future<int> broadcastPlatformAdvisory({
     required String title,
     required String message,
     required String targetRole,
     String priority = 'normal',
-  }) async {
-    for (final u in _users) {
-      final uRole = (u['role'] ?? '').toString().toLowerCase();
-      final uid = (u['uid'] ?? u['id'] ?? '').toString();
-      if (uid.isNotEmpty && (targetRole == 'all' || uRole == targetRole)) {
-        sendInAppNotification(
-          userId: uid,
-          title: '📢 $title',
-          body: message,
-          type: 'general',
-        );
-      }
-    }
-
-    _notifications.insert(
-      0,
-      FarmoraNotification(
-        id: 'advisory-${DateTime.now().millisecondsSinceEpoch}',
-        userId: _currentUserId.isNotEmpty ? _currentUserId : 'admin',
-        title: '📢 $title',
-        body: message,
-        type: 'general',
-        read: false,
-        createdAt: DateTime.now(),
-      ),
+  }) {
+    return _firestoreService.broadcastAdvisory(
+      title: title,
+      body: message,
+      audience: targetRole,
     );
-
-    try {
-      await _firestoreService.publishAdvisory(
-        title: title,
-        message: message,
-        targetRole: targetRole,
-        priority: priority,
-      );
-    } catch (e) {
-      debugPrint('Firestore broadcast advisory error: $e');
-    }
-
-    notifyListeners();
   }
 
   // ── Admin: Review & Feedback Moderation ───────────────────────
@@ -1877,24 +2016,11 @@ class FarmoraState extends ChangeNotifier {
     required ReviewStatus status,
     String? note,
   }) async {
-    final idx = _reviews.indexWhere((r) => r.id == reviewId);
-    if (idx != -1) {
-      _reviews[idx] = _reviews[idx].copyWith(
-        status: status,
-        moderatedAt: DateTime.now(),
-        moderationNote: note,
-      );
-      notifyListeners();
-    }
-    try {
-      await _firestoreService.moderateReview(
-        reviewId: reviewId,
-        status: status.name,
-        note: note,
-      );
-    } catch (e) {
-      debugPrint('Firebase review moderation notice: $e');
-    }
+    await _firestoreService.moderateReview(
+      reviewId: reviewId,
+      status: status.name,
+      note: note,
+    );
     logAuditEvent(
       actionType: 'REVIEW_MODERATION',
       targetEntity: 'Review',
@@ -1905,13 +2031,7 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> deleteReview({required String reviewId}) async {
-    _reviews.removeWhere((r) => r.id == reviewId);
-    notifyListeners();
-    try {
-      await _firestoreService.deleteReview(reviewId: reviewId);
-    } catch (e) {
-      debugPrint('Firebase delete review notice: $e');
-    }
+    await _firestoreService.deleteReview(reviewId: reviewId);
     logAuditEvent(
       actionType: 'REVIEW_DELETE',
       targetEntity: 'Review',
@@ -1921,6 +2041,8 @@ class FarmoraState extends ChangeNotifier {
     );
   }
 
+  /// Tests only: puts [review] in the local list.
+  @visibleForTesting
   void addReview(Review review) {
     _reviews.insert(0, review);
     notifyListeners();
@@ -1931,19 +2053,8 @@ class FarmoraState extends ChangeNotifier {
     required String userId,
     required bool verified,
   }) async {
-    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
-    if (idx != -1) {
-      final updated = Map<String, dynamic>.from(_users[idx]);
-      updated['isVerified'] = verified;
-      _users[idx] = updated;
-      notifyListeners();
-    }
-    try {
-      await _firestoreService.setUserVerified(
-          userId: userId, verified: verified);
-    } catch (e) {
-      debugPrint('Firebase verify user notice: $e');
-    }
+    await _firestoreService.setUserVerified(
+        userId: userId, verified: verified);
     logAuditEvent(
       actionType: 'USER_VERIFY',
       targetEntity: 'User',
@@ -1955,124 +2066,69 @@ class FarmoraState extends ChangeNotifier {
     );
   }
 
+  /// Admin: change a user's role via `adminSetUserRole` (audited
+  /// server-side). Legacy name kept for existing screens.
   Future<void> updateUserRole({
     required String userId,
     required String role,
+  }) =>
+      adminSetUserRole(userId: userId, role: role);
+
+  Future<void> adminSetUserRole({
+    required String userId,
+    required String role,
   }) async {
-    final idx = _users.indexWhere((u) => (u['uid'] ?? u['id']) == userId);
-    if (idx != -1) {
-      final updated = Map<String, dynamic>.from(_users[idx]);
-      updated['role'] = role;
-      _users[idx] = updated;
-      notifyListeners();
-    }
-    try {
-      await _firestoreService.updateUserRole(userId: userId, role: role);
-    } catch (e) {
-      debugPrint('Firebase update role notice: $e');
-    }
-    logAuditEvent(
-      actionType: 'ROLE_UPDATE',
-      targetEntity: 'User',
-      targetId: userId,
-      details: 'Role changed to "$role"',
-      severity: 'warning',
-    );
+    await _firestoreService.adminSetUserRole(uid: userId, role: role);
+  }
+
+  /// Admin: soft-delete a user (disabled + `isDeleted`), audited server-side.
+  Future<void> adminDeleteUser(String userId) async {
+    await _firestoreService.adminDeleteUser(userId);
   }
 
   // ── Admin: Server Maintenance & Platform Config ───────────────
+  // Each setter writes `updatePlatformSettings` (audited server-side) and
+  // only then updates local state. They throw on failure.
 
-  /// Persist secondary audit/config records without blocking their caller.
-  void _persistToFirestore(Future<void> Function() action) {
-    try {
-      action().catchError((e) => debugPrint('Firestore persist skipped: $e'));
-    } catch (e) {
-      debugPrint('Firestore persist skipped: $e');
-    }
+  Future<void> updatePlatformSettings(Map<String, dynamic> settings) async {
+    await _firestoreService.updatePlatformSettings(settings);
+    _applyPlatformSettings(settings);
   }
 
-  void setMaintenanceMode({required bool enabled, String? notice}) {
-    _maintenanceMode = enabled;
-    if (notice != null && notice.trim().isNotEmpty) {
-      _maintenanceNotice = notice;
-    }
-    notifyListeners();
-    try {
-      _firestoreService.updatePlatformSettings({
-        'maintenanceMode': enabled,
-        'maintenanceNotice': _maintenanceNotice,
-      }).catchError((e) => debugPrint('Settings sync notice: $e'));
-    } catch (e) {
-      debugPrint('Settings sync notice: $e');
-    }
-    logAuditEvent(
-      actionType: 'MAINTENANCE_TOGGLE',
-      targetEntity: 'PlatformSettings',
-      targetId: 'maintenanceMode',
-      details:
-          'Maintenance mode ${enabled ? 'ENABLED' : 'disabled'}. Notice: $_maintenanceNotice',
-      severity: enabled ? 'critical' : 'info',
-    );
+  Future<void> setMaintenanceMode({required bool enabled, String? notice}) {
+    final text = (notice != null && notice.trim().isNotEmpty)
+        ? notice.trim()
+        : _maintenanceNotice;
+    return updatePlatformSettings({
+      'maintenanceMode': enabled,
+      'maintenanceNotice': text,
+    });
   }
 
-  void setCommissionRate(double rate) {
-    _commissionRate = rate.clamp(0.0, 50.0);
-    notifyListeners();
-    try {
-      _firestoreService.updatePlatformSettings({
-        'platformFeeBps': (_commissionRate * 100).toInt(),
-      }).catchError((e) => debugPrint('Settings sync notice: $e'));
-    } catch (e) {
-      debugPrint('Settings sync notice: $e');
-    }
-    logAuditEvent(
-      actionType: 'COMMISSION_UPDATE',
-      targetEntity: 'PlatformSettings',
-      targetId: 'platformFeeBps',
-      details:
-          'Platform commission set to ${_commissionRate.toStringAsFixed(2)}%.',
-      severity: 'warning',
-    );
+  Future<void> setCommissionRate(double rate) {
+    final clamped = rate.clamp(0.0, 50.0);
+    return updatePlatformSettings({'platformFeeBps': (clamped * 100).round()});
   }
 
-  void setEscrowReleaseHours(int hours) {
-    _escrowReleaseHours = hours.clamp(1, 720);
-    notifyListeners();
-    try {
-      _firestoreService.updatePlatformSettings({
-        'escrowReleaseHours': _escrowReleaseHours,
-      }).catchError((e) => debugPrint('Settings sync notice: $e'));
-    } catch (e) {
-      debugPrint('Settings sync notice: $e');
-    }
-    logAuditEvent(
-      actionType: 'ESCROW_WINDOW_UPDATE',
-      targetEntity: 'PlatformSettings',
-      targetId: 'escrowReleaseHours',
-      details: 'Escrow auto-release window set to $_escrowReleaseHours hours.',
-      severity: 'info',
-    );
+  Future<void> setEscrowReleaseHours(int hours) {
+    return updatePlatformSettings(
+        {'escrowReleaseHours': hours.clamp(1, 720)});
   }
 
-  void setMinAppVersion(String version) {
+  Future<void> setMinAppVersion(String version) async {
     final v = version.trim();
     if (v.isEmpty) return;
-    _minAppVersion = v;
-    notifyListeners();
-    try {
-      _firestoreService.updatePlatformSettings({
-        'minAppVersion': v,
-      }).catchError((e) => debugPrint('Settings sync notice: $e'));
-    } catch (e) {
-      debugPrint('Settings sync notice: $e');
-    }
-    logAuditEvent(
-      actionType: 'MIN_VERSION_UPDATE',
-      targetEntity: 'PlatformSettings',
-      targetId: 'minAppVersion',
-      details: 'Minimum supported app version set to $v.',
-      severity: 'warning',
-    );
+    await updatePlatformSettings({'minAppVersion': v});
+  }
+
+  Future<void> setSessionTimeoutMinutes(int minutes) {
+    return updatePlatformSettings(
+        {'sessionTimeoutMinutes': minutes.clamp(0, 1440)});
+  }
+
+  Future<void> setDefaultDeliveryFee(double lkr) {
+    return updatePlatformSettings(
+        {'defaultDeliveryFeeMinor': (lkr * 100).round().clamp(0, 10000000)});
   }
 
   void clearLocalCache() {
@@ -2107,13 +2163,14 @@ class FarmoraState extends ChangeNotifier {
       severity: severity,
       timestamp: DateTime.now(),
     );
-    _auditLogs.insert(0, log);
-    notifyListeners();
-    // Persist append-only audit record (never breaks the triggering action).
-    _persistToFirestore(() => _firestoreService.writeAuditLog(log));
+    // Append-only record of a client-side write that already succeeded; the
+    // audit stream shows it. Callable-backed actions are audited server-side.
+    _firestoreService.writeAuditLog(log);
   }
 
   // ── Admin: Treasury & Bank Escrow Settlements ─────────────────
+  // `updateSettlementStatus` validates, notifies the recipient and audits.
+
   Future<void> approveSettlement(
     String settlementId, {
     required String transactionReference,
@@ -2122,135 +2179,99 @@ class FarmoraState extends ChangeNotifier {
     if (reference.length < 4 || reference.length > 100) {
       throw UserArgumentError(L10n.current.stateSettlementReferenceRequired);
     }
-    final idx = _settlements.indexWhere((s) => s.id == settlementId);
-    if (idx != -1) {
-      final s = _settlements[idx];
-      _settlements[idx] = s.copyWith(
-        status: 'settled',
-        settledAt: DateTime.now(),
-        transactionReference: reference,
-      );
-      notifyListeners();
-      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
-            settlementId,
-            status: 'settled',
-            transactionReference: reference,
-          ));
-      logAuditEvent(
-        actionType: 'SETTLEMENT_APPROVED',
-        targetEntity: 'Settlement',
-        targetId: settlementId,
-        details:
-            'Disbursed LKR ${s.netAmount.toStringAsFixed(2)} to ${s.recipientName} via ${s.bankName}. Ref: $reference',
-        severity: 'info',
-      );
-    }
+    await _firestoreService.updateSettlementStatus(
+      settlementId,
+      status: 'settled',
+      transactionReference: reference,
+    );
   }
 
   Future<void> holdSettlement(String settlementId, String reason) async {
-    final idx = _settlements.indexWhere((s) => s.id == settlementId);
-    if (idx != -1) {
-      final s = _settlements[idx];
-      _settlements[idx] = s.copyWith(
-        status: 'on_hold',
-        holdReason: reason,
-      );
-      notifyListeners();
-      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
-            settlementId,
-            status: 'on_hold',
-            holdReason: reason,
-          ));
-      logAuditEvent(
-        actionType: 'SETTLEMENT_HOLD',
-        targetEntity: 'Settlement',
-        targetId: settlementId,
-        details:
-            'Placed payout on hold for ${s.recipientName}. Reason: $reason',
-        severity: 'warning',
-      );
-    }
+    await _firestoreService.updateSettlementStatus(
+      settlementId,
+      status: 'on_hold',
+      holdReason: reason.trim(),
+    );
   }
 
   Future<void> retrySettlement(String settlementId) async {
-    final idx = _settlements.indexWhere((s) => s.id == settlementId);
-    if (idx != -1) {
-      _settlements[idx] = _settlements[idx].copyWith(
-        status: 'processing',
-        clearHoldReason: true,
-      );
-      notifyListeners();
-      _persistToFirestore(() => _firestoreService.updateSettlementStatus(
-            settlementId,
-            status: 'processing',
-            clearHoldReason: true,
-          ));
-      logAuditEvent(
-        actionType: 'SETTLEMENT_RETRY',
-        targetEntity: 'Settlement',
-        targetId: settlementId,
-        details: 'Retried wire transfer batch dispatch.',
-        severity: 'info',
-      );
-    }
+    await _firestoreService.updateSettlementStatus(
+      settlementId,
+      status: 'processing',
+      clearHoldReason: true,
+    );
   }
 
-  // ── Farmer: Payout / Bank Withdrawal ─────────────────────────
-  Future<void> requestFarmerWithdrawal({
+  Future<void> rejectSettlement(String settlementId, {String? reason}) async {
+    await _firestoreService.updateSettlementStatus(
+      settlementId,
+      status: 'rejected',
+      holdReason: reason?.trim(),
+    );
+  }
+
+  // ── Farmer / transporter: payout withdrawal ────────────────────
+  /// Requests a payout via `requestWithdrawal`; the server checks the
+  /// available balance. The own-settlements stream shows the request.
+  /// Returns the settlement id. Throws on failure.
+  Future<String> requestWithdrawal({
     required double amount,
     required String bankName,
     required String accountNumber,
     String payoutMethod = 'CEFT',
   }) async {
-    if (_currentUserId.isEmpty) throw StateError('Authentication required.');
-    if (amount <= 0 || amount > _totalEarnings) {
+    _requireSignedIn();
+    if (amount <= 0) {
       throw UserArgumentError(L10n.current.stateInvalidWithdrawalAmount(
           AppFormat.lkr(_totalEarnings, decimals: 2)));
     }
-    final fee = amount * (_commissionRate / 100.0);
-    final net = amount - fee;
-    final settlementId = 'STL-${DateTime.now().millisecondsSinceEpoch}';
-    final payout = SettlementPayout(
-      id: settlementId,
-      orderId: 'WITHDRAWAL-${DateTime.now().millisecondsSinceEpoch}',
-      orderNumber:
-          'WD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      recipientId: _currentUserId,
-      recipientName: displayName,
-      recipientRole: 'farmer',
-      bankName: bankName,
-      accountNumber: accountNumber,
-      grossAmount: amount,
-      platformFee: fee,
-      netAmount: net,
+    return _firestoreService.requestWithdrawal(
+      amount: amount,
+      bankName: bankName.trim(),
+      accountNumber: accountNumber.trim(),
       payoutMethod: payoutMethod,
-      status: 'pending',
-      createdAt: DateTime.now(),
     );
-    _settlements.insert(0, payout);
-    _totalEarnings = (_totalEarnings - amount).clamp(0.0, double.infinity);
-    _transactions.insert(
-      0,
-      EarningsTransaction(
-        id: settlementId,
-        date: DateTime.now().toIso8601String().substring(0, 10),
-        orderNumber: payout.orderNumber,
-        amount: -amount,
-        isCredit: false,
-      ),
-    );
-    notifyListeners();
-    logAuditEvent(
-      actionType: 'FARMER_WITHDRAWAL_REQUESTED',
-      targetEntity: 'Settlement',
-      targetId: settlementId,
-      details:
-          'Farmer requested payout of LKR ${amount.toStringAsFixed(2)} to $bankName ($accountNumber).',
-      severity: 'info',
-    );
-    if (_currentUserId.isNotEmpty) {
-      // Persist the full payout so admins see it live in Treasury.
-      _persistToFirestore(() => _firestoreService.createSettlement(payout));
+  }
+
+  /// Legacy name for [requestWithdrawal].
+  Future<String> requestFarmerWithdrawal({
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    String payoutMethod = 'CEFT',
+  }) =>
+      requestWithdrawal(
+        amount: amount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        payoutMethod: payoutMethod,
+      );
+}
+
+/// Calls [onResume] when the app returns to the foreground.
+class _AppLifecycleHook with WidgetsBindingObserver {
+  _AppLifecycleHook._(this._onResume);
+  final VoidCallback _onResume;
+
+  /// Null when no widgets binding exists (pure unit tests).
+  static _AppLifecycleHook? attach(VoidCallback onResume) {
+    try {
+      final hook = _AppLifecycleHook._(onResume);
+      WidgetsBinding.instance.addObserver(hook);
+      return hook;
+    } catch (_) {
+      return null;
     }
+  }
+
+  void detach() {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _onResume();
   }
 }

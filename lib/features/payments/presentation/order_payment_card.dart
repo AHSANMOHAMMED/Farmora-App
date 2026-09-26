@@ -56,6 +56,82 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
 
   FarmoraOrder get _order => widget.order;
 
+  /// Farmer account for a bank-deposit order: the order's
+  /// `bankDetailsSnapshot`, else fetched through the server (buyers cannot
+  /// read `bank_details` directly).
+  Future<BankDetails>? _bankDetails;
+
+  void _loadBankDetails() {
+    final snapshot = _order.bankDetailsSnapshot;
+    _bankDetails = snapshot != null && snapshot.accountNumber.trim().isNotEmpty
+        ? Future.value(snapshot)
+        // Provider.of (not context.read): this can run during build.
+        : Provider.of<FarmoraState>(context, listen: false)
+            .bankDetailsForOrder(_order);
+  }
+
+  @override
+  void didUpdateWidget(covariant OrderPaymentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.order.id != widget.order.id ||
+        (oldWidget.order.bankDetailsSnapshot == null) !=
+            (widget.order.bankDetailsSnapshot == null)) {
+      _bankDetails = null;
+    }
+  }
+
+  Widget _buildBankDetails(AppLocalizations l) {
+    if (_bankDetails == null) _loadBankDetails();
+    return FutureBuilder<BankDetails>(
+      future: _bankDetails,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        if (snap.hasError) {
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  userMessage(snap.error!,
+                      action: 'load the bank details', stack: snap.stackTrace),
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: AppColors.error),
+                ),
+              ),
+              TextButton(
+                onPressed: () => setState(_loadBankDetails),
+                child: Text(l.commonRetry),
+              ),
+            ],
+          );
+        }
+        final details = snap.data;
+        if (details == null || details.accountNumber.trim().isEmpty) {
+          return const Text(
+            'The farmer has not shared bank details yet. Ask them in the order chat.',
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: AppColors.onSurfaceVariant),
+          );
+        }
+        return BankDetailsPanel(details: details);
+      },
+    );
+  }
+
   Future<void> _run(Future<void> Function() action, String success) async {
     setState(() => _busy = true);
     try {
@@ -288,10 +364,10 @@ class _OrderPaymentCardState extends State<OrderPaymentCard> {
           ],
           if (!widget.viewerIsFarmer &&
               _order.isBankDeposit &&
-              _order.bankDetailsSnapshot != null &&
-              !_order.isPaid) ...[
+              !_order.isPaid &&
+              !_order.isCancelled) ...[
             const SizedBox(height: 14),
-            BankDetailsPanel(details: _order.bankDetailsSnapshot!),
+            _buildBankDetails(l),
           ],
           if (_order.isBankDeposit && (_order.proofImageUrl ?? '').isNotEmpty) ...[
             const SizedBox(height: 14),

@@ -18,6 +18,54 @@ class FarmerOffersScreen extends StatefulWidget {
 class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
   String _selectedFilter = 'all'; // all, pending, accepted, countered, rejected
 
+  /// Offers with a backend call in flight (buttons disabled).
+  final Set<String> _busyOfferIds = {};
+
+  static String _unitOf(FarmoraOffer offer) =>
+      offer.unit.trim().isEmpty ? 'kg' : offer.unit.trim();
+
+  String _quantityText(FarmoraOffer offer, AppLocalizations l10n) {
+    final unit = _unitOf(offer);
+    final qty = AppFormat.number(offer.proposedQuantity);
+    return unit == 'kg' ? l10n.farmerQuantityKg(qty) : '$qty $unit';
+  }
+
+  String _perUnitText(double price, FarmoraOffer offer, AppLocalizations l10n) {
+    final unit = _unitOf(offer);
+    final formatted = AppFormat.lkr(price, decimals: 2);
+    return unit == 'kg'
+        ? l10n.farmerPricePerKgValue(formatted)
+        : '$formatted /$unit';
+  }
+
+  /// Runs an offer action with the card disabled; success is shown only
+  /// after the callable returns, failures via [userMessage].
+  Future<void> _runOfferAction(
+    FarmoraOffer offer,
+    Future<void> Function() action, {
+    required String success,
+    required String errorAction,
+    Color? successColor,
+  }) async {
+    if (_busyOfferIds.contains(offer.id)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busyOfferIds.add(offer.id));
+    try {
+      await action();
+      messenger.showSnackBar(SnackBar(
+        content: Text(success),
+        backgroundColor: successColor,
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(userMessage(e, action: errorAction)),
+        backgroundColor: AppColors.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _busyOfferIds.remove(offer.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
@@ -167,9 +215,9 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
 
   Widget _buildOfferCard(BuildContext context, FarmoraState state,
       FarmoraOffer offer, AppLocalizations l10n) {
-    final bool isActionable =
-        offer.status == 'pending' || offer.status == 'countered';
-    final totalAmount = offer.proposedPrice * offer.proposedQuantity;
+    final bool isActionable = offer.isPending || offer.isCountered;
+    final busy = _busyOfferIds.contains(offer.id);
+    final totalAmount = offer.totalPrice;
 
     return Container(
       decoration: BoxDecoration(
@@ -219,8 +267,8 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  l10n.farmerOffersBuyerLine(offer.buyerId.isNotEmpty
-                      ? offer.buyerId
+                  l10n.farmerOffersBuyerLine(offer.buyerName.trim().isNotEmpty
+                      ? offer.buyerName.trim()
                       : l10n.farmerOffersVerifiedBuyer),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -260,8 +308,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     Text(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      l10n.farmerQuantityKg(
-                          AppFormat.number(offer.proposedQuantity)),
+                      _quantityText(offer, l10n),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
@@ -290,8 +337,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                     Text(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      l10n.farmerPricePerKgValue(
-                          AppFormat.lkr(offer.proposedPrice, decimals: 2)),
+                      _perUnitText(offer.proposedPrice, offer, l10n),
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 15,
@@ -343,8 +389,9 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () =>
-                        _showRejectDialog(context, state, offer, l10n),
+                    onPressed: busy
+                        ? null
+                        : () => _showRejectDialog(context, state, offer, l10n),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
@@ -357,10 +404,40 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
+                // A countered offer waits on the buyer: the farmer may only
+                // withdraw it (reject), not accept or counter again.
+                if (offer.isCountered) ...[
+                const SizedBox(width: 8),
+                const Expanded(
+                  flex: 2,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.hourglass_top_rounded,
+                          size: 16, color: AppColors.onSurfaceVariant),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Awaiting buyer response',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ] else ...[
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _showCounterDialog(context, state, offer),
+                    onPressed: busy
+                        ? null
+                        : () => _showCounterDialog(context, state, offer),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: const BorderSide(color: AppColors.primary),
@@ -376,8 +453,10 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () =>
-                        _handleAcceptOffer(context, state, offer, l10n),
+                    onPressed: busy
+                        ? null
+                        : () =>
+                            _handleAcceptOffer(context, state, offer, l10n),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.onPrimary,
@@ -391,6 +470,7 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
+                ],
               ],
             ),
           ],
@@ -443,27 +523,14 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
   }
 
   Future<void> _handleAcceptOffer(BuildContext context, FarmoraState state,
-      FarmoraOffer offer, AppLocalizations l10n) async {
-    try {
-      await state.acceptOffer(offer.id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.farmerOffersAccepted),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(describeError(e)),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
+      FarmoraOffer offer, AppLocalizations l10n) {
+    return _runOfferAction(
+      offer,
+      () => state.acceptOffer(offer.id),
+      success: l10n.farmerOffersAccepted,
+      successColor: AppColors.primary,
+      errorAction: 'accept the offer',
+    );
   }
 
   void _showRejectDialog(BuildContext context, FarmoraState state,
@@ -482,25 +549,14 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
             child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.of(ctx).pop();
-              try {
-                await state.rejectOffer(offer.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.offerRejected)),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(describeError(e)),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
-              }
+              _runOfferAction(
+                offer,
+                () => state.rejectOffer(offer.id),
+                success: l10n.offerRejected,
+                errorAction: 'reject the offer',
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -534,18 +590,19 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                 l10n.farmerOffersProductLine(offer.productName),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              Text(l10n.farmerOffersQuantityLine(
-                  AppFormat.number(offer.proposedQuantity))),
-              Text(l10n.farmerOffersBuyerOfferLine(
-                  AppFormat.lkr(offer.proposedPrice, decimals: 2))),
+              Text('${l10n.quantity}: ${_quantityText(offer, l10n)}'),
+              Text('Buyer offer: '
+                  '${_perUnitText(offer.proposedPrice, offer, l10n)}'),
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: l10n.farmerOffersCounterPriceLabel,
+                  labelText: 'Your counter price per ${_unitOf(offer)} (LKR)',
+                  helperText: 'Price per ${_unitOf(offer)}, not the total.',
                   prefixText: 'LKR ',
+                  suffixText: '/ ${_unitOf(offer)}',
                   border: const OutlineInputBorder(),
                 ),
                 onChanged: (val) {
@@ -597,28 +654,32 @@ class _FarmerOffersScreenState extends State<FarmerOffersScreen> {
                   return;
                 }
                 Navigator.of(ctx).pop();
+                if (_busyOfferIds.contains(offer.id)) return;
+                final messenger = ScaffoldMessenger.of(context);
+                setState(() => _busyOfferIds.add(offer.id));
                 try {
+                  // Per-unit price; the server multiplies by quantity.
                   await state.counterOffer(offer.id, newPrice);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          l10n.farmerOffersCounterSent(
-                              AppFormat.lkr(newPrice, decimals: 2)),
-                        ),
-                        backgroundColor: AppColors.primary,
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Counter offer sent: '
+                        '${_perUnitText(newPrice, offer, l10n)}',
                       ),
-                    );
-                  }
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            l10n.farmerOffersCounterFailed(describeError(e))),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.farmerOffersCounterFailed(
+                          userMessage(e, action: 'send the counter offer'))),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                } finally {
+                  if (mounted) {
+                    setState(() => _busyOfferIds.remove(offer.id));
                   }
                 }
               },

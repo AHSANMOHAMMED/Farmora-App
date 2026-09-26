@@ -35,6 +35,15 @@ void main() {
       expect(state.cartItems, isEmpty);
     });
 
+    test('cart quantity is capped at available stock', () {
+      state.addToCart(carrots, quantity: 150);
+      expect(state.cartItemCount, 100);
+      state.updateCartQuantity('p-1', 500);
+      expect(state.cartItemCount, 100);
+      state.updateCartQuantity('p-1', 7);
+      expect(state.cartItemCount, 7);
+    });
+
     test('order placement cannot succeed without authenticated backend',
         () async {
       state.addToCart(carrots);

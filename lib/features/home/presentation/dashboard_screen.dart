@@ -9,12 +9,14 @@ import '../../../models/user_role.dart';
 import '../../../models/product.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import '../../../services/earnings_calculator.dart';
+import '../../profile/presentation/edit_profile_screen.dart';
+import 'order_navigation.dart';
 import '../../farmer/presentation/add_product_screen.dart';
 import '../../farmer/presentation/farmer_orders_screen.dart';
 import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
-import '../../farmer/presentation/account_verification_screen.dart';
 import '../../farmer/presentation/farmer_jobs_screen.dart';
 import '../../farmer/presentation/farm_workspace_screen.dart';
 import '../../market/presentation/market_price_board_screen.dart';
@@ -24,14 +26,12 @@ import '../../buyer/presentation/buyer_orders_screen.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/cart_screen.dart';
 import '../../buyer/presentation/product_detail_screen.dart';
-import '../../buyer/presentation/buyer_order_detail_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import '../../transporter/presentation/active_delivery_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
-import '../../admin/presentation/user_management_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -56,7 +56,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else if (role == Role.transporter) {
       return _buildTransporterDashboard(context, state);
     }
-    return _buildAdminDashboard(context, state);
+    // Admins use the admin tabs (HomeScreen never shows this dashboard to
+    // them); keep a neutral screen instead of a dead admin dashboard.
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      children: [
+        _buildHeader(context, state),
+        const SizedBox(height: 20),
+        _buildGreeting(state),
+      ],
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -67,7 +76,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final orders = state.orders;
     final pendingOrders = state.pendingOrders;
     final activeProducts = state.activeProducts;
-    final todayOrders = pendingOrders.length + state.acceptedOrders.length;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    bool placedOn(FarmoraOrder o, DateTime day) =>
+        !o.isCancelled &&
+        o.createdAt.year == day.year &&
+        o.createdAt.month == day.month &&
+        o.createdAt.day == day.day;
+    final todayOrders = orders.where((o) => placedOn(o, today)).length;
+    final yesterdayOrders = orders.where((o) => placedOn(o, yesterday)).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -82,6 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildOverviewSection(
           context,
           todayOrders: todayOrders,
+          yesterdayOrders: yesterdayOrders,
           activeProducts: activeProducts.length,
           pendingOrders: pendingOrders.length,
           earnings: state.thisMonth,
@@ -219,6 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+            if (state.unreadNotificationsCount > 0)
             Positioned(
               right: 10,
               top: 10,
@@ -297,6 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildOverviewSection(
     BuildContext context, {
     required int todayOrders,
+    required int yesterdayOrders,
     required int activeProducts,
     required int pendingOrders,
     required double earnings,
@@ -313,8 +334,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 iconBg: const Color(0xFFE8F5E9),
                 label: context.l10n.dashboardTodaysOrders,
                 value: AppFormat.number(todayOrders),
-                trend: context.l10n.dashboardTrendFromYesterday(2),
-                trendUp: true,
+                trend: _dayTrend(todayOrders - yesterdayOrders),
+                trendUp: todayOrders > yesterdayOrders,
               ),
             ),
             const SizedBox(width: 12),
@@ -354,6 +375,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ],
     );
+  }
+
+  /// Change vs yesterday, computed from the orders (no fixed numbers).
+  String _dayTrend(int diff) {
+    if (diff > 0) return context.l10n.dashboardTrendFromYesterday(diff);
+    if (diff == 0) return 'Same as yesterday';
+    return '$diff from yesterday';
   }
 
   Widget _buildEarningsCard(double earnings) {
@@ -697,7 +725,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ═══════════════════════════════════════════════════════════════
   // 4. EARNINGS OVERVIEW
   // ═══════════════════════════════════════════════════════════════
+  /// Percentage change of this month/week vs the previous one, from the
+  /// same paid-order data as the headline figure. Null when there is no
+  /// previous-period income to compare with.
+  ({String text, bool up})? _earningsChange(FarmoraState state) {
+    final now = DateTime.now();
+    final double current;
+    final double previous;
+    if (_showMonthlyEarnings) {
+      final summary = state.earnings.summaryFor(now);
+      current = summary.total;
+      previous = summary.previousTotal;
+    } else {
+      current = state.thisWeek;
+      previous = EarningsCalculator(
+        state.orders,
+        farmerId: state.currentUserId.isEmpty ? null : state.currentUserId,
+        now: now.subtract(const Duration(days: 7)),
+      ).thisWeek;
+    }
+    if (previous <= 0) return null;
+    final pct = (current - previous) / previous * 100;
+    final text = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%';
+    return (text: text, up: pct >= 0);
+  }
+
   Widget _buildEarningsOverview(BuildContext context, FarmoraState state) {
+    final change = _earningsChange(state);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(),
@@ -747,28 +801,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 120,
             child: _buildMiniBarChart(state),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.trending_up_rounded,
-                  size: 16, color: AppColors.primary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  _showMonthlyEarnings
-                      ? context.l10n.dashboardVsLastMonth('+15.2%')
-                      : context.l10n.dashboardVsLastWeek('+15.2%'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+          if (change != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                    change.up
+                        ? Icons.trending_up_rounded
+                        : Icons.trending_down_rounded,
+                    size: 16,
+                    color: change.up ? AppColors.primary : AppColors.error),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _showMonthlyEarnings
+                        ? context.l10n.dashboardVsLastMonth(change.text)
+                        : context.l10n.dashboardVsLastWeek(change.text),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: change.up ? AppColors.primary : AppColors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -890,7 +950,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final statusBg = _getStatusBg(order.status);
     final emoji = _getOrderEmoji(order.title);
 
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => openOrderDetail(context, order),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: _cardDecoration(),
@@ -953,7 +1016,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        '${order.orderNumber.isNotEmpty ? order.orderNumber : order.id.substring(0, 6)} · ${order.buyerName}',
+                        '${order.displayNumber} · ${order.buyerName}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -979,6 +1042,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1041,8 +1105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'color': const Color(0xFF1565C0),
           'bg': const Color(0xFFE3F2FD),
           'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const AccountVerificationScreen()),
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
               ),
         },
         {
@@ -1184,18 +1247,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   builder: (_) => ActiveDeliveryScreen(job: jobs.first)),
             );
           },
-        },
-      ]);
-    } else if (role == Role.admin) {
-      actions.addAll([
-        {
-          'icon': Icons.people_outline_rounded,
-          'label': l10n.dashboardUserManagement,
-          'color': const Color(0xFF1565C0),
-          'bg': const Color(0xFFE3F2FD),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
-              ),
         },
       ]);
     }
@@ -1355,14 +1406,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildBuyerDashboard(BuildContext context, FarmoraState state) {
     final products = state.products;
     final activeOrders = [...state.pendingOrders, ...state.acceptedOrders];
+    // Only orders that are actually moving: picked up / in transit first,
+    // then confirmed / assigned ones. No fallback to an arbitrary order.
     final activeDelivery = state.orders
-            .where((o) =>
-                o.status.toLowerCase().contains('transit') ||
-                o.status.toLowerCase() == 'accepted')
+            .where((o) => !o.isCancelled && o.statusStep == 2)
             .firstOrNull ??
-        state.orders.firstOrNull;
-    final totalSpent =
-        state.orders.fold<double>(0.0, (sum, o) => sum + o.total);
+        state.orders
+            .where((o) => !o.isCancelled && o.statusStep == 1)
+            .firstOrNull;
+    final totalSpent = state.orders
+        .where((o) => !o.isCancelled)
+        .fold<double>(0.0, (sum, o) => sum + o.total);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
@@ -1500,11 +1554,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               subtitle: context.l10n.dashboardTrackProduceLive),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BuyerOrderDetailScreen(order: activeDelivery),
-              ),
-            ),
+            onTap: () => openOrderDetail(context, activeDelivery),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: _cardDecoration(),
@@ -1540,7 +1590,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             Text(
                               context.l10n.dashboardOrderAndAddress(
-                                  activeDelivery.orderNumber,
+                                  activeDelivery.displayNumber,
                                   activeDelivery.deliveryAddress),
                               style: const TextStyle(
                                 fontSize: 12,
@@ -1578,9 +1628,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: activeDelivery.progress > 0
-                          ? activeDelivery.progress
-                          : 0.3,
+                      value: activeDelivery.statusStep / 3,
                       backgroundColor: AppColors.surfaceContainerHigh,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                           AppColors.primary),
@@ -1864,47 +1912,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildSectionTitle(context.l10n.dashboardQuickActions),
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.transporter),
-      ],
-    );
-  }
-
-  Widget _buildAdminDashboard(BuildContext context, FarmoraState state) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-      children: [
-        _buildHeader(context, state),
-        const SizedBox(height: 20),
-        _buildGreeting(state),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Expanded(
-                child: _buildOverviewCard(
-              icon: Icons.people_rounded,
-              iconColor: const Color(0xFF1565C0),
-              iconBg: const Color(0xFFE3F2FD),
-              label: context.l10n.dashboardTotalUsers,
-              value: AppFormat.number(state.users.length),
-              trend: context.l10n.dashboardRegistered,
-              trendUp: true,
-            )),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildOverviewCard(
-              icon: Icons.receipt_long_rounded,
-              iconColor: const Color(0xFF2E7D32),
-              iconBg: const Color(0xFFE8F5E9),
-              label: context.l10n.dashboardTotalOrders,
-              value: AppFormat.number(state.orders.length),
-              trend: context.l10n.dashboardAllTime,
-              trendUp: true,
-            )),
-          ],
-        ),
-        const SizedBox(height: 32),
-        _buildSectionTitle(context.l10n.dashboardQuickActions),
-        const SizedBox(height: 14),
-        _buildQuickActions(context, Role.admin),
       ],
     );
   }

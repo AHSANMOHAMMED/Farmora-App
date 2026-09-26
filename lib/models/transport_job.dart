@@ -31,6 +31,19 @@ class TransportJob {
   final double? dropoffLat;
   final double? dropoffLng;
 
+  /// Backend fee in minor units (`deliveryFeeMinor`, else `offeredFeeMinor`).
+  final int? deliveryFeeMinor;
+  final double? quantityValue;
+  final String? unit;
+  final String? productName;
+  final String? farmerName;
+  final String? buyerName;
+  final String? orderNumber;
+
+  /// Transporter the buyer asked for (targeted request, not yet accepted).
+  final String? requestedTransporterId;
+  final DateTime? createdAt;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -56,7 +69,19 @@ class TransportJob {
     this.pickupLng,
     this.dropoffLat,
     this.dropoffLng,
+    this.deliveryFeeMinor,
+    this.quantityValue,
+    this.unit,
+    this.productName,
+    this.farmerName,
+    this.buyerName,
+    this.orderNumber,
+    this.requestedTransporterId,
+    this.createdAt,
   });
+
+  /// True while the job waits for a transporter.
+  bool get isRequested => status == 'requested';
 
   bool get hasCourierLocation =>
       courierLat != null && courierLng != null;
@@ -108,6 +133,15 @@ class TransportJob {
     double? pickupLng,
     double? dropoffLat,
     double? dropoffLng,
+    int? deliveryFeeMinor,
+    double? quantityValue,
+    String? unit,
+    String? productName,
+    String? farmerName,
+    String? buyerName,
+    String? orderNumber,
+    String? requestedTransporterId,
+    DateTime? createdAt,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -134,6 +168,16 @@ class TransportJob {
       pickupLng: pickupLng ?? this.pickupLng,
       dropoffLat: dropoffLat ?? this.dropoffLat,
       dropoffLng: dropoffLng ?? this.dropoffLng,
+      deliveryFeeMinor: deliveryFeeMinor ?? this.deliveryFeeMinor,
+      quantityValue: quantityValue ?? this.quantityValue,
+      unit: unit ?? this.unit,
+      productName: productName ?? this.productName,
+      farmerName: farmerName ?? this.farmerName,
+      buyerName: buyerName ?? this.buyerName,
+      orderNumber: orderNumber ?? this.orderNumber,
+      requestedTransporterId:
+          requestedTransporterId ?? this.requestedTransporterId,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -166,30 +210,57 @@ class TransportJob {
     };
   }
 
-  /// Deserialize from Firestore Map
+  /// Deserialize from Firestore Map. Tolerates the callable-written schema
+  /// (`pickupAddress`/`dropoffAddress`, numeric fees, Timestamp dates) and
+  /// the legacy string shape.
   factory TransportJob.fromMap(String id, Map<String, dynamic> data) {
-    final status = (data['status'] ?? (data['accepted'] == true ? 'accepted' : 'requested')).toString();
+    String? text(List<String> keys) {
+      for (final key in keys) {
+        final value = data[key];
+        if (value == null) continue;
+        final str = value.toString().trim();
+        if (str.isNotEmpty) return str;
+      }
+      return null;
+    }
+
+    final status = (data['status'] ??
+            (data['accepted'] == true ? 'accepted' : 'requested'))
+        .toString();
+    final feeMinor = firebaseInt(data['deliveryFeeMinor']) ??
+        firebaseInt(data['offeredFeeMinor']);
+    final rawFee = data['fee'];
+    final fee = rawFee is String && rawFee.trim().isNotEmpty
+        ? rawFee
+        : rawFee is num
+            ? 'LKR ${rawFee.toStringAsFixed(2)}'
+            : feeMinor != null
+                ? 'LKR ${(feeMinor / 100).toStringAsFixed(2)}'
+                : '';
+    final productName = text(['productName', 'produceName']);
+    final quantityValue = firebaseDouble(data['quantityValue']) ??
+        (data['quantity'] is num ? (data['quantity'] as num).toDouble() : null);
+    final capacityKg = firebaseInt(data['capacityKg']);
     return TransportJob(
       id: id,
-      title: data['title'] ?? '',
-      route: data['route'] ?? '',
-      detail: data['detail'] ?? '',
-      fee: data['fee'] ?? '',
-      accepted: data['accepted'] ?? status != 'requested',
+      title: text(['title']) ?? productName ?? '',
+      route: text(['route']) ?? '',
+      detail: text(['detail', 'notes']) ?? '',
+      fee: fee,
+      accepted: data['accepted'] is bool
+          ? data['accepted'] as bool
+          : status != 'requested',
       status: status,
-      orderId: data['orderId'] as String?,
-      transporterId: data['transporterId'] as String?,
-      pickup: data['pickup'] as String?,
-      dropoff: data['dropoff'] as String?,
-      buyerId: data['buyerId'] as String?,
-      farmerId: data['farmerId'] as String?,
-      updatedAt: data['updatedAt'] != null
-          ? DateTime.tryParse(data['updatedAt'].toString())
-          : null,
-      district: (data['district'] ?? data['serviceDistrict'])?.toString(),
-      capacityKg: (data['capacityKg'] as num?)?.toInt(),
-      weightKg: (data['weightKg'] as num?)?.toInt() ??
-          (data['capacityKg'] as num?)?.toInt(),
+      orderId: text(['orderId']),
+      transporterId: text(['transporterId']),
+      pickup: text(['pickup', 'pickupAddress', 'pickupLocation']),
+      dropoff: text(['dropoff', 'dropoffAddress', 'deliveryLocation']),
+      buyerId: text(['buyerId']),
+      farmerId: text(['farmerId']),
+      updatedAt: firebaseDate(data['updatedAt']),
+      district: text(['district', 'serviceDistrict']),
+      capacityKg: capacityKg,
+      weightKg: firebaseInt(data['weightKg']) ?? capacityKg,
       courierLat: firebaseDouble(data['courierLat']),
       courierLng: firebaseDouble(data['courierLng']),
       locationUpdatedAt: firebaseDate(data['locationUpdatedAt']),
@@ -197,6 +268,15 @@ class TransportJob {
       pickupLng: firebaseDouble(data['pickupLng']),
       dropoffLat: firebaseDouble(data['dropoffLat']),
       dropoffLng: firebaseDouble(data['dropoffLng']),
+      deliveryFeeMinor: feeMinor,
+      quantityValue: quantityValue,
+      unit: text(['unit']),
+      productName: productName,
+      farmerName: text(['farmerName']),
+      buyerName: text(['buyerName']),
+      orderNumber: text(['orderNumber']),
+      requestedTransporterId: text(['requestedTransporterId']),
+      createdAt: firebaseDate(data['createdAt']),
     );
   }
 }

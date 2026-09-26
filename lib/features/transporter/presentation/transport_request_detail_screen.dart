@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
+import '../../../services/delivery_location_service.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 import '../../messaging/presentation/conversations_screen.dart';
@@ -289,23 +291,56 @@ class TransportRequestDetailScreen extends StatelessWidget {
     );
   }
 
+  /// Awaits [call]; pops only after success, otherwise shows the error.
+  Future<bool> _run(
+    BuildContext context,
+    Future<void> Function() call, {
+    required String action,
+  }) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await call();
+      navigator.pop();
+      return true;
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(userMessage(error, action: action)),
+        backgroundColor: AppColors.error,
+      ));
+      return false;
+    }
+  }
+
+  Future<void> _setStatus(BuildContext context, String status) async {
+    final state = context.read<FarmoraState>();
+    final ok = await _run(
+      context,
+      () => state.updateJobStatus(job.id, status),
+      action: 'update the delivery',
+    );
+    if (!ok) return;
+    final location = DeliveryLocationService.instance;
+    if (status == 'pickedUp' || status == 'inTransit') {
+      try {
+        await location.requestConsentAndStart(jobId: job.id);
+      } catch (_) {
+        // Sharing can be started later from Active delivery.
+      }
+    } else {
+      location.onJobStatusChanged(job.id, status);
+    }
+  }
+
   Widget _buildActionButtons(BuildContext context) {
     final l10n = context.l10n;
     if (!job.accepted && job.status == 'requested') {
       return FilledButton(
-        onPressed: () {
-          () async {
-            try {
-              await context.read<FarmoraState>().acceptJob(job.id);
-              if (context.mounted) Navigator.of(context).pop();
-            } catch (e) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Could not accept job: $e')),
-              );
-            }
-          }();
-        },
+        onPressed: () => _run(
+          context,
+          () => context.read<FarmoraState>().acceptJob(job.id),
+          action: 'accept the job',
+        ),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -323,10 +358,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
 
     if (job.status == 'accepted') {
       return FilledButton(
-        onPressed: () {
-          context.read<FarmoraState>().updateJobStatus(job.id, 'pickedUp');
-          Navigator.of(context).pop();
-        },
+        onPressed: () => _setStatus(context, 'pickedUp'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -339,10 +371,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
 
     if (job.status == 'pickedUp') {
       return FilledButton(
-        onPressed: () {
-          context.read<FarmoraState>().updateJobStatus(job.id, 'inTransit');
-          Navigator.of(context).pop();
-        },
+        onPressed: () => _setStatus(context, 'inTransit'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -355,10 +384,7 @@ class TransportRequestDetailScreen extends StatelessWidget {
 
     if (job.status == 'inTransit') {
       return FilledButton(
-        onPressed: () {
-          context.read<FarmoraState>().updateJobStatus(job.id, 'delivered');
-          Navigator.of(context).pop();
-        },
+        onPressed: () => _setStatus(context, 'delivered'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(

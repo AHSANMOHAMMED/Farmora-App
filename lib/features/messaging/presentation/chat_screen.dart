@@ -15,6 +15,7 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/chat_crypto.dart';
 import '../../../services/chat_outbox_service.dart';
 import '../../../services/firebase_service.dart';
+import 'report_content_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   final FarmoraConversation conversation;
@@ -57,6 +58,15 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _peerPublicKey;
   bool _keysReady = false;
 
+  /// Whether the conversation doc exists on the server (the first message
+  /// creates it). Nothing to mark read before that.
+  late bool _exists = widget.conversation.exists;
+
+  /// Newest incoming message already marked read.
+  String? _lastReadIncomingId;
+  bool _marking = false;
+  bool _markAgain = false;
+
   FarmoraConversation get _conversation => widget.conversation;
   String get _uid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -75,6 +85,49 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     _bootstrapKeys();
     _flushOutbox();
+    if (_exists) _markRead();
+  }
+
+  /// Resets this user's unread counter (on open and on new incoming
+  /// messages). Background work: failures are logged, not shown.
+  Future<void> _markRead() async {
+    if (!_exists || _conversation.id.isEmpty) return;
+    if (_marking) {
+      _markAgain = true;
+      return;
+    }
+    _marking = true;
+    final state = context.read<FarmoraState>();
+    try {
+      do {
+        _markAgain = false;
+        await state.markConversationRead(_conversation.id);
+      } while (_markAgain && mounted);
+    } catch (e, st) {
+      userMessage(e, action: 'mark the chat as read', stack: st);
+    } finally {
+      _marking = false;
+    }
+  }
+
+  /// Called with each messages snapshot: marks read when a new message from
+  /// the peer arrived while the chat is open.
+  void _onMessages(List<FarmoraMessage> msgs) {
+    if (msgs.isNotEmpty) _exists = true;
+    FarmoraMessage? lastIncoming;
+    for (final m in msgs.reversed) {
+      if (m.senderId != _uid) {
+        lastIncoming = m;
+        break;
+      }
+    }
+    if (lastIncoming == null || lastIncoming.id == _lastReadIncomingId) {
+      return;
+    }
+    _lastReadIncomingId = lastIncoming.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _markRead();
+    });
   }
 
   Future<void> _bootstrapKeys() async {
@@ -91,21 +144,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  /// Re-sends text messages that were saved offline for this order.
+  /// Re-sends messages saved offline (all chats of this user).
   Future<void> _flushOutbox() async {
     try {
-      final pending = await ChatOutboxService.getPending();
-      for (final msg in pending) {
-        if (msg.orderId != _conversation.orderId) continue;
-        await _service.sendEncryptedMessage(
-          orderId: msg.orderId,
-          recipientId: msg.recipientId,
-          ciphertext: msg.ciphertext,
-        );
-        await ChatOutboxService.remove(msg);
-      }
-    } catch (_) {
-      // Still offline; the outbox is retried next time the chat opens.
+      await context.read<FarmoraState>().flushChatOutbox();
+    } catch (e, st) {
+      // Still offline; the outbox is retried on resume / next open.
+      userMessage(e, action: 'send queued chat messages', stack: st);
     }
   }
 
@@ -204,17 +249,19 @@ class _ChatScreenState extends State<ChatScreen> {
         ciphertext: ciphertext,
         attachment: attachment,
       );
+      _exists = true;
       if (mounted) setState(() => _outgoing.remove(item));
       if (item.kind == ChatAttachmentKind.paymentProof) {
         _snack(L10n.current.chatReceiptSent);
       }
     } catch (e, st) {
-      if (ciphertext != null) {
+      if (ciphertext != null && ChatOutboxService.shouldQueue(e)) {
         // Encrypted but not delivered: keep it in the offline outbox.
         await ChatOutboxService.enqueue(PendingMessage(
           orderId: _conversation.orderId,
           recipientId: _recipientId,
           ciphertext: ciphertext,
+          conversationId: _conversation.id,
         ));
         if (!mounted) return;
         setState(() => _outgoing.remove(item));
@@ -350,6 +397,32 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          if (_recipientId.isNotEmpty)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'report') {
+                  showReportContentDialog(
+                    context,
+                    targetType: 'user',
+                    targetId: _recipientId,
+                    orderId: _conversation.orderId,
+                  );
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'report',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.flag_outlined,
+                        color: AppColors.error),
+                    title: Text(ctx.l10n.reportAbuse),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -357,6 +430,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<List<FarmoraMessage>>(
               stream: _messages,
               builder: (context, snap) {
+                if (snap.hasData) _onMessages(snap.data!);
                 if (snap.hasError) {
                   return _CenteredNote(
                     icon: Icons.cloud_off_outlined,

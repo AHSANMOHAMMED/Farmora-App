@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
-import '../../../services/firebase_service.dart';
 import 'user_management_screen.dart';
 import 'verification_review_screen.dart';
 import 'market_price_management_screen.dart';
@@ -58,20 +57,20 @@ class AdminDashboardScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: TabBarView(
+        body: const TabBarView(
           children: [
-            const _OverviewTab(),
-            const PlatformAnalyticsScreen(),
-            const UserManagementScreen(),
-            const ReviewManagementScreen(),
-            const SettlementManagementScreen(),
-            const DisputeResolutionScreen(),
-            const LogisticsManagementScreen(),
-            const MarketPriceManagementScreen(),
+            _OverviewTab(),
+            PlatformAnalyticsScreen(),
+            UserManagementScreen(),
+            ReviewManagementScreen(),
+            SettlementManagementScreen(),
+            DisputeResolutionScreen(),
+            LogisticsManagementScreen(),
+            MarketPriceManagementScreen(),
             MarketPriceReviewScreen(),
-            const AuditLogScreen(),
-            const ServerMaintenanceScreen(),
-            const BroadcastAdvisoryScreen(),
+            AuditLogScreen(),
+            ServerMaintenanceScreen(),
+            BroadcastAdvisoryScreen(),
           ],
         ),
       ),
@@ -79,31 +78,82 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 }
 
-class _OverviewTab extends StatelessWidget {
+class _OverviewTab extends StatefulWidget {
   const _OverviewTab();
+
+  @override
+  State<_OverviewTab> createState() => _OverviewTabState();
+}
+
+class _OverviewTabState extends State<_OverviewTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!context.read<FarmoraState>().adminStats.isLoaded) _refresh();
+    });
+  }
+
+  Future<void> _refresh() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<FarmoraState>().refreshAdminStats();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'load platform statistics'))));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final state = context.watch<FarmoraState>();
+    final stats = state.adminStats;
     final recentActivities = state.transactions.take(5).toList();
 
-    // Calculate Platform GMV, Commission, and Escrow
-    double platformGmv = 0.0;
+    // Platform totals come from the aggregate queries (adminStats); the
+    // loaded order stream is the fallback before they arrive.
+    final activeOrders =
+        state.orders.where((o) => !o.isCancelled).toList();
+    double localGmv = 0.0;
+    double localCut = 0.0;
     double escrowHeld = 0.0;
-    for (final o in state.orders) {
-      platformGmv += o.total;
-      if (o.paymentStatus == 'paid' && o.status.toLowerCase() != 'completed' && o.status.toLowerCase() != 'delivered') {
+    final rate = state.commissionRate / 100.0;
+    for (final o in activeOrders) {
+      localGmv += o.total;
+      localCut += o.platformFeeMinor > 0
+          ? o.platformFee
+          : (o.subtotalMinor > 0 ? o.subtotalMinor / 100.0 : o.total) * rate;
+      final key = o.statusKey;
+      if (o.paymentStatus == 'paid' && key != 'completed' && key != 'delivered') {
         escrowHeld += o.total;
       }
     }
-    final platformCommission = platformGmv * 0.05; // 500 bps default
+    final platformGmv = stats.isLoaded ? stats.grossVolume : localGmv;
+    final totalOrders = stats.isLoaded ? stats.totalOrders : state.orders.length;
+    // Per-order fees where the order list is complete; otherwise apply the
+    // configured commission rate to the aggregate volume.
+    final platformCommission =
+        stats.isLoaded && activeOrders.length < stats.totalOrders
+            ? stats.grossVolume * rate
+            : localCut;
+    final registeredUsers =
+        stats.isLoaded ? stats.totalUsers : state.users.length;
 
-    return SingleChildScrollView(
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (state.adminStatsLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(),
+            ),
           // Row 1: Financial & Platform KPIs
           Row(
             children: [
@@ -111,7 +161,7 @@ class _OverviewTab extends StatelessWidget {
                 child: _KpiCard(
                   title: l.adminDashGmv,
                   value: AppFormat.lkr(platformGmv),
-                  subtitle: l.adminDashTotalTrades(state.orders.length),
+                  subtitle: l.adminDashTotalTrades(totalOrders),
                   icon: Icons.monetization_on_rounded,
                   color: const Color(0xFF1B6BD8),
                 ),
@@ -121,7 +171,7 @@ class _OverviewTab extends StatelessWidget {
                 child: _KpiCard(
                   title: l.adminDashPlatformCut,
                   value: AppFormat.lkr(platformCommission),
-                  subtitle: l.adminDashEarnedCommission,
+                  subtitle: '${l.adminDashEarnedCommission} · ${AppFormat.number(state.commissionRate, decimals: 1)}%',
                   icon: Icons.savings_rounded,
                   color: const Color(0xFF2E7D32),
                 ),
@@ -144,7 +194,7 @@ class _OverviewTab extends StatelessWidget {
               Expanded(
                 child: _KpiCard(
                   title: l.adminDashRegisteredUsers,
-                  value: AppFormat.number(state.users.length),
+                  value: AppFormat.number(registeredUsers),
                   subtitle: l.adminDashPendingKyc(state.verificationDocs.where((d) => d.status.toString().contains('pending')).length),
                   icon: Icons.supervised_user_circle_rounded,
                   color: const Color(0xFF6A1B9A),
@@ -341,20 +391,56 @@ class _OverviewTab extends StatelessWidget {
                     },
                   ),
           ),
+          if (stats.fetchedAt != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Totals updated ${AppFormat.dateTime(stats.fetchedAt!)} · pull down to refresh',
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
         ],
+      ),
       ),
     );
   }
 }
 
-class _EscrowReleaseSection extends StatelessWidget {
+class _EscrowReleaseSection extends StatefulWidget {
+  @override
+  State<_EscrowReleaseSection> createState() => _EscrowReleaseSectionState();
+}
+
+class _EscrowReleaseSectionState extends State<_EscrowReleaseSection> {
+  final Set<String> _releasing = {};
+
+  Future<void> _release(String orderId) async {
+    if (_releasing.contains(orderId)) return;
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final state = context.read<FarmoraState>();
+    setState(() => _releasing.add(orderId));
+    try {
+      await state.releaseEscrow(orderId);
+      messenger.showSnackBar(SnackBar(content: Text(l.adminDashEscrowReleased)));
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l.adminDashReleaseFailed(
+              userMessage(e, action: 'release escrow'))),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _releasing.remove(orderId));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final state = context.watch<FarmoraState>();
     final eligible = state.orders
         .where((o) =>
-            o.status.toLowerCase() == 'delivered' &&
+            o.statusKey == 'delivered' &&
             o.paymentStatus == 'paid' &&
             (o.disputeId == null || o.disputeId!.isEmpty))
         .toList();
@@ -394,32 +480,21 @@ class _EscrowReleaseSection extends StatelessWidget {
                 o.productName.isNotEmpty ? o.productName : o.title,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              subtitle: Text('${o.orderNumber} · ${o.displayTotal} · ${l.statusDelivered}'),
+              subtitle: Text('${o.displayNumber} · ${o.displayTotal} · ${l.statusDelivered}'),
               trailing: FilledButton(
-                onPressed: () async {
-                  try {
-                    await FirestoreService().releaseEscrow(orderId: o.id);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.adminDashEscrowReleased)),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.adminDashReleaseFailed(
-                              userMessage(e, action: 'release escrow'))),
-                        ),
-                      );
-                    }
-                  }
-                },
+                onPressed:
+                    _releasing.contains(o.id) ? null : () => _release(o.id),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   visualDensity: VisualDensity.compact,
                 ),
-                child: Text(l.release),
+                child: _releasing.contains(o.id)
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l.release),
               ),
             ),
           ),

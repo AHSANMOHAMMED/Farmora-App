@@ -1,3 +1,5 @@
+import '../core/utils/firebase_values.dart';
+
 class FarmoraNotification {
   final String id;
   final String userId;
@@ -8,6 +10,12 @@ class FarmoraNotification {
   final DateTime createdAt;
   final String? referenceId;
 
+  /// Optional deep-link context written by backend triggers.
+  final String? conversationId;
+  final String? senderId;
+  final String? orderId;
+  final String? jobId;
+
   FarmoraNotification({
     required this.id,
     required this.userId,
@@ -17,6 +25,10 @@ class FarmoraNotification {
     this.read = false,
     DateTime? createdAt,
     this.referenceId,
+    this.conversationId,
+    this.senderId,
+    this.orderId,
+    this.jobId,
   }) : createdAt = createdAt ?? DateTime.now();
 
   FarmoraNotification copyWith({
@@ -28,6 +40,10 @@ class FarmoraNotification {
     bool? read,
     DateTime? createdAt,
     String? referenceId,
+    String? conversationId,
+    String? senderId,
+    String? orderId,
+    String? jobId,
   }) {
     return FarmoraNotification(
       id: id ?? this.id,
@@ -38,6 +54,10 @@ class FarmoraNotification {
       read: read ?? this.read,
       createdAt: createdAt ?? this.createdAt,
       referenceId: referenceId ?? this.referenceId,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      orderId: orderId ?? this.orderId,
+      jobId: jobId ?? this.jobId,
     );
   }
 
@@ -50,6 +70,10 @@ class FarmoraNotification {
       'read': read,
       'createdAt': createdAt.toIso8601String(),
       'referenceId': referenceId,
+      if (conversationId != null) 'conversationId': conversationId,
+      if (senderId != null) 'senderId': senderId,
+      if (orderId != null) 'orderId': orderId,
+      if (jobId != null) 'jobId': jobId,
     };
   }
 
@@ -61,12 +85,19 @@ class FarmoraNotification {
       body: data['body'] ?? '',
       type: data['type'] ?? 'general',
       read: data['read'] == true,
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] is String
-              ? DateTime.tryParse(data['createdAt']) ?? DateTime.now()
-              : DateTime.now())
-          : DateTime.now(),
-      referenceId: data['referenceId'] as String?,
+      // Tolerates Firestore Timestamp (serverTimestamp) and ISO strings.
+      createdAt: firebaseDate(data['createdAt']) ?? DateTime.now(),
+      referenceId: _optString(data['referenceId']),
+      conversationId: _optString(data['conversationId']),
+      senderId: _optString(data['senderId']),
+      orderId: _optString(data['orderId']),
+      jobId: _optString(data['jobId']),
     );
+  }
+
+  static String? _optString(dynamic value) {
+    if (value == null) return null;
+    final s = value.toString();
+    return s.isEmpty ? null : s;
   }
 }
