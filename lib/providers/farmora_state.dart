@@ -1258,28 +1258,53 @@ class FarmoraState extends ChangeNotifier {
     required List<int> bytes,
     required String fileName,
   }) async {
-    if (_currentUserId.isEmpty) return null;
-    return _firestoreService.uploadProductVideo(
+    final result = await _firestoreService.uploadProductVideo(
       productId: productId,
       bytes: Uint8List.fromList(bytes),
       fileName: fileName,
     );
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(
+        videoUrl: result['url'],
+        videoPath: result['path'],
+        harvestStatus: HarvestStatus.harvested,
+        harvestDate: DateTime.now(),
+      );
+      notifyListeners();
+    }
+    return result;
   }
 
   /// Removes the product's harvest video.
   Future<void> deleteHarvestVideo(Product product) async {
-    _requireSignedIn();
     await _firestoreService.deleteProductVideo(
       productId: product.id,
       storagePath: product.videoPath,
       downloadUrl: product.videoUrl,
     );
+    final idx = _products.indexWhere((p) => p.id == product.id);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(
+        videoUrl: null,
+        videoPath: null,
+      );
+      notifyListeners();
+    }
   }
 
   /// Generates the product QR via `generateProductQr`. Returns the payload.
   Future<String?> generateQrForProduct(String productId) async {
-    if (_currentUserId.isEmpty) return null;
-    return _firestoreService.generateProductQr(productId: productId);
+    final payload =
+        await _firestoreService.generateProductQr(productId: productId);
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(
+        qrCode: payload,
+      );
+      notifyListeners();
+    }
+    return payload;
   }
 
   Future<void> deliverOrderAndCleanupVideo({

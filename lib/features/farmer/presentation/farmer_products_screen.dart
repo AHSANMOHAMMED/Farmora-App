@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/farmer_header.dart';
 import '../../../core/widgets/harvest_video_player.dart';
@@ -312,20 +314,76 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       Row(
                         children: [
                           if (product.hasVideo) ...[
-                            const Icon(Icons.videocam,
-                                size: 14, color: AppColors.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              farmerHarvestStatusLabel(
-                                  product.harvestStatus, context.l10n),
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.primary),
+                            InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => Scaffold(
+                                      appBar: AppBar(
+                                          title: Text(context.l10n.farmerProductsVideoTitle(product.name))),
+                                      body: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: HarvestVideoPlayer(
+                                            videoUrl: product.videoUrl!),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.videocam,
+                                      size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    farmerHarvestStatusLabel(
+                                        product.harvestStatus, context.l10n),
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                           ],
                           if (product.hasQrCode)
-                            const Icon(Icons.qr_code_2,
-                                size: 14, color: AppColors.primary),
+                            InkWell(
+                              onTap: () => _showProductQrDialog(
+                                  context, product, product.qrCode!),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Tooltip(
+                                message: 'View Packing QR',
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryContainer
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.qr_code_2,
+                                          size: 14, color: AppColors.primary),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'QR',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -555,6 +613,17 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       await _deleteHarvestVideo(context, state, product);
                     },
                   ),
+                if (product.hasQrCode)
+                  ListTile(
+                    leading: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                    title: const Text('View packing QR code',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('View & copy high-resolution QR for packaging'),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _showProductQrDialog(context, product, product.qrCode!);
+                    },
+                  ),
                 ListTile(
                   leading:
                       const Icon(Icons.qr_code_2, color: AppColors.primary),
@@ -580,6 +649,9 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                           ),
                         ),
                       );
+                      if (payload != null && context.mounted) {
+                        _showProductQrDialog(context, product, payload);
+                      }
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -765,5 +837,113 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                 userMessage(e, action: 'delete the harvest video'))),
       );
     }
+  }
+
+  void _showProductQrDialog(
+      BuildContext context, Product product, String payload) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.qr_code_2, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: payload,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SelectableText(
+                  payload,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'monospace',
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Attach this QR code to crates or packaging. Handlers and buyers can scan to track harvest batch provenance.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: payload));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('QR Code data copied to clipboard!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy Data'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

@@ -106,14 +106,33 @@ class AdminOverviewScreen extends StatelessWidget {
         elevation: 0.5,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: IconButton(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: OutlinedButton.icon(
+              onPressed: () => confirmAndSignOut(context),
               icon: const Icon(
                 Icons.logout_rounded,
+                size: 16,
                 color: AppColors.error,
               ),
-              tooltip: l.signOut,
-              onPressed: () => confirmAndSignOut(context),
+              label: Text(
+                l.signOut,
+                style: const TextStyle(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: AppColors.error.withValues(alpha: 0.4),
+                  width: 0.9,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ),
         ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/harvest_video_player.dart';
 import '../../../core/widgets/safe_image.dart';
@@ -333,6 +335,124 @@ class ProductDetailScreen extends StatelessWidget {
                       fontSize: 15,
                       color: AppColors.onSurfaceVariant,
                       height: 1.5,
+                    ),
+                  ),
+                ],
+
+                // Verified Harvest & Packing Traceability QR Card
+                if (product.hasQrCode) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryContainer
+                                    .withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.qr_code_2,
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Verified Packaging QR',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onSurface,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Farm batch provenance & traceability',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: AppColors.outlineVariant),
+                            ),
+                            child: QrImageView(
+                              data: product.qrCode!,
+                              size: 160,
+                              backgroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Center(
+                          child: SelectableText(
+                            product.qrCode!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              Clipboard.setData(
+                                  ClipboardData(text: product.qrCode!));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('QR code link copied to clipboard!'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.copy, size: 16),
+                            label: const Text('Copy QR Link'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

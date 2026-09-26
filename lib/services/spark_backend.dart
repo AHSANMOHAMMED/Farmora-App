@@ -933,4 +933,51 @@ class SparkBackend {
     final rnd = Random(hash);
     return List.generate(24, (_) => rnd.nextInt(16).toRadixString(16)).join();
   }
+
+  Future<String> generateProductQr(String productId) async {
+    final qrCode = 'farmora://product/$productId';
+    try {
+      final doc = await _db.collection('products').doc(productId).get();
+      final data = doc.data();
+      await _db.collection('products').doc(productId).update({
+        'qrCode': qrCode,
+        if (data != null && data['packingDate'] == null)
+          'packingDate': DateTime.now().toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('SparkBackend generateProductQr firestore update skipped: $e');
+    }
+    return qrCode;
+  }
+
+  Future<void> setProductMedia({
+    required String productId,
+    String? videoPath,
+    String? videoUrl,
+    bool clearVideo = false,
+    String? harvestStatus,
+    DateTime? harvestDate,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        if (clearVideo) ...{
+          'videoPath': FieldValue.delete(),
+          'videoUrl': FieldValue.delete(),
+        } else ...{
+          if (videoPath != null) 'videoPath': videoPath,
+          if (videoUrl != null) 'videoUrl': videoUrl,
+        },
+        if (harvestStatus != null) 'harvestStatus': harvestStatus,
+        if (harvestDate != null) 'harvestDate': harvestDate.toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (updates.isNotEmpty) {
+        await _db.collection('products').doc(productId).update(updates);
+      }
+    } catch (e) {
+      debugPrint('SparkBackend setProductMedia firestore update skipped: $e');
+    }
+  }
 }
+
