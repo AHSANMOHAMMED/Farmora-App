@@ -183,7 +183,10 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     if (uid != null) {
       _docsStream = FirebaseFirestore.instance
           .collection('verification_docs')
-          .where('farmerId', isEqualTo: uid)
+          .where(Filter.or(
+            Filter('farmerId', isEqualTo: uid),
+            Filter('ownerId', isEqualTo: uid),
+          ))
           .snapshots()
           .map((snap) => snap.docs
               .map((d) => _UploadedDoc(d.id, d.data()))
