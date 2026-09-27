@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
+import 'buyer_order_detail_screen.dart';
 import 'cart_screen.dart';
 import 'buyer_products_screen.dart';
 import 'buyer_l10n.dart';
-import '../../messaging/presentation/conversations_screen.dart';
 
 class BuyerOrdersScreen extends StatefulWidget {
   const BuyerOrdersScreen({super.key});
@@ -267,7 +266,11 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
 
     return GestureDetector(
       onTap: () {
-        AppNavigator.openBuyerOrderDetail(context, order);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BuyerOrderDetailScreen(order: order),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -455,20 +458,6 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                 const SizedBox(width: 8),
                 Row(
                   children: [
-                    IconButton(
-                      tooltip: 'Chat with Farmer',
-                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20, color: AppColors.primary),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ConversationsScreen(
-                              orderId: order.id,
-                              peerId: order.farmerId,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                     if (isPending) ...[
                       OutlinedButton(
                         onPressed: _cancelling.contains(order.id)
@@ -490,7 +479,11 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                     ],
                     ElevatedButton(
                       onPressed: () {
-                        AppNavigator.openBuyerOrderDetail(context, order);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BuyerOrderDetailScreen(order: order),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

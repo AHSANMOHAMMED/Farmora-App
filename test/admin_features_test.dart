@@ -9,10 +9,10 @@ void main() {
     setUp(() => state = FarmoraState());
     tearDown(() => state.dispose());
 
-    test('does not expose seeded users, settlements, or audits while market benchmarks are loaded',
+    test('does not expose seeded users, market data, settlements, or audits',
         () {
       expect(state.users, isEmpty);
-      expect(state.marketPrices, isNotEmpty);
+      expect(state.marketPrices, isEmpty);
       expect(state.settlements, isEmpty);
       expect(state.auditLogs, isEmpty);
       expect(state.signedIn, isFalse);

@@ -54,7 +54,7 @@ void main() {
       expect(placed, isFalse);
       expect(state.orders, isEmpty);
       expect(state.cartItems, hasLength(1));
-    }, skip: 'Relies on local demo fallback ordering logic.');
+    });
 
     test('offer creation requires authentication', () async {
       await expectLater(
@@ -68,6 +68,6 @@ void main() {
         throwsA(isA<StateError>()),
       );
       expect(state.offers, isEmpty);
-    }, skip: 'Relies on local demo offer fallback logic.');
+    });
   });
 }
