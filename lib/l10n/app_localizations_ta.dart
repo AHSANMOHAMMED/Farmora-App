@@ -7847,4 +7847,59 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get cdSentToExpert => 'புகைப்படத்துடன் நிபுணர்களுக்கு அனுப்பப்பட்டது.';
+
+  @override
+  String get bidPlace => 'ஏலம் வை';
+
+  @override
+  String get bidUpdate => 'ஏலத்தைப் புதுப்பி';
+
+  @override
+  String bidMax(String amount) {
+    return 'விவசாயியின் அதிகபட்சம்: $amount';
+  }
+
+  @override
+  String get bidAmount => 'உங்கள் விலை (ரூ.)';
+
+  @override
+  String get bidEta => 'பிக்அப் முதல் டெலிவரி வரை மணிநேரம்';
+
+  @override
+  String get bidNote => 'குறிப்பு (வாகனம், குளிரூட்டல், நேரம்)';
+
+  @override
+  String get bidWithdraw => 'திரும்பப் பெறு';
+
+  @override
+  String get bidSent => 'ஏலம் விவசாயிக்கு அனுப்பப்பட்டது.';
+
+  @override
+  String get bidWithdrawn => 'ஏலம் திரும்பப் பெறப்பட்டது.';
+
+  @override
+  String get bidsTitle => 'போக்குவரத்து ஏலங்கள்';
+
+  @override
+  String get bidsHint =>
+      'குறைந்தது முதலில். ஏற்றுக்கொள்வது அந்தப் போக்குவரத்தாளருக்கு அவர்களின் விலையில் டெலிவரியை அனுப்பும்.';
+
+  @override
+  String get bidsNone =>
+      'இன்னும் ஏலங்கள் இல்லை. அருகிலுள்ள போக்குவரத்தாளர்கள் ஏலம் வைக்கலாம்.';
+
+  @override
+  String bidEtaValue(String hours) {
+    return '$hours மணி';
+  }
+
+  @override
+  String get bidAccept => 'ஏற்று';
+
+  @override
+  String get bidAwarded =>
+      'ஏலம் ஏற்கப்பட்டது. உறுதிப்படுத்த போக்குவரத்தாளரிடம் கேட்கப்பட்டது.';
+
+  @override
+  String get bidsButton => 'ஏலங்கள்';
 }

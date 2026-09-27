@@ -11,6 +11,7 @@ import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'active_delivery_screen.dart';
 import 'delivery_proof_dialog.dart';
+import 'bid_sheets.dart';
 import 'widgets/job_status_chip.dart';
 import 'widgets/job_timeline.dart';
 import 'widgets/live_location.dart';
@@ -51,7 +52,17 @@ class _CollectionJobDetailsScreenState
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: Text(l10n.jobNumberTitle(job.id))),
+      appBar: AppBar(
+        title: Text(l10n.jobNumberTitle(job.id)),
+        actions: [
+          if (job.status == CollectionJobStatus.open)
+            IconButton(
+              tooltip: l10n.bidPlace,
+              icon: const Icon(Icons.gavel_rounded),
+              onPressed: () => showPlaceBidSheet(context, job.id),
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [

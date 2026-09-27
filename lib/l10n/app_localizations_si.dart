@@ -7725,4 +7725,59 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get cdSentToExpert => 'ඡායාරූපය සමඟ විශේෂඥයින්ට යවන ලදී.';
+
+  @override
+  String get bidPlace => 'ලංසුවක් තබන්න';
+
+  @override
+  String get bidUpdate => 'ලංසුව යාවත්කාලීන කරන්න';
+
+  @override
+  String bidMax(String amount) {
+    return 'ගොවියාගේ උපරිමය: $amount';
+  }
+
+  @override
+  String get bidAmount => 'ඔබේ මිල (රු.)';
+
+  @override
+  String get bidEta => 'ලබාගැනීමේ සිට බෙදාහැරීම දක්වා පැය';
+
+  @override
+  String get bidNote => 'සටහන (වාහනය, සිසිලනය, වේලාව)';
+
+  @override
+  String get bidWithdraw => 'ඉල්ලා අස්කර ගන්න';
+
+  @override
+  String get bidSent => 'ලංසුව ගොවියාට යවන ලදී.';
+
+  @override
+  String get bidWithdrawn => 'ලංසුව ඉල්ලා අස්කර ගන්නා ලදී.';
+
+  @override
+  String get bidsTitle => 'ප්‍රවාහන ලංසු';
+
+  @override
+  String get bidsHint =>
+      'අඩුම මිල මුලින්. පිළිගැනීමෙන් බෙදාහැරීම එම ප්‍රවාහකයාට ඔවුන්ගේ මිලට යවයි.';
+
+  @override
+  String get bidsNone =>
+      'තවම ලංසු නැත. අවට ප්‍රවාහකයින්ට මෙම බෙදාහැරීමට ලංසු තැබිය හැක.';
+
+  @override
+  String bidEtaValue(String hours) {
+    return 'පැය $hours';
+  }
+
+  @override
+  String get bidAccept => 'පිළිගන්න';
+
+  @override
+  String get bidAwarded =>
+      'ලංසුව පිළිගත්තා. තහවුරු කිරීමට ප්‍රවාහකයාගෙන් ඉල්ලා ඇත.';
+
+  @override
+  String get bidsButton => 'ලංසු';
 }

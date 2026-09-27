@@ -8,6 +8,7 @@ import '../../../core/utils/app_errors.dart';
 import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
+import '../../transporter/presentation/bid_sheets.dart';
 
 class FarmerJobsScreen extends StatelessWidget {
   const FarmerJobsScreen({super.key});
@@ -138,6 +139,12 @@ class FarmerJobsScreen extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    if (canCancel && (job.transporterId ?? '').isEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () => showBidsSheet(context, job.id),
+                        icon: const Icon(Icons.gavel_rounded, size: 16),
+                        label: Text(context.l10n.bidsButton),
+                      ),
                     if (canCancel) ...[
                       TextButton.icon(
                         onPressed: () => _showCancelDialog(context, state, job),

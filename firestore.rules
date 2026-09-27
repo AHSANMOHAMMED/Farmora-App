@@ -597,9 +597,27 @@ service cloud.firestore {
         && d.get('transporterId', null) == o.get('requestedTransporterId', null)
         && d.get('requestedTransporterId', null) == o.get('requestedTransporterId', null);
     }
-    function farmerJobUpdate() {
+    // Reverse auction: an open job takes bids at or below its offered fee.
+    function bidOpen(jobId) {
+      let j = get(docPath('transport_jobs/' + jobId)).data;
+      return j.status == 'requested' && j.get('transporterId', null) == null
+        && j.get('requestedTransporterId', null) == null;
+    }
+    function farmerJobUpdate(jobId) {
       let d = request.resource.data;
       return resource.data.status == 'requested' && (
+        // Award a bid: the job becomes a request for that bidder at the bid.
+        (resource.data.get('transporterId', null) == null
+          && resource.data.get('requestedTransporterId', null) == null
+          && affected().hasOnly(['transporterId', 'requestedTransporterId', 'offeredFeeMinor',
+            'deliveryFeeMinor', 'fee', 'awardedBidAt', 'updatedAt'])
+          && d.transporterId is string && d.transporterId == d.requestedTransporterId
+          && exists(docPath('transport_jobs/' + jobId + '/bids/' + d.transporterId))
+          && get(docPath('transport_jobs/' + jobId + '/bids/' + d.transporterId)).data.amountMinor
+            == d.offeredFeeMinor
+          && d.deliveryFeeMinor == d.offeredFeeMinor
+          && d.awardedBidAt == request.time)
+        ||
         (d.status == 'cancelled' && d.cancelledBy == uid()
           && affected().hasOnly(['status', 'cancelledBy', 'cancelledAt', 'updatedAt']))
         || (affected().hasOnly(['offeredFeeMinor', 'deliveryFeeMinor', 'fee', 'updatedAt'])
@@ -720,10 +738,28 @@ service cloud.firestore {
       allow update: if admin()
         || (farmer() && resource.data.farmerId == uid()
           && request.resource.data.farmerId == resource.data.farmerId
-          && farmerJobUpdate())
+          && farmerJobUpdate(jobId))
         || (transporter() && transporterJobUpdate())
         || (driver() && verified() && driverJobUpdate());
       allow delete: if admin();
+
+      match /bids/{bidderId} {
+        allow read: if admin() || (signedIn() && (bidderId == uid()
+          || get(docPath('transport_jobs/' + jobId)).data.farmerId == uid()));
+        allow create, update: if transporter() && verified() && bidderId == uid()
+          && request.resource.data.keys().hasOnly(['transporterId', 'transporterName',
+            'vehicleType', 'amountMinor', 'etaHours', 'note', 'createdAt', 'updatedAt'])
+          && request.resource.data.transporterId == uid()
+          && bidOpen(jobId)
+          && isInt(request.resource.data.amountMinor, 1,
+            get(docPath('transport_jobs/' + jobId)).data.offeredFeeMinor)
+          && isInt(request.resource.data.etaHours, 1, 240)
+          && optStr(request.resource.data, 'note', 300)
+          && optStr(request.resource.data, 'vehicleType', 40)
+          && isStr(request.resource.data.transporterName, 1, 120)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if admin() || (signedIn() && bidderId == uid() && bidOpen(jobId));
+      }
     }
 
     // One delivery code per order, readable only by its buyer (and admins).

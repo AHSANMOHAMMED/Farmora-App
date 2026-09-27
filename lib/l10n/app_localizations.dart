@@ -13648,6 +13648,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sent to experts with the photo.'**
   String get cdSentToExpert;
+
+  /// No description provided for @bidPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place a bid'**
+  String get bidPlace;
+
+  /// No description provided for @bidUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update bid'**
+  String get bidUpdate;
+
+  /// No description provided for @bidMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer\'s maximum: {amount}'**
+  String bidMax(String amount);
+
+  /// No description provided for @bidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Your price (LKR)'**
+  String get bidAmount;
+
+  /// No description provided for @bidEta.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours from pickup to delivery'**
+  String get bidEta;
+
+  /// No description provided for @bidNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (vehicle, cooling, timing)'**
+  String get bidNote;
+
+  /// No description provided for @bidWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get bidWithdraw;
+
+  /// No description provided for @bidSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Bid sent to the farmer.'**
+  String get bidSent;
+
+  /// No description provided for @bidWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Bid withdrawn.'**
+  String get bidWithdrawn;
+
+  /// No description provided for @bidsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport bids'**
+  String get bidsTitle;
+
+  /// No description provided for @bidsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowest first. Accepting sends the delivery to that transporter at their price.'**
+  String get bidsHint;
+
+  /// No description provided for @bidsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No bids yet. Transporters nearby can bid on this delivery.'**
+  String get bidsNone;
+
+  /// No description provided for @bidEtaValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h'**
+  String bidEtaValue(String hours);
+
+  /// No description provided for @bidAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get bidAccept;
+
+  /// No description provided for @bidAwarded.
+  ///
+  /// In en, this message translates to:
+  /// **'Bid accepted. The transporter has been asked to confirm.'**
+  String get bidAwarded;
+
+  /// No description provided for @bidsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Bids'**
+  String get bidsButton;
 }
 
 class _AppLocalizationsDelegate

@@ -7730,4 +7730,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cdSentToExpert => 'Sent to experts with the photo.';
+
+  @override
+  String get bidPlace => 'Place a bid';
+
+  @override
+  String get bidUpdate => 'Update bid';
+
+  @override
+  String bidMax(String amount) {
+    return 'Farmer\'s maximum: $amount';
+  }
+
+  @override
+  String get bidAmount => 'Your price (LKR)';
+
+  @override
+  String get bidEta => 'Hours from pickup to delivery';
+
+  @override
+  String get bidNote => 'Note (vehicle, cooling, timing)';
+
+  @override
+  String get bidWithdraw => 'Withdraw';
+
+  @override
+  String get bidSent => 'Bid sent to the farmer.';
+
+  @override
+  String get bidWithdrawn => 'Bid withdrawn.';
+
+  @override
+  String get bidsTitle => 'Transport bids';
+
+  @override
+  String get bidsHint =>
+      'Lowest first. Accepting sends the delivery to that transporter at their price.';
+
+  @override
+  String get bidsNone =>
+      'No bids yet. Transporters nearby can bid on this delivery.';
+
+  @override
+  String bidEtaValue(String hours) {
+    return '$hours h';
+  }
+
+  @override
+  String get bidAccept => 'Accept';
+
+  @override
+  String get bidAwarded =>
+      'Bid accepted. The transporter has been asked to confirm.';
+
+  @override
+  String get bidsButton => 'Bids';
 }
