@@ -4087,5 +4087,13 @@
   "co2Trees": "Trees planted (agroforestry)",
   "co2Solar": "Solar pump (diesel saved)",
   "co2Biogas": "Biogas digester",
-  "co2LessFertilizer": "Less nitrogen fertilizer"
+  "co2LessFertilizer": "Less nitrogen fertilizer",
+  "invoiceDownload": "Invoice (PDF)",
+  "priceHint": "Market for {crop} ({district}): {min}–{max}/kg, avg {avg}",
+  "@priceHint": {"placeholders": {"crop": {"type": "String"}, "district": {"type": "String"}, "min": {"type": "String"}, "max": {"type": "String"}, "avg": {"type": "String"}}},
+  "priceUseAverage": "Use average",
+  "aiListingButton": "Fill from photo with AI",
+  "aiListingNeedsPhoto": "Add a product photo first.",
+  "aiListingFilled": "AI suggestion from the photo: looks grade {grade}. Check and edit before publishing.",
+  "@aiListingFilled": {"placeholders": {"grade": {"type": "String"}}}
 }

@@ -13,6 +13,7 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../payments/presentation/order_payment_card.dart';
+import '../../../core/utils/invoice_pdf.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -146,6 +147,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: l.invoiceDownload,
+            icon: const Icon(Icons.receipt_long_outlined,
+                color: AppColors.onSurface),
+            onPressed: () => shareInvoice(currentOrder, farmerCopy: true),
+          ),
           IconButton(
             tooltip: l.message,
             icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),

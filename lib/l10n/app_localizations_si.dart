@@ -7917,4 +7917,27 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get co2LessFertilizer => 'අඩු නයිට්‍රජන් පොහොර';
+
+  @override
+  String get invoiceDownload => 'ඉන්වොයිසිය (PDF)';
+
+  @override
+  String priceHint(
+      String crop, String district, String min, String max, String avg) {
+    return '$crop වෙළඳපොළ ($district): $min–$max/kg, සාමාන්‍ය $avg';
+  }
+
+  @override
+  String get priceUseAverage => 'සාමාන්‍යය භාවිත කරන්න';
+
+  @override
+  String get aiListingButton => 'AI සමඟ ඡායාරූපයෙන් පුරවන්න';
+
+  @override
+  String get aiListingNeedsPhoto => 'පළමුව නිෂ්පාදන ඡායාරූපයක් එක් කරන්න.';
+
+  @override
+  String aiListingFilled(String grade) {
+    return 'ඡායාරූපයෙන් AI යෝජනාව: ශ්‍රේණිය $grade ලෙස පෙනේ. ප්‍රකාශයට පෙර පරීක්ෂා කර සංස්කරණය කරන්න.';
+  }
 }

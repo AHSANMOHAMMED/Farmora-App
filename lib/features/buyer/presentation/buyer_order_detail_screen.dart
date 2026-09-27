@@ -17,6 +17,7 @@ import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/delivery_proof_view.dart';
 import 'buyer_l10n.dart';
 import '../../../core/widgets/cold_chain_card.dart';
+import '../../../core/utils/invoice_pdf.dart';
 
 class BuyerOrderDetailScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -259,6 +260,12 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: l.invoiceDownload,
+            icon: const Icon(Icons.receipt_long_outlined,
+                color: AppColors.onSurface),
+            onPressed: () => shareInvoice(currentOrder, farmerCopy: false),
+          ),
           IconButton(
             tooltip: l.message,
             icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),

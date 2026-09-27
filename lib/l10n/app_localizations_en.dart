@@ -7922,4 +7922,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get co2LessFertilizer => 'Less nitrogen fertilizer';
+
+  @override
+  String get invoiceDownload => 'Invoice (PDF)';
+
+  @override
+  String priceHint(
+      String crop, String district, String min, String max, String avg) {
+    return 'Market for $crop ($district): $min–$max/kg, avg $avg';
+  }
+
+  @override
+  String get priceUseAverage => 'Use average';
+
+  @override
+  String get aiListingButton => 'Fill from photo with AI';
+
+  @override
+  String get aiListingNeedsPhoto => 'Add a product photo first.';
+
+  @override
+  String aiListingFilled(String grade) {
+    return 'AI suggestion from the photo: looks grade $grade. Check and edit before publishing.';
+  }
 }

@@ -8040,4 +8040,28 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get co2LessFertilizer => 'குறைந்த நைட்ரஜன் உரம்';
+
+  @override
+  String get invoiceDownload => 'விலைப்பட்டியல் (PDF)';
+
+  @override
+  String priceHint(
+      String crop, String district, String min, String max, String avg) {
+    return '$crop சந்தை ($district): $min–$max/kg, சராசரி $avg';
+  }
+
+  @override
+  String get priceUseAverage => 'சராசரியைப் பயன்படுத்து';
+
+  @override
+  String get aiListingButton => 'AI மூலம் புகைப்படத்திலிருந்து நிரப்பு';
+
+  @override
+  String get aiListingNeedsPhoto =>
+      'முதலில் பொருளின் புகைப்படத்தைச் சேர்க்கவும்.';
+
+  @override
+  String aiListingFilled(String grade) {
+    return 'புகைப்படத்திலிருந்து AI பரிந்துரை: தரம் $grade போல் தெரிகிறது. வெளியிடுவதற்கு முன் சரிபார்த்துத் திருத்தவும்.';
+  }
 }

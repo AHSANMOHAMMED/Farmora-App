@@ -13978,6 +13978,43 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Less nitrogen fertilizer'**
   String get co2LessFertilizer;
+
+  /// No description provided for @invoiceDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice (PDF)'**
+  String get invoiceDownload;
+
+  /// No description provided for @priceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Market for {crop} ({district}): {min}–{max}/kg, avg {avg}'**
+  String priceHint(
+      String crop, String district, String min, String max, String avg);
+
+  /// No description provided for @priceUseAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Use average'**
+  String get priceUseAverage;
+
+  /// No description provided for @aiListingButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill from photo with AI'**
+  String get aiListingButton;
+
+  /// No description provided for @aiListingNeedsPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a product photo first.'**
+  String get aiListingNeedsPhoto;
+
+  /// No description provided for @aiListingFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestion from the photo: looks grade {grade}. Check and edit before publishing.'**
+  String aiListingFilled(String grade);
 }
 
 class _AppLocalizationsDelegate

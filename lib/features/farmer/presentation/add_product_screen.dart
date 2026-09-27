@@ -14,6 +14,7 @@ import '../../../core/constants/demo_catalog_data.dart';
 import '../../auth/presentation/auth_l10n.dart' show districtLabel;
 import 'account_verification_screen.dart';
 import 'farmer_l10n.dart';
+import 'listing_assist.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Product? existingProduct;
@@ -82,6 +83,39 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final Set<String> _originalUrls = {};
   bool _isSubmitting = false;
   bool _isPicking = false;
+  bool _aiBusy = false;
+  String? _aiGrade;
+
+  /// Fills name, category and description from the first new photo (AI).
+  Future<void> _aiFill() async {
+    final photo = _images.map((s) => s.local).whereType<PickedImage>().firstOrNull;
+    if (photo == null) {
+      _showSnack(context.l10n.aiListingNeedsPhoto);
+      return;
+    }
+    setState(() => _aiBusy = true);
+    try {
+      final s = await suggestListing(
+        photo.bytes,
+        photo.contentType,
+        categories: const ['Vegetables', 'Fruits', 'Spices', 'Grains', 'Herbs'],
+        languageCode: context.read<FarmoraState>().locale.languageCode,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (_nameController.text.trim().isEmpty && s.name.isNotEmpty) {
+          _nameController.text = s.name;
+        }
+        _category = s.category;
+        if (s.description.isNotEmpty) _descriptionController.text = s.description;
+        _aiGrade = s.grade;
+      });
+    } catch (e) {
+      if (mounted) _showSnack(userMessage(e, action: 'read the photo'));
+    } finally {
+      if (mounted) setState(() => _aiBusy = false);
+    }
+  }
   bool _saved = false;
 
   @override
@@ -601,6 +635,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   _buildSectionCard(
                     title: l.farmerAddProductBasicDetails,
                     children: [
+                      OutlinedButton.icon(
+                        onPressed: _aiBusy || _isSubmitting ? null : _aiFill,
+                        icon: _aiBusy
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.auto_awesome_outlined),
+                        label: Text(l.aiListingButton),
+                      ),
+                      if (_aiGrade != null) AiFilledNote(grade: _aiGrade!),
+                      const SizedBox(height: 12),
                       _buildFieldLabel(l.farmerAddProductNameLabel),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -698,6 +744,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ],
                       ),
                       const SizedBox(height: 18),
+                      MarketPriceHint(
+                        name: _nameController,
+                        district: _district,
+                        onUse: (p) => setState(
+                            () => _priceController.text = p.toStringAsFixed(0)),
+                      ),
                       _buildFieldLabel(l.farmerPricePerUnit),
                       const SizedBox(height: 6),
                       TextFormField(

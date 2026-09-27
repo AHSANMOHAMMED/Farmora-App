@@ -2319,5 +2319,11 @@
   "co2Trees": "සිටවූ ගස් (කෘෂි වනවගාව)",
   "co2Solar": "සූර්ය පොම්පය (ඉතිරි කළ ඩීසල්)",
   "co2Biogas": "ජෛව වායු ජීරකය",
-  "co2LessFertilizer": "අඩු නයිට්‍රජන් පොහොර"
+  "co2LessFertilizer": "අඩු නයිට්‍රජන් පොහොර",
+  "invoiceDownload": "ඉන්වොයිසිය (PDF)",
+  "priceHint": "{crop} වෙළඳපොළ ({district}): {min}–{max}/kg, සාමාන්‍ය {avg}",
+  "priceUseAverage": "සාමාන්‍යය භාවිත කරන්න",
+  "aiListingButton": "AI සමඟ ඡායාරූපයෙන් පුරවන්න",
+  "aiListingNeedsPhoto": "පළමුව නිෂ්පාදන ඡායාරූපයක් එක් කරන්න.",
+  "aiListingFilled": "ඡායාරූපයෙන් AI යෝජනාව: ශ්‍රේණිය {grade} ලෙස පෙනේ. ප්‍රකාශයට පෙර පරීක්ෂා කර සංස්කරණය කරන්න."
 }
