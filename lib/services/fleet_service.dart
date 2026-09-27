@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/transport_job.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// Last nine digits of a Sri Lankan phone number, so 077…, +9477… and
 /// 77… all match.
@@ -167,7 +168,7 @@ class FleetService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': driver.driverId,
         'title': 'Fleet invitation',
         'body': '${_name(me, 'A transporter')} invited you to drive for them.',
@@ -192,7 +193,7 @@ class FleetService {
     });
     if (driver != null) {
       try {
-        await _db.collection('notifications').add({
+        await sendNotification(_db, {
           'userId': driver.driverId,
           'title': 'New delivery assigned',
           'body': '${job.productName ?? job.title}: ${job.pickup ?? ''} → ${job.dropoff ?? ''}',

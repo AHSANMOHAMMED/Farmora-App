@@ -41,6 +41,7 @@ import '../core/localization/language_prefs.dart';
 import '../core/utils/image_upload.dart';
 import '../models/conversation_model.dart';
 import '../core/config/app_backend.dart';
+import '../services/local_notifier.dart';
 import '../core/constants/demo_catalog_data.dart';
 import 'package:intl/intl.dart';
 
@@ -838,8 +839,11 @@ class FarmoraState extends ChangeNotifier {
     }
   }
 
+  StreamSubscription<RemoteMessage>? _fcmForegroundSub;
+
   /// Drops account-specific data (re-seeding the sample catalog in demo mode).
   void _clearAccountData() {
+    LocalNotifier.instance.reset();
     _deliveryCodesEnsured.clear();
     _products.clear();
     _orders.clear();
@@ -1667,6 +1671,7 @@ class FarmoraState extends ChangeNotifier {
       (notifs) {
         _notifications.clear();
         _notifications.addAll(notifs);
+        LocalNotifier.instance.onSnapshot(notifs, notificationPrefs);
         notifyListeners();
       },
       onError: (e) => debugPrint('Firestore notifications stream error: $e'),
@@ -1883,6 +1888,15 @@ class FarmoraState extends ChangeNotifier {
     try {
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission(alert: true, badge: true, sound: true);
+      await LocalNotifier.instance.init();
+      // Pushes that arrive while the app is open (Blaze functions or the
+      // push relay) are shown as system notifications too.
+      _fcmForegroundSub ??= FirebaseMessaging.onMessage.listen((m) {
+        final n = m.notification;
+        if (n != null) {
+          LocalNotifier.instance.show(n.title ?? 'Farmora', n.body ?? '');
+        }
+      });
       final token = await messaging.getToken();
       if (token == null || token.isEmpty) return;
       _fcmToken = token;

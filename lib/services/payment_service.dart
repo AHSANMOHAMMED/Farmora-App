@@ -8,6 +8,7 @@ import '../models/bank_details.dart';
 import '../models/order.dart';
 import 'service_errors.dart';
 import 'spark_backend.dart';
+import 'push_relay.dart';
 
 /// Farmer-direct payments (Cash on Delivery / Bank Deposit).
 ///
@@ -150,7 +151,7 @@ class PaymentService {
       String userId, String title, String body, String orderId) async {
     if (kUseCloudFunctions || userId.isEmpty) return;
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title,
         'body': body,

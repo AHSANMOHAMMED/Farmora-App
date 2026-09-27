@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/utils/firebase_values.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// A community feed post (`community_posts`).
 class CommunityPost {
@@ -337,7 +338,7 @@ class CommunityService {
       String userId, String title, String body, String refId) async {
     if (userId.isEmpty || userId == _auth.currentUser?.uid) return;
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title,
         'body': body,

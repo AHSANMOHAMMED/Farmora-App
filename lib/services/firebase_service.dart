@@ -23,6 +23,7 @@ import '../models/admin_stats.dart';
 import '../models/dispute_model.dart';
 import 'service_errors.dart';
 import 'spark_backend.dart';
+import 'push_relay.dart';
 
 /// A file stored in Firebase Storage.
 class StoredImage {
@@ -139,7 +140,7 @@ class FirestoreService {
     String type = 'general',
     String? referenceId,
   }) async {
-    await _db.collection('notifications').add({
+    await sendNotification(_db, {
       'userId': userId,
       'title': title,
       'body': body,

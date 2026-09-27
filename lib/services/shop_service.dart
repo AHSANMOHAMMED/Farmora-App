@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../core/utils/firebase_values.dart';
 import '../models/product.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// A farmer's public shop page (`farm_stores/{farmerId}`).
 class FarmStore {
@@ -361,7 +362,7 @@ class ShopService {
       String userId, String title, String body, String refId) async {
     if (userId.isEmpty || userId == _auth.currentUser?.uid) return;
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title,
         'body': body.length > 500 ? body.substring(0, 500) : body,

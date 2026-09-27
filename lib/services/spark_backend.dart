@@ -8,6 +8,7 @@ import '../core/localization/l10n.dart';
 import '../models/order.dart' show PaymentMethod;
 import '../models/product.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// Firestore-only backend for the free Firebase Spark plan (no Cloud
 /// Functions). Each method ports the matching callable in
@@ -130,7 +131,7 @@ class SparkBackend {
     } catch (_) {}
     if (userId == me && type != 'farm_task') return;
     try {
-      await _col('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title.length > 120 ? title.substring(0, 120) : title,
         'body': body.length > 500 ? body.substring(0, 500) : body,

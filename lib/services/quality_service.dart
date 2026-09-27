@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../core/utils/firebase_values.dart';
 import '../models/product.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 const kQualityGrades = ['A', 'B', 'C', 'Reject'];
 
@@ -185,7 +186,7 @@ class QualityService {
       });
     await batch.commit();
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': request.farmerId,
         'title': 'Quality inspection done',
         'body': '${request.productName} was graded $grade by $name.',

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/farm_input.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// Input marketplace (seeds, fertilizer, pesticides, tools) and machinery
 /// rental. Plain client writes on the Spark plan; `firestore.rules`
@@ -321,7 +322,7 @@ class InputMarketService {
       String userId, String title, String body, String orderId) async {
     if (userId.isEmpty || userId == _auth.currentUser?.uid) return;
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title,
         'body': body.length > 500 ? body.substring(0, 500) : body,

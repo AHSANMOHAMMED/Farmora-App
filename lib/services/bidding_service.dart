@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/utils/firebase_values.dart';
 import 'service_errors.dart';
+import 'push_relay.dart';
 
 /// A transporter's bid on an open delivery (`transport_jobs/{id}/bids/{uid}`,
 /// one per transporter).
@@ -146,7 +147,7 @@ class BiddingService {
       return;
     }
     try {
-      await _db.collection('notifications').add({
+      await sendNotification(_db, {
         'userId': userId,
         'title': title,
         'body': body.length > 500 ? body.substring(0, 500) : body,
