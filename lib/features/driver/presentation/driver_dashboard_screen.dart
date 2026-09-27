@@ -65,13 +65,21 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                             TextButton(
                               onPressed: () => _fleet
                                   .respond(link, accept: false)
-                                  .catchError((Object e) => _fail(context, e, 'decline')),
+                                  .catchError((Object e) {
+                                if (context.mounted) {
+                                  _fail(context, e, 'decline');
+                                }
+                              }),
                               child: Text(l.drvDecline),
                             ),
                             FilledButton(
                               onPressed: () => _fleet
                                   .respond(link, accept: true)
-                                  .catchError((Object e) => _fail(context, e, 'accept')),
+                                  .catchError((Object e) {
+                                if (context.mounted) {
+                                  _fail(context, e, 'accept');
+                                }
+                              }),
                               child: Text(l.drvAccept),
                             ),
                           ],
@@ -95,7 +103,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                         trailing: TextButton(
                           onPressed: () => _fleet
                               .respond(link, accept: false)
-                              .catchError((Object e) => _fail(context, e, 'leave')),
+                              .catchError((Object e) {
+                            if (context.mounted) _fail(context, e, 'leave');
+                          }),
                           child: Text(l.drvLeave),
                         ),
                       ),
@@ -268,9 +278,12 @@ class _FleetDriversScreenState extends State<FleetDriversScreen> {
                       trailing: link.status == 'removed'
                           ? null
                           : TextButton(
-                              onPressed: () => _fleet
-                                  .remove(link)
-                                  .catchError((Object e) => _fail(context, e, 'remove')),
+                              onPressed: () =>
+                                  _fleet.remove(link).catchError((Object e) {
+                                if (context.mounted) {
+                                  _fail(context, e, 'remove');
+                                }
+                              }),
                               child: Text(l.fleetRemove),
                             ),
                     ),
@@ -285,7 +298,8 @@ class _FleetDriversScreenState extends State<FleetDriversScreen> {
 }
 
 /// Transporter: pick an active fleet driver for [job] (or take it back).
-Future<void> showAssignDriverSheet(BuildContext context, TransportJob job) async {
+Future<void> showAssignDriverSheet(
+    BuildContext context, TransportJob job) async {
   final l = context.l10n;
   final fleet = FleetService();
   final links = (await fleet.myDrivers().first)
@@ -296,8 +310,9 @@ Future<void> showAssignDriverSheet(BuildContext context, TransportJob job) async
     context: context,
     builder: (ctx) => SafeArea(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(title: Text(l.fleetAssign,
-            style: const TextStyle(fontWeight: FontWeight.w700))),
+        ListTile(
+            title: Text(l.fleetAssign,
+                style: const TextStyle(fontWeight: FontWeight.w700))),
         if (links.isEmpty)
           Padding(
             padding: const EdgeInsets.all(16),

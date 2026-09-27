@@ -14,13 +14,20 @@ import '../../../services/crop_doctor_service.dart' show kGeminiModel;
 /// Market prices (public, admin-curated) cached for the session.
 Future<List<MarketPriceIndex>>? _pricesFuture;
 
-Future<List<MarketPriceIndex>> _marketPrices() => _pricesFuture ??=
-    FirebaseFirestore.instance
-        .collection('market_prices')
-        .limit(300)
-        .get()
-        .then((s) => s.docs.map((d) => MarketPriceIndex.fromMap(d.data(), d.id)).toList())
-        .catchError((Object _) => <MarketPriceIndex>[]);
+/// Never throws: without Firebase (tests, offline start) it is just empty.
+Future<List<MarketPriceIndex>> _marketPrices() => _pricesFuture ??= () async {
+      try {
+        final s = await FirebaseFirestore.instance
+            .collection('market_prices')
+            .limit(300)
+            .get();
+        return s.docs
+            .map((d) => MarketPriceIndex.fromMap(d.data(), d.id))
+            .toList();
+      } catch (_) {
+        return <MarketPriceIndex>[];
+      }
+    }();
 
 /// Best market benchmark for a product name, preferring [district].
 MarketPriceIndex? matchPrice(
@@ -128,7 +135,8 @@ Future<ListingSuggestion> suggestListing(
   required List<String> categories,
   String languageCode = 'en',
 }) async {
-  final language = const {'si': 'Sinhala', 'ta': 'Tamil'}[languageCode] ?? 'English';
+  final language =
+      const {'si': 'Sinhala', 'ta': 'Tamil'}[languageCode] ?? 'English';
   final model = FirebaseAI.googleAI().generativeModel(
     model: kGeminiModel,
     generationConfig: GenerationConfig(
@@ -138,7 +146,8 @@ Future<ListingSuggestion> suggestListing(
   );
   final res = await model.generateContent([
     Content.multi([
-      TextPart('You help Sri Lankan farmers list fresh produce. From the photo, '
+      TextPart(
+          'You help Sri Lankan farmers list fresh produce. From the photo, '
           'return ONLY JSON {"name": string, "category": one of ${jsonEncode(categories)}, '
           '"grade": "A"|"B"|"C", "description": string}. Grade by visible '
           'uniformity, colour, damage and freshness (A best). The description is '
@@ -147,13 +156,16 @@ Future<ListingSuggestion> suggestListing(
     ]),
   ]);
   final text = res.text ?? '';
-  final data = jsonDecode(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1))
-      as Map<String, dynamic>;
+  final data =
+      jsonDecode(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1))
+          as Map<String, dynamic>;
   final category = (data['category'] ?? '').toString();
   return ListingSuggestion(
     name: (data['name'] ?? '').toString().trim(),
     category: categories.contains(category) ? category : categories.first,
-    grade: const ['A', 'B', 'C'].contains(data['grade']) ? data['grade'] as String : 'B',
+    grade: const ['A', 'B', 'C'].contains(data['grade'])
+        ? data['grade'] as String
+        : 'B',
     description: (data['description'] ?? '').toString().trim(),
   );
 }
@@ -168,6 +180,7 @@ class AiFilledNote extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 6),
         child: Text(context.l10n.aiListingFilled(grade),
-            style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.onSurfaceVariant)),
       );
 }

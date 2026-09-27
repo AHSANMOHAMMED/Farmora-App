@@ -65,8 +65,12 @@ class WishlistButton extends StatelessWidget {
               color: saved ? Colors.red : AppColors.onSurface),
           onPressed: snap.hasData
               ? () => service
-                  .toggleWishlist(productId, !saved)
-                  .catchError((Object e) => _error(context, e, 'update the wishlist'))
+                      .toggleWishlist(productId, !saved)
+                      .catchError((Object e) {
+                    if (context.mounted) {
+                      _error(context, e, 'update the wishlist');
+                    }
+                  })
               : null,
         );
       },
@@ -161,9 +165,8 @@ class FarmStoreScreen extends StatelessWidget {
       stream: service.watchStore(farmerId),
       builder: (context, storeSnap) {
         final store = storeSnap.data;
-        final name = store?.farmName.isNotEmpty == true
-            ? store!.farmName
-            : fallbackName;
+        final name =
+            store?.farmName.isNotEmpty == true ? store!.farmName : fallbackName;
         return Scaffold(
           appBar: AppBar(title: Text(name)),
           body: ListView(
@@ -172,7 +175,8 @@ class FarmStoreScreen extends StatelessWidget {
               if (store?.coverImageUrl != null)
                 SizedBox(
                   height: 180,
-                  child: SafeImage(path: store!.coverImageUrl!, fit: BoxFit.cover),
+                  child:
+                      SafeImage(path: store!.coverImageUrl!, fit: BoxFit.cover),
                 ),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -368,10 +372,13 @@ class MySubscriptionsScreen extends StatelessWidget {
                       : [
                           TextButton(
                             onPressed: () => service
-                                .setSubscriptionStatus(
-                                    s, s.status == 'active' ? 'paused' : 'active')
-                                .catchError((Object e) =>
-                                    _error(context, e, 'update the subscription')),
+                                .setSubscriptionStatus(s,
+                                    s.status == 'active' ? 'paused' : 'active')
+                                .catchError((Object e) {
+                              if (context.mounted) {
+                                _error(context, e, 'update the subscription');
+                              }
+                            }),
                             child: Text(s.status == 'active'
                                 ? l.shopPause
                                 : l.shopResume),
@@ -381,8 +388,11 @@ class MySubscriptionsScreen extends StatelessWidget {
                                 foregroundColor: AppColors.error),
                             onPressed: () => service
                                 .setSubscriptionStatus(s, 'cancelled')
-                                .catchError((Object e) =>
-                                    _error(context, e, 'cancel the subscription')),
+                                .catchError((Object e) {
+                              if (context.mounted) {
+                                _error(context, e, 'cancel the subscription');
+                              }
+                            }),
                             child: Text(l.shopCancelSub),
                           ),
                         ],
@@ -589,7 +599,8 @@ class _StoreEditorState extends State<_StoreEditor> {
                 : _coverUrl != null
                     ? SafeImage(path: _coverUrl!, fit: BoxFit.cover)
                     : Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.add_a_photo_outlined),
                         Text(l.shopCoverPhoto),
                       ])),
@@ -686,8 +697,7 @@ class _BoxesManager extends StatelessWidget {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text(l.cancel)),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l.save)),
+                onPressed: () => Navigator.pop(ctx, true), child: Text(l.save)),
           ],
         ),
       ),
@@ -738,9 +748,12 @@ class _BoxesManager extends StatelessWidget {
                     trailing: IconButton(
                       tooltip: l.delete,
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () => service
-                          .deleteBox(b.id)
-                          .catchError((Object e) => _error(context, e, 'delete the box')),
+                      onPressed: () =>
+                          service.deleteBox(b.id).catchError((Object e) {
+                        if (context.mounted) {
+                          _error(context, e, 'delete the box');
+                        }
+                      }),
                     ),
                   ),
                 ),
@@ -778,9 +791,12 @@ class _SubscribersList extends StatelessWidget {
                 actions: [
                   if (s.status == 'active')
                     FilledButton.tonal(
-                      onPressed: () => service
-                          .markBoxDelivered(s)
-                          .catchError((Object e) => _error(context, e, 'record the delivery')),
+                      onPressed: () =>
+                          service.markBoxDelivered(s).catchError((Object e) {
+                        if (context.mounted) {
+                          _error(context, e, 'record the delivery');
+                        }
+                      }),
                       child: Text(l.shopMarkDelivered),
                     ),
                 ],

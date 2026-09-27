@@ -58,9 +58,9 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
   Future<void> _diagnose() async {
     if (_photo == null) return;
     setState(() => _busy = true);
+    final lang = context.read<FarmoraState>().locale.languageCode;
     try {
       final url = (await FirestoreService().uploadProductImage(_photo!)).url;
-      final lang = context.read<FarmoraState>().locale.languageCode;
       final result = await _service.diagnose(
         bytes: _photo!.bytes,
         mimeType: _photo!.contentType,

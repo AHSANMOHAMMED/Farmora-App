@@ -129,7 +129,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             if (_photo != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.memory(_photo!.bytes, height: 120, fit: BoxFit.cover),
+                child:
+                    Image.memory(_photo!.bytes, height: 120, fit: BoxFit.cover),
               ),
             Row(children: [
               IconButton(
@@ -154,7 +155,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 }
 
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post, required this.service,
+  const PostCard(
+      {super.key,
+      required this.post,
+      required this.service,
       this.openDetail = true});
 
   final CommunityPost post;
@@ -171,8 +175,8 @@ class PostCard extends StatelessWidget {
       margin: const EdgeInsets.only(top: 10),
       child: InkWell(
         onTap: openDetail
-            ? () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => PostDetailScreen(post: post)))
+            ? () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => PostDetailScreen(post: post)))
             : null,
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -270,9 +274,10 @@ class _LikeButton extends StatelessWidget {
           final liked = snap.data ?? false;
           return TextButton.icon(
             onPressed: snap.hasData
-                ? () => service
-                    .setLiked(post.id, !liked)
-                    .catchError((Object e) => _fail(context, e, 'like'))
+                ? () =>
+                    service.setLiked(post.id, !liked).catchError((Object e) {
+                      if (context.mounted) _fail(context, e, 'like');
+                    })
                 : null,
             icon: Icon(liked ? Icons.thumb_up : Icons.thumb_up_outlined,
                 size: 18),
@@ -343,8 +348,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             icon: const Icon(Icons.delete_outline, size: 18),
                             onPressed: () => _service
                                 .deleteComment(widget.post.id, c.id)
-                                .catchError(
-                                    (Object e) => _fail(context, e, 'delete')),
+                                .catchError((Object e) {
+                              if (context.mounted) _fail(context, e, 'delete');
+                            }),
                           )
                         : null,
                   ),
@@ -401,7 +407,8 @@ Widget _consultTile(BuildContext context, Consultation c) {
   final l = context.l10n;
   return Card(
     child: ListTile(
-      leading: const Icon(Icons.support_agent_rounded, color: AppColors.primary),
+      leading:
+          const Icon(Icons.support_agent_rounded, color: AppColors.primary),
       title: Text(c.question, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text([
         consultTopicLabel(l, c.topic),
@@ -669,8 +676,8 @@ class _ConsultationDetailScreenState extends State<ConsultationDetailScreen> {
                 FilledButton(
                   onPressed: _busy
                       ? null
-                      : () => _do(
-                          () => _service.answer(c, _answer.text), 'answer'),
+                      : () =>
+                          _do(() => _service.answer(c, _answer.text), 'answer'),
                   child: Text(l.conSendAnswer),
                 ),
               ],

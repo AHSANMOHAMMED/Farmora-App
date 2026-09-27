@@ -98,8 +98,12 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
               2 => ('Add task', _createTask),
               3 => (
                   l.farmAddEntry,
-                  () async => FinancesTab.addEntry(
-                      context, _records, await _farm.watchCrops().first)
+                  () async {
+                    final crops = await _farm.watchCrops().first;
+                    if (context.mounted) {
+                      await FinancesTab.addEntry(context, _records, crops);
+                    }
+                  }
                 ),
               _ => (null, null),
             };
