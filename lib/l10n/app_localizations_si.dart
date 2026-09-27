@@ -7100,4 +7100,28 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get catSubsidy => 'සහනාධාරය';
+
+  @override
+  String get inpPayLater => 'පසුව ගෙවන්න (දින 30)';
+
+  @override
+  String get inpPayLaterHint =>
+      'සැපයුම්කරු ණය: දින 30ක් තුළ ගෙවන්න. සැපයුම්කරුට ප්‍රතික්ෂේප කළ හැක.';
+
+  @override
+  String inpDueBy(String date) {
+    return '$date ට පෙර ගෙවන්න';
+  }
+
+  @override
+  String get inpPaid => 'ගෙවා ඇත';
+
+  @override
+  String get inpOverdue => 'ගෙවීම ප්‍රමාදයි';
+
+  @override
+  String get supMarkPaid => 'ගෙවූ බව සලකුණු කරන්න';
+
+  @override
+  String get supCreditOutstanding => 'හිඟ ණය';
 }

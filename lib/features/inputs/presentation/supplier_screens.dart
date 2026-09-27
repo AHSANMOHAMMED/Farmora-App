@@ -75,6 +75,19 @@ class SupplierDashboardScreen extends StatelessWidget {
                   value: AppFormat.lkr(done / 100),
                   onTap: onOpenOrders,
                 ),
+                _Stat(
+                  icon: Icons.credit_score_outlined,
+                  label: l.supCreditOutstanding,
+                  value: AppFormat.lkr(orders
+                          .where((o) =>
+                              o.payLater &&
+                              !o.paid &&
+                              o.status != InputOrderStatus.rejected &&
+                              o.status != InputOrderStatus.cancelled)
+                          .fold<int>(0, (s, o) => s + o.totalMinor) /
+                      100),
+                  onTap: onOpenOrders,
+                ),
               ]);
             },
           ),
@@ -480,6 +493,22 @@ class _SupplierOrdersScreenState extends State<SupplierOrdersScreen> {
     }
   }
 
+  Future<void> _pay(InputOrder o) async {
+    setState(() => _busy.add(o.id));
+    try {
+      await _service.markPaid(o);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'record the payment')),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _busy.remove(o.id));
+    }
+  }
+
   String _nextLabel(AppLocalizations l, String next) => switch (next) {
         InputOrderStatus.dispatched => l.supMarkDispatched,
         InputOrderStatus.delivered => l.supMarkDelivered,
@@ -537,6 +566,14 @@ class _SupplierOrdersScreenState extends State<SupplierOrdersScreen> {
                     FilledButton.tonal(
                       onPressed: busy ? null : () => _move(o, next),
                       child: Text(_nextLabel(l, next)),
+                    ),
+                  if (!o.paid &&
+                      o.status != InputOrderStatus.pending &&
+                      o.status != InputOrderStatus.rejected &&
+                      o.status != InputOrderStatus.cancelled)
+                    OutlinedButton(
+                      onPressed: busy ? null : () => _pay(o),
+                      child: Text(l.supMarkPaid),
                     ),
                 ],
               );

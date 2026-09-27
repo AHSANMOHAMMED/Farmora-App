@@ -2069,5 +2069,12 @@
   "catLand": "ඉඩම / කුලිය",
   "catOther": "වෙනත්",
   "catProduceSale": "නිෂ්පාදන විකිණීම",
-  "catSubsidy": "සහනාධාරය"
+  "catSubsidy": "සහනාධාරය",
+  "inpPayLater": "පසුව ගෙවන්න (දින 30)",
+  "inpPayLaterHint": "සැපයුම්කරු ණය: දින 30ක් තුළ ගෙවන්න. සැපයුම්කරුට ප්‍රතික්ෂේප කළ හැක.",
+  "inpDueBy": "{date} ට පෙර ගෙවන්න",
+  "inpPaid": "ගෙවා ඇත",
+  "inpOverdue": "ගෙවීම ප්‍රමාදයි",
+  "supMarkPaid": "ගෙවූ බව සලකුණු කරන්න",
+  "supCreditOutstanding": "හිඟ ණය"
 }

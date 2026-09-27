@@ -217,6 +217,7 @@ class _OrderSheetState extends State<_OrderSheet> {
   late final _address = TextEditingController(
       text: context.read<FarmoraState>().deliveryAddressDraft);
   bool _busy = false;
+  bool _payLater = false;
   String? _error;
 
   FarmInput get input => widget.input;
@@ -242,6 +243,7 @@ class _OrderSheetState extends State<_OrderSheet> {
         deliveryAddress: _address.text,
         days: input.isRental ? _days : null,
         startDate: input.isRental ? _start : null,
+        payLater: _payLater,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -328,8 +330,13 @@ class _OrderSheetState extends State<_OrderSheet> {
             Text(l.inpTotal(AppFormat.lkr(_totalMinor / 100)),
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            Text(l.inpPayCod,
-                style: const TextStyle(color: AppColors.onSurfaceVariant)),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l.inpPayLater),
+              subtitle: Text(_payLater ? l.inpPayLaterHint : l.inpPayCod),
+              value: _payLater,
+              onChanged: (v) => setState(() => _payLater = v),
+            ),
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(_error!, style: const TextStyle(color: AppColors.error)),

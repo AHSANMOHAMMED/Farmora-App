@@ -7213,4 +7213,28 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get catSubsidy => 'மானியம்';
+
+  @override
+  String get inpPayLater => 'பின்னர் செலுத்து (30 நாட்கள்)';
+
+  @override
+  String get inpPayLaterHint =>
+      'விநியோகஸ்தர் கடன்: 30 நாட்களுக்குள் செலுத்தவும். விநியோகஸ்தர் மறுக்கலாம்.';
+
+  @override
+  String inpDueBy(String date) {
+    return '$dateக்குள் செலுத்தவும்';
+  }
+
+  @override
+  String get inpPaid => 'செலுத்தப்பட்டது';
+
+  @override
+  String get inpOverdue => 'கட்டணம் தாமதம்';
+
+  @override
+  String get supMarkPaid => 'செலுத்தியதாகக் குறி';
+
+  @override
+  String get supCreditOutstanding => 'நிலுவையிலுள்ள கடன்';
 }

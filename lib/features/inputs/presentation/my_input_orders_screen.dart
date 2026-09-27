@@ -166,6 +166,28 @@ class InputOrderCard extends StatelessWidget {
           Text(AppFormat.lkr(order.total),
               style: const TextStyle(
                   color: AppColors.primary, fontWeight: FontWeight.w700)),
+          if (order.paid || order.payLater)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                order.paid
+                    ? l.inpPaid
+                    : order.overdue
+                        ? l.inpOverdue
+                        : l.inpDueBy(order.dueAt == null
+                            ? ''
+                            : AppFormat.date(order.dueAt!)),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: order.paid
+                      ? AppColors.primary
+                      : order.overdue
+                          ? AppColors.error
+                          : const Color(0xFFE65100),
+                ),
+              ),
+            ),
           Text(order.deliveryAddress,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

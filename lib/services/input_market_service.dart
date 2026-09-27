@@ -8,6 +8,9 @@ import 'service_errors.dart';
 /// Input marketplace (seeds, fertilizer, pesticides, tools) and machinery
 /// rental. Plain client writes on the Spark plan; `firestore.rules`
 /// validates ownership, prices, totals and the order state machine.
+/// Days a farmer has to pay for a "pay later" input order.
+const int kCreditDays = 30;
+
 class InputMarketService {
   InputMarketService({FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _db = firestore ?? FirebaseFirestore.instance,
@@ -201,6 +204,7 @@ class InputMarketService {
     required String deliveryAddress,
     int? days,
     DateTime? startDate,
+    bool payLater = false,
   }) async {
     final uid = _uid;
     final me = await _me();
@@ -242,7 +246,12 @@ class InputMarketService {
       'unitPriceMinor': unitPrice,
       'totalMinor': total,
       'deliveryAddress': address,
-      'paymentMethod': 'cod',
+      // Pay later: supplier credit due in [kCreditDays] (no lender involved).
+      'paymentMethod': payLater ? 'credit' : 'cod',
+      'paymentStatus': 'unpaid',
+      if (payLater)
+        'dueAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(days: kCreditDays))),
       'status': InputOrderStatus.pending,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -290,6 +299,17 @@ class InputMarketService {
       '${order.inputName}: ${_statusWord(next)}.',
       order.id,
     );
+  }
+
+  /// Supplier records that the farmer paid (cash on delivery or credit).
+  Future<void> markPaid(InputOrder order) async {
+    await _orders.doc(order.id).update({
+      'paymentStatus': 'paid',
+      'paidAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _notify(order.farmerId, 'Payment received',
+        '${order.inputName}: payment recorded by the supplier.', order.id);
   }
 
   static String _statusWord(String status) => switch (status) {

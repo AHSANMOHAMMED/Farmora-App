@@ -717,8 +717,13 @@ service cloud.firestore {
           'inputId', 'inputName', 'category', 'listingType', 'unit', 'quantity', 'days',
           'startDate',
           'unitPriceMinor', 'totalMinor', 'deliveryAddress', 'paymentMethod', 'status',
-          'createdAt', 'updatedAt'])
-        && d.farmerId == uid() && d.status == 'pending' && d.paymentMethod == 'cod'
+          'paymentStatus', 'dueAt', 'createdAt', 'updatedAt'])
+        && d.farmerId == uid() && d.status == 'pending'
+        && d.get('paymentStatus', 'unpaid') == 'unpaid'
+        // Pay later: supplier credit due within 31 days of ordering.
+        && ((d.paymentMethod == 'cod' && !('dueAt' in d))
+          || (d.paymentMethod == 'credit' && d.dueAt is timestamp
+            && d.dueAt > request.time && d.dueAt <= request.time + duration.value(31, 'd')))
         && d.createdAt == request.time
         && i.status == 'Active' && i.isDeleted == false
         && d.supplierId == i.supplierId && d.listingType == i.listingType
@@ -756,7 +761,13 @@ service cloud.firestore {
       allow read: if admin() || (signedIn()
         && (resource.data.farmerId == uid() || resource.data.supplierId == uid()));
       allow create: if farmer() && inputOrderCreateOk();
-      allow update: if admin() || (active() && inputOrderUpdateOk());
+      allow update: if admin() || (active() && inputOrderUpdateOk())
+        // The supplier records payment once (cash on delivery or credit).
+        || (active() && uid() == resource.data.supplierId
+          && resource.data.get('paymentStatus', 'unpaid') == 'unpaid'
+          && request.resource.data.paymentStatus == 'paid'
+          && request.resource.data.paidAt == request.time
+          && affected().hasOnly(['paymentStatus', 'paidAt', 'updatedAt']));
       allow delete: if admin();
     }
 

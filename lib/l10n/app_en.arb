@@ -3816,5 +3816,13 @@
   "catLand": "Land / rent",
   "catOther": "Other",
   "catProduceSale": "Produce sale",
-  "catSubsidy": "Subsidy"
+  "catSubsidy": "Subsidy",
+  "inpPayLater": "Pay later (30 days)",
+  "inpPayLaterHint": "Supplier credit: pay within 30 days. The supplier may decline.",
+  "inpDueBy": "Pay by {date}",
+  "@inpDueBy": {"placeholders": {"date": {"type": "String"}}},
+  "inpPaid": "Paid",
+  "inpOverdue": "Payment overdue",
+  "supMarkPaid": "Mark paid",
+  "supCreditOutstanding": "Credit outstanding"
 }

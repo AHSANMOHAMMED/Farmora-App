@@ -7105,4 +7105,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catSubsidy => 'Subsidy';
+
+  @override
+  String get inpPayLater => 'Pay later (30 days)';
+
+  @override
+  String get inpPayLaterHint =>
+      'Supplier credit: pay within 30 days. The supplier may decline.';
+
+  @override
+  String inpDueBy(String date) {
+    return 'Pay by $date';
+  }
+
+  @override
+  String get inpPaid => 'Paid';
+
+  @override
+  String get inpOverdue => 'Payment overdue';
+
+  @override
+  String get supMarkPaid => 'Mark paid';
+
+  @override
+  String get supCreditOutstanding => 'Credit outstanding';
 }

@@ -12478,6 +12478,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subsidy'**
   String get catSubsidy;
+
+  /// No description provided for @inpPayLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay later (30 days)'**
+  String get inpPayLater;
+
+  /// No description provided for @inpPayLaterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier credit: pay within 30 days. The supplier may decline.'**
+  String get inpPayLaterHint;
+
+  /// No description provided for @inpDueBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay by {date}'**
+  String inpDueBy(String date);
+
+  /// No description provided for @inpPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get inpPaid;
+
+  /// No description provided for @inpOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment overdue'**
+  String get inpOverdue;
+
+  /// No description provided for @supMarkPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark paid'**
+  String get supMarkPaid;
+
+  /// No description provided for @supCreditOutstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit outstanding'**
+  String get supCreditOutstanding;
 }
 
 class _AppLocalizationsDelegate

@@ -141,3 +141,28 @@ describe('input orders', () => {
     await assertSucceeds(getDocs(query(collection(db('sup1'), 'input_orders'), where('supplierId', '==', 'sup1'), orderBy('createdAt', 'desc'))));
   });
 });
+
+describe('input orders: pay later', () => {
+  beforeEach(seed);
+  const due = (days) => Timestamp.fromDate(new Date(Date.now() + days * 86400000));
+
+  it('credit orders are due within 31 days; cash orders have no due date', async () => {
+    const put = (o) => setDoc(doc(db('farmer1'), 'input_orders', 'c1'), orderData({ paymentStatus: 'unpaid', ...o }));
+    await assertFails(put({ paymentMethod: 'credit' }));
+    await assertFails(put({ paymentMethod: 'credit', dueAt: due(45) }));
+    await assertFails(put({ paymentMethod: 'cod', dueAt: due(10) }));
+    await assertFails(put({ paymentMethod: 'credit', dueAt: due(30), paymentStatus: 'paid' }));
+    await assertSucceeds(put({ paymentMethod: 'credit', dueAt: due(30) }));
+  });
+
+  it('only the supplier records the payment, once', async () => {
+    await setDoc(doc(db('farmer1'), 'input_orders', 'c1'),
+      orderData({ paymentMethod: 'credit', paymentStatus: 'unpaid', dueAt: due(30) }));
+    const pay = (uid) => updateDoc(doc(db(uid), 'input_orders', 'c1'), {
+      paymentStatus: 'paid', paidAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    await assertFails(pay('farmer1'));
+    await assertSucceeds(pay('sup1'));
+    await assertFails(pay('sup1'));
+  });
+});

@@ -111,6 +111,9 @@ class InputOrder {
     required this.deliveryAddress,
     required this.status,
     this.category = InputCategory.tools,
+    this.payLater = false,
+    this.paid = false,
+    this.dueAt,
     this.unit = '',
     this.days,
     this.startDate,
@@ -131,6 +134,15 @@ class InputOrder {
   final String deliveryAddress;
   final String status;
   final InputCategory category;
+
+  /// 'cod' or 'credit' (pay later), and whether the supplier recorded
+  /// the payment; credit orders are due by [dueAt].
+  final bool payLater;
+  final bool paid;
+  final DateTime? dueAt;
+
+  bool get overdue =>
+      payLater && !paid && dueAt != null && dueAt!.isBefore(DateTime.now());
   final String unit;
   final int? days;
   final DateTime? startDate;
@@ -153,6 +165,9 @@ class InputOrder {
         deliveryAddress: (d['deliveryAddress'] ?? '').toString(),
         status: (d['status'] ?? InputOrderStatus.pending).toString(),
         category: inputCategoryFrom(d['category']),
+        payLater: d['paymentMethod'] == 'credit',
+        paid: d['paymentStatus'] == 'paid',
+        dueAt: firebaseDate(d['dueAt']),
         unit: (d['unit'] ?? '').toString(),
         days: firebaseInt(d['days']),
         startDate: firebaseDate(d['startDate']),
