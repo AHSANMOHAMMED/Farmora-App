@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
@@ -109,6 +108,8 @@ class _FarmerProfileCompletionScreenState
         latitude: _latitude,
         longitude: _longitude,
       );
+      state.nicNumber = _nicController.text.trim();
+      state.farmLocation = _locationText;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

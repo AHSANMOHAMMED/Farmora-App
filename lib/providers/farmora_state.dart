@@ -101,6 +101,8 @@ class FarmoraState extends ChangeNotifier {
   String phone = '';
   String farmName = '';
   String farmSize = '';
+  String nicNumber = '';
+  String farmLocation = '';
   List<String> mainCrops = [];
 
   /// When the account was created (users/{uid}.createdAt); null if unknown.
@@ -241,8 +243,8 @@ class FarmoraState extends ChangeNotifier {
       List.unmodifiable(_conversations);
 
   /// Unread chat messages across all conversations (for badges).
-  int get unreadMessagesCount => _conversations.fold(
-      0, (sum, c) => sum + c.unreadFor(_currentUserId));
+  int get unreadMessagesCount =>
+      _conversations.fold(0, (sum, c) => sum + c.unreadFor(_currentUserId));
   AdminStats get adminStats => _adminStats;
   bool get adminStatsLoading => _adminStatsLoading;
   bool get settingsLoaded => _settingsLoaded;
@@ -376,8 +378,8 @@ class FarmoraState extends ChangeNotifier {
       _cartItems[existingIndex] = existing.copyWith(
           quantity: _capToStock(product, existing.quantity + quantity));
     } else {
-      _cartItems.add(CartItem(
-          product: product, quantity: _capToStock(product, quantity)));
+      _cartItems.add(
+          CartItem(product: product, quantity: _capToStock(product, quantity)));
     }
     notifyListeners();
   }
@@ -497,7 +499,8 @@ class FarmoraState extends ChangeNotifier {
             );
           }
         } catch (backendError) {
-          debugPrint('Backend order error, applying optimistic fallback: $backendError');
+          debugPrint(
+              'Backend order error, applying optimistic fallback: $backendError');
           _applyLocalOrderPlacement(address, transporterId, method);
         }
       } else {
@@ -563,7 +566,8 @@ class FarmoraState extends ChangeNotifier {
 
       final newJob = TransportJob(
         id: 'job_local_${now.millisecondsSinceEpoch}_$idx',
-        title: '${item.product.name} Transport (${item.quantity} ${item.product.unit})',
+        title:
+            '${item.product.name} Transport (${item.quantity} ${item.product.unit})',
         route: '${item.product.location} → $address',
         detail:
             'Deliver ${item.quantity} ${item.product.unit} fresh produce to buyer',
@@ -681,6 +685,8 @@ class FarmoraState extends ChangeNotifier {
     _cartItems.clear();
     _adminStats = AdminStats.empty;
     notificationPrefs = const {};
+    nicNumber = '';
+    farmLocation = '';
     _recalculateStats();
   }
 
@@ -1616,8 +1622,8 @@ class FarmoraState extends ChangeNotifier {
     }
 
     if (isAdmin) {
-      refreshAdminStats().catchError(
-          (Object e) => debugPrint('Admin stats load failed: $e'));
+      refreshAdminStats()
+          .catchError((Object e) => debugPrint('Admin stats load failed: $e'));
     }
 
     _bankDetailsSub?.cancel();
@@ -1843,9 +1849,8 @@ class FarmoraState extends ChangeNotifier {
       _minAppVersion = minVersion;
     }
     final timeout = (settings['sessionTimeoutMinutes'] as num?)?.toInt();
-    final timeoutChanged = timeout != null &&
-        timeout >= 0 &&
-        timeout != _sessionTimeoutMinutes;
+    final timeoutChanged =
+        timeout != null && timeout >= 0 && timeout != _sessionTimeoutMinutes;
     if (timeout != null && timeout >= 0) _sessionTimeoutMinutes = timeout;
     _settingsLoaded = true;
     if (_currentUserId.isNotEmpty &&
@@ -1878,6 +1883,8 @@ class FarmoraState extends ChangeNotifier {
     displayName = (profile['name'] ?? profile['displayName'] ?? '').toString();
     photoUrl = (profile['photoUrl'] ?? '').toString();
     phone = (profile['phone'] ?? '').toString();
+    nicNumber = (profile['nicNumber'] ?? '').toString();
+    farmLocation = (profile['location'] ?? '').toString();
     isVerified = profile['isVerified'] == true;
     vehicleType = (profile['vehicleType'] ?? '').toString();
     capacityKg = (profile['capacityKg'] as num?)?.toInt() ?? 0;
@@ -2224,8 +2231,7 @@ class FarmoraState extends ChangeNotifier {
     required String userId,
     required bool verified,
   }) async {
-    await _firestoreService.setUserVerified(
-        userId: userId, verified: verified);
+    await _firestoreService.setUserVerified(userId: userId, verified: verified);
     logAuditEvent(
       actionType: 'USER_VERIFY',
       targetEntity: 'User',
@@ -2282,8 +2288,7 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> setEscrowReleaseHours(int hours) {
-    return updatePlatformSettings(
-        {'escrowReleaseHours': hours.clamp(1, 720)});
+    return updatePlatformSettings({'escrowReleaseHours': hours.clamp(1, 720)});
   }
 
   Future<void> setMinAppVersion(String version) async {

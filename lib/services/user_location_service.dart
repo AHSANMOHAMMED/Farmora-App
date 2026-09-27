@@ -33,6 +33,28 @@ class UserLocationService {
   bool get isSharing => _sharing;
   Position? get lastPosition => _lastPosition;
 
+  /// Gets a one-shot position for profile setup without enabling live sharing.
+  static Future<Position?> getCurrentPosition() async {
+    if (!kIsWeb) {
+      final status = await Permission.locationWhenInUse.request();
+      if (status.isDenied || status.isPermanentlyDenied) return null;
+    } else {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+    }
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    return Geolocator.getCurrentPosition(
+      locationSettings:
+          const LocationSettings(accuracy: LocationAccuracy.medium),
+    ).timeout(const Duration(seconds: 10));
+  }
+
   /// Asks for consent and, when granted, shares this user's location live.
   Future<LocationConsentResult> startSharing() async {
     if (_sharing) return LocationConsentResult.granted;
@@ -47,7 +69,8 @@ class UserLocationService {
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
         return LocationConsentResult.permissionDenied;
       }
     }
