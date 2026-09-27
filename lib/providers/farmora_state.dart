@@ -38,6 +38,7 @@ import '../core/localization/l10n.dart';
 import '../core/localization/language_prefs.dart';
 import '../core/utils/image_upload.dart';
 import '../models/conversation_model.dart';
+import '../core/config/app_backend.dart';
 import '../core/constants/demo_catalog_data.dart';
 import 'package:intl/intl.dart';
 
@@ -200,7 +201,7 @@ class FarmoraState extends ChangeNotifier {
   FarmoraState({String? initialLanguageCode}) {
     _language = AppLanguage.from(initialLanguageCode).nativeName;
     L10n.updateLocale(locale);
-    _initDemoData();
+    if (kDemoData) _initDemoData();
   }
 
   /// Seeds authentic Sri Lankan agricultural produce, orders, jobs, and market prices.
@@ -484,28 +485,26 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
     try {
       if (_currentUserId.isNotEmpty) {
-        try {
-          final feeMinor = (defaultDeliveryFeeLkr * 100).round();
-          final farmersCharged = <String>{};
-          for (final item in _cartItems) {
-            final firstForFarmer = farmersCharged.add(item.product.farmerId);
-            await _firestoreService.createSecureOrder(
-              productId: item.product.id,
-              quantity: item.quantity,
-              deliveryFeeMinor: firstForFarmer ? feeMinor : 0,
-              transporterId: transporterId,
-              deliveryAddress: address,
-              idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
-              paymentMethod: method,
-            );
-          }
-        } catch (backendError) {
-          debugPrint(
-              'Backend order error, applying optimistic fallback: $backendError');
-          _applyLocalOrderPlacement(address, transporterId, method);
+        // A failure surfaces as an error: an order that never reached
+        // Firestore would be invisible to the farmer and transporter.
+        final feeMinor = (defaultDeliveryFeeLkr * 100).round();
+        final farmersCharged = <String>{};
+        for (final item in _cartItems) {
+          final firstForFarmer = farmersCharged.add(item.product.farmerId);
+          await _firestoreService.createSecureOrder(
+            productId: item.product.id,
+            quantity: item.quantity,
+            deliveryFeeMinor: firstForFarmer ? feeMinor : 0,
+            transporterId: transporterId,
+            deliveryAddress: address,
+            idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
+            paymentMethod: method,
+          );
         }
-      } else {
+      } else if (kDemoData) {
         _applyLocalOrderPlacement(address, transporterId, method);
+      } else {
+        throw StateError('Authentication required.');
       }
 
       _lastOrderKey = fingerprint;
@@ -672,9 +671,14 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Drops account-specific data and resets to authentic catalog and market items.
+  /// Drops account-specific data (re-seeding the sample catalog in demo mode).
   void _clearAccountData() {
-    _initDemoData();
+    _products.clear();
+    _orders.clear();
+    _jobs.clear();
+    _offers.clear();
+    _marketPrices.clear();
+    if (kDemoData) _initDemoData();
     _users.clear();
     _verificationDocs.clear();
     _notifications.clear();
@@ -1437,16 +1441,15 @@ class FarmoraState extends ChangeNotifier {
         : _firestoreService.productsStream(activeOnly: !isAdmin);
     _productsSub = productsStream.listen(
       (firestoreProducts) {
-        if (firestoreProducts.isNotEmpty) {
-          _products.clear();
-          _products.addAll(firestoreProducts);
-        } else if (_products.isEmpty) {
-          _products.addAll(DemoCatalogData.sampleProducts);
-        }
+        _products
+          ..clear()
+          ..addAll(firestoreProducts.isEmpty && kDemoData
+              ? DemoCatalogData.sampleProducts
+              : firestoreProducts);
         notifyListeners();
       },
       onError: (e) {
-        if (_products.isEmpty) {
+        if (kDemoData && _products.isEmpty) {
           _products.addAll(DemoCatalogData.sampleProducts);
         }
         debugPrint('Firestore products stream error: $e');
@@ -1479,18 +1482,17 @@ class FarmoraState extends ChangeNotifier {
     };
     _ordersSub = ordersStream.listen(
       (firestoreOrders) {
-        if (firestoreOrders.isNotEmpty) {
-          _orders.clear();
-          _orders.addAll(firestoreOrders);
-        } else if (_orders.isEmpty) {
-          _orders.addAll(DemoCatalogData.sampleOrders);
-        }
+        _orders
+          ..clear()
+          ..addAll(firestoreOrders.isEmpty && kDemoData
+              ? DemoCatalogData.sampleOrders
+              : firestoreOrders);
         _recalculateStats();
         _ordersLoading = false;
         notifyListeners();
       },
       onError: (e) {
-        if (_orders.isEmpty) {
+        if (kDemoData && _orders.isEmpty) {
           _orders.addAll(DemoCatalogData.sampleOrders);
           _recalculateStats();
         }
@@ -1510,16 +1512,15 @@ class FarmoraState extends ChangeNotifier {
     };
     _jobsSub = jobsStream.listen(
       (firestoreJobs) {
-        if (firestoreJobs.isNotEmpty) {
-          _jobs.clear();
-          _jobs.addAll(firestoreJobs);
-        } else if (_jobs.isEmpty) {
-          _jobs.addAll(DemoCatalogData.sampleJobs);
-        }
+        _jobs
+          ..clear()
+          ..addAll(firestoreJobs.isEmpty && kDemoData
+              ? DemoCatalogData.sampleJobs
+              : firestoreJobs);
         notifyListeners();
       },
       onError: (e) {
-        if (_jobs.isEmpty) {
+        if (kDemoData && _jobs.isEmpty) {
           _jobs.addAll(DemoCatalogData.sampleJobs);
         }
         debugPrint('Firestore jobs stream error: $e');
@@ -1570,16 +1571,15 @@ class FarmoraState extends ChangeNotifier {
         : _firestoreService.offersByBuyerStream(uid);
     _offersSub = offersStream.listen(
       (firestoreOffers) {
-        if (firestoreOffers.isNotEmpty) {
-          _offers.clear();
-          _offers.addAll(firestoreOffers);
-        } else if (_offers.isEmpty) {
-          _offers.addAll(DemoCatalogData.sampleOffers);
-        }
+        _offers
+          ..clear()
+          ..addAll(firestoreOffers.isEmpty && kDemoData
+              ? DemoCatalogData.sampleOffers
+              : firestoreOffers);
         notifyListeners();
       },
       onError: (e) {
-        if (_offers.isEmpty) {
+        if (kDemoData && _offers.isEmpty) {
           _offers.addAll(DemoCatalogData.sampleOffers);
         }
         debugPrint('Firestore offers stream error: $e');
@@ -1624,17 +1624,15 @@ class FarmoraState extends ChangeNotifier {
       _marketPricesSub?.cancel();
       _marketPricesSub = _firestoreService.marketPricesStream().listen(
         (firestorePrices) {
-          if (firestorePrices.isNotEmpty) {
-            _marketPrices
-              ..clear()
-              ..addAll(firestorePrices);
-          } else if (_marketPrices.isEmpty) {
-            _marketPrices.addAll(DemoCatalogData.sampleMarketPrices);
-          }
+          _marketPrices
+            ..clear()
+            ..addAll(firestorePrices.isEmpty && kDemoData
+                ? DemoCatalogData.sampleMarketPrices
+                : firestorePrices);
           notifyListeners();
         },
         onError: (e) {
-          if (_marketPrices.isEmpty) {
+          if (kDemoData && _marketPrices.isEmpty) {
             _marketPrices.addAll(DemoCatalogData.sampleMarketPrices);
           }
           debugPrint('Firestore market prices stream error: $e');
