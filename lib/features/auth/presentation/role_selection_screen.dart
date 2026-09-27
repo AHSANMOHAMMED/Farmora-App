@@ -43,26 +43,53 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Role? _selectedRole;
 
   List<_RoleOption> _roleOptions(AppLocalizations l10n) => [
-        // 1. Farmer
         _RoleOption(
           role: Role.farmer,
           title: l10n.farmer,
           description: l10n.iWantToSell,
           icon: Icons.agriculture_rounded,
         ),
-        // 2. Buyer
         _RoleOption(
           role: Role.buyer,
           title: l10n.buyer,
           description: l10n.iWantToBuy,
           icon: Icons.shopping_basket_rounded,
         ),
-        // 3. Transport Provider
         _RoleOption(
           role: Role.transporter,
           title: l10n.transporter,
           description: l10n.iWantToDeliver,
           icon: Icons.local_shipping_rounded,
+        ),
+        _RoleOption(
+          role: Role.driver,
+          title: 'Driver',
+          description: 'Drive fleet vehicles and deliver produce shipments',
+          icon: Icons.drive_eta_rounded,
+        ),
+        _RoleOption(
+          role: Role.warehouse,
+          title: 'Warehouse Manager',
+          description: 'Manage collection center storage, inventory and dispatch',
+          icon: Icons.warehouse_rounded,
+        ),
+        _RoleOption(
+          role: Role.inspector,
+          title: 'Quality Inspector',
+          description: 'Grade produce quality, inspect lots and issue certificates',
+          icon: Icons.fact_check_rounded,
+        ),
+        _RoleOption(
+          role: Role.supplier,
+          title: 'Input Supplier',
+          description: 'Supply seeds, fertilizers, tools and farm machinery',
+          icon: Icons.storefront_rounded,
+        ),
+        _RoleOption(
+          role: Role.expert,
+          title: 'Agricultural Expert',
+          description: 'Provide advisory, crop disease diagnosis and consultations',
+          icon: Icons.school_rounded,
         ),
       ];
 
