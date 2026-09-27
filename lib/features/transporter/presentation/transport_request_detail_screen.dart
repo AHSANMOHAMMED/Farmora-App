@@ -8,6 +8,7 @@ import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import 'delivery_proof_dialog.dart';
 
 class TransportRequestDetailScreen extends StatelessWidget {
   final TransportJob job;
@@ -314,9 +315,15 @@ class TransportRequestDetailScreen extends StatelessWidget {
 
   Future<void> _setStatus(BuildContext context, String status) async {
     final state = context.read<FarmoraState>();
+    DeliveryProof? proof;
+    if (status == 'delivered') {
+      proof = await collectDeliveryProof(context, orderId: job.orderId ?? '');
+      if (proof == null || !context.mounted) return;
+    }
     final ok = await _run(
       context,
-      () => state.updateJobStatus(job.id, status),
+      () => state.updateJobStatus(job.id, status,
+          deliveryCode: proof?.code, podPhotoPath: proof?.photoPath),
       action: 'update the delivery',
     );
     if (!ok) return;

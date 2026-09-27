@@ -351,6 +351,8 @@ describe('storage', () => {
   it('buyer uploads a slip; farmer reads it; strangers cannot', async () => {
     const path = `payment_slips/${ORDER}/buyer1_1.jpg`;
     await assertSucceeds(uploadBytes(ref(storage('buyer1'), path), jpg, meta));
+    // Evidence: the same path cannot be re-uploaded (replaced) later.
+    await assertFails(uploadBytes(ref(storage('buyer1'), path), jpg, meta));
     await assertSucceeds(getBytes(ref(storage('farmer1'), path)));
     await assertFails(getBytes(ref(storage('stranger'), path)));
   });

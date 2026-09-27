@@ -1940,5 +1940,17 @@
   "farmerVerificationSelectFile": "ගොනුව තෝරන්න",
   "stateSettlementReferenceRequired": "සැබෑ බැංකු හෝ ගෙවීම් සේවා යොමු අංකය ඇතුළත් කරන්න.",
   "stateInvalidWithdrawalAmount": "වලංගු නොවන මුදල් ආපසු ගැනීමේ ප්‍රමාණයක්. ලබා ගත හැකි ශේෂය: {balance}",
-  "authLanguageButton": "භාෂාව වෙනස් කරන්න"
+  "authLanguageButton": "භාෂාව වෙනස් කරන්න",
+  "svcDeliveryCodeWrong": "බෙදාහැරීමේ කේතය වැරදියි. ගැනුම්කරුගේ ඇණවුමේ පෙන්වන ඉලක්කම් 6 කේතය ඉල්ලන්න.",
+  "deliveryCodeTitle": "බෙදාහැරීමේ කේතය",
+  "deliveryCodeBuyerHint": "ඔබේ භාණ්ඩ ලැබී පරීක්ෂා කළ පසුව පමණක් මෙම කේතය රියදුරුට දෙන්න.",
+  "deliveryCodeUnavailable": "බෙදාහැරීමේ කේතය ලබාගත නොහැක. සම්බන්ධතාවය පරීක්ෂා කර ඇණවුම නැවත විවෘත කරන්න.",
+  "deliveryProofTitle": "බෙදාහැරීම තහවුරු කරන්න",
+  "deliveryProofCodeLabel": "ගැනුම්කරුගේ ඉලක්කම් 6 කේතය",
+  "deliveryProofCodeHint": "ගැනුම්කරුගේ ඇණවුමේ පෙන්වන කේතය ඉල්ලන්න.",
+  "deliveryProofCodeInvalid": "ඉලක්කම් 6 කේතය ඇතුළත් කරන්න.",
+  "deliveryProofAddPhoto": "බෙදාහැරීමේ ඡායාරූපය එක් කරන්න (විකල්ප)",
+  "deliveryProofPhotoAdded": "ඡායාරූපය එක් කළා",
+  "deliveryProofPhoto": "බෙදාහැරීමේ ඡායාරූපය",
+  "deliveryProofConfirmed": "ගැනුම්කරුගේ කේතය සමඟ බෙදා හරින ලදී"
 }

@@ -6688,4 +6688,43 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get authLanguageButton => 'භාෂාව වෙනස් කරන්න';
+
+  @override
+  String get svcDeliveryCodeWrong =>
+      'බෙදාහැරීමේ කේතය වැරදියි. ගැනුම්කරුගේ ඇණවුමේ පෙන්වන ඉලක්කම් 6 කේතය ඉල්ලන්න.';
+
+  @override
+  String get deliveryCodeTitle => 'බෙදාහැරීමේ කේතය';
+
+  @override
+  String get deliveryCodeBuyerHint =>
+      'ඔබේ භාණ්ඩ ලැබී පරීක්ෂා කළ පසුව පමණක් මෙම කේතය රියදුරුට දෙන්න.';
+
+  @override
+  String get deliveryCodeUnavailable =>
+      'බෙදාහැරීමේ කේතය ලබාගත නොහැක. සම්බන්ධතාවය පරීක්ෂා කර ඇණවුම නැවත විවෘත කරන්න.';
+
+  @override
+  String get deliveryProofTitle => 'බෙදාහැරීම තහවුරු කරන්න';
+
+  @override
+  String get deliveryProofCodeLabel => 'ගැනුම්කරුගේ ඉලක්කම් 6 කේතය';
+
+  @override
+  String get deliveryProofCodeHint => 'ගැනුම්කරුගේ ඇණවුමේ පෙන්වන කේතය ඉල්ලන්න.';
+
+  @override
+  String get deliveryProofCodeInvalid => 'ඉලක්කම් 6 කේතය ඇතුළත් කරන්න.';
+
+  @override
+  String get deliveryProofAddPhoto => 'බෙදාහැරීමේ ඡායාරූපය එක් කරන්න (විකල්ප)';
+
+  @override
+  String get deliveryProofPhotoAdded => 'ඡායාරූපය එක් කළා';
+
+  @override
+  String get deliveryProofPhoto => 'බෙදාහැරීමේ ඡායාරූපය';
+
+  @override
+  String get deliveryProofConfirmed => 'ගැනුම්කරුගේ කේතය සමඟ බෙදා හරින ලදී';
 }

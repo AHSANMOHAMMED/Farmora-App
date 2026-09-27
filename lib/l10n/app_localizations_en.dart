@@ -6692,4 +6692,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authLanguageButton => 'Change language';
+
+  @override
+  String get svcDeliveryCodeWrong =>
+      'The delivery code is incorrect. Ask the buyer for the 6-digit code shown in their order.';
+
+  @override
+  String get deliveryCodeTitle => 'Delivery code';
+
+  @override
+  String get deliveryCodeBuyerHint =>
+      'Give this code to the driver only after you have received and checked your goods.';
+
+  @override
+  String get deliveryCodeUnavailable =>
+      'Delivery code unavailable. Check your connection and reopen this order.';
+
+  @override
+  String get deliveryProofTitle => 'Confirm delivery';
+
+  @override
+  String get deliveryProofCodeLabel => 'Buyer\'s 6-digit code';
+
+  @override
+  String get deliveryProofCodeHint =>
+      'Ask the buyer for the code shown in their order.';
+
+  @override
+  String get deliveryProofCodeInvalid => 'Enter the 6-digit code.';
+
+  @override
+  String get deliveryProofAddPhoto => 'Add delivery photo (optional)';
+
+  @override
+  String get deliveryProofPhotoAdded => 'Photo added';
+
+  @override
+  String get deliveryProofPhoto => 'Delivery photo';
+
+  @override
+  String get deliveryProofConfirmed => 'Delivered with the buyer\'s code';
 }

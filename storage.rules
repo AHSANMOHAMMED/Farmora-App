@@ -79,8 +79,20 @@ service firebase.storage {
     // are payment evidence, so they are never overwritten or deleted.
     match /payment_slips/{orderId}/{fileName} {
       allow read: if orderParty(orderId) || admin();
-      allow create: if active()
+      // resource == null: re-uploading to an existing path counts as create.
+      allow create: if resource == null && active()
         && order(orderId).buyerId == request.auth.uid
+        && fileName.matches(request.auth.uid + '_.+')
+        && validImageUpload();
+      allow update, delete: if false;
+    }
+
+    // Proof-of-delivery photos by the assigned transporter; kept as evidence.
+    match /pod_photos/{orderId}/{fileName} {
+      allow read: if orderParty(orderId) || admin();
+      allow create: if resource == null && active()
+        && order(orderId).get('transporterId', '') == request.auth.uid
+        && order(orderId).status in ['pickedUp', 'inTransit']
         && fileName.matches(request.auth.uid + '_.+')
         && validImageUpload();
       allow update, delete: if false;
@@ -89,7 +101,8 @@ service firebase.storage {
     // Photos sent in an order chat, stored per sender.
     match /chat/{orderId}/{senderId}/{fileName} {
       allow read: if orderParty(orderId) || admin();
-      allow create: if request.auth != null && request.auth.uid == senderId
+      allow create: if resource == null
+        && request.auth != null && request.auth.uid == senderId
         && orderParty(orderId)
         && validImageUpload();
       allow update, delete: if false;

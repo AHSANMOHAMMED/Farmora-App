@@ -6795,4 +6795,46 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get authLanguageButton => 'மொழியை மாற்று';
+
+  @override
+  String get svcDeliveryCodeWrong =>
+      'டெலிவரி குறியீடு தவறானது. வாங்குபவரின் ஆர்டரில் காட்டப்படும் 6 இலக்கக் குறியீட்டைக் கேளுங்கள்.';
+
+  @override
+  String get deliveryCodeTitle => 'டெலிவரி குறியீடு';
+
+  @override
+  String get deliveryCodeBuyerHint =>
+      'உங்கள் பொருட்களைப் பெற்று சரிபார்த்த பிறகே இந்தக் குறியீட்டை ஓட்டுநரிடம் கொடுங்கள்.';
+
+  @override
+  String get deliveryCodeUnavailable =>
+      'டெலிவரி குறியீடு கிடைக்கவில்லை. இணைப்பைச் சரிபார்த்து ஆர்டரை மீண்டும் திறக்கவும்.';
+
+  @override
+  String get deliveryProofTitle => 'டெலிவரியை உறுதிப்படுத்தவும்';
+
+  @override
+  String get deliveryProofCodeLabel => 'வாங்குபவரின் 6 இலக்கக் குறியீடு';
+
+  @override
+  String get deliveryProofCodeHint =>
+      'வாங்குபவரின் ஆர்டரில் காட்டப்படும் குறியீட்டைக் கேளுங்கள்.';
+
+  @override
+  String get deliveryProofCodeInvalid => '6 இலக்கக் குறியீட்டை உள்ளிடவும்.';
+
+  @override
+  String get deliveryProofAddPhoto =>
+      'டெலிவரி புகைப்படம் சேர்க்கவும் (விருப்பம்)';
+
+  @override
+  String get deliveryProofPhotoAdded => 'புகைப்படம் சேர்க்கப்பட்டது';
+
+  @override
+  String get deliveryProofPhoto => 'டெலிவரி புகைப்படம்';
+
+  @override
+  String get deliveryProofConfirmed =>
+      'வாங்குபவரின் குறியீட்டுடன் வழங்கப்பட்டது';
 }

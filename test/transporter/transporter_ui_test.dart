@@ -54,9 +54,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.jobById('101')?.status, CollectionJobStatus.collected);
 
+    // Completion asks for the buyer's 6-digit delivery code.
     await tester.tap(find.text('Complete Delivery'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Complete delivery'));
+    final confirm = find.widgetWithText(FilledButton, 'Confirm delivery');
+    await tester.enterText(find.byType(TextField), '123');
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(find.text('Enter the 6-digit code.'), findsOneWidget);
+    expect(controller.jobById('101')?.status, CollectionJobStatus.collected);
+    await tester.enterText(find.byType(TextField), '482913');
+    await tester.tap(confirm);
     await tester.pumpAndSettle();
 
     expect(controller.jobById('101')?.status, CollectionJobStatus.completed);

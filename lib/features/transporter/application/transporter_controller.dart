@@ -459,8 +459,11 @@ class TransporterController extends ChangeNotifier {
   Future<TransporterActionResult> markCollected(String jobId) =>
       _transitionJob(jobId, CollectionJobStatus.collected);
 
-  Future<TransporterActionResult> completeDelivery(String jobId) =>
-      _transitionJob(jobId, CollectionJobStatus.completed);
+  /// Completes delivery with the buyer's code (and optional photo path).
+  Future<TransporterActionResult> completeDelivery(String jobId,
+          {String? deliveryCode, String? podPhotoPath}) =>
+      _transitionJob(jobId, CollectionJobStatus.completed,
+          deliveryCode: deliveryCode, podPhotoPath: podPhotoPath);
 
   Future<TransporterActionResult> startDelivery(String jobId) =>
       _transitionJob(jobId, CollectionJobStatus.inTransit);
@@ -523,13 +526,15 @@ class TransporterController extends ChangeNotifier {
 
   Future<TransporterActionResult> _transitionJob(
       String jobId, CollectionJobStatus nextStatus,
-      {String? reason}) async {
+      {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     try {
       final updated = await _repository.updateStatus(
         jobId: jobId,
         logisticsProviderId: providerId,
         status: nextStatus,
         reason: reason,
+        deliveryCode: deliveryCode,
+        podPhotoPath: podPhotoPath,
       );
       _replaceJob(updated);
       notifyListeners();

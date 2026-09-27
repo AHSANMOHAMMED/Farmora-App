@@ -680,3 +680,86 @@ describe('Spark: offers, produce requests, workspace, reviews, disputes', () => 
     await assertSucceeds(open('trans1', 'd3', 'o2'));
   });
 });
+
+describe('Spark: proof of delivery', () => {
+  beforeEach(() => seedBase(env));
+  const { ref, uploadBytes, getBytes } = require('firebase/storage');
+  const storage = (uid) => env.authenticatedContext(uid).storage();
+  const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
+  const meta = { contentType: 'image/jpeg' };
+
+  const codeDoc = (uid, orderId = 'o1', o = {}) => setDoc(doc(db(uid), 'delivery_codes', orderId), {
+    orderId, buyerId: uid, code: '482913', createdAt: serverTimestamp(), ...o,
+  });
+
+  function deliver(uid, extra = {}) {
+    const d = db(uid);
+    const batch = writeBatch(d);
+    batch.update(doc(d, 'transport_jobs', 'j1'), {
+      status: 'delivered', deliveredAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra,
+    });
+    batch.update(doc(d, 'orders', 'o1'), {
+      status: 'delivered', deliveredAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    return batch.commit();
+  }
+
+  const inTransit = () => seedOrder('o1', 'inTransit', { transporterId: 'trans1', transportJobId: 'j1' },
+    { id: 'j1', data: { status: 'inTransit', transporterId: 'trans1', accepted: true } });
+
+  it('only the order\'s buyer creates and reads its delivery code', async () => {
+    await inTransit();
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'delivery_codes', 'o1'))); // probe: missing
+    await assertFails(codeDoc('buyer2'));
+    await assertFails(codeDoc('buyer1', 'o1', { code: '12ab56' }));
+    await assertFails(codeDoc('buyer1', 'o1', { buyerId: 'buyer2' }));
+    await assertSucceeds(codeDoc('buyer1'));
+    await assertSucceeds(getDoc(doc(db('buyer1'), 'delivery_codes', 'o1')));
+    await assertFails(getDoc(doc(db('trans1'), 'delivery_codes', 'o1')));
+    await assertFails(getDoc(doc(db('farmer1'), 'delivery_codes', 'o1')));
+    await assertFails(updateDoc(doc(db('buyer1'), 'delivery_codes', 'o1'), { code: '111111' }));
+  });
+
+  it('no code for a delivered or cancelled order', async () => {
+    await seedOrder('o1', 'delivered');
+    await assertFails(codeDoc('buyer1'));
+    await seedOrder('o2', 'cancelled');
+    await assertFails(codeDoc('buyer1', 'o2'));
+  });
+
+  it('delivery needs the buyer\'s code once one exists', async () => {
+    await inTransit();
+    await codeDoc('buyer1');
+    await assertFails(deliver('trans1'));
+    await assertFails(deliver('trans1', { deliveryCode: '000000' }));
+    await assertFails(deliver('trans2', { deliveryCode: '482913' }));
+    await assertSucceeds(deliver('trans1', { deliveryCode: '482913' }));
+  });
+
+  it('the order cannot be marked delivered apart from its job', async () => {
+    await inTransit();
+    await assertFails(updateDoc(doc(db('trans1'), 'orders', 'o1'), {
+      status: 'delivered', deliveredAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    }));
+  });
+
+  it('the photo path must be the transporter\'s own upload for this order', async () => {
+    await inTransit();
+    await codeDoc('buyer1');
+    await assertFails(deliver('trans1', { deliveryCode: '482913', podPhotoPath: 'pod_photos/o1/trans2_a.jpg' }));
+    await assertFails(deliver('trans1', { deliveryCode: '482913', podPhotoPath: 'pod_photos/o9/trans1_a.jpg' }));
+    await assertSucceeds(deliver('trans1', { deliveryCode: '482913', podPhotoPath: 'pod_photos/o1/trans1_a.jpg' }));
+  });
+
+  it('storage: the assigned transporter uploads the photo; parties read it', async () => {
+    await inTransit();
+    const path = 'pod_photos/o1/trans1_a.jpg';
+    await assertFails(uploadBytes(ref(storage('trans2'), 'pod_photos/o1/trans2_a.jpg'), jpg, meta));
+    await assertFails(uploadBytes(ref(storage('trans1'), 'pod_photos/o1/trans2_a.jpg'), jpg, meta));
+    await assertSucceeds(uploadBytes(ref(storage('trans1'), path), jpg, meta));
+    await assertSucceeds(getBytes(ref(storage('buyer1'), path)));
+    await assertSucceeds(getBytes(ref(storage('farmer1'), path)));
+    await assertFails(getBytes(ref(storage('stranger'), path)));
+    await assertFails(uploadBytes(ref(storage('trans1'), path), jpg, meta)); // no overwrite
+  });
+});

@@ -1019,7 +1019,7 @@ class SparkBackend {
   ///   job goes back to `requested` (no transporter) and the order back to
   ///   `confirmed`.
   Future<void> transitionTransport(String jobId, String status,
-      {String? reason}) async {
+      {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     final uid = _uid;
     final me = await _requireRole(['transporter']);
     final ref = _col('transport_jobs').doc(jobId);
@@ -1163,11 +1163,16 @@ class SparkBackend {
       throw UserStateError('Invalid transport transition.');
     }
     final delivered = next == 'delivered';
+    final code = (deliveryCode ?? '').trim();
     final batch = _db.batch()
       ..update(ref, {
         'status': next,
         '${next}At': _now,
         'updatedAt': _now,
+        // Proof of delivery: rules compare the code with the buyer's
+        // delivery_codes/{orderId} document.
+        if (delivered && code.isNotEmpty) 'deliveryCode': code,
+        if (delivered && podPhotoPath != null) 'podPhotoPath': podPhotoPath,
         // Privacy: never keep the last courier position after delivery.
         if (delivered) 'courierLat': FieldValue.delete(),
         if (delivered) 'courierLng': FieldValue.delete(),
@@ -1180,11 +1185,44 @@ class SparkBackend {
         'updatedAt': _now,
       });
     }
-    await batch.commit();
+    try {
+      await batch.commit();
+    } on FirebaseException catch (e) {
+      if (delivered && e.code == 'permission-denied') {
+        throw UserStateError(L10n.current.svcDeliveryCodeWrong);
+      }
+      rethrow;
+    }
     await notifyParties(
         'Delivery update', 'Delivery for $productLabel is now $next.');
     if (delivered && orderRef != null) {
       await _cleanupVideoForOrder(orderId, job['productId']?.toString());
+    }
+  }
+
+  /// Buyer: the 6-digit code the transporter must enter to complete the
+  /// delivery (proof of delivery). Created once per order; only the buyer
+  /// and admins can read it.
+  Future<String> ensureDeliveryCode(String orderId) async {
+    final uid = _uid;
+    final ref = _col('delivery_codes').doc(orderId);
+    final existing = (await ref.get()).data();
+    if (existing != null) return (existing['code'] ?? '').toString();
+    final code = (Random.secure().nextInt(900000) + 100000).toString();
+    try {
+      await ref.set({
+        'orderId': orderId,
+        'buyerId': uid,
+        'code': code,
+        'createdAt': _now,
+      });
+      return code;
+    } on FirebaseException catch (e) {
+      // Another device created it first (codes are never overwritten).
+      if (e.code != 'permission-denied') rethrow;
+      final raced = (await ref.get()).data();
+      if (raced == null) rethrow;
+      return (raced['code'] ?? '').toString();
     }
   }
 

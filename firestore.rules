@@ -485,7 +485,11 @@ service cloud.firestore {
         || (r.get('transporterId', null) == uid() && d.transporterId == uid()
           && ((r.status == 'assigned' && d.status == 'pickedUp')
             || (r.status == 'pickedUp' && d.status == 'inTransit')
-            || (r.status == 'inTransit' && d.status == 'delivered'))
+            // Delivered only in the same write as the job's delivery, which
+            // is where the buyer's delivery code is checked.
+            || (r.status == 'inTransit' && d.status == 'delivered'
+              && getAfter(docPath('transport_jobs/' + r.transportJobId)).data.status
+                == 'delivered'))
           && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt',
             'inTransitAt', 'deliveredAt']))
         // Drop before pickup: the order goes back to confirmed (reopened).
@@ -567,6 +571,18 @@ service cloud.firestore {
         && (!('courierLng' in d) || (d.courierLng is number
           && d.courierLng >= -180 && d.courierLng <= 180));
     }
+    // Proof of delivery: when the buyer has a delivery code, the transporter
+    // must write the same code to complete the job.
+    function deliveryCodeOk(orderId) {
+      let p = docPath('delivery_codes/' + orderId);
+      return !exists(p)
+        || request.resource.data.get('deliveryCode', '') == get(p).data.code;
+    }
+    function podPhotoOk(orderId) {
+      let d = request.resource.data;
+      return !('podPhotoPath' in d) || (d.podPhotoPath is string
+        && d.podPhotoPath.matches('pod_photos/' + orderId + '/' + uid() + '_[^/]+'));
+    }
     function transporterJobUpdate() {
       let d = request.resource.data;
       let r = resource.data;
@@ -583,10 +599,15 @@ service cloud.firestore {
         // Advance in order.
         || (r.get('transporterId', null) == uid() && d.transporterId == uid()
           && ((r.status == 'accepted' && d.status == 'pickedUp')
-            || (r.status == 'pickedUp' && d.status == 'inTransit')
-            || (r.status == 'inTransit' && d.status == 'delivered'))
+            || (r.status == 'pickedUp' && d.status == 'inTransit'))
           && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
-            'deliveredAt', 'courierLat', 'courierLng', 'locationUpdatedAt']))
+            'courierLat', 'courierLng', 'locationUpdatedAt']))
+        // Deliver: with the buyer's code and an optional photo.
+        || (r.get('transporterId', null) == uid() && d.transporterId == uid()
+          && r.status == 'inTransit' && d.status == 'delivered'
+          && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
+            'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt'])
+          && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
         // Live position while active.
         || (r.get('transporterId', null) == uid()
           && r.status in ['accepted', 'pickedUp', 'inTransit']
@@ -629,6 +650,26 @@ service cloud.firestore {
           && request.resource.data.farmerId == resource.data.farmerId
           && farmerJobUpdate())
         || (transporter() && transporterJobUpdate());
+      allow delete: if admin();
+    }
+
+    // One delivery code per order, readable only by its buyer (and admins).
+    // The transporter never reads it: the rules above compare it.
+    match /delivery_codes/{orderId} {
+      allow get: if admin()
+        || (buyer() && (resource == null || resource.data.buyerId == uid()));
+      allow list: if admin();
+      allow create: if buyer()
+        && request.resource.data.keys().hasOnly(['orderId', 'buyerId', 'code', 'createdAt'])
+        && request.resource.data.orderId == orderId
+        && request.resource.data.buyerId == uid()
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('[0-9]{6}')
+        && request.resource.data.createdAt == request.time
+        && orderDoc(orderId).buyerId == uid()
+        && orderDoc(orderId).status in ['pending', 'confirmed', 'assigned', 'pickedUp',
+          'inTransit'];
+      allow update: if false;
       allow delete: if admin();
     }
 

@@ -107,6 +107,8 @@ class MockCollectionJobRepository implements CollectionJobRepository {
     required String logisticsProviderId,
     required CollectionJobStatus status,
     String? reason,
+    String? deliveryCode,
+    String? podPhotoPath,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     final index = _jobs.indexWhere((job) => job.id == jobId);

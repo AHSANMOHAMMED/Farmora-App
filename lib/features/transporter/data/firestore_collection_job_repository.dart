@@ -92,8 +92,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             .orderBy('createdAt', descending: true)
             .snapshots()
             .listen((snapshot) {
-          final visible = snapshot.docs.where(
-              (doc) => _visibleOpenJob(doc.data(), logisticsProviderId));
+          final visible = snapshot.docs
+              .where((doc) => _visibleOpenJob(doc.data(), logisticsProviderId));
           for (final doc in snapshot.docs) {
             _trackTargeted(doc, logisticsProviderId);
           }
@@ -217,6 +217,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     required String logisticsProviderId,
     required CollectionJobStatus status,
     String? reason,
+    String? deliveryCode,
+    String? podPhotoPath,
   }) async {
     try {
       if (status == CollectionJobStatus.collected) {
@@ -229,7 +231,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         if (currentStatus == 'pickedUp') {
           await _transition(jobId, 'inTransit');
         }
-        await _transition(jobId, 'delivered');
+        await _transition(jobId, 'delivered',
+            deliveryCode: deliveryCode, podPhotoPath: podPhotoPath);
       } else if (status == CollectionJobStatus.cancelled) {
         await _transition(jobId, 'cancelled', reason: reason);
       } else {
@@ -255,15 +258,20 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   /// semantics: `declined` releases a targeted request to everyone and
   /// `cancelled` (before pickup) reopens the job.
   Future<void> _transition(String jobId, String status,
-      {String? reason}) async {
+      {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     if (!kUseCloudFunctions) {
-      await FirestoreService().transitionTransport(jobId, status, reason: reason);
+      await FirestoreService().transitionTransport(jobId, status,
+          reason: reason,
+          deliveryCode: deliveryCode,
+          podPhotoPath: podPhotoPath);
       return;
     }
     await _functions.httpsCallable('transitionTransport').call<void>({
       'jobId': jobId,
       'status': status,
       if (reason != null) 'reason': reason,
+      if (deliveryCode != null) 'deliveryCode': deliveryCode,
+      if (podPhotoPath != null) 'podPhotoPath': podPhotoPath,
     });
   }
 
@@ -321,8 +329,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
         query = query.where('logisticsProviderId', isEqualTo: _providerId);
       }
       final snapshot = await query.limit(1).get();
-      final data =
-          snapshot.docs.isEmpty ? null : snapshot.docs.first.data();
+      final data = snapshot.docs.isEmpty ? null : snapshot.docs.first.data();
       if (data == null) return null;
       return JobIssueReport(
         jobId: jobId,
@@ -358,8 +365,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     DocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data() ?? const <String, dynamic>{};
-    final pickup =
-        _text(data, ['pickupLocation', 'pickupAddress', 'pickup']);
+    final pickup = _text(data, ['pickupLocation', 'pickupAddress', 'pickup']);
     final delivery =
         _text(data, ['deliveryLocation', 'dropoffAddress', 'dropoff']);
     final status = _status(data['status']?.toString());
@@ -409,8 +415,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
       acceptedAt:
           _date(data['acceptedAt']) ?? _date(data['acceptedByTransporterAt']),
       cancelledAt: _date(data['cancelledAt']),
-      deliveryFeeMinor:
-          _integer(data, ['deliveryFeeMinor', 'offeredFeeMinor']),
+      deliveryFeeMinor: _integer(data, ['deliveryFeeMinor', 'offeredFeeMinor']),
     );
   }
 
@@ -496,7 +501,9 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
   String _writeMessage(FirebaseException error) {
     final l = L10n.current;
     return switch (error.code) {
-      'permission-denied' || 'failed-precondition' || 'aborted' =>
+      'permission-denied' ||
+      'failed-precondition' ||
+      'aborted' =>
         l.jobUpdatedElsewhere,
       'not-found' => l.jobNoLongerExists,
       'unavailable' => l.jobDatabaseUnavailable,

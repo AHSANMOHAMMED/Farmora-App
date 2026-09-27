@@ -3679,5 +3679,17 @@
       }
     }
   },
-  "authLanguageButton": "Change language"
+  "authLanguageButton": "Change language",
+  "svcDeliveryCodeWrong": "The delivery code is incorrect. Ask the buyer for the 6-digit code shown in their order.",
+  "deliveryCodeTitle": "Delivery code",
+  "deliveryCodeBuyerHint": "Give this code to the driver only after you have received and checked your goods.",
+  "deliveryCodeUnavailable": "Delivery code unavailable. Check your connection and reopen this order.",
+  "deliveryProofTitle": "Confirm delivery",
+  "deliveryProofCodeLabel": "Buyer's 6-digit code",
+  "deliveryProofCodeHint": "Ask the buyer for the code shown in their order.",
+  "deliveryProofCodeInvalid": "Enter the 6-digit code.",
+  "deliveryProofAddPhoto": "Add delivery photo (optional)",
+  "deliveryProofPhotoAdded": "Photo added",
+  "deliveryProofPhoto": "Delivery photo",
+  "deliveryProofConfirmed": "Delivered with the buyer's code"
 }

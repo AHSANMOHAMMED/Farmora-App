@@ -68,6 +68,8 @@ abstract interface class CollectionJobRepository {
     required String logisticsProviderId,
     required CollectionJobStatus status,
     String? reason,
+    String? deliveryCode,
+    String? podPhotoPath,
   });
 
   /// Persists an issue report for [jobId] (a new document per report).

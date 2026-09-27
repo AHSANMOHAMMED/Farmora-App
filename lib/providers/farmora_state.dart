@@ -671,8 +671,27 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Orders whose delivery code this session already created or found.
+  final Set<String> _deliveryCodesEnsured = {};
+
+  /// Buyer: create the proof-of-delivery code as soon as an order is active,
+  /// so the transporter's "delivered" step is checked even if the buyer
+  /// never opens the order screen.
+  void _ensureDeliveryCodes(List<FarmoraOrder> orders) {
+    for (final o in orders) {
+      if (o.isCancelled || o.statusStep > 2) continue;
+      if (!_deliveryCodesEnsured.add(o.id)) continue;
+      _firestoreService.ensureDeliveryCode(o.id).catchError((Object e) {
+        _deliveryCodesEnsured.remove(o.id);
+        debugPrint('Delivery code for ${o.id} not created: $e');
+        return '';
+      });
+    }
+  }
+
   /// Drops account-specific data (re-seeding the sample catalog in demo mode).
   void _clearAccountData() {
+    _deliveryCodesEnsured.clear();
     _products.clear();
     _orders.clear();
     _jobs.clear();
@@ -1205,9 +1224,10 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> updateJobStatus(String jobId, String status,
-      {String? reason}) async {
+      {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     _requireSignedIn();
-    await _firestoreService.transitionTransport(jobId, status, reason: reason);
+    await _firestoreService.transitionTransport(jobId, status,
+        reason: reason, deliveryCode: deliveryCode, podPhotoPath: podPhotoPath);
   }
 
   /// Transporter declines a request addressed to them.
@@ -1487,6 +1507,7 @@ class FarmoraState extends ChangeNotifier {
           ..addAll(firestoreOrders.isEmpty && kDemoData
               ? DemoCatalogData.sampleOrders
               : firestoreOrders);
+        if (role == Role.buyer) _ensureDeliveryCodes(firestoreOrders);
         _recalculateStats();
         _ordersLoading = false;
         notifyListeners();

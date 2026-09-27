@@ -1833,6 +1833,8 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
   const reason = typeof data.reason === "string" ? data.reason.trim().slice(0, 500) : "";
+  const deliveryCode = typeof data.deliveryCode === "string" ? data.deliveryCode.trim() : "";
+  const podPhotoPath = typeof data.podPhotoPath === "string" ? data.podPhotoPath : "";
   if (!jobId || !nextStatus) {
     throw new functions.https.HttpsError("invalid-argument", "jobId and status are required.");
   }
@@ -1943,12 +1945,24 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
         throw new functions.https.HttpsError("failed-precondition", "Order is not ready for this transporter.");
       }
     }
+    // Proof of delivery: the buyer's code must match when one exists.
+    const delivered = requestedStatus === "delivered";
+    if (delivered && currentJob.orderId) {
+      const codeSnap = await transaction.get(db.collection("delivery_codes").doc(String(currentJob.orderId)));
+      if (codeSnap.exists && codeSnap.get("code") !== deliveryCode) {
+        throw new functions.https.HttpsError("permission-denied", "The delivery code is incorrect.");
+      }
+    }
+    const validPhoto = delivered && currentJob.orderId
+      && podPhotoPath.startsWith(`pod_photos/${currentJob.orderId}/${uid}_`) && !podPhotoPath.slice(1).includes("//");
     transaction.update(ref, {
       status: requestedStatus,
       transporterId: uid,
       updatedAt: FieldValue.serverTimestamp(),
       [`${requestedStatus}At`]: FieldValue.serverTimestamp(),
       ...(requestedStatus === "cancelled" && reason ? { cancellationReason: reason } : {}),
+      ...(delivered && deliveryCode ? { deliveryCode } : {}),
+      ...(validPhoto ? { podPhotoPath } : {}),
     });
   });
   if (requestedStatus === "accepted" && job.orderId && job.requestedTransporterId === uid) {

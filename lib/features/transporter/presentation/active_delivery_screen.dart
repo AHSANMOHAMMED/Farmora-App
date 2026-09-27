@@ -15,6 +15,7 @@ import '../../../services/firebase_service.dart';
 import '../../messaging/presentation/chat_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
+import 'delivery_proof_dialog.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   final TransportJob job;
@@ -104,9 +105,15 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
 
   Future<void> _transition(BuildContext context, String next) async {
     if (_transitioning) return;
+    DeliveryProof? proof;
+    if (next == 'delivered') {
+      proof = await collectDeliveryProof(context, orderId: job.orderId ?? '');
+      if (proof == null || !mounted) return;
+    }
     setState(() => _transitioning = true);
     try {
-      await _service.transitionTransport(job.id, next);
+      await _service.transitionTransport(job.id, next,
+          deliveryCode: proof?.code, podPhotoPath: proof?.photoPath);
       DeliveryLocationService.instance.onJobStatusChanged(job.id, next);
       if (next == 'delivered' || next == 'cancelled') {
         DeliveryLocationService.instance.stopSharing(jobId: job.id);

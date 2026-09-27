@@ -855,17 +855,28 @@ class FirestoreService {
   }
 
   Future<void> transitionTransport(String jobId, String status,
-      {String? reason}) async {
+      {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     if (!kUseCloudFunctions) {
-      await _spark.transitionTransport(jobId, status, reason: reason);
+      await _spark.transitionTransport(jobId, status,
+          reason: reason,
+          deliveryCode: deliveryCode,
+          podPhotoPath: podPhotoPath);
       return;
     }
     await _functions.httpsCallable('transitionTransport').call({
       'jobId': jobId,
       'status': status,
       if (reason != null && reason.isNotEmpty) 'reason': reason,
+      if (deliveryCode != null && deliveryCode.isNotEmpty)
+        'deliveryCode': deliveryCode,
+      if (podPhotoPath != null) 'podPhotoPath': podPhotoPath,
     });
   }
+
+  /// Buyer: the delivery code for [orderId], created on first use. Plain
+  /// Firestore in both backend modes (rules restrict it to the buyer).
+  Future<String> ensureDeliveryCode(String orderId) =>
+      _spark.ensureDeliveryCode(orderId);
 
   /// Transporter declines a job that was requested for them.
   Future<void> declineTransportJob(String jobId) =>
@@ -1077,6 +1088,21 @@ class FirestoreService {
     final uid = _requireUid;
     return _uploadImage(
       path: 'payment_slips/$orderId/${uid}_${_uniqueName(image)}',
+      image: image,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Transporter: proof-of-delivery photo for [orderId] (assigned
+  /// transporter only, while picked up / in transit, per storage rules).
+  Future<StoredImage> uploadDeliveryPhoto({
+    required String orderId,
+    required PickedImage image,
+    void Function(double progress)? onProgress,
+  }) {
+    final uid = _requireUid;
+    return _uploadImage(
+      path: 'pod_photos/$orderId/${uid}_${_uniqueName(image)}',
       image: image,
       onProgress: onProgress,
     );

@@ -11704,6 +11704,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change language'**
   String get authLanguageButton;
+
+  /// No description provided for @svcDeliveryCodeWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'The delivery code is incorrect. Ask the buyer for the 6-digit code shown in their order.'**
+  String get svcDeliveryCodeWrong;
+
+  /// No description provided for @deliveryCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery code'**
+  String get deliveryCodeTitle;
+
+  /// No description provided for @deliveryCodeBuyerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Give this code to the driver only after you have received and checked your goods.'**
+  String get deliveryCodeBuyerHint;
+
+  /// No description provided for @deliveryCodeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery code unavailable. Check your connection and reopen this order.'**
+  String get deliveryCodeUnavailable;
+
+  /// No description provided for @deliveryProofTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm delivery'**
+  String get deliveryProofTitle;
+
+  /// No description provided for @deliveryProofCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyer\'s 6-digit code'**
+  String get deliveryProofCodeLabel;
+
+  /// No description provided for @deliveryProofCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the buyer for the code shown in their order.'**
+  String get deliveryProofCodeHint;
+
+  /// No description provided for @deliveryProofCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code.'**
+  String get deliveryProofCodeInvalid;
+
+  /// No description provided for @deliveryProofAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add delivery photo (optional)'**
+  String get deliveryProofAddPhoto;
+
+  /// No description provided for @deliveryProofPhotoAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo added'**
+  String get deliveryProofPhotoAdded;
+
+  /// No description provided for @deliveryProofPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery photo'**
+  String get deliveryProofPhoto;
+
+  /// No description provided for @deliveryProofConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered with the buyer\'s code'**
+  String get deliveryProofConfirmed;
 }
 
 class _AppLocalizationsDelegate

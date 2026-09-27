@@ -30,6 +30,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
   Stream<List<TransportJob>>? _jobStream;
   final Map<String, Stream<Map<String, dynamic>?>> _transporterStreams = {};
   bool _cancelling = false;
+  Future<String>? _deliveryCode;
 
   FarmoraOrder get order => widget.order;
 
@@ -109,6 +110,63 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
     } finally {
       if (mounted) setState(() => _cancelling = false);
     }
+  }
+
+  /// Proof of delivery: the buyer hands this code to the driver on receipt.
+  Widget _buildDeliveryCode(AppLocalizations l, FarmoraOrder o) {
+    if (o.isCancelled || o.statusStep < 1 || o.statusStep > 2) {
+      return const SizedBox.shrink();
+    }
+    final code = _deliveryCode ??= _service.ensureDeliveryCode(o.id);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: FutureBuilder<String>(
+        future: code,
+        builder: (context, snap) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_user_outlined,
+                    color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(l.deliveryCodeTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (snap.hasData)
+              SelectableText(
+                snap.data!,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 8,
+                  color: AppColors.primary,
+                ),
+              )
+            else if (snap.hasError)
+              Text(l.deliveryCodeUnavailable,
+                  style: const TextStyle(color: AppColors.error))
+            else
+              const LinearProgressIndicator(),
+            const SizedBox(height: 6),
+            Text(l.deliveryCodeBuyerHint,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Complaints (with photo evidence) are possible once the farmer has
@@ -292,6 +350,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
             // Status Timeline
             _buildStatusTimeline(l, currentOrder),
             const SizedBox(height: 20),
+            _buildDeliveryCode(l, currentOrder),
             if (!currentOrder.isCancelled && currentOrder.statusStep < 3)
               SizedBox(
                 width: double.infinity,

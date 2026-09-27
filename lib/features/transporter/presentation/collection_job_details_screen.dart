@@ -10,6 +10,7 @@ import '../../messaging/presentation/chat_screen.dart';
 import '../application/transporter_controller.dart';
 import '../domain/collection_job.dart';
 import 'active_delivery_screen.dart';
+import 'delivery_proof_dialog.dart';
 import 'widgets/job_status_chip.dart';
 import 'widgets/job_timeline.dart';
 import 'widgets/live_location.dart';
@@ -416,31 +417,38 @@ class _CollectionJobDetailsScreenState
     required CollectionJobStatus nextStatus,
   }) async {
     final l10n = context.l10n;
-    final confirmed = await confirmTransporterAction(
-      context,
-      title: switch (nextStatus) {
-        CollectionJobStatus.collected => l10n.jobConfirmPickupTitle,
-        CollectionJobStatus.inTransit => l10n.jobStartDeliveryTitle,
-        _ => l10n.jobConfirmDeliveryTitle,
-      },
-      message: switch (nextStatus) {
-        CollectionJobStatus.collected => l10n.jobConfirmPickupMessage,
-        CollectionJobStatus.inTransit =>
-          l10n.jobStartDeliveryMessage(job.deliveryLocation),
-        _ => l10n.jobConfirmDeliveryMessage(job.deliveryLocation),
-      },
-      confirmLabel: switch (nextStatus) {
-        CollectionJobStatus.collected => l10n.jobMarkCollectedAction,
-        CollectionJobStatus.inTransit => l10n.jobStartDeliveryAction,
-        _ => l10n.jobCompleteDeliveryAction,
-      },
-    );
+    DeliveryProof? proof;
+    if (nextStatus == CollectionJobStatus.completed) {
+      proof = await collectDeliveryProof(context, orderId: job.orderId ?? '');
+      if (proof == null || !context.mounted) return;
+    }
+    final confirmed = proof != null ||
+        await confirmTransporterAction(
+          context,
+          title: switch (nextStatus) {
+            CollectionJobStatus.collected => l10n.jobConfirmPickupTitle,
+            CollectionJobStatus.inTransit => l10n.jobStartDeliveryTitle,
+            _ => l10n.jobConfirmDeliveryTitle,
+          },
+          message: switch (nextStatus) {
+            CollectionJobStatus.collected => l10n.jobConfirmPickupMessage,
+            CollectionJobStatus.inTransit =>
+              l10n.jobStartDeliveryMessage(job.deliveryLocation),
+            _ => l10n.jobConfirmDeliveryMessage(job.deliveryLocation),
+          },
+          confirmLabel: switch (nextStatus) {
+            CollectionJobStatus.collected => l10n.jobMarkCollectedAction,
+            CollectionJobStatus.inTransit => l10n.jobStartDeliveryAction,
+            _ => l10n.jobCompleteDeliveryAction,
+          },
+        );
     if (!confirmed || !context.mounted) return;
     setState(() => _busy = true);
     final result = switch (nextStatus) {
       CollectionJobStatus.collected => await state.markCollected(job.id),
       CollectionJobStatus.inTransit => await state.startDelivery(job.id),
-      _ => await state.completeDelivery(job.id),
+      _ => await state.completeDelivery(job.id,
+          deliveryCode: proof?.code, podPhotoPath: proof?.photoPath),
     };
     if (!context.mounted) return;
     setState(() => _busy = false);
