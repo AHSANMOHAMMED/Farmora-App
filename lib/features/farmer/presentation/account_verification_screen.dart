@@ -113,6 +113,53 @@ List<_RequiredDoc> _requiredDocsFor(Role role) {
           keywords: const ['insurance'],
         ),
       ];
+    case Role.driver:
+      return [
+        _RequiredDoc(
+          documentType: 'NIC',
+          label: VerificationDoc.documentTypeLabel('NIC'),
+          description: 'National Identity Card (front and back in one file).',
+          icon: Icons.badge_outlined,
+          keywords: const ['nic', 'national id'],
+        ),
+        _RequiredDoc(
+          documentType: 'Driving Licence',
+          label: VerificationDoc.documentTypeLabel('Driving Licence'),
+          description: 'A valid driving licence for the vehicle you drive.',
+          icon: Icons.credit_card_outlined,
+          keywords: const ['driving', 'driver'],
+        ),
+      ];
+    case Role.warehouse:
+      return [
+        const _RequiredDoc(
+          documentType: 'Business Registration',
+          label: 'Business Registration',
+          description: 'Business registration of the collection centre or '
+              'cold store.',
+          icon: Icons.warehouse_outlined,
+          keywords: ['business', 'br', 'registration'],
+        ),
+      ];
+    case Role.inspector:
+      return [
+        _RequiredDoc(
+          documentType: 'NIC',
+          label: VerificationDoc.documentTypeLabel('NIC'),
+          description: 'National Identity Card (front and back in one file).',
+          icon: Icons.badge_outlined,
+          keywords: const ['nic', 'national id'],
+        ),
+        const _RequiredDoc(
+          documentType: 'Qualification',
+          label: 'Qualification',
+          description: 'Grading / quality-control qualification or '
+              'appointment letter.',
+          icon: Icons.fact_check_outlined,
+          keywords: ['qualification', 'certificate', 'appointment'],
+        ),
+      ];
+    case Role.finance:
     case Role.expert:
       return [
         _RequiredDoc(

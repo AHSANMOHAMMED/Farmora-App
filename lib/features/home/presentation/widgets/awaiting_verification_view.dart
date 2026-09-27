@@ -37,6 +37,10 @@ class AwaitingVerificationView extends StatelessWidget {
       Role.admin => 'Administrator',
       Role.supplier => 'Input Supplier',
       Role.expert => 'Agri Expert',
+      Role.driver => 'Driver',
+      Role.warehouse => 'Warehouse',
+      Role.inspector => 'Quality Inspector',
+      Role.finance => 'Finance',
     };
 
     return Scaffold(

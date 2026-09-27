@@ -13,6 +13,7 @@ import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
 import '../../farmer/presentation/add_product_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
+import '../../quality/presentation/quality_inspector_dashboard_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
@@ -141,6 +142,11 @@ class ProductDetailScreen extends StatelessWidget {
                           )
                         : _buildFallbackImage(),
                   ),
+                ),
+                ProductQualityPanel(
+                  product: product,
+                  isOwner: state.currentUserId.isNotEmpty &&
+                      state.currentUserId == product.farmerId,
                 ),
                 if (product.videoUrl != null && product.videoUrl!.isNotEmpty) ...[
                   const SizedBox(height: 16),

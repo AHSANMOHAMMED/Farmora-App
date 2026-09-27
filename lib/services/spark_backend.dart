@@ -102,6 +102,17 @@ class SparkBackend {
     return me;
   }
 
+  /// Admins, or verified finance staff (settlements only).
+  Future<Map<String, dynamic>> _requireAdminOrFinance() async {
+    final me = await _me();
+    final ok = (me['role'] == 'admin' || me['role'] == 'finance') &&
+        me['isVerified'] == true &&
+        me['isSuspended'] != true &&
+        me['isDeleted'] != true;
+    if (!ok) throw UserStateError(L10n.current.errorNoPermission);
+    return me;
+  }
+
   /// Best-effort in-app notification for another user (rules: whitelisted
   /// keys/types, `userId != uid` except farm-task reminders).
   Future<void> _notify(
@@ -1913,7 +1924,8 @@ class SparkBackend {
     required String role,
   }) async {
     final admin = await _requireAdmin();
-    if (!['farmer', 'buyer', 'transporter', 'supplier', 'expert', 'admin'].contains(role)) {
+    if (!['farmer', 'buyer', 'transporter', 'supplier', 'expert', 'driver',
+          'warehouse', 'inspector', 'finance', 'admin'].contains(role)) {
       throw UserArgumentError('Invalid user or role.');
     }
     if (uid == _uid) throw UserStateError('You cannot change your own role.');
@@ -2100,7 +2112,8 @@ class SparkBackend {
     if (t.isEmpty || t.length > 120 || b.isEmpty || b.length > 2000) {
       throw UserArgumentError('Title and message are required.');
     }
-    if (!['all', 'farmer', 'buyer', 'transporter', 'supplier', 'expert'].contains(audience)) {
+    if (!['all', 'farmer', 'buyer', 'transporter', 'supplier', 'expert',
+          'driver', 'warehouse', 'inspector'].contains(audience)) {
       throw UserArgumentError('Invalid audience.');
     }
     Query<Map<String, dynamic>> query = _col('users');
@@ -2152,7 +2165,7 @@ class SparkBackend {
     String? transactionReference,
     String? holdReason,
   }) async {
-    final admin = await _requireAdmin();
+    final admin = await _requireAdminOrFinance();
     if (!['settled', 'on_hold', 'processing', 'rejected'].contains(status)) {
       throw UserArgumentError('Invalid settlement update.');
     }

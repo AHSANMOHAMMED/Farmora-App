@@ -13012,6 +13012,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel question'**
   String get conCancelQuestion;
+
+  /// No description provided for @roleDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get roleDriver;
+
+  /// No description provided for @roleDriverDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive deliveries assigned by your transport company.'**
+  String get roleDriverDescription;
+
+  /// No description provided for @roleWarehouse.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse / Collection centre'**
+  String get roleWarehouse;
+
+  /// No description provided for @roleWarehouseDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive, grade, store and dispatch produce lots.'**
+  String get roleWarehouseDescription;
+
+  /// No description provided for @roleInspector.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality Inspector'**
+  String get roleInspector;
+
+  /// No description provided for @roleInspectorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspect and grade produce so buyers can trust it.'**
+  String get roleInspectorDescription;
+
+  /// No description provided for @roleFinance.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance'**
+  String get roleFinance;
+
+  /// No description provided for @roleFinanceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Review payouts and settlements.'**
+  String get roleFinanceDescription;
+
+  /// No description provided for @finTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance'**
+  String get finTitle;
+
+  /// No description provided for @finPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Payouts to review'**
+  String get finPending;
+
+  /// No description provided for @finProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get finProcessing;
+
+  /// No description provided for @finSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'Settled'**
+  String get finSettled;
+
+  /// No description provided for @finOnHold.
+  ///
+  /// In en, this message translates to:
+  /// **'On hold'**
+  String get finOnHold;
+
+  /// No description provided for @finCashCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid orders (loaded)'**
+  String get finCashCollected;
+
+  /// No description provided for @finOpenSettlements.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settlements'**
+  String get finOpenSettlements;
+
+  /// No description provided for @qcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality inspections'**
+  String get qcTitle;
+
+  /// No description provided for @qcRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get qcRequests;
+
+  /// No description provided for @qcMyInspections.
+  ///
+  /// In en, this message translates to:
+  /// **'My inspections'**
+  String get qcMyInspections;
+
+  /// No description provided for @qcNoRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No inspection requests right now.'**
+  String get qcNoRequests;
+
+  /// No description provided for @qcNoInspections.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t graded anything yet.'**
+  String get qcNoInspections;
+
+  /// No description provided for @qcInspect.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspect'**
+  String get qcInspect;
+
+  /// No description provided for @qcGrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade'**
+  String get qcGrade;
+
+  /// No description provided for @qcMoisture.
+  ///
+  /// In en, this message translates to:
+  /// **'Moisture % (optional)'**
+  String get qcMoisture;
+
+  /// No description provided for @qcNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Findings'**
+  String get qcNotes;
+
+  /// No description provided for @qcSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Certify grade'**
+  String get qcSubmit;
+
+  /// No description provided for @qcRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Request quality inspection'**
+  String get qcRequest;
+
+  /// No description provided for @qcRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspection requested'**
+  String get qcRequested;
+
+  /// No description provided for @qcCertified.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality grade {grade}'**
+  String qcCertified(String grade);
+
+  /// No description provided for @qcCertifiedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspected by {name} on {date}'**
+  String qcCertifiedBy(String name, String date);
+
+  /// No description provided for @qcRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Did not pass inspection'**
+  String get qcRejected;
+
+  /// No description provided for @whTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse'**
+  String get whTitle;
+
+  /// No description provided for @whInStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lots in stock'**
+  String get whInStock;
+
+  /// No description provided for @whCold.
+  ///
+  /// In en, this message translates to:
+  /// **'Cold storage'**
+  String get whCold;
+
+  /// No description provided for @whAmbient.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambient'**
+  String get whAmbient;
+
+  /// No description provided for @whExpiring.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiring within 3 days'**
+  String get whExpiring;
+
+  /// No description provided for @whReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive lot'**
+  String get whReceive;
+
+  /// No description provided for @whProduce.
+  ///
+  /// In en, this message translates to:
+  /// **'Produce'**
+  String get whProduce;
+
+  /// No description provided for @whOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer / owner'**
+  String get whOwner;
+
+  /// No description provided for @whQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get whQuantity;
+
+  /// No description provided for @whGrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade'**
+  String get whGrade;
+
+  /// No description provided for @whUngraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ungraded'**
+  String get whUngraded;
+
+  /// No description provided for @whExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Best before'**
+  String get whExpiry;
+
+  /// No description provided for @whNoExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'No expiry date'**
+  String get whNoExpiry;
+
+  /// No description provided for @whNoLots.
+  ///
+  /// In en, this message translates to:
+  /// **'No lots yet. Receive your first produce lot.'**
+  String get whNoLots;
+
+  /// No description provided for @whRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{qty} {unit} left of {total}'**
+  String whRemaining(String qty, String unit, String total);
+
+  /// No description provided for @whDispatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatch'**
+  String get whDispatch;
+
+  /// No description provided for @whSpoiled.
+  ///
+  /// In en, this message translates to:
+  /// **'Record spoilage'**
+  String get whSpoiled;
+
+  /// No description provided for @whHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Movements'**
+  String get whHistory;
+
+  /// No description provided for @whMoveInward.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get whMoveInward;
+
+  /// No description provided for @whMoveOutward.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatched'**
+  String get whMoveOutward;
+
+  /// No description provided for @whMoveSpoilage.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoiled'**
+  String get whMoveSpoilage;
+
+  /// No description provided for @whStatusDispatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatched'**
+  String get whStatusDispatched;
+
+  /// No description provided for @whStatusSpoiled.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoiled'**
+  String get whStatusSpoiled;
+
+  /// No description provided for @whStockForBuyers.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse stock'**
+  String get whStockForBuyers;
+
+  /// No description provided for @whStockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graded lots ready in collection centres'**
+  String get whStockSubtitle;
+
+  /// No description provided for @whNoStock.
+  ///
+  /// In en, this message translates to:
+  /// **'No warehouse stock listed right now.'**
+  String get whNoStock;
 }
 
 class _AppLocalizationsDelegate

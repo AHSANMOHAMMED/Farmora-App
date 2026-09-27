@@ -793,7 +793,8 @@ class FarmoraState extends ChangeNotifier {
       Role.buyer => _firestoreService.ordersByBuyerStream(uid, limit: _ordersLimit),
       Role.transporter => _firestoreService.ordersByTransporterStream(uid, limit: _ordersLimit),
       // Suppliers trade inputs (input_orders), not produce orders.
-      Role.supplier || Role.expert => const Stream<List<FarmoraOrder>>.empty(),
+      Role.finance => _firestoreService.ordersStream(limit: _ordersLimit),
+      _ => const Stream<List<FarmoraOrder>>.empty(),
     };
     _ordersSub = ordersStream.listen(
       (firestoreOrders) {
@@ -1764,7 +1765,8 @@ class FarmoraState extends ChangeNotifier {
     _settlementsSub?.cancel();
     if (role != Role.buyer) {
       _settlementsSub = _firestoreService
-          .settlementsStream(recipientId: isAdmin ? null : uid)
+          .settlementsStream(
+              recipientId: isAdmin || role == Role.finance ? null : uid)
           .listen(
         (firestoreSettlements) {
           _settlements

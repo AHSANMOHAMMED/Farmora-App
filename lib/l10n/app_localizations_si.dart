@@ -7386,4 +7386,182 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get conCancelQuestion => 'ප්‍රශ්නය අවලංගු කරන්න';
+
+  @override
+  String get roleDriver => 'රියදුරු';
+
+  @override
+  String get roleDriverDescription =>
+      'ඔබේ ප්‍රවාහන සමාගම පවරන බෙදාහැරීම් ධාවනය කරන්න.';
+
+  @override
+  String get roleWarehouse => 'ගබඩාව / එකතු කිරීමේ මධ්‍යස්ථානය';
+
+  @override
+  String get roleWarehouseDescription =>
+      'නිෂ්පාදන තොග ලබාගෙන, ශ්‍රේණිගත කර, ගබඩා කර යවන්න.';
+
+  @override
+  String get roleInspector => 'තත්ත්ව පරීක්ෂක';
+
+  @override
+  String get roleInspectorDescription =>
+      'ගැනුම්කරුවන්ට විශ්වාස කළ හැකි වන පරිදි නිෂ්පාදන පරීක්ෂා කර ශ්‍රේණිගත කරන්න.';
+
+  @override
+  String get roleFinance => 'මූල්‍ය';
+
+  @override
+  String get roleFinanceDescription => 'ගෙවීම් සහ බේරුම්කරණ සමාලෝචනය කරන්න.';
+
+  @override
+  String get finTitle => 'මූල්‍ය';
+
+  @override
+  String get finPending => 'සමාලෝචනය කළ යුතු ගෙවීම්';
+
+  @override
+  String get finProcessing => 'සකසමින්';
+
+  @override
+  String get finSettled => 'බේරුම් කළ';
+
+  @override
+  String get finOnHold => 'රඳවා ඇත';
+
+  @override
+  String get finCashCollected => 'ගෙවූ ඇණවුම් (පූරණය කළ)';
+
+  @override
+  String get finOpenSettlements => 'බේරුම්කරණ විවෘත කරන්න';
+
+  @override
+  String get qcTitle => 'තත්ත්ව පරීක්ෂා';
+
+  @override
+  String get qcRequests => 'ඉල්ලීම්';
+
+  @override
+  String get qcMyInspections => 'මගේ පරීක්ෂා';
+
+  @override
+  String get qcNoRequests => 'දැනට පරීක්ෂණ ඉල්ලීම් නැත.';
+
+  @override
+  String get qcNoInspections => 'ඔබ තවම කිසිවක් ශ්‍රේණිගත කර නැත.';
+
+  @override
+  String get qcInspect => 'පරීක්ෂා කරන්න';
+
+  @override
+  String get qcGrade => 'ශ්‍රේණිය';
+
+  @override
+  String get qcMoisture => 'තෙතමනය % (විකල්ප)';
+
+  @override
+  String get qcNotes => 'සොයාගැනීම්';
+
+  @override
+  String get qcSubmit => 'ශ්‍රේණිය සහතික කරන්න';
+
+  @override
+  String get qcRequest => 'තත්ත්ව පරීක්ෂණයක් ඉල්ලන්න';
+
+  @override
+  String get qcRequested => 'පරීක්ෂණය ඉල්ලා ඇත';
+
+  @override
+  String qcCertified(String grade) {
+    return 'තත්ත්ව ශ්‍රේණිය $grade';
+  }
+
+  @override
+  String qcCertifiedBy(String name, String date) {
+    return '$date දින $name විසින් පරීක්ෂා කරන ලදී';
+  }
+
+  @override
+  String get qcRejected => 'පරීක්ෂණය සමත් නොවීය';
+
+  @override
+  String get whTitle => 'ගබඩාව';
+
+  @override
+  String get whInStock => 'තොගයේ ඇති කට්ටි';
+
+  @override
+  String get whCold => 'ශීත ගබඩාව';
+
+  @override
+  String get whAmbient => 'සාමාන්‍ය උෂ්ණත්වය';
+
+  @override
+  String get whExpiring => 'දින 3ක් තුළ කල් ඉකුත් වේ';
+
+  @override
+  String get whReceive => 'කට්ටිය ලබා ගන්න';
+
+  @override
+  String get whProduce => 'නිෂ්පාදනය';
+
+  @override
+  String get whOwner => 'ගොවියා / හිමිකරු';
+
+  @override
+  String get whQuantity => 'ප්‍රමාණය';
+
+  @override
+  String get whGrade => 'ශ්‍රේණිය';
+
+  @override
+  String get whUngraded => 'ශ්‍රේණිගත නොකළ';
+
+  @override
+  String get whExpiry => 'කල් ඉකුත් වීමට පෙර';
+
+  @override
+  String get whNoExpiry => 'කල් ඉකුත් දිනයක් නැත';
+
+  @override
+  String get whNoLots => 'තවම කට්ටි නැත. ඔබේ පළමු නිෂ්පාදන කට්ටිය ලබා ගන්න.';
+
+  @override
+  String whRemaining(String qty, String unit, String total) {
+    return '$total න් $unit $qtyක් ඉතිරියි';
+  }
+
+  @override
+  String get whDispatch => 'යවන්න';
+
+  @override
+  String get whSpoiled => 'නරක් වීම සටහන් කරන්න';
+
+  @override
+  String get whHistory => 'චලනයන්';
+
+  @override
+  String get whMoveInward => 'ලැබුණි';
+
+  @override
+  String get whMoveOutward => 'යවන ලදී';
+
+  @override
+  String get whMoveSpoilage => 'නරක් විය';
+
+  @override
+  String get whStatusDispatched => 'යවා ඇත';
+
+  @override
+  String get whStatusSpoiled => 'නරක් වී ඇත';
+
+  @override
+  String get whStockForBuyers => 'ගබඩා තොගය';
+
+  @override
+  String get whStockSubtitle =>
+      'එකතු කිරීමේ මධ්‍යස්ථානවල සූදානම් ශ්‍රේණිගත කට්ටි';
+
+  @override
+  String get whNoStock => 'දැනට ගබඩා තොග ලැයිස්තුගත කර නැත.';
 }

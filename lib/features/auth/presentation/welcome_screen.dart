@@ -61,7 +61,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ...Role.values.where((r) => r != Role.admin).map(
+            ...kSelfSignupRoles.map(
                   (r) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Material(

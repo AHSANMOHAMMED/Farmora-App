@@ -7391,4 +7391,181 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get conCancelQuestion => 'Cancel question';
+
+  @override
+  String get roleDriver => 'Driver';
+
+  @override
+  String get roleDriverDescription =>
+      'Drive deliveries assigned by your transport company.';
+
+  @override
+  String get roleWarehouse => 'Warehouse / Collection centre';
+
+  @override
+  String get roleWarehouseDescription =>
+      'Receive, grade, store and dispatch produce lots.';
+
+  @override
+  String get roleInspector => 'Quality Inspector';
+
+  @override
+  String get roleInspectorDescription =>
+      'Inspect and grade produce so buyers can trust it.';
+
+  @override
+  String get roleFinance => 'Finance';
+
+  @override
+  String get roleFinanceDescription => 'Review payouts and settlements.';
+
+  @override
+  String get finTitle => 'Finance';
+
+  @override
+  String get finPending => 'Payouts to review';
+
+  @override
+  String get finProcessing => 'Processing';
+
+  @override
+  String get finSettled => 'Settled';
+
+  @override
+  String get finOnHold => 'On hold';
+
+  @override
+  String get finCashCollected => 'Paid orders (loaded)';
+
+  @override
+  String get finOpenSettlements => 'Open settlements';
+
+  @override
+  String get qcTitle => 'Quality inspections';
+
+  @override
+  String get qcRequests => 'Requests';
+
+  @override
+  String get qcMyInspections => 'My inspections';
+
+  @override
+  String get qcNoRequests => 'No inspection requests right now.';
+
+  @override
+  String get qcNoInspections => 'You haven\'t graded anything yet.';
+
+  @override
+  String get qcInspect => 'Inspect';
+
+  @override
+  String get qcGrade => 'Grade';
+
+  @override
+  String get qcMoisture => 'Moisture % (optional)';
+
+  @override
+  String get qcNotes => 'Findings';
+
+  @override
+  String get qcSubmit => 'Certify grade';
+
+  @override
+  String get qcRequest => 'Request quality inspection';
+
+  @override
+  String get qcRequested => 'Inspection requested';
+
+  @override
+  String qcCertified(String grade) {
+    return 'Quality grade $grade';
+  }
+
+  @override
+  String qcCertifiedBy(String name, String date) {
+    return 'Inspected by $name on $date';
+  }
+
+  @override
+  String get qcRejected => 'Did not pass inspection';
+
+  @override
+  String get whTitle => 'Warehouse';
+
+  @override
+  String get whInStock => 'Lots in stock';
+
+  @override
+  String get whCold => 'Cold storage';
+
+  @override
+  String get whAmbient => 'Ambient';
+
+  @override
+  String get whExpiring => 'Expiring within 3 days';
+
+  @override
+  String get whReceive => 'Receive lot';
+
+  @override
+  String get whProduce => 'Produce';
+
+  @override
+  String get whOwner => 'Farmer / owner';
+
+  @override
+  String get whQuantity => 'Quantity';
+
+  @override
+  String get whGrade => 'Grade';
+
+  @override
+  String get whUngraded => 'Ungraded';
+
+  @override
+  String get whExpiry => 'Best before';
+
+  @override
+  String get whNoExpiry => 'No expiry date';
+
+  @override
+  String get whNoLots => 'No lots yet. Receive your first produce lot.';
+
+  @override
+  String whRemaining(String qty, String unit, String total) {
+    return '$qty $unit left of $total';
+  }
+
+  @override
+  String get whDispatch => 'Dispatch';
+
+  @override
+  String get whSpoiled => 'Record spoilage';
+
+  @override
+  String get whHistory => 'Movements';
+
+  @override
+  String get whMoveInward => 'Received';
+
+  @override
+  String get whMoveOutward => 'Dispatched';
+
+  @override
+  String get whMoveSpoilage => 'Spoiled';
+
+  @override
+  String get whStatusDispatched => 'Dispatched';
+
+  @override
+  String get whStatusSpoiled => 'Spoiled';
+
+  @override
+  String get whStockForBuyers => 'Warehouse stock';
+
+  @override
+  String get whStockSubtitle => 'Graded lots ready in collection centres';
+
+  @override
+  String get whNoStock => 'No warehouse stock listed right now.';
 }

@@ -50,6 +50,11 @@ class Product {
   final String availability;
   final int listingVersion;
 
+  /// Certified by a quality inspector (A, B, C or Reject), if inspected.
+  final String? qualityGrade;
+  final DateTime? qualityInspectedAt;
+  final String? qualityInspectorName;
+
   const Product({
     this.id = '',
     required this.name,
@@ -83,6 +88,9 @@ class Product {
     this.searchTokens = const [],
     this.availability = '',
     this.listingVersion = 1,
+    this.qualityGrade,
+    this.qualityInspectedAt,
+    this.qualityInspectorName,
   });
 
   bool get isActive => status.toLowerCase() == 'active';
@@ -129,6 +137,9 @@ class Product {
     List<String>? searchTokens,
     String? availability,
     int? listingVersion,
+    String? qualityGrade,
+    DateTime? qualityInspectedAt,
+    String? qualityInspectorName,
   }) {
     return Product(
       id: id ?? this.id,
@@ -163,6 +174,9 @@ class Product {
       searchTokens: searchTokens ?? this.searchTokens,
       availability: availability ?? this.availability,
       listingVersion: listingVersion ?? this.listingVersion,
+      qualityGrade: qualityGrade ?? this.qualityGrade,
+      qualityInspectedAt: qualityInspectedAt ?? this.qualityInspectedAt,
+      qualityInspectorName: qualityInspectorName ?? this.qualityInspectorName,
     );
   }
 
@@ -273,6 +287,9 @@ class Product {
       searchTokens: List<String>.from(data['searchTokens'] ?? []),
       availability: (data['availability'] ?? '').toString(),
       listingVersion: (data['listingVersion'] as num?)?.toInt() ?? 1,
+      qualityGrade: data['qualityGrade'] as String?,
+      qualityInspectedAt: firebaseDate(data['qualityInspectedAt']),
+      qualityInspectorName: data['qualityInspectorName'] as String?,
       videoPath: data['videoPath'] as String?,
       videoUrl: data['videoUrl'] as String?,
       qrCode: data['qrCode'] as String?,

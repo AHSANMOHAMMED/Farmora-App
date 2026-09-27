@@ -42,6 +42,9 @@ import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
 import '../../inputs/presentation/supplier_screens.dart';
 import '../../community/presentation/community_screens.dart';
+import '../../finance/presentation/finance_dashboard_screen.dart';
+import '../../quality/presentation/quality_inspector_dashboard_screen.dart';
+import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'widgets/platform_gate_views.dart';
 import '../../auth/presentation/session_actions.dart';
@@ -141,9 +144,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Transporters trade only once verified by admin; farmers enter their role dashboard upon completing simple profile.
     final isUnverified =
-        (role == Role.transporter ||
-                role == Role.supplier ||
-                role == Role.expert) &&
+        const {
+              Role.transporter,
+              Role.supplier,
+              Role.expert,
+              Role.driver,
+              Role.warehouse,
+              Role.inspector,
+            }.contains(role) &&
             !state.isVerified;
     if (isUnverified) {
       screens = [
@@ -195,6 +203,72 @@ class _HomeScreenState extends State<HomeScreen>
             label: l10n.homeNavEarnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.warehouse) {
+      screens = const [
+        WarehouseDashboardScreen(),
+        NotificationsScreen(),
+        ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.whTitle,
+            icon: Icons.warehouse_outlined,
+            activeIcon: Icons.warehouse_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.inspector) {
+      screens = const [
+        QualityInspectorDashboardScreen(),
+        NotificationsScreen(),
+        ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.qcTitle,
+            icon: Icons.fact_check_outlined,
+            activeIcon: Icons.fact_check_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.finance) {
+      screens = [
+        FinanceDashboardScreen(
+            onOpenSettlements: () => setState(() => tabIndex = 1)),
+        const SettlementManagementScreen(),
+        const NotificationsScreen(),
+        const ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.homeNavHome,
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded),
+        _NavItem(
+            label: l10n.finOpenSettlements,
+            icon: Icons.account_balance_outlined,
+            activeIcon: Icons.account_balance_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
         _NavItem(
             label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,

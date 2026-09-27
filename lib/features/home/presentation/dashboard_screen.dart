@@ -37,6 +37,7 @@ import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
 import '../../community/presentation/community_screens.dart';
+import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1210,6 +1211,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'bg': const Color(0xFFEFEBE9),
           'onTap': () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+              ),
+        },
+        {
+          'icon': Icons.warehouse_outlined,
+          'label': l10n.whStockForBuyers,
+          'color': const Color(0xFF0277BD),
+          'bg': const Color(0xFFE1F5FE),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WarehouseStockScreen()),
               ),
         },
         {

@@ -7505,4 +7505,184 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get conCancelQuestion => 'கேள்வியை ரத்து செய்';
+
+  @override
+  String get roleDriver => 'ஓட்டுநர்';
+
+  @override
+  String get roleDriverDescription =>
+      'உங்கள் போக்குவரத்து நிறுவனம் ஒதுக்கும் டெலிவரிகளை ஓட்டுங்கள்.';
+
+  @override
+  String get roleWarehouse => 'கிடங்கு / சேகரிப்பு மையம்';
+
+  @override
+  String get roleWarehouseDescription =>
+      'விளைபொருள் தொகுதிகளைப் பெற்று, தரம் பிரித்து, சேமித்து அனுப்புங்கள்.';
+
+  @override
+  String get roleInspector => 'தர ஆய்வாளர்';
+
+  @override
+  String get roleInspectorDescription =>
+      'வாங்குபவர்கள் நம்பும்படி விளைபொருட்களை ஆய்வு செய்து தரம் பிரிக்கவும்.';
+
+  @override
+  String get roleFinance => 'நிதி';
+
+  @override
+  String get roleFinanceDescription =>
+      'கொடுப்பனவுகள் மற்றும் தீர்வுகளை மதிப்பாய்வு செய்யவும்.';
+
+  @override
+  String get finTitle => 'நிதி';
+
+  @override
+  String get finPending => 'மதிப்பாய்வு செய்ய வேண்டிய கொடுப்பனவுகள்';
+
+  @override
+  String get finProcessing => 'செயலாக்கத்தில்';
+
+  @override
+  String get finSettled => 'தீர்க்கப்பட்டது';
+
+  @override
+  String get finOnHold => 'நிறுத்தி வைக்கப்பட்டது';
+
+  @override
+  String get finCashCollected => 'செலுத்தப்பட்ட ஆர்டர்கள் (ஏற்றப்பட்டவை)';
+
+  @override
+  String get finOpenSettlements => 'தீர்வுகளைத் திற';
+
+  @override
+  String get qcTitle => 'தர ஆய்வுகள்';
+
+  @override
+  String get qcRequests => 'கோரிக்கைகள்';
+
+  @override
+  String get qcMyInspections => 'எனது ஆய்வுகள்';
+
+  @override
+  String get qcNoRequests => 'தற்போது ஆய்வுக் கோரிக்கைகள் இல்லை.';
+
+  @override
+  String get qcNoInspections => 'நீங்கள் இன்னும் எதையும் தரம் பிரிக்கவில்லை.';
+
+  @override
+  String get qcInspect => 'ஆய்வு செய்';
+
+  @override
+  String get qcGrade => 'தரம்';
+
+  @override
+  String get qcMoisture => 'ஈரப்பதம் % (விருப்பம்)';
+
+  @override
+  String get qcNotes => 'கண்டுபிடிப்புகள்';
+
+  @override
+  String get qcSubmit => 'தரத்தைச் சான்றளி';
+
+  @override
+  String get qcRequest => 'தர ஆய்வைக் கோரு';
+
+  @override
+  String get qcRequested => 'ஆய்வு கோரப்பட்டது';
+
+  @override
+  String qcCertified(String grade) {
+    return 'தர நிலை $grade';
+  }
+
+  @override
+  String qcCertifiedBy(String name, String date) {
+    return '$date அன்று $name ஆய்வு செய்தார்';
+  }
+
+  @override
+  String get qcRejected => 'ஆய்வில் தேர்ச்சி பெறவில்லை';
+
+  @override
+  String get whTitle => 'கிடங்கு';
+
+  @override
+  String get whInStock => 'இருப்பில் உள்ள தொகுதிகள்';
+
+  @override
+  String get whCold => 'குளிர் சேமிப்பு';
+
+  @override
+  String get whAmbient => 'சாதாரண வெப்பநிலை';
+
+  @override
+  String get whExpiring => '3 நாட்களுக்குள் காலாவதி';
+
+  @override
+  String get whReceive => 'தொகுதியைப் பெறு';
+
+  @override
+  String get whProduce => 'விளைபொருள்';
+
+  @override
+  String get whOwner => 'விவசாயி / உரிமையாளர்';
+
+  @override
+  String get whQuantity => 'அளவு';
+
+  @override
+  String get whGrade => 'தரம்';
+
+  @override
+  String get whUngraded => 'தரம் பிரிக்கப்படாதது';
+
+  @override
+  String get whExpiry => 'காலாவதி தேதி';
+
+  @override
+  String get whNoExpiry => 'காலாவதி தேதி இல்லை';
+
+  @override
+  String get whNoLots =>
+      'இன்னும் தொகுதிகள் இல்லை. முதல் விளைபொருள் தொகுதியைப் பெறுங்கள்.';
+
+  @override
+  String whRemaining(String qty, String unit, String total) {
+    return '$total இல் $qty $unit மீதம்';
+  }
+
+  @override
+  String get whDispatch => 'அனுப்பு';
+
+  @override
+  String get whSpoiled => 'கெட்டுப்போனதைப் பதிவு செய்';
+
+  @override
+  String get whHistory => 'நகர்வுகள்';
+
+  @override
+  String get whMoveInward => 'பெறப்பட்டது';
+
+  @override
+  String get whMoveOutward => 'அனுப்பப்பட்டது';
+
+  @override
+  String get whMoveSpoilage => 'கெட்டுப்போனது';
+
+  @override
+  String get whStatusDispatched => 'அனுப்பப்பட்டது';
+
+  @override
+  String get whStatusSpoiled => 'கெட்டுப்போனது';
+
+  @override
+  String get whStockForBuyers => 'கிடங்கு இருப்பு';
+
+  @override
+  String get whStockSubtitle =>
+      'சேகரிப்பு மையங்களில் தயாராக உள்ள தரம் பிரிக்கப்பட்ட தொகுதிகள்';
+
+  @override
+  String get whNoStock => 'தற்போது கிடங்கு இருப்பு பட்டியலிடப்படவில்லை.';
 }
