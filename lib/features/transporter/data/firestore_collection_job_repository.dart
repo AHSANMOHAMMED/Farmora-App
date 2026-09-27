@@ -6,7 +6,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/config/app_backend.dart';
 import '../../../services/firebase_service.dart';
-import 'package:flutter/foundation.dart';
 import '../../../services/service_errors.dart';
 import '../domain/collection_job.dart';
 import 'collection_job_repository.dart';
@@ -72,7 +71,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     void emit() {
       final merged = {...available, ...assigned}.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      if (merged.isEmpty) {
+      if (merged.isEmpty && kDemoData) {
         MockCollectionJobRepository()
             .getJobs(logisticsProviderId)
             .then((fallback) {
@@ -103,10 +102,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             ..addEntries(
                 visible.map((doc) => MapEntry(doc.id, _fromDocument(doc))));
           emit();
-        }, onError: (e) {
-          debugPrint('Available jobs stream error: $e');
-          emit();
-        });
+        }, onError: controller.addError);
         assignedSub = _jobs
             .where('transporterId', isEqualTo: logisticsProviderId)
             .orderBy('createdAt', descending: true)
@@ -120,10 +116,7 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
             ..addEntries(snapshot.docs
                 .map((doc) => MapEntry(doc.id, _fromDocument(doc))));
           emit();
-        }, onError: (e) {
-          debugPrint('Assigned jobs stream error: $e');
-          emit();
-        });
+        }, onError: controller.addError);
       },
       onCancel: () async {
         await availableSub?.cancel();
@@ -159,14 +152,13 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
           merged[document.id] = _fromDocument(document);
         }
       }
-      if (merged.isEmpty) {
-        return MockCollectionJobRepository().getJobs(logisticsProviderId);
+      if (merged.isEmpty && kDemoData) {
+        return await MockCollectionJobRepository().getJobs(logisticsProviderId);
       }
       return merged.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     } on FirebaseException catch (error) {
-      debugPrint('Firestore getJobs error, fallback to mock: $error');
-      return MockCollectionJobRepository().getJobs(logisticsProviderId);
+      throw CollectionJobException(_firebaseMessage(error));
     }
   }
 
