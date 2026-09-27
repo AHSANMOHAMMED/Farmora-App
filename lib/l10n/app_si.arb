@@ -2239,5 +2239,10 @@
   "fleetAssign": "රියදුරෙකු පවරන්න",
   "fleetUnassign": "මම ම පදවන්නම්",
   "fleetAssignedTo": "රියදුරු: {name}",
-  "fleetNoActiveDrivers": "සක්‍රිය රියදුරන් නැත. ඔබේ පැතිකඩෙන් රියදුරන්ට ආරාධනා කරන්න."
+  "fleetNoActiveDrivers": "සක්‍රිය රියදුරන් නැත. ඔබේ පැතිකඩෙන් රියදුරන්ට ආරාධනා කරන්න.",
+  "admReportsTitle": "වාර්තා කළ අන්තර්ගතය",
+  "admReportsEmpty": "කිසිවක් වාර්තා කර නැත.",
+  "admReportsDismiss": "ඉවත දමන්න",
+  "admReportsHidePost": "පළ කිරීම සඟවන්න",
+  "admReportsHidden": "දැනටමත් සඟවා ඇත"
 }

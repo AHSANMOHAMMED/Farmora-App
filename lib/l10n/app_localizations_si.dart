@@ -7646,4 +7646,19 @@ class AppLocalizationsSi extends AppLocalizations {
   @override
   String get fleetNoActiveDrivers =>
       'සක්‍රිය රියදුරන් නැත. ඔබේ පැතිකඩෙන් රියදුරන්ට ආරාධනා කරන්න.';
+
+  @override
+  String get admReportsTitle => 'වාර්තා කළ අන්තර්ගතය';
+
+  @override
+  String get admReportsEmpty => 'කිසිවක් වාර්තා කර නැත.';
+
+  @override
+  String get admReportsDismiss => 'ඉවත දමන්න';
+
+  @override
+  String get admReportsHidePost => 'පළ කිරීම සඟවන්න';
+
+  @override
+  String get admReportsHidden => 'දැනටමත් සඟවා ඇත';
 }

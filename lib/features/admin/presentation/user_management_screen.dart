@@ -116,6 +116,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 _buildRoleChip('transporter', l.adminUsersTransporters, color: const Color(0xFFE65100)),
                 const SizedBox(width: 8),
                 _buildRoleChip('admin', l.adminUsersAdmins, color: const Color(0xFF6A1B9A)),
+                for (final r in const [
+                  Role.supplier,
+                  Role.driver,
+                  Role.warehouse,
+                  Role.inspector,
+                  Role.expert,
+                  Role.finance,
+                ]) ...[
+                  const SizedBox(width: 8),
+                  _buildRoleChip(r.name, r.label, color: const Color(0xFF455A64)),
+                ],
                 const SizedBox(width: 12),
                 Container(width: 1, height: 24, color: AppColors.outlineVariant),
                 const SizedBox(width: 12),
@@ -469,6 +480,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     RadioListTile<String>(value: 'buyer', title: Text(l.adminUsersRoleBuyerOption)),
                     RadioListTile<String>(value: 'transporter', title: Text(l.adminUsersRoleTransporterOption)),
                     RadioListTile<String>(value: 'admin', title: Text(l.adminUsersRoleAdminOption)),
+                    for (final r in const [
+                      Role.supplier,
+                      Role.driver,
+                      Role.warehouse,
+                      Role.inspector,
+                      Role.expert,
+                      Role.finance,
+                    ])
+                      RadioListTile<String>(value: r.name, title: Text(r.label)),
                   ],
                 ),
               ),

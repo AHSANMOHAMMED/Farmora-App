@@ -7651,4 +7651,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fleetNoActiveDrivers =>
       'No active drivers. Invite drivers from your profile.';
+
+  @override
+  String get admReportsTitle => 'Reported content';
+
+  @override
+  String get admReportsEmpty => 'Nothing reported.';
+
+  @override
+  String get admReportsDismiss => 'Dismiss';
+
+  @override
+  String get admReportsHidePost => 'Hide post';
+
+  @override
+  String get admReportsHidden => 'already hidden';
 }

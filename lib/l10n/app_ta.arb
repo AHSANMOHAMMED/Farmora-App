@@ -2239,5 +2239,10 @@
   "fleetAssign": "ஓட்டுநரை ஒதுக்கு",
   "fleetUnassign": "நானே ஓட்டுவேன்",
   "fleetAssignedTo": "ஓட்டுநர்: {name}",
-  "fleetNoActiveDrivers": "செயலில் உள்ள ஓட்டுநர்கள் இல்லை. உங்கள் சுயவிவரத்திலிருந்து அழைக்கவும்."
+  "fleetNoActiveDrivers": "செயலில் உள்ள ஓட்டுநர்கள் இல்லை. உங்கள் சுயவிவரத்திலிருந்து அழைக்கவும்.",
+  "admReportsTitle": "புகாரளிக்கப்பட்ட உள்ளடக்கம்",
+  "admReportsEmpty": "எதுவும் புகாரளிக்கப்படவில்லை.",
+  "admReportsDismiss": "நிராகரி",
+  "admReportsHidePost": "பதிவை மறை",
+  "admReportsHidden": "ஏற்கனவே மறைக்கப்பட்டது"
 }

@@ -43,6 +43,7 @@ import 'widgets/awaiting_verification_view.dart';
 import '../../inputs/presentation/supplier_screens.dart';
 import '../../community/presentation/community_screens.dart';
 import '../../finance/presentation/finance_dashboard_screen.dart';
+import '../../admin/presentation/content_reports_screen.dart';
 import '../../quality/presentation/quality_inspector_dashboard_screen.dart';
 import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 import '../../driver/presentation/driver_dashboard_screen.dart';
@@ -410,6 +411,7 @@ class _HomeScreenState extends State<HomeScreen>
         UserManagementScreen(),
         DisputeResolutionScreen(),
         ReviewManagementScreen(),
+        ContentReportsScreen(),
         // Market & Fleet
         MarketPriceManagementScreen(),
         MarketPriceReviewScreen(),
@@ -474,6 +476,13 @@ class _HomeScreenState extends State<HomeScreen>
           badgeCount: pendingReviews,
           badgeColor: const Color(0xFF0288D1),
           accentColor: const Color(0xFF448AFF),
+        ),
+        _NavItem(
+          label: l10n.admReportsTitle,
+          subtitle: 'Community & chat reports',
+          icon: Icons.flag_outlined,
+          activeIcon: Icons.flag_rounded,
+          accentColor: const Color(0xFFD32F2F),
         ),
         // Market & Fleet
         _NavItem(

@@ -3997,5 +3997,10 @@
   "fleetUnassign": "I'll drive it myself",
   "fleetAssignedTo": "Driver: {name}",
   "@fleetAssignedTo": {"placeholders": {"name": {"type": "String"}}},
-  "fleetNoActiveDrivers": "No active drivers. Invite drivers from your profile."
+  "fleetNoActiveDrivers": "No active drivers. Invite drivers from your profile.",
+  "admReportsTitle": "Reported content",
+  "admReportsEmpty": "Nothing reported.",
+  "admReportsDismiss": "Dismiss",
+  "admReportsHidePost": "Hide post",
+  "admReportsHidden": "already hidden"
 }

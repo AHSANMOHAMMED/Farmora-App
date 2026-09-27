@@ -1740,7 +1740,9 @@ service cloud.firestore {
       allow list: if admin();
       allow create: if signedIn()
         && request.resource.data.reporterId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      // Admins dismiss a report once reviewed.
+      allow delete: if admin();
     }
   }
 }

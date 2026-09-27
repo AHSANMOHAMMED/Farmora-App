@@ -7768,4 +7768,19 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get fleetNoActiveDrivers =>
       'செயலில் உள்ள ஓட்டுநர்கள் இல்லை. உங்கள் சுயவிவரத்திலிருந்து அழைக்கவும்.';
+
+  @override
+  String get admReportsTitle => 'புகாரளிக்கப்பட்ட உள்ளடக்கம்';
+
+  @override
+  String get admReportsEmpty => 'எதுவும் புகாரளிக்கப்படவில்லை.';
+
+  @override
+  String get admReportsDismiss => 'நிராகரி';
+
+  @override
+  String get admReportsHidePost => 'பதிவை மறை';
+
+  @override
+  String get admReportsHidden => 'ஏற்கனவே மறைக்கப்பட்டது';
 }

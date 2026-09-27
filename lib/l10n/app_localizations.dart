@@ -13498,6 +13498,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No active drivers. Invite drivers from your profile.'**
   String get fleetNoActiveDrivers;
+
+  /// No description provided for @admReportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported content'**
+  String get admReportsTitle;
+
+  /// No description provided for @admReportsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing reported.'**
+  String get admReportsEmpty;
+
+  /// No description provided for @admReportsDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get admReportsDismiss;
+
+  /// No description provided for @admReportsHidePost.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide post'**
+  String get admReportsHidePost;
+
+  /// No description provided for @admReportsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'already hidden'**
+  String get admReportsHidden;
 }
 
 class _AppLocalizationsDelegate
