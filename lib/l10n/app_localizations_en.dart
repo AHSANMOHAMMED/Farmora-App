@@ -7666,4 +7666,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get admReportsHidden => 'already hidden';
+
+  @override
+  String get cdTitle => 'AI crop doctor';
+
+  @override
+  String get cdSubtitle => 'Photo check for pests and diseases';
+
+  @override
+  String get cdIntro =>
+      'Take a close, sharp photo of the affected leaves, fruit or stem in daylight.';
+
+  @override
+  String get cdTakePhoto => 'Take photo';
+
+  @override
+  String get cdFromGallery => 'Gallery';
+
+  @override
+  String get cdCrop => 'Crop (e.g. tomato)';
+
+  @override
+  String get cdNotes => 'What do you see? (optional)';
+
+  @override
+  String get cdDiagnose => 'Check this photo';
+
+  @override
+  String get cdHistory => 'Past checks';
+
+  @override
+  String get cdNoHistory => 'No checks yet.';
+
+  @override
+  String get cdHealthy => 'Looks healthy';
+
+  @override
+  String cdConfidence(String level) {
+    return 'Confidence: $level';
+  }
+
+  @override
+  String get cdSymptoms => 'Signs';
+
+  @override
+  String get cdOrganic => 'Organic / cultural control';
+
+  @override
+  String get cdChemical => 'Chemical control (follow the label)';
+
+  @override
+  String get cdPrevention => 'Prevention';
+
+  @override
+  String get cdDisclaimer =>
+      'AI suggestion, not a lab test. Confirm with an expert or your agriculture instructor before spraying.';
+
+  @override
+  String get cdExpertRecommended => 'Expert advised: ask now';
+
+  @override
+  String get cdAiSaid => 'AI crop doctor suggests:';
+
+  @override
+  String get cdSentToExpert => 'Sent to experts with the photo.';
 }

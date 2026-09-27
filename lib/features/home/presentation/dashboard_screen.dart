@@ -37,6 +37,7 @@ import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
 import '../../community/presentation/community_screens.dart';
+import '../../farmer/presentation/crop_doctor_screen.dart';
 import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -1103,6 +1104,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               builder: (_) => const MyFarmStoreScreen())),
         },
         {
+          'icon': Icons.biotech_outlined,
+          'label': l10n.cdTitle,
+          'color': const Color(0xFFAD1457),
+          'bg': const Color(0xFFFCE4EC),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const CropDoctorScreen())),
+        },
+        {
           'icon': Icons.support_agent_outlined,
           'label': l10n.conAskExpert,
           'color': const Color(0xFF283593),
@@ -1483,6 +1492,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyFarmStoreScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.biotech_outlined, color: Color(0xFFAD1457)),
+                          title: Text(context.l10n.cdTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.cdSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CropDoctorScreen()));
                           },
                         ),
                         ListTile(

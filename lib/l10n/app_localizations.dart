@@ -13528,6 +13528,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'already hidden'**
   String get admReportsHidden;
+
+  /// No description provided for @cdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI crop doctor'**
+  String get cdTitle;
+
+  /// No description provided for @cdSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo check for pests and diseases'**
+  String get cdSubtitle;
+
+  /// No description provided for @cdIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a close, sharp photo of the affected leaves, fruit or stem in daylight.'**
+  String get cdIntro;
+
+  /// No description provided for @cdTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get cdTakePhoto;
+
+  /// No description provided for @cdFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get cdFromGallery;
+
+  /// No description provided for @cdCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop (e.g. tomato)'**
+  String get cdCrop;
+
+  /// No description provided for @cdNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you see? (optional)'**
+  String get cdNotes;
+
+  /// No description provided for @cdDiagnose.
+  ///
+  /// In en, this message translates to:
+  /// **'Check this photo'**
+  String get cdDiagnose;
+
+  /// No description provided for @cdHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Past checks'**
+  String get cdHistory;
+
+  /// No description provided for @cdNoHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No checks yet.'**
+  String get cdNoHistory;
+
+  /// No description provided for @cdHealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks healthy'**
+  String get cdHealthy;
+
+  /// No description provided for @cdConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Confidence: {level}'**
+  String cdConfidence(String level);
+
+  /// No description provided for @cdSymptoms.
+  ///
+  /// In en, this message translates to:
+  /// **'Signs'**
+  String get cdSymptoms;
+
+  /// No description provided for @cdOrganic.
+  ///
+  /// In en, this message translates to:
+  /// **'Organic / cultural control'**
+  String get cdOrganic;
+
+  /// No description provided for @cdChemical.
+  ///
+  /// In en, this message translates to:
+  /// **'Chemical control (follow the label)'**
+  String get cdChemical;
+
+  /// No description provided for @cdPrevention.
+  ///
+  /// In en, this message translates to:
+  /// **'Prevention'**
+  String get cdPrevention;
+
+  /// No description provided for @cdDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestion, not a lab test. Confirm with an expert or your agriculture instructor before spraying.'**
+  String get cdDisclaimer;
+
+  /// No description provided for @cdExpertRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert advised: ask now'**
+  String get cdExpertRecommended;
+
+  /// No description provided for @cdAiSaid.
+  ///
+  /// In en, this message translates to:
+  /// **'AI crop doctor suggests:'**
+  String get cdAiSaid;
+
+  /// No description provided for @cdSentToExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to experts with the photo.'**
+  String get cdSentToExpert;
 }
 
 class _AppLocalizationsDelegate

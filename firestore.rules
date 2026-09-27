@@ -1587,6 +1587,29 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    // ── AI crop doctor history (Firebase AI Logic results) ───
+    match /crop_diagnoses/{diagnosisId} {
+      allow read, delete: if signedIn() && resource.data.farmerId == uid();
+      allow create: if farmer()
+        && request.resource.data.keys().hasOnly(['farmerId', 'crop', 'healthy', 'issue',
+          'confidence', 'summary', 'symptoms', 'organicTreatment', 'chemicalTreatment',
+          'prevention', 'seeExpert', 'imageUrl', 'model', 'createdAt'])
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.healthy is bool
+        && isStr(request.resource.data.issue, 0, 200)
+        && request.resource.data.confidence in ['low', 'medium', 'high']
+        && isStr(request.resource.data.summary, 0, 2000)
+        && request.resource.data.symptoms is list && request.resource.data.symptoms.size() <= 8
+        && request.resource.data.organicTreatment is list
+        && request.resource.data.organicTreatment.size() <= 8
+        && request.resource.data.chemicalTreatment is list
+        && request.resource.data.chemicalTreatment.size() <= 8
+        && request.resource.data.prevention is list && request.resource.data.prevention.size() <= 8
+        && optStr(request.resource.data, 'imageUrl', 2000)
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+    }
+
     // ── Notifications ────────────────────────────────────────
     // Spark: the acting client writes the other party's in-app notification
     // (order / offer / chat / transport events). Farm-task reminders are the

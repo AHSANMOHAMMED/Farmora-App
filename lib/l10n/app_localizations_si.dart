@@ -7661,4 +7661,68 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get admReportsHidden => 'දැනටමත් සඟවා ඇත';
+
+  @override
+  String get cdTitle => 'AI බෝග වෛද්‍යවරයා';
+
+  @override
+  String get cdSubtitle => 'පළිබෝධ සහ රෝග සඳහා ඡායාරූප පරීක්ෂාව';
+
+  @override
+  String get cdIntro =>
+      'දිවා ආලෝකයේ බලපෑමට ලක් වූ කොළ, ගෙඩි හෝ කඳේ සමීප, පැහැදිලි ඡායාරූපයක් ගන්න.';
+
+  @override
+  String get cdTakePhoto => 'ඡායාරූපය ගන්න';
+
+  @override
+  String get cdFromGallery => 'ගැලරිය';
+
+  @override
+  String get cdCrop => 'බෝගය (උදා. තක්කාලි)';
+
+  @override
+  String get cdNotes => 'ඔබ දකින්නේ කුමක්ද? (විකල්ප)';
+
+  @override
+  String get cdDiagnose => 'මෙම ඡායාරූපය පරීක්ෂා කරන්න';
+
+  @override
+  String get cdHistory => 'පෙර පරීක්ෂා';
+
+  @override
+  String get cdNoHistory => 'තවම පරීක්ෂා නැත.';
+
+  @override
+  String get cdHealthy => 'සෞඛ්‍ය සම්පන්න ලෙස පෙනේ';
+
+  @override
+  String cdConfidence(String level) {
+    return 'විශ්වාසය: $level';
+  }
+
+  @override
+  String get cdSymptoms => 'ලක්ෂණ';
+
+  @override
+  String get cdOrganic => 'කාබනික / සංස්කෘතික පාලනය';
+
+  @override
+  String get cdChemical => 'රසායනික පාලනය (ලේබලය අනුගමනය කරන්න)';
+
+  @override
+  String get cdPrevention => 'වැළැක්වීම';
+
+  @override
+  String get cdDisclaimer =>
+      'AI යෝජනාවක්, රසායනාගාර පරීක්ෂණයක් නොවේ. ඉසීමට පෙර විශේෂඥයෙකු හෝ කෘෂිකර්ම උපදේශකවරයා සමඟ තහවුරු කරන්න.';
+
+  @override
+  String get cdExpertRecommended => 'විශේෂඥ උපදෙස් නිර්දේශිතයි: දැන් අසන්න';
+
+  @override
+  String get cdAiSaid => 'AI බෝග වෛද්‍යවරයා යෝජනා කරයි:';
+
+  @override
+  String get cdSentToExpert => 'ඡායාරූපය සමඟ විශේෂඥයින්ට යවන ලදී.';
 }

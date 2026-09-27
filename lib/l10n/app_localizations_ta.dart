@@ -7783,4 +7783,68 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get admReportsHidden => 'ஏற்கனவே மறைக்கப்பட்டது';
+
+  @override
+  String get cdTitle => 'AI பயிர் மருத்துவர்';
+
+  @override
+  String get cdSubtitle => 'பூச்சி மற்றும் நோய்களுக்கான புகைப்பட சோதனை';
+
+  @override
+  String get cdIntro =>
+      'பகல் வெளிச்சத்தில் பாதிக்கப்பட்ட இலைகள், பழம் அல்லது தண்டின் தெளிவான நெருக்கமான புகைப்படம் எடுக்கவும்.';
+
+  @override
+  String get cdTakePhoto => 'புகைப்படம் எடு';
+
+  @override
+  String get cdFromGallery => 'கேலரி';
+
+  @override
+  String get cdCrop => 'பயிர் (எ.கா. தக்காளி)';
+
+  @override
+  String get cdNotes => 'நீங்கள் என்ன பார்க்கிறீர்கள்? (விருப்பம்)';
+
+  @override
+  String get cdDiagnose => 'இந்தப் புகைப்படத்தைச் சரிபார்';
+
+  @override
+  String get cdHistory => 'முந்தைய சோதனைகள்';
+
+  @override
+  String get cdNoHistory => 'இன்னும் சோதனைகள் இல்லை.';
+
+  @override
+  String get cdHealthy => 'ஆரோக்கியமாகத் தெரிகிறது';
+
+  @override
+  String cdConfidence(String level) {
+    return 'நம்பகத்தன்மை: $level';
+  }
+
+  @override
+  String get cdSymptoms => 'அறிகுறிகள்';
+
+  @override
+  String get cdOrganic => 'இயற்கை / கலாச்சார கட்டுப்பாடு';
+
+  @override
+  String get cdChemical => 'இரசாயனக் கட்டுப்பாடு (லேபிளைப் பின்பற்றவும்)';
+
+  @override
+  String get cdPrevention => 'தடுப்பு';
+
+  @override
+  String get cdDisclaimer =>
+      'AI பரிந்துரை, ஆய்வக சோதனை அல்ல. தெளிப்பதற்கு முன் நிபுணர் அல்லது விவசாய போதனாசிரியருடன் உறுதிப்படுத்தவும்.';
+
+  @override
+  String get cdExpertRecommended => 'நிபுணர் பரிந்துரை: இப்போது கேளுங்கள்';
+
+  @override
+  String get cdAiSaid => 'AI பயிர் மருத்துவர் பரிந்துரைக்கிறார்:';
+
+  @override
+  String get cdSentToExpert => 'புகைப்படத்துடன் நிபுணர்களுக்கு அனுப்பப்பட்டது.';
 }
