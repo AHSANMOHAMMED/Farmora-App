@@ -259,6 +259,7 @@ class _OrderSheetState extends State<_OrderSheet> {
         children: [
           Expanded(child: Text(label)),
           IconButton(
+            tooltip: '$label −',
             onPressed: value > 1 ? () => set(value - 1) : null,
             icon: const Icon(Icons.remove_circle_outline),
           ),
@@ -269,6 +270,7 @@ class _OrderSheetState extends State<_OrderSheet> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ),
           IconButton(
+            tooltip: '$label +',
             onPressed: value < max ? () => set(value + 1) : null,
             icon: const Icon(Icons.add_circle_outline),
           ),

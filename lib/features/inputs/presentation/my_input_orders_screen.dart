@@ -30,7 +30,13 @@ class _MyInputOrdersScreenState extends State<MyInputOrdersScreen> {
       if (!await _records.hasEntryFor(o.id)) {
         await _records.addEntry(
           isExpense: true,
-          category: o.isRental ? 'machinery' : 'other',
+          category: switch (o.category) {
+            InputCategory.seeds => 'seed',
+            InputCategory.fertilizer => 'fertilizer',
+            InputCategory.pesticide => 'pesticide',
+            InputCategory.machinery => 'machinery',
+            InputCategory.tools => o.isRental ? 'machinery' : 'other',
+          },
           amountMinor: o.totalMinor,
           date: DateTime.now(),
           note: o.inputName,

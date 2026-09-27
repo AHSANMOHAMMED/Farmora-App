@@ -110,6 +110,7 @@ class InputOrder {
     required this.totalMinor,
     required this.deliveryAddress,
     required this.status,
+    this.category = InputCategory.tools,
     this.unit = '',
     this.days,
     this.startDate,
@@ -129,6 +130,7 @@ class InputOrder {
   final int totalMinor;
   final String deliveryAddress;
   final String status;
+  final InputCategory category;
   final String unit;
   final int? days;
   final DateTime? startDate;
@@ -150,6 +152,7 @@ class InputOrder {
         totalMinor: firebaseInt(d['totalMinor']) ?? 0,
         deliveryAddress: (d['deliveryAddress'] ?? '').toString(),
         status: (d['status'] ?? InputOrderStatus.pending).toString(),
+        category: inputCategoryFrom(d['category']),
         unit: (d['unit'] ?? '').toString(),
         days: firebaseInt(d['days']),
         startDate: firebaseDate(d['startDate']),

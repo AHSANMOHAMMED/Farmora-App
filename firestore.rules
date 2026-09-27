@@ -714,13 +714,15 @@ service cloud.firestore {
       let d = request.resource.data;
       let i = get(docPath('inputs/' + d.inputId)).data;
       return d.keys().hasOnly(['farmerId', 'farmerName', 'supplierId', 'supplierName',
-          'inputId', 'inputName', 'listingType', 'unit', 'quantity', 'days', 'startDate',
+          'inputId', 'inputName', 'category', 'listingType', 'unit', 'quantity', 'days',
+          'startDate',
           'unitPriceMinor', 'totalMinor', 'deliveryAddress', 'paymentMethod', 'status',
           'createdAt', 'updatedAt'])
         && d.farmerId == uid() && d.status == 'pending' && d.paymentMethod == 'cod'
         && d.createdAt == request.time
         && i.status == 'Active' && i.isDeleted == false
         && d.supplierId == i.supplierId && d.listingType == i.listingType
+        && d.get('category', i.category) == i.category
         && d.unitPriceMinor == i.priceMinor
         && isInt(d.quantity, 1, 100000)
         && isStr(d.inputName, 1, 120) && isStr(d.deliveryAddress, 5, 300)

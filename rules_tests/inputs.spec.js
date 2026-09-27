@@ -90,6 +90,7 @@ describe('input orders', () => {
     await assertFails(put('farmer1', { totalMinor: 1 }));
     await assertFails(put('farmer1', { quantity: 11, totalMinor: 1320000 }));
     await assertFails(put('farmer1', { status: 'confirmed' }));
+    await assertFails(put('farmer1', { category: 'machinery' }));
     await assertSucceeds(put('farmer1', {}));
   });
 

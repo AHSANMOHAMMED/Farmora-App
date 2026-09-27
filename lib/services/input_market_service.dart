@@ -233,6 +233,7 @@ class InputMarketService {
       'supplierName': input.supplierName,
       'inputId': input.id,
       'inputName': input.name,
+      'category': input.category.name,
       'listingType': input.isRental ? 'rental' : 'sale',
       'unit': input.unit,
       'quantity': quantity,
