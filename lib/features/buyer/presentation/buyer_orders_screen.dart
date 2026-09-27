@@ -9,6 +9,7 @@ import '../../../providers/farmora_state.dart';
 import 'cart_screen.dart';
 import 'buyer_products_screen.dart';
 import 'buyer_l10n.dart';
+import '../../messaging/presentation/conversations_screen.dart';
 
 class BuyerOrdersScreen extends StatefulWidget {
   const BuyerOrdersScreen({super.key});
@@ -454,6 +455,20 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                 const SizedBox(width: 8),
                 Row(
                   children: [
+                    IconButton(
+                      tooltip: 'Chat with Farmer',
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20, color: AppColors.primary),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ConversationsScreen(
+                              orderId: order.id,
+                              peerId: order.farmerId,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     if (isPending) ...[
                       OutlinedButton(
                         onPressed: _cancelling.contains(order.id)
