@@ -7902,4 +7902,58 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get bidsButton => 'ஏலங்கள்';
+
+  @override
+  String ccRange(String min, String max) {
+    return 'குளிர் சங்கிலி $min–$max °C';
+  }
+
+  @override
+  String get ccNotSet => 'வெப்பநிலைத் தேவை இல்லை';
+
+  @override
+  String get ccSetRange => 'வரம்பை அமை';
+
+  @override
+  String get ccRequired => 'சரக்கைக் குளிர்ச்சியாக வை';
+
+  @override
+  String get ccMin => 'குறைந்தபட்சம் °C';
+
+  @override
+  String get ccMax => 'அதிகபட்சம் °C';
+
+  @override
+  String ccBreaches(String count) {
+    return 'வரம்பிற்கு வெளியே $count அளவீடுகள்';
+  }
+
+  @override
+  String get ccNoReadings => 'இன்னும் அளவீடுகள் இல்லை.';
+
+  @override
+  String ccCargoNow(String temp) {
+    return 'சரக்கு $temp °C';
+  }
+
+  @override
+  String ccAirNow(String temp) {
+    return 'வெளிக்காற்று $temp °C';
+  }
+
+  @override
+  String get ccLegend =>
+      'நீலம்: சரக்கு · சாம்பல் கோடு: வாகனத்தின் வெளிக்காற்று · பச்சைப் பட்டை: தேவையான வரம்பு';
+
+  @override
+  String get ccLog => 'வெப்பநிலையைப் பதிவு செய்';
+
+  @override
+  String get ccCargoTemp => 'சரக்கு வெப்பநிலை °C';
+
+  @override
+  String get ccThermometer => 'வெப்பமானி';
+
+  @override
+  String get ccLogger => 'தரவு பதிவி';
 }

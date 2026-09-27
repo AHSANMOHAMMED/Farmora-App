@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'cold_chain_service.dart';
 import 'firebase_service.dart';
 
 /// Location sharing for active deliveries. Starts only with explicit user
@@ -72,6 +73,9 @@ class DeliveryLocationService {
     if (!_sharing || _activeJobId != jobId) return;
     _lastPosition = position;
     _writePosition(jobId, position);
+    // Cold-chain jobs also log the outside-air temperature here.
+    ColdChainService.instance
+        .onPosition(jobId, position.latitude, position.longitude);
   }
 
   /// Throttled Firestore write — at most one update per [_minWriteInterval].

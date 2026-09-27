@@ -17,6 +17,7 @@ import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'delivery_proof_dialog.dart';
 import '../../driver/presentation/driver_dashboard_screen.dart';
+import '../../../core/widgets/cold_chain_card.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   final TransportJob job;
@@ -402,6 +403,11 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   ),
                 ),
               ],
+            ),
+            ColdChainCard(
+              job: job,
+              canLog: const ['accepted', 'pickedUp', 'inTransit']
+                  .contains(job.status),
             ),
           ],
         ),

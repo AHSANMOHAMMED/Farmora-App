@@ -13744,6 +13744,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bids'**
   String get bidsButton;
+
+  /// No description provided for @ccRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Cold chain {min}–{max} °C'**
+  String ccRange(String min, String max);
+
+  /// No description provided for @ccNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'No temperature requirement'**
+  String get ccNotSet;
+
+  /// No description provided for @ccSetRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Set range'**
+  String get ccSetRange;
+
+  /// No description provided for @ccRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep cargo cold'**
+  String get ccRequired;
+
+  /// No description provided for @ccMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Min °C'**
+  String get ccMin;
+
+  /// No description provided for @ccMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Max °C'**
+  String get ccMax;
+
+  /// No description provided for @ccBreaches.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reading(s) outside the range'**
+  String ccBreaches(String count);
+
+  /// No description provided for @ccNoReadings.
+  ///
+  /// In en, this message translates to:
+  /// **'No readings yet.'**
+  String get ccNoReadings;
+
+  /// No description provided for @ccCargoNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Cargo {temp} °C'**
+  String ccCargoNow(String temp);
+
+  /// No description provided for @ccAirNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside air {temp} °C'**
+  String ccAirNow(String temp);
+
+  /// No description provided for @ccLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue: cargo (thermometer / logger) · grey dashed: outside air at the vehicle · green band: required range'**
+  String get ccLegend;
+
+  /// No description provided for @ccLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log temperature'**
+  String get ccLog;
+
+  /// No description provided for @ccCargoTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'Cargo temperature °C'**
+  String get ccCargoTemp;
+
+  /// No description provided for @ccThermometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Thermometer'**
+  String get ccThermometer;
+
+  /// No description provided for @ccLogger.
+  ///
+  /// In en, this message translates to:
+  /// **'Data logger'**
+  String get ccLogger;
 }
 
 class _AppLocalizationsDelegate

@@ -7780,4 +7780,58 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get bidsButton => 'ලංසු';
+
+  @override
+  String ccRange(String min, String max) {
+    return 'ශීත දාමය $min–$max °C';
+  }
+
+  @override
+  String get ccNotSet => 'උෂ්ණත්ව අවශ්‍යතාවයක් නැත';
+
+  @override
+  String get ccSetRange => 'පරාසය සකසන්න';
+
+  @override
+  String get ccRequired => 'භාණ්ඩ සිසිල්ව තබන්න';
+
+  @override
+  String get ccMin => 'අවම °C';
+
+  @override
+  String get ccMax => 'උපරිම °C';
+
+  @override
+  String ccBreaches(String count) {
+    return 'පරාසයෙන් පිටත කියවීම් $count';
+  }
+
+  @override
+  String get ccNoReadings => 'තවම කියවීම් නැත.';
+
+  @override
+  String ccCargoNow(String temp) {
+    return 'භාණ්ඩ $temp °C';
+  }
+
+  @override
+  String ccAirNow(String temp) {
+    return 'බාහිර වාතය $temp °C';
+  }
+
+  @override
+  String get ccLegend =>
+      'නිල්: භාණ්ඩ · අළු ඉරි: වාහනය අසල බාහිර වාතය · කොළ පටිය: අවශ්‍ය පරාසය';
+
+  @override
+  String get ccLog => 'උෂ්ණත්වය සටහන් කරන්න';
+
+  @override
+  String get ccCargoTemp => 'භාණ්ඩ උෂ්ණත්වය °C';
+
+  @override
+  String get ccThermometer => 'උෂ්ණත්වමානය';
+
+  @override
+  String get ccLogger => 'දත්ත ලොගරය';
 }

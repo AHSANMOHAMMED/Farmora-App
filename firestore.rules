@@ -664,7 +664,29 @@ service cloud.firestore {
             && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
           || (r.status in ['accepted', 'pickedUp', 'inTransit']
             && affected().hasOnly(['courierLat', 'courierLng', 'locationUpdatedAt', 'updatedAt'])
-            && courierPositionOk()));
+            && courierPositionOk())
+          || carrierTempUpdate());
+    }
+    // Cold chain: the carrier records the latest cargo reading on the job.
+    function carrierTempUpdate() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return r.status in ['accepted', 'pickedUp', 'inTransit']
+        && affected().hasOnly(['lastTempC', 'lastTempAt', 'tempBreachCount', 'updatedAt'])
+        && d.lastTempC is number && d.lastTempC >= -40 && d.lastTempC <= 70
+        && d.lastTempAt == request.time
+        && (d.tempBreachCount == r.get('tempBreachCount', 0)
+          || d.tempBreachCount == r.get('tempBreachCount', 0) + 1);
+    }
+    function jobParty(jobId) {
+      let j = get(docPath('transport_jobs/' + jobId)).data;
+      return uid() == j.farmerId || uid() == j.buyerId
+        || uid() == j.get('transporterId', '') || uid() == j.get('driverId', '');
+    }
+    function jobCarrier(jobId) {
+      let j = get(docPath('transport_jobs/' + jobId)).data;
+      return j.status in ['accepted', 'pickedUp', 'inTransit']
+        && (uid() == j.get('transporterId', '') || uid() == j.get('driverId', ''));
     }
     function transporterJobUpdate() {
       let d = request.resource.data;
@@ -697,6 +719,7 @@ service cloud.firestore {
           && affected().hasOnly(['driverId', 'driverName', 'updatedAt'])
           && (!('driverId' in d) || (fleetActive(uid(), d.driverId)
             && isStr(d.driverName, 1, 120))))
+        || (r.get('transporterId', null) == uid() && carrierTempUpdate())
         // Live position while active.
         || (r.get('transporterId', null) == uid()
           && r.status in ['accepted', 'pickedUp', 'inTransit']
@@ -739,9 +762,33 @@ service cloud.firestore {
         || (farmer() && resource.data.farmerId == uid()
           && request.resource.data.farmerId == resource.data.farmerId
           && farmerJobUpdate(jobId))
+        // Farmer sets or clears the cold-chain range until delivery.
+        || (farmer() && resource.data.farmerId == uid()
+          && resource.data.status in ['requested', 'accepted', 'pickedUp', 'inTransit']
+          && affected().hasOnly(['coldChain', 'tempMinC', 'tempMaxC', 'updatedAt'])
+          && request.resource.data.coldChain is bool
+          && (request.resource.data.coldChain == false
+            || (request.resource.data.tempMinC is number
+              && request.resource.data.tempMaxC is number
+              && request.resource.data.tempMinC >= -30
+              && request.resource.data.tempMaxC <= 40
+              && request.resource.data.tempMinC < request.resource.data.tempMaxC)))
         || (transporter() && transporterJobUpdate())
         || (driver() && verified() && driverJobUpdate());
       allow delete: if admin();
+
+      match /temps/{readingId} {
+        allow read: if admin() || (signedIn() && jobParty(jobId));
+        allow create: if active() && jobCarrier(jobId)
+          && request.resource.data.keys().hasOnly(['celsius', 'source', 'lat', 'lng',
+            'recordedBy', 'recordedAt'])
+          && request.resource.data.celsius is number
+          && request.resource.data.celsius >= -40 && request.resource.data.celsius <= 70
+          && request.resource.data.source in ['manual', 'sensor', 'ambient']
+          && request.resource.data.recordedBy == uid()
+          && request.resource.data.recordedAt == request.time;
+        allow update, delete: if false;
+      }
 
       match /bids/{bidderId} {
         allow read: if admin() || (signedIn() && (bidderId == uid()

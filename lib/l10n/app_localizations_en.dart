@@ -7785,4 +7785,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bidsButton => 'Bids';
+
+  @override
+  String ccRange(String min, String max) {
+    return 'Cold chain $min–$max °C';
+  }
+
+  @override
+  String get ccNotSet => 'No temperature requirement';
+
+  @override
+  String get ccSetRange => 'Set range';
+
+  @override
+  String get ccRequired => 'Keep cargo cold';
+
+  @override
+  String get ccMin => 'Min °C';
+
+  @override
+  String get ccMax => 'Max °C';
+
+  @override
+  String ccBreaches(String count) {
+    return '$count reading(s) outside the range';
+  }
+
+  @override
+  String get ccNoReadings => 'No readings yet.';
+
+  @override
+  String ccCargoNow(String temp) {
+    return 'Cargo $temp °C';
+  }
+
+  @override
+  String ccAirNow(String temp) {
+    return 'Outside air $temp °C';
+  }
+
+  @override
+  String get ccLegend =>
+      'Blue: cargo (thermometer / logger) · grey dashed: outside air at the vehicle · green band: required range';
+
+  @override
+  String get ccLog => 'Log temperature';
+
+  @override
+  String get ccCargoTemp => 'Cargo temperature °C';
+
+  @override
+  String get ccThermometer => 'Thermometer';
+
+  @override
+  String get ccLogger => 'Data logger';
 }

@@ -9,6 +9,7 @@ import '../../../models/order.dart';
 import '../../../models/transport_job.dart';
 import '../../../providers/farmora_state.dart';
 import '../../transporter/presentation/bid_sheets.dart';
+import '../../../core/widgets/cold_chain_card.dart';
 
 class FarmerJobsScreen extends StatelessWidget {
   const FarmerJobsScreen({super.key});
@@ -139,6 +140,31 @@ class FarmerJobsScreen extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    if (const ['requested', 'accepted', 'pickedUp', 'inTransit']
+                        .contains(job.status))
+                      OutlinedButton.icon(
+                        onPressed: () => showModalBottomSheet<void>(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: SingleChildScrollView(
+                                child: ColdChainCard(
+                                    job: job, canConfigure: true),
+                              ),
+                            ),
+                          ),
+                        ),
+                        icon: Icon(Icons.ac_unit_rounded,
+                            size: 16,
+                            color: job.tempBreachCount > 0
+                                ? AppColors.error
+                                : null),
+                        label: Text(job.coldChain
+                            ? '${job.tempMinC?.toStringAsFixed(0)}–${job.tempMaxC?.toStringAsFixed(0)} °C'
+                            : context.l10n.ccSetRange),
+                      ),
                     if (canCancel && (job.transporterId ?? '').isEmpty)
                       OutlinedButton.icon(
                         onPressed: () => showBidsSheet(context, job.id),

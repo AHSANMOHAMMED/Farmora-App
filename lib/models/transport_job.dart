@@ -53,6 +53,13 @@ class TransportJob {
   final String? driverId;
   final String? driverName;
 
+  /// Cold chain: required range, latest cargo reading, breaches so far.
+  final bool coldChain;
+  final double? tempMinC;
+  final double? tempMaxC;
+  final double? lastTempC;
+  final int tempBreachCount;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -91,6 +98,11 @@ class TransportJob {
     this.deliveredWithCode = false,
     this.driverId,
     this.driverName,
+    this.coldChain = false,
+    this.tempMinC,
+    this.tempMaxC,
+    this.lastTempC,
+    this.tempBreachCount = 0,
   });
 
   /// True while the job waits for a transporter.
@@ -199,6 +211,11 @@ class TransportJob {
       deliveredWithCode: deliveredWithCode ?? this.deliveredWithCode,
       driverId: driverId ?? this.driverId,
       driverName: driverName ?? this.driverName,
+      coldChain: coldChain,
+      tempMinC: tempMinC,
+      tempMaxC: tempMaxC,
+      lastTempC: lastTempC,
+      tempBreachCount: tempBreachCount,
     );
   }
 
@@ -301,6 +318,11 @@ class TransportJob {
       deliveredWithCode: (text(['deliveryCode']) ?? '').isNotEmpty,
       driverId: text(['driverId']),
       driverName: text(['driverName']),
+      coldChain: data['coldChain'] == true,
+      tempMinC: firebaseDouble(data['tempMinC']),
+      tempMaxC: firebaseDouble(data['tempMaxC']),
+      lastTempC: firebaseDouble(data['lastTempC']),
+      tempBreachCount: firebaseInt(data['tempBreachCount']) ?? 0,
       createdAt: firebaseDate(data['createdAt']),
     );
   }
