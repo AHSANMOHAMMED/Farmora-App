@@ -11,6 +11,7 @@ import '../../farmer/presentation/account_verification_screen.dart';
 import '../application/transporter_controller.dart';
 import 'transporter_payouts_screen.dart';
 import 'widgets/transporter_actions.dart';
+import '../../driver/presentation/driver_dashboard_screen.dart';
 
 class TransporterProfileScreen extends StatelessWidget {
   const TransporterProfileScreen({super.key});
@@ -124,6 +125,16 @@ class TransporterProfileScreen extends StatelessWidget {
             color: AppColors.surfaceContainerLowest,
             child: Column(
               children: [
+                ListTile(
+                  leading: const Icon(Icons.groups_2_outlined,
+                      color: AppColors.primary),
+                  title: Text(l10n.fleetMyDrivers),
+                  subtitle: Text(l10n.fleetMyDriversSubtitle),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const FleetDriversScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
                 ListTile(
                   leading: const Icon(Icons.local_shipping_outlined,
                       color: AppColors.primary),

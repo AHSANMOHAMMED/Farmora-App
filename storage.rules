@@ -91,7 +91,10 @@ service firebase.storage {
     match /pod_photos/{orderId}/{fileName} {
       allow read: if orderParty(orderId) || admin();
       allow create: if resource == null && active()
-        && order(orderId).get('transporterId', '') == request.auth.uid
+        && (order(orderId).get('transporterId', '') == request.auth.uid
+          // ...or the fleet driver running the order's job.
+          || firestore.get(/databases/(default)/documents/transport_jobs/$(order(orderId).transportJobId))
+            .data.get('driverId', '') == request.auth.uid)
         && order(orderId).status in ['pickedUp', 'inTransit']
         && fileName.matches(request.auth.uid + '_.+')
         && validImageUpload();

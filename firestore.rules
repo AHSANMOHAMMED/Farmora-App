@@ -531,6 +531,19 @@ service cloud.firestore {
           && affected().hasOnly(['requestedTransporterId', 'updatedAt']));
     }
 
+    // The order follows its job when a fleet driver advances it.
+    function driverOrderUpdate() {
+      let d = request.resource.data;
+      let r = resource.data;
+      let job = getAfter(docPath('transport_jobs/' + r.transportJobId)).data;
+      return job.get('driverId', '') == uid() && job.status == d.status
+        && ((r.status == 'assigned' && d.status == 'pickedUp')
+          || (r.status == 'pickedUp' && d.status == 'inTransit')
+          || (r.status == 'inTransit' && d.status == 'delivered'))
+        && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
+          'deliveredAt']);
+    }
+
     match /orders/{orderId} {
       // Checkout reads its deterministic idempotency doc before creating it,
       // so an active user may see that a doc does NOT exist.
@@ -560,7 +573,8 @@ service cloud.firestore {
             'paymentStatus', 'paidAt', 'proofImageUrl', 'proofImagePath'])
           && transporterOrderUpdate(orderId))
         || (transporter() && resource.data.get('transporterId', '') == uid()
-          && !touchesMoney() && partyOpensDispute());
+          && !touchesMoney() && partyOpensDispute())
+        || (driver() && verified() && !touchesMoney() && driverOrderUpdate());
       allow delete: if admin();
     }
 
@@ -610,6 +624,30 @@ service cloud.firestore {
       return !('podPhotoPath' in d) || (d.podPhotoPath is string
         && d.podPhotoPath.matches('pod_photos/' + orderId + '/' + uid() + '_[^/]+'));
     }
+    function fleetActive(transporterId, driverId) {
+      let p = docPath('fleet_links/' + transporterId + '_' + driverId);
+      return exists(p) && get(p).data.status == 'active';
+    }
+    // A fleet driver runs the job the owner assigned them: pickup, transit,
+    // delivery (with the buyer's code) and live position. Nothing else.
+    function driverJobUpdate() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return r.get('driverId', '') == uid()
+        && fleetActive(r.transporterId, uid())
+        && d.transporterId == r.transporterId && d.driverId == uid()
+        && (((r.status == 'accepted' && d.status == 'pickedUp')
+              || (r.status == 'pickedUp' && d.status == 'inTransit'))
+            && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
+              'courierLat', 'courierLng', 'locationUpdatedAt'])
+          || (r.status == 'inTransit' && d.status == 'delivered'
+            && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
+              'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt'])
+            && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
+          || (r.status in ['accepted', 'pickedUp', 'inTransit']
+            && affected().hasOnly(['courierLat', 'courierLng', 'locationUpdatedAt', 'updatedAt'])
+            && courierPositionOk()));
+    }
     function transporterJobUpdate() {
       let d = request.resource.data;
       let r = resource.data;
@@ -635,6 +673,12 @@ service cloud.firestore {
           && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
             'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt'])
           && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
+        // Assign / unassign one of the owner's active fleet drivers.
+        || (r.get('transporterId', null) == uid()
+          && r.status in ['accepted', 'pickedUp', 'inTransit']
+          && affected().hasOnly(['driverId', 'driverName', 'updatedAt'])
+          && (!('driverId' in d) || (fleetActive(uid(), d.driverId)
+            && isStr(d.driverName, 1, 120))))
         // Live position while active.
         || (r.get('transporterId', null) == uid()
           && r.status in ['accepted', 'pickedUp', 'inTransit']
@@ -666,6 +710,7 @@ service cloud.firestore {
       // transporterId == null) so the rules can be proven for the query.
       allow read: if admin()
         || (active() && (resource.data.get('transporterId', null) == uid()
+          || resource.data.get('driverId', null) == uid()
           || resource.data.get('requestedTransporterId', null) == uid()
           || resource.data.get('farmerId', null) == uid()
           || resource.data.get('buyerId', null) == uid()))
@@ -676,7 +721,8 @@ service cloud.firestore {
         || (farmer() && resource.data.farmerId == uid()
           && request.resource.data.farmerId == resource.data.farmerId
           && farmerJobUpdate())
-        || (transporter() && transporterJobUpdate());
+        || (transporter() && transporterJobUpdate())
+        || (driver() && verified() && driverJobUpdate());
       allow delete: if admin();
     }
 
@@ -1498,6 +1544,47 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
         allow update, delete: if false;
       }
+    }
+
+    // ── Fleets: transporters and their drivers ───────────────
+    match /driver_profiles/{driverId} {
+      allow read: if admin() || (signedIn() && (uid() == driverId || transporter()));
+      allow create, update: if driver() && uid() == driverId
+        && request.resource.data.keys().hasOnly(['driverId', 'name', 'phoneKey',
+          'district', 'isVerified', 'updatedAt'])
+        && request.resource.data.driverId == driverId
+        && request.resource.data.isVerified == userDoc(uid()).get('isVerified', false)
+        && isStr(request.resource.data.name, 1, 120)
+        && optStr(request.resource.data, 'phoneKey', 20)
+        && optStr(request.resource.data, 'district', 60);
+      allow delete: if admin();
+    }
+    match /fleet_links/{linkId} {
+      allow get: if admin() || (transporter() && resource == null)
+        || (signedIn() && (resource.data.transporterId == uid()
+          || resource.data.driverId == uid()));
+      allow list: if admin() || (signedIn() && (resource.data.transporterId == uid()
+        || resource.data.driverId == uid()));
+      allow create: if transporter() && verified()
+        && request.resource.data.keys().hasOnly(['transporterId', 'transporterName',
+          'driverId', 'driverName', 'status', 'createdAt', 'updatedAt'])
+        && linkId == uid() + '_' + request.resource.data.driverId
+        && request.resource.data.transporterId == uid()
+        && userDoc(request.resource.data.driverId).role == 'driver'
+        && request.resource.data.status == 'invited'
+        && isStr(request.resource.data.driverName, 1, 120)
+        && isStr(request.resource.data.transporterName, 1, 120);
+      allow update: if affected().hasOnly(['status', 'updatedAt']) && (
+          (signedIn() && resource.data.driverId == uid()
+            && ((resource.data.status == 'invited'
+                && request.resource.data.status in ['active', 'removed'])
+              || (resource.data.status == 'active'
+                && request.resource.data.status == 'removed')))
+          || (transporter() && resource.data.transporterId == uid()
+            && ((resource.data.status != 'removed' && request.resource.data.status == 'removed')
+              || (resource.data.status == 'removed'
+                && request.resource.data.status == 'invited'))));
+      allow delete: if admin();
     }
 
     // ── Notifications ────────────────────────────────────────

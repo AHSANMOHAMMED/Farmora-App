@@ -7568,4 +7568,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get whNoStock => 'No warehouse stock listed right now.';
+
+  @override
+  String get drvTitle => 'My deliveries';
+
+  @override
+  String get drvInvites => 'Fleet invitations';
+
+  @override
+  String drvInvitedBy(String name) {
+    return '$name wants you to drive for them';
+  }
+
+  @override
+  String get drvAccept => 'Accept';
+
+  @override
+  String get drvDecline => 'Decline';
+
+  @override
+  String get drvMyFleet => 'Driving for';
+
+  @override
+  String get drvLeave => 'Leave fleet';
+
+  @override
+  String get drvNoFleet =>
+      'You aren\'t in a fleet yet. Share your phone number with a transport company so they can invite you.';
+
+  @override
+  String get drvAssigned => 'Assigned deliveries';
+
+  @override
+  String get drvNoJobs => 'No deliveries assigned to you.';
+
+  @override
+  String get fleetMyDrivers => 'My drivers';
+
+  @override
+  String get fleetMyDriversSubtitle =>
+      'Invite drivers and assign them deliveries';
+
+  @override
+  String get fleetFindPhone => 'Driver\'s phone number';
+
+  @override
+  String get fleetFind => 'Find';
+
+  @override
+  String get fleetNotFound =>
+      'No driver account with that number. Ask them to sign up as a Driver.';
+
+  @override
+  String get fleetInvite => 'Invite';
+
+  @override
+  String get fleetInvited => 'Invited';
+
+  @override
+  String get fleetActive => 'Active';
+
+  @override
+  String get fleetRemoved => 'Removed';
+
+  @override
+  String get fleetRemove => 'Remove';
+
+  @override
+  String get fleetNoDrivers => 'No drivers yet.';
+
+  @override
+  String get fleetAssign => 'Assign driver';
+
+  @override
+  String get fleetUnassign => 'I\'ll drive it myself';
+
+  @override
+  String fleetAssignedTo(String name) {
+    return 'Driver: $name';
+  }
+
+  @override
+  String get fleetNoActiveDrivers =>
+      'No active drivers. Invite drivers from your profile.';
 }

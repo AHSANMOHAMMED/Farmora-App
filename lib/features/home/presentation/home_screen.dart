@@ -45,6 +45,7 @@ import '../../community/presentation/community_screens.dart';
 import '../../finance/presentation/finance_dashboard_screen.dart';
 import '../../quality/presentation/quality_inspector_dashboard_screen.dart';
 import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
+import '../../driver/presentation/driver_dashboard_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'widgets/platform_gate_views.dart';
 import '../../auth/presentation/session_actions.dart';
@@ -203,6 +204,26 @@ class _HomeScreenState extends State<HomeScreen>
             label: l10n.homeNavEarnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.driver) {
+      screens = const [
+        DriverDashboardScreen(),
+        NotificationsScreen(),
+        ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.drvTitle,
+            icon: Icons.route_outlined,
+            activeIcon: Icons.route_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
         _NavItem(
             label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,

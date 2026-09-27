@@ -13348,6 +13348,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No warehouse stock listed right now.'**
   String get whNoStock;
+
+  /// No description provided for @drvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My deliveries'**
+  String get drvTitle;
+
+  /// No description provided for @drvInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'Fleet invitations'**
+  String get drvInvites;
+
+  /// No description provided for @drvInvitedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants you to drive for them'**
+  String drvInvitedBy(String name);
+
+  /// No description provided for @drvAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get drvAccept;
+
+  /// No description provided for @drvDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get drvDecline;
+
+  /// No description provided for @drvMyFleet.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving for'**
+  String get drvMyFleet;
+
+  /// No description provided for @drvLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave fleet'**
+  String get drvLeave;
+
+  /// No description provided for @drvNoFleet.
+  ///
+  /// In en, this message translates to:
+  /// **'You aren\'t in a fleet yet. Share your phone number with a transport company so they can invite you.'**
+  String get drvNoFleet;
+
+  /// No description provided for @drvAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned deliveries'**
+  String get drvAssigned;
+
+  /// No description provided for @drvNoJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'No deliveries assigned to you.'**
+  String get drvNoJobs;
+
+  /// No description provided for @fleetMyDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'My drivers'**
+  String get fleetMyDrivers;
+
+  /// No description provided for @fleetMyDriversSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite drivers and assign them deliveries'**
+  String get fleetMyDriversSubtitle;
+
+  /// No description provided for @fleetFindPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver\'s phone number'**
+  String get fleetFindPhone;
+
+  /// No description provided for @fleetFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get fleetFind;
+
+  /// No description provided for @fleetNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No driver account with that number. Ask them to sign up as a Driver.'**
+  String get fleetNotFound;
+
+  /// No description provided for @fleetInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get fleetInvite;
+
+  /// No description provided for @fleetInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get fleetInvited;
+
+  /// No description provided for @fleetActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get fleetActive;
+
+  /// No description provided for @fleetRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get fleetRemoved;
+
+  /// No description provided for @fleetRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get fleetRemove;
+
+  /// No description provided for @fleetNoDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'No drivers yet.'**
+  String get fleetNoDrivers;
+
+  /// No description provided for @fleetAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign driver'**
+  String get fleetAssign;
+
+  /// No description provided for @fleetUnassign.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ll drive it myself'**
+  String get fleetUnassign;
+
+  /// No description provided for @fleetAssignedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver: {name}'**
+  String fleetAssignedTo(String name);
+
+  /// No description provided for @fleetNoActiveDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'No active drivers. Invite drivers from your profile.'**
+  String get fleetNoActiveDrivers;
 }
 
 class _AppLocalizationsDelegate

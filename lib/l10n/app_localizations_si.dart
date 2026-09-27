@@ -7564,4 +7564,86 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get whNoStock => 'දැනට ගබඩා තොග ලැයිස්තුගත කර නැත.';
+
+  @override
+  String get drvTitle => 'මගේ බෙදාහැරීම්';
+
+  @override
+  String get drvInvites => 'බලඇණි ආරාධනා';
+
+  @override
+  String drvInvitedBy(String name) {
+    return '$name ඔබට ඔවුන් වෙනුවෙන් රිය පැදවීමට අවශ්‍යයි';
+  }
+
+  @override
+  String get drvAccept => 'පිළිගන්න';
+
+  @override
+  String get drvDecline => 'ප්‍රතික්ෂේප කරන්න';
+
+  @override
+  String get drvMyFleet => 'රිය පදවන්නේ';
+
+  @override
+  String get drvLeave => 'බලඇණියෙන් ඉවත් වන්න';
+
+  @override
+  String get drvNoFleet =>
+      'ඔබ තවම බලඇණියක නැත. ඔබට ආරාධනා කිරීමට ප්‍රවාහන සමාගමකට ඔබේ දුරකථන අංකය දෙන්න.';
+
+  @override
+  String get drvAssigned => 'පවරා ඇති බෙදාහැරීම්';
+
+  @override
+  String get drvNoJobs => 'ඔබට බෙදාහැරීම් පවරා නැත.';
+
+  @override
+  String get fleetMyDrivers => 'මගේ රියදුරන්';
+
+  @override
+  String get fleetMyDriversSubtitle => 'රියදුරන්ට ආරාධනා කර බෙදාහැරීම් පවරන්න';
+
+  @override
+  String get fleetFindPhone => 'රියදුරුගේ දුරකථන අංකය';
+
+  @override
+  String get fleetFind => 'සොයන්න';
+
+  @override
+  String get fleetNotFound =>
+      'එම අංකයෙන් රියදුරු ගිණුමක් නැත. රියදුරෙකු ලෙස ලියාපදිංචි වීමට ඔවුන්ගෙන් ඉල්ලන්න.';
+
+  @override
+  String get fleetInvite => 'ආරාධනා කරන්න';
+
+  @override
+  String get fleetInvited => 'ආරාධනා කළා';
+
+  @override
+  String get fleetActive => 'සක්‍රියයි';
+
+  @override
+  String get fleetRemoved => 'ඉවත් කළා';
+
+  @override
+  String get fleetRemove => 'ඉවත් කරන්න';
+
+  @override
+  String get fleetNoDrivers => 'තවම රියදුරන් නැත.';
+
+  @override
+  String get fleetAssign => 'රියදුරෙකු පවරන්න';
+
+  @override
+  String get fleetUnassign => 'මම ම පදවන්නම්';
+
+  @override
+  String fleetAssignedTo(String name) {
+    return 'රියදුරු: $name';
+  }
+
+  @override
+  String get fleetNoActiveDrivers =>
+      'සක්‍රිය රියදුරන් නැත. ඔබේ පැතිකඩෙන් රියදුරන්ට ආරාධනා කරන්න.';
 }

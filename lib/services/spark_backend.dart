@@ -1032,10 +1032,15 @@ class SparkBackend {
   Future<void> transitionTransport(String jobId, String status,
       {String? reason, String? deliveryCode, String? podPhotoPath}) async {
     final uid = _uid;
-    final me = await _requireRole(['transporter']);
+    final me = await _requireRole(['transporter', 'driver']);
     final ref = _col('transport_jobs').doc(jobId);
     final job = (await ref.get()).data();
     if (job == null) throw UserStateError(L10n.current.svcJobNotFound);
+    // A fleet driver may only run (advance / deliver) a job assigned to them.
+    final isDriver = me['role'] == 'driver';
+    if (isDriver && job['driverId'] != uid) {
+      throw UserStateError('This delivery is not assigned to you.');
+    }
     final current = normalizeJobStatus((job['status'] ?? '').toString());
     final next = normalizeJobStatus(status);
     final note = (reason ?? '').trim();
@@ -1051,6 +1056,16 @@ class SparkBackend {
           orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
       await _notify(job['farmerId']?.toString(), title, body, 'logistics',
           orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
+      // The fleet owner hears about their driver's progress.
+      if (isDriver) {
+        await _notify(assignedTo, title, body, 'logistics',
+            orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
+      }
+    }
+
+    if (isDriver &&
+        !const ['pickedUp', 'inTransit', 'delivered'].contains(next)) {
+      throw UserStateError('Only the transport company can do this.');
     }
 
     if (next == 'declined') {
@@ -1167,7 +1182,7 @@ class SparkBackend {
 
     const order = ['accepted', 'pickedUp', 'inTransit', 'delivered'];
     final from = order.indexOf(current);
-    if (assignedTo != uid ||
+    if ((isDriver ? job['driverId'] != uid : assignedTo != uid) ||
         from < 0 ||
         from + 1 >= order.length ||
         order[from + 1] != next) {

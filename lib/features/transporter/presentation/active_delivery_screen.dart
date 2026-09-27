@@ -16,6 +16,7 @@ import '../../messaging/presentation/chat_screen.dart';
 import '../../messaging/presentation/conversations_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'delivery_proof_dialog.dart';
+import '../../driver/presentation/driver_dashboard_screen.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
   final TransportJob job;
@@ -220,6 +221,17 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
           ),
         ),
         actions: [
+          if (ownsJob(context, job) &&
+              const ['accepted', 'pickedUp', 'inTransit'].contains(job.status))
+            IconButton(
+              tooltip: job.driverName == null
+                  ? l10n.fleetAssign
+                  : l10n.fleetAssignedTo(job.driverName!),
+              onPressed: () => showAssignDriverSheet(context, job),
+              icon: Icon(job.driverName == null
+                  ? Icons.person_add_alt_1_outlined
+                  : Icons.badge_rounded),
+            ),
           IconButton(
             tooltip: l10n.messages,
             onPressed: _openChat,

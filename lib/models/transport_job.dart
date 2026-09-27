@@ -49,6 +49,10 @@ class TransportJob {
   final String? podPhotoPath;
   final bool deliveredWithCode;
 
+  /// Fleet driver the owning transporter assigned, if any.
+  final String? driverId;
+  final String? driverName;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -85,6 +89,8 @@ class TransportJob {
     this.createdAt,
     this.podPhotoPath,
     this.deliveredWithCode = false,
+    this.driverId,
+    this.driverName,
   });
 
   /// True while the job waits for a transporter.
@@ -151,6 +157,8 @@ class TransportJob {
     DateTime? createdAt,
     String? podPhotoPath,
     bool? deliveredWithCode,
+    String? driverId,
+    String? driverName,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -189,6 +197,8 @@ class TransportJob {
       createdAt: createdAt ?? this.createdAt,
       podPhotoPath: podPhotoPath ?? this.podPhotoPath,
       deliveredWithCode: deliveredWithCode ?? this.deliveredWithCode,
+      driverId: driverId ?? this.driverId,
+      driverName: driverName ?? this.driverName,
     );
   }
 
@@ -289,6 +299,8 @@ class TransportJob {
       requestedTransporterId: text(['requestedTransporterId']),
       podPhotoPath: text(['podPhotoPath']),
       deliveredWithCode: (text(['deliveryCode']) ?? '').isNotEmpty,
+      driverId: text(['driverId']),
+      driverName: text(['driverName']),
       createdAt: firebaseDate(data['createdAt']),
     );
   }

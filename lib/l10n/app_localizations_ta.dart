@@ -7685,4 +7685,87 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get whNoStock => 'தற்போது கிடங்கு இருப்பு பட்டியலிடப்படவில்லை.';
+
+  @override
+  String get drvTitle => 'எனது டெலிவரிகள்';
+
+  @override
+  String get drvInvites => 'குழு அழைப்புகள்';
+
+  @override
+  String drvInvitedBy(String name) {
+    return '$name நீங்கள் அவர்களுக்காக ஓட்ட விரும்புகிறார்';
+  }
+
+  @override
+  String get drvAccept => 'ஏற்று';
+
+  @override
+  String get drvDecline => 'நிராகரி';
+
+  @override
+  String get drvMyFleet => 'ஓட்டுவது';
+
+  @override
+  String get drvLeave => 'குழுவிலிருந்து வெளியேறு';
+
+  @override
+  String get drvNoFleet =>
+      'நீங்கள் இன்னும் எந்தக் குழுவிலும் இல்லை. உங்களை அழைக்க போக்குவரத்து நிறுவனத்திடம் உங்கள் தொலைபேசி எண்ணைப் பகிருங்கள்.';
+
+  @override
+  String get drvAssigned => 'ஒதுக்கப்பட்ட டெலிவரிகள்';
+
+  @override
+  String get drvNoJobs => 'உங்களுக்கு டெலிவரிகள் ஒதுக்கப்படவில்லை.';
+
+  @override
+  String get fleetMyDrivers => 'எனது ஓட்டுநர்கள்';
+
+  @override
+  String get fleetMyDriversSubtitle =>
+      'ஓட்டுநர்களை அழைத்து டெலிவரிகளை ஒதுக்குங்கள்';
+
+  @override
+  String get fleetFindPhone => 'ஓட்டுநரின் தொலைபேசி எண்';
+
+  @override
+  String get fleetFind => 'தேடு';
+
+  @override
+  String get fleetNotFound =>
+      'அந்த எண்ணில் ஓட்டுநர் கணக்கு இல்லை. ஓட்டுநராகப் பதிவு செய்யச் சொல்லுங்கள்.';
+
+  @override
+  String get fleetInvite => 'அழை';
+
+  @override
+  String get fleetInvited => 'அழைக்கப்பட்டது';
+
+  @override
+  String get fleetActive => 'செயலில்';
+
+  @override
+  String get fleetRemoved => 'நீக்கப்பட்டது';
+
+  @override
+  String get fleetRemove => 'நீக்கு';
+
+  @override
+  String get fleetNoDrivers => 'இன்னும் ஓட்டுநர்கள் இல்லை.';
+
+  @override
+  String get fleetAssign => 'ஓட்டுநரை ஒதுக்கு';
+
+  @override
+  String get fleetUnassign => 'நானே ஓட்டுவேன்';
+
+  @override
+  String fleetAssignedTo(String name) {
+    return 'ஓட்டுநர்: $name';
+  }
+
+  @override
+  String get fleetNoActiveDrivers =>
+      'செயலில் உள்ள ஓட்டுநர்கள் இல்லை. உங்கள் சுயவிவரத்திலிருந்து அழைக்கவும்.';
 }
