@@ -35,6 +35,7 @@ class AwaitingVerificationView extends StatelessWidget {
       Role.buyer => 'Wholesale Buyer',
       Role.transporter => 'Logistics Provider',
       Role.admin => 'Administrator',
+      Role.supplier => 'Input Supplier',
     };
 
     return Scaffold(

@@ -11800,6 +11800,408 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load more'**
   String get loadMore;
+
+  /// No description provided for @roleSupplier.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Supplier'**
+  String get roleSupplier;
+
+  /// No description provided for @roleSupplierDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sell seeds, fertilizer, pesticides and tools, or rent out machinery to farmers.'**
+  String get roleSupplierDescription;
+
+  /// No description provided for @inpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm Inputs'**
+  String get inpTitle;
+
+  /// No description provided for @inpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Seeds, fertilizer, tools & machinery rental'**
+  String get inpSubtitle;
+
+  /// No description provided for @inpCatAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get inpCatAll;
+
+  /// No description provided for @inpCatSeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seeds'**
+  String get inpCatSeeds;
+
+  /// No description provided for @inpCatFertilizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilizer'**
+  String get inpCatFertilizer;
+
+  /// No description provided for @inpCatPesticide.
+  ///
+  /// In en, this message translates to:
+  /// **'Pesticides'**
+  String get inpCatPesticide;
+
+  /// No description provided for @inpCatTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get inpCatTools;
+
+  /// No description provided for @inpCatMachinery.
+  ///
+  /// In en, this message translates to:
+  /// **'Machinery'**
+  String get inpCatMachinery;
+
+  /// No description provided for @inpEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No inputs listed here yet.'**
+  String get inpEmpty;
+
+  /// No description provided for @inpPricePer.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} / {unit}'**
+  String inpPricePer(String price, String unit);
+
+  /// No description provided for @inpPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'day'**
+  String get inpPerDay;
+
+  /// No description provided for @inpInStock.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} {unit} in stock'**
+  String inpInStock(String count, String unit);
+
+  /// No description provided for @inpMachinesFree.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} available'**
+  String inpMachinesFree(String count);
+
+  /// No description provided for @inpOutOfStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of stock'**
+  String get inpOutOfStock;
+
+  /// No description provided for @inpBy.
+  ///
+  /// In en, this message translates to:
+  /// **'by {name}'**
+  String inpBy(String name);
+
+  /// No description provided for @inpMyOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'My input orders'**
+  String get inpMyOrders;
+
+  /// No description provided for @inpBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy'**
+  String get inpBuy;
+
+  /// No description provided for @inpBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Book'**
+  String get inpBook;
+
+  /// No description provided for @inpQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get inpQuantity;
+
+  /// No description provided for @inpDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of days'**
+  String get inpDays;
+
+  /// No description provided for @inpStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get inpStartDate;
+
+  /// No description provided for @inpDeliveryAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery address'**
+  String get inpDeliveryAddress;
+
+  /// No description provided for @inpTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {amount}'**
+  String inpTotal(String amount);
+
+  /// No description provided for @inpPayCod.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay cash on delivery.'**
+  String get inpPayCod;
+
+  /// No description provided for @inpPlaceOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Place order'**
+  String get inpPlaceOrder;
+
+  /// No description provided for @inpOrderPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the supplier. You\'ll be notified when they confirm.'**
+  String get inpOrderPlaced;
+
+  /// No description provided for @inpNoOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'No input orders yet.'**
+  String get inpNoOrders;
+
+  /// No description provided for @inpCancelOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel order'**
+  String get inpCancelOrder;
+
+  /// No description provided for @inpRentalFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days from {date}'**
+  String inpRentalFor(String days, String date);
+
+  /// No description provided for @inpStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for supplier'**
+  String get inpStatusPending;
+
+  /// No description provided for @inpStatusConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get inpStatusConfirmed;
+
+  /// No description provided for @inpStatusDispatched.
+  ///
+  /// In en, this message translates to:
+  /// **'On the way'**
+  String get inpStatusDispatched;
+
+  /// No description provided for @inpStatusDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered'**
+  String get inpStatusDelivered;
+
+  /// No description provided for @inpStatusInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get inpStatusInUse;
+
+  /// No description provided for @inpStatusReturned.
+  ///
+  /// In en, this message translates to:
+  /// **'Returned'**
+  String get inpStatusReturned;
+
+  /// No description provided for @inpStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get inpStatusRejected;
+
+  /// No description provided for @inpStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get inpStatusCancelled;
+
+  /// No description provided for @supDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Supplier dashboard'**
+  String get supDashboardTitle;
+
+  /// No description provided for @supListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Listings'**
+  String get supListings;
+
+  /// No description provided for @supAddListing.
+  ///
+  /// In en, this message translates to:
+  /// **'Add listing'**
+  String get supAddListing;
+
+  /// No description provided for @supEditListing.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit listing'**
+  String get supEditListing;
+
+  /// No description provided for @supActiveListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Active listings'**
+  String get supActiveListings;
+
+  /// No description provided for @supPendingOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders to confirm'**
+  String get supPendingOrders;
+
+  /// No description provided for @supCompletedSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed sales'**
+  String get supCompletedSales;
+
+  /// No description provided for @supName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get supName;
+
+  /// No description provided for @supCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get supCategory;
+
+  /// No description provided for @supForRent.
+  ///
+  /// In en, this message translates to:
+  /// **'For rent (priced per day)'**
+  String get supForRent;
+
+  /// No description provided for @supPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (LKR)'**
+  String get supPrice;
+
+  /// No description provided for @supUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit (kg, bag, bottle…)'**
+  String get supUnit;
+
+  /// No description provided for @supStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock'**
+  String get supStock;
+
+  /// No description provided for @supMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines available'**
+  String get supMachines;
+
+  /// No description provided for @supDistrict.
+  ///
+  /// In en, this message translates to:
+  /// **'District'**
+  String get supDistrict;
+
+  /// No description provided for @supDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get supDescription;
+
+  /// No description provided for @supAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photo'**
+  String get supAddPhoto;
+
+  /// No description provided for @supVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible to farmers'**
+  String get supVisible;
+
+  /// No description provided for @supHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get supHidden;
+
+  /// No description provided for @supDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this listing? Past orders are kept.'**
+  String get supDeleteConfirm;
+
+  /// No description provided for @supNoListings.
+  ///
+  /// In en, this message translates to:
+  /// **'No listings yet. Add your first product or machine.'**
+  String get supNoListings;
+
+  /// No description provided for @supNoOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders yet.'**
+  String get supNoOrders;
+
+  /// No description provided for @supMarkDispatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark dispatched'**
+  String get supMarkDispatched;
+
+  /// No description provided for @supMarkDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark delivered'**
+  String get supMarkDelivered;
+
+  /// No description provided for @supMarkInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Handed over'**
+  String get supMarkInUse;
+
+  /// No description provided for @supMarkReturned.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark returned'**
+  String get supMarkReturned;
+
+  /// No description provided for @supOrderFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From {name}'**
+  String supOrderFrom(String name);
+
+  /// No description provided for @supInvalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid number.'**
+  String get supInvalidNumber;
 }
 
 class _AppLocalizationsDelegate

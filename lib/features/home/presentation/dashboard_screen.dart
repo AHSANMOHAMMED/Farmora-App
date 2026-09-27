@@ -34,6 +34,7 @@ import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
 import '../../auth/presentation/session_actions.dart';
+import '../../inputs/presentation/input_catalog_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1083,6 +1084,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'onTap': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen())),
         },
         {
+          'icon': Icons.storefront_outlined,
+          'label': l10n.inpTitle,
+          'color': const Color(0xFF4E342E),
+          'bg': const Color(0xFFEFEBE9),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const InputCatalogScreen())),
+        },
+        {
           'icon': Icons.receipt_long_outlined,
           'label': l10n.dashboardManageOrders,
           'color': const Color(0xFFE65100),
@@ -1393,6 +1402,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.storefront_outlined, color: Color(0xFF4E342E)),
+                          title: Text(context.l10n.inpTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.inpSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InputCatalogScreen()));
                           },
                         ),
                         ListTile(

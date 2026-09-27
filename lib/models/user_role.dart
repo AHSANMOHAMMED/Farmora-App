@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/localization/l10n.dart';
 
-enum Role { farmer, buyer, transporter, admin }
+enum Role { farmer, buyer, transporter, admin, supplier }
 
 extension RoleInfo on Role {
   /// Display name in the current app language. Firestore stores [name].
@@ -11,6 +11,7 @@ extension RoleInfo on Role {
         Role.buyer => L10n.current.roleBuyer,
         Role.transporter => L10n.current.roleTransporter,
         Role.admin => L10n.current.roleAdmin,
+        Role.supplier => L10n.current.roleSupplier,
       };
 
   IconData get icon {
@@ -23,6 +24,8 @@ extension RoleInfo on Role {
         return Icons.local_shipping_rounded;
       case Role.admin:
         return Icons.admin_panel_settings_rounded;
+      case Role.supplier:
+        return Icons.storefront_rounded;
     }
   }
 
@@ -31,5 +34,6 @@ extension RoleInfo on Role {
         Role.buyer => L10n.current.roleBuyerDescription,
         Role.transporter => L10n.current.roleTransporterDescription,
         Role.admin => L10n.current.roleAdminDescription,
+        Role.supplier => L10n.current.roleSupplierDescription,
       };
 }

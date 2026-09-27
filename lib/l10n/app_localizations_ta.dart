@@ -6850,4 +6850,223 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get loadMore => 'மேலும் ஏற்று';
+
+  @override
+  String get roleSupplier => 'உள்ளீட்டு விநியோகஸ்தர்';
+
+  @override
+  String get roleSupplierDescription =>
+      'விவசாயிகளுக்கு விதைகள், உரம், பூச்சிக்கொல்லிகள், கருவிகளை விற்கவும் அல்லது இயந்திரங்களை வாடகைக்கு விடவும்.';
+
+  @override
+  String get inpTitle => 'விவசாய உள்ளீடுகள்';
+
+  @override
+  String get inpSubtitle => 'விதைகள், உரம், கருவிகள் மற்றும் இயந்திர வாடகை';
+
+  @override
+  String get inpCatAll => 'அனைத்தும்';
+
+  @override
+  String get inpCatSeeds => 'விதைகள்';
+
+  @override
+  String get inpCatFertilizer => 'உரம்';
+
+  @override
+  String get inpCatPesticide => 'பூச்சிக்கொல்லிகள்';
+
+  @override
+  String get inpCatTools => 'கருவிகள்';
+
+  @override
+  String get inpCatMachinery => 'இயந்திரங்கள்';
+
+  @override
+  String get inpEmpty => 'இங்கு இன்னும் உள்ளீடுகள் பட்டியலிடப்படவில்லை.';
+
+  @override
+  String inpPricePer(String price, String unit) {
+    return '$price / $unit';
+  }
+
+  @override
+  String get inpPerDay => 'நாள்';
+
+  @override
+  String inpInStock(String count, String unit) {
+    return '$count $unit இருப்பில் உள்ளது';
+  }
+
+  @override
+  String inpMachinesFree(String count) {
+    return '$count கிடைக்கின்றன';
+  }
+
+  @override
+  String get inpOutOfStock => 'இருப்பில் இல்லை';
+
+  @override
+  String inpBy(String name) {
+    return '$name மூலம்';
+  }
+
+  @override
+  String get inpMyOrders => 'எனது உள்ளீட்டு ஆர்டர்கள்';
+
+  @override
+  String get inpBuy => 'வாங்கு';
+
+  @override
+  String get inpBook => 'முன்பதிவு';
+
+  @override
+  String get inpQuantity => 'அளவு';
+
+  @override
+  String get inpDays => 'நாட்களின் எண்ணிக்கை';
+
+  @override
+  String get inpStartDate => 'தொடக்க தேதி';
+
+  @override
+  String get inpDeliveryAddress => 'டெலிவரி முகவரி';
+
+  @override
+  String inpTotal(String amount) {
+    return 'மொத்தம்: $amount';
+  }
+
+  @override
+  String get inpPayCod => 'டெலிவரியின் போது பணமாக செலுத்தவும்.';
+
+  @override
+  String get inpPlaceOrder => 'ஆர்டர் செய்';
+
+  @override
+  String get inpOrderPlaced =>
+      'விநியோகஸ்தருக்கு அனுப்பப்பட்டது. அவர்கள் உறுதிப்படுத்தும்போது அறிவிக்கப்படும்.';
+
+  @override
+  String get inpNoOrders => 'இன்னும் உள்ளீட்டு ஆர்டர்கள் இல்லை.';
+
+  @override
+  String get inpCancelOrder => 'ஆர்டரை ரத்து செய்';
+
+  @override
+  String inpRentalFor(String days, String date) {
+    return '$date முதல் $days நாட்கள்';
+  }
+
+  @override
+  String get inpStatusPending => 'விநியோகஸ்தருக்காக காத்திருக்கிறது';
+
+  @override
+  String get inpStatusConfirmed => 'உறுதிப்படுத்தப்பட்டது';
+
+  @override
+  String get inpStatusDispatched => 'வழியில்';
+
+  @override
+  String get inpStatusDelivered => 'வழங்கப்பட்டது';
+
+  @override
+  String get inpStatusInUse => 'பயன்பாட்டில்';
+
+  @override
+  String get inpStatusReturned => 'திருப்பி அளிக்கப்பட்டது';
+
+  @override
+  String get inpStatusRejected => 'நிராகரிக்கப்பட்டது';
+
+  @override
+  String get inpStatusCancelled => 'ரத்து செய்யப்பட்டது';
+
+  @override
+  String get supDashboardTitle => 'விநியோகஸ்தர் டாஷ்போர்டு';
+
+  @override
+  String get supListings => 'பட்டியல்கள்';
+
+  @override
+  String get supAddListing => 'பட்டியலைச் சேர்';
+
+  @override
+  String get supEditListing => 'பட்டியலைத் திருத்து';
+
+  @override
+  String get supActiveListings => 'செயலில் உள்ள பட்டியல்கள்';
+
+  @override
+  String get supPendingOrders => 'உறுதிப்படுத்த வேண்டிய ஆர்டர்கள்';
+
+  @override
+  String get supCompletedSales => 'முடிந்த விற்பனைகள்';
+
+  @override
+  String get supName => 'பெயர்';
+
+  @override
+  String get supCategory => 'வகை';
+
+  @override
+  String get supForRent => 'வாடகைக்கு (நாள் ஒன்றுக்கு விலை)';
+
+  @override
+  String get supPrice => 'விலை (ரூ.)';
+
+  @override
+  String get supUnit => 'அலகு (kg, பை, பாட்டில்…)';
+
+  @override
+  String get supStock => 'இருப்பு';
+
+  @override
+  String get supMachines => 'கிடைக்கும் இயந்திரங்கள்';
+
+  @override
+  String get supDistrict => 'மாவட்டம்';
+
+  @override
+  String get supDescription => 'விவரம்';
+
+  @override
+  String get supAddPhoto => 'புகைப்படம் சேர்';
+
+  @override
+  String get supVisible => 'விவசாயிகளுக்குத் தெரியும்';
+
+  @override
+  String get supHidden => 'மறைக்கப்பட்டது';
+
+  @override
+  String get supDeleteConfirm =>
+      'இந்தப் பட்டியலை நீக்கவா? பழைய ஆர்டர்கள் வைக்கப்படும்.';
+
+  @override
+  String get supNoListings =>
+      'இன்னும் பட்டியல்கள் இல்லை. உங்கள் முதல் பொருள் அல்லது இயந்திரத்தைச் சேர்க்கவும்.';
+
+  @override
+  String get supNoOrders => 'இன்னும் ஆர்டர்கள் இல்லை.';
+
+  @override
+  String get supMarkDispatched => 'அனுப்பப்பட்டதாகக் குறி';
+
+  @override
+  String get supMarkDelivered => 'வழங்கப்பட்டதாகக் குறி';
+
+  @override
+  String get supMarkInUse => 'ஒப்படைக்கப்பட்டது';
+
+  @override
+  String get supMarkReturned => 'திரும்பப் பெற்றதாகக் குறி';
+
+  @override
+  String supOrderFrom(String name) {
+    return '$name இடமிருந்து';
+  }
+
+  @override
+  String get supInvalidNumber => 'சரியான எண்ணை உள்ளிடவும்.';
 }

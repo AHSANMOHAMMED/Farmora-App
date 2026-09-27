@@ -6745,4 +6745,222 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loadMore => 'Load more';
+
+  @override
+  String get roleSupplier => 'Input Supplier';
+
+  @override
+  String get roleSupplierDescription =>
+      'Sell seeds, fertilizer, pesticides and tools, or rent out machinery to farmers.';
+
+  @override
+  String get inpTitle => 'Farm Inputs';
+
+  @override
+  String get inpSubtitle => 'Seeds, fertilizer, tools & machinery rental';
+
+  @override
+  String get inpCatAll => 'All';
+
+  @override
+  String get inpCatSeeds => 'Seeds';
+
+  @override
+  String get inpCatFertilizer => 'Fertilizer';
+
+  @override
+  String get inpCatPesticide => 'Pesticides';
+
+  @override
+  String get inpCatTools => 'Tools';
+
+  @override
+  String get inpCatMachinery => 'Machinery';
+
+  @override
+  String get inpEmpty => 'No inputs listed here yet.';
+
+  @override
+  String inpPricePer(String price, String unit) {
+    return '$price / $unit';
+  }
+
+  @override
+  String get inpPerDay => 'day';
+
+  @override
+  String inpInStock(String count, String unit) {
+    return '$count $unit in stock';
+  }
+
+  @override
+  String inpMachinesFree(String count) {
+    return '$count available';
+  }
+
+  @override
+  String get inpOutOfStock => 'Out of stock';
+
+  @override
+  String inpBy(String name) {
+    return 'by $name';
+  }
+
+  @override
+  String get inpMyOrders => 'My input orders';
+
+  @override
+  String get inpBuy => 'Buy';
+
+  @override
+  String get inpBook => 'Book';
+
+  @override
+  String get inpQuantity => 'Quantity';
+
+  @override
+  String get inpDays => 'Number of days';
+
+  @override
+  String get inpStartDate => 'Start date';
+
+  @override
+  String get inpDeliveryAddress => 'Delivery address';
+
+  @override
+  String inpTotal(String amount) {
+    return 'Total: $amount';
+  }
+
+  @override
+  String get inpPayCod => 'Pay cash on delivery.';
+
+  @override
+  String get inpPlaceOrder => 'Place order';
+
+  @override
+  String get inpOrderPlaced =>
+      'Sent to the supplier. You\'ll be notified when they confirm.';
+
+  @override
+  String get inpNoOrders => 'No input orders yet.';
+
+  @override
+  String get inpCancelOrder => 'Cancel order';
+
+  @override
+  String inpRentalFor(String days, String date) {
+    return '$days days from $date';
+  }
+
+  @override
+  String get inpStatusPending => 'Waiting for supplier';
+
+  @override
+  String get inpStatusConfirmed => 'Confirmed';
+
+  @override
+  String get inpStatusDispatched => 'On the way';
+
+  @override
+  String get inpStatusDelivered => 'Delivered';
+
+  @override
+  String get inpStatusInUse => 'In use';
+
+  @override
+  String get inpStatusReturned => 'Returned';
+
+  @override
+  String get inpStatusRejected => 'Rejected';
+
+  @override
+  String get inpStatusCancelled => 'Cancelled';
+
+  @override
+  String get supDashboardTitle => 'Supplier dashboard';
+
+  @override
+  String get supListings => 'Listings';
+
+  @override
+  String get supAddListing => 'Add listing';
+
+  @override
+  String get supEditListing => 'Edit listing';
+
+  @override
+  String get supActiveListings => 'Active listings';
+
+  @override
+  String get supPendingOrders => 'Orders to confirm';
+
+  @override
+  String get supCompletedSales => 'Completed sales';
+
+  @override
+  String get supName => 'Name';
+
+  @override
+  String get supCategory => 'Category';
+
+  @override
+  String get supForRent => 'For rent (priced per day)';
+
+  @override
+  String get supPrice => 'Price (LKR)';
+
+  @override
+  String get supUnit => 'Unit (kg, bag, bottle…)';
+
+  @override
+  String get supStock => 'Stock';
+
+  @override
+  String get supMachines => 'Machines available';
+
+  @override
+  String get supDistrict => 'District';
+
+  @override
+  String get supDescription => 'Description';
+
+  @override
+  String get supAddPhoto => 'Add photo';
+
+  @override
+  String get supVisible => 'Visible to farmers';
+
+  @override
+  String get supHidden => 'Hidden';
+
+  @override
+  String get supDeleteConfirm => 'Delete this listing? Past orders are kept.';
+
+  @override
+  String get supNoListings =>
+      'No listings yet. Add your first product or machine.';
+
+  @override
+  String get supNoOrders => 'No orders yet.';
+
+  @override
+  String get supMarkDispatched => 'Mark dispatched';
+
+  @override
+  String get supMarkDelivered => 'Mark delivered';
+
+  @override
+  String get supMarkInUse => 'Handed over';
+
+  @override
+  String get supMarkReturned => 'Mark returned';
+
+  @override
+  String supOrderFrom(String name) {
+    return 'From $name';
+  }
+
+  @override
+  String get supInvalidNumber => 'Enter a valid number.';
 }

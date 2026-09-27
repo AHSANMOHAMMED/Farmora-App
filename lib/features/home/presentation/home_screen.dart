@@ -40,6 +40,8 @@ import '../../../models/dispute_model.dart';
 import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
+import '../../inputs/presentation/supplier_screens.dart';
+import '../../notifications/presentation/notifications_screen.dart';
 import 'widgets/platform_gate_views.dart';
 import '../../auth/presentation/session_actions.dart';
 
@@ -137,7 +139,9 @@ class _HomeScreenState extends State<HomeScreen>
     final l10n = context.l10n;
 
     // Transporters trade only once verified by admin; farmers enter their role dashboard upon completing simple profile.
-    final isUnverified = role == Role.transporter && !state.isVerified;
+    final isUnverified =
+        (role == Role.transporter || role == Role.supplier) &&
+            !state.isVerified;
     if (isUnverified) {
       screens = [
         const AwaitingVerificationView(),
@@ -188,6 +192,39 @@ class _HomeScreenState extends State<HomeScreen>
             label: l10n.homeNavEarnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.supplier) {
+      screens = [
+        SupplierDashboardScreen(
+          onOpenListings: () => setState(() => tabIndex = 1),
+          onOpenOrders: () => setState(() => tabIndex = 2),
+        ),
+        const SupplierListingsScreen(),
+        const SupplierOrdersScreen(),
+        const NotificationsScreen(),
+        const ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.homeNavHome,
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_rounded),
+        _NavItem(
+            label: l10n.supListings,
+            icon: Icons.inventory_2_outlined,
+            activeIcon: Icons.inventory_2_rounded),
+        _NavItem(
+            label: l10n.homeNavOrders,
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
         _NavItem(
             label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,

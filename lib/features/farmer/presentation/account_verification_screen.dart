@@ -113,6 +113,24 @@ List<_RequiredDoc> _requiredDocsFor(Role role) {
           keywords: const ['insurance'],
         ),
       ];
+    case Role.supplier:
+      return [
+        _RequiredDoc(
+          documentType: 'NIC',
+          label: VerificationDoc.documentTypeLabel('NIC'),
+          description: 'National Identity Card of the owner or manager.',
+          icon: Icons.badge_outlined,
+          keywords: const ['nic', 'national id'],
+        ),
+        const _RequiredDoc(
+          documentType: 'Business Registration',
+          label: 'Business Registration',
+          description: 'Business registration certificate, and a dealer or '
+              'pesticide licence if you sell agro-chemicals.',
+          icon: Icons.storefront_outlined,
+          keywords: ['business', 'br', 'licence', 'dealer'],
+        ),
+      ];
     case Role.buyer:
       return [
         const _RequiredDoc(

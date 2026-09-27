@@ -175,7 +175,7 @@ String _roleLabel(AppLocalizations l, Role role) => switch (role) {
       Role.farmer => l.farmer,
       Role.buyer => l.buyer,
       Role.transporter => l.transporter,
-      Role.admin => role.label,
+      Role.admin || Role.supplier => role.label,
     };
 
 // ── Header ─────────────────────────────────────────────────────────────

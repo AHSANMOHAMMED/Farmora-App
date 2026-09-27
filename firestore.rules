@@ -36,6 +36,7 @@ service cloud.firestore {
     function farmer() { return active() && roleIs('farmer'); }
     function buyer() { return active() && roleIs('buyer'); }
     function transporter() { return active() && roleIs('transporter'); }
+    function supplier() { return active() && roleIs('supplier'); }
 
     function isStr(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
     function optStr(d, k, max) { return !(k in d) || d[k] == null || isStr(d[k], 0, max); }
@@ -102,7 +103,7 @@ service cloud.firestore {
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.id == userId
         // Admin profiles must be provisioned by a trusted Admin SDK tool.
-        && request.resource.data.role in ['farmer', 'buyer', 'transporter']
+        && request.resource.data.role in ['farmer', 'buyer', 'transporter', 'supplier']
         && request.resource.data.isVerified == false
         && request.resource.data.get('isSuspended', false) == false
         && !request.resource.data.keys().hasAny(['isDeleted', 'deviceTokens', 'admin'])
@@ -673,6 +674,90 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    // ── Input marketplace: seeds, fertilizer, tools, machinery rental ──
+    function inputShapeOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['supplierId', 'supplierName', 'name', 'category',
+          'listingType', 'priceMinor', 'unit', 'stock', 'description', 'district',
+          'imageUrl', 'status', 'isDeleted', 'deletedAt', 'createdAt', 'updatedAt',
+          'createdBy', 'updatedBy'])
+        && isStr(d.name, 1, 120) && isStr(d.supplierName, 1, 120)
+        && d.category in ['seeds', 'fertilizer', 'pesticide', 'tools', 'machinery']
+        && d.listingType in ['sale', 'rental']
+        && isInt(d.priceMinor, 1, 1000000000)
+        && isInt(d.stock, 0, 10000000)
+        && isStr(d.unit, 1, 20)
+        && optStr(d, 'description', 2000) && optStr(d, 'district', 60)
+        && optStr(d, 'imageUrl', 2000)
+        && d.status in ['Active', 'Inactive'] && d.isDeleted is bool
+        && d.updatedBy == uid();
+    }
+    match /inputs/{inputId} {
+      // Public catalogue (like products); owners also see inactive listings.
+      allow read: if (resource.data.status == 'Active' && resource.data.isDeleted == false)
+        || (signedIn() && resource.data.supplierId == uid()) || admin();
+      allow create: if supplier() && verified()
+        && request.resource.data.supplierId == uid()
+        && request.resource.data.createdBy == uid()
+        && request.resource.data.isDeleted == false
+        && request.resource.data.createdAt == request.time
+        && inputShapeOk();
+      allow update: if admin() || (supplier() && resource.data.supplierId == uid()
+        && request.resource.data.supplierId == uid()
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && inputShapeOk());
+      allow delete: if admin();
+    }
+
+    function inputOrderCreateOk() {
+      let d = request.resource.data;
+      let i = get(docPath('inputs/' + d.inputId)).data;
+      return d.keys().hasOnly(['farmerId', 'farmerName', 'supplierId', 'supplierName',
+          'inputId', 'inputName', 'listingType', 'unit', 'quantity', 'days', 'startDate',
+          'unitPriceMinor', 'totalMinor', 'deliveryAddress', 'paymentMethod', 'status',
+          'createdAt', 'updatedAt'])
+        && d.farmerId == uid() && d.status == 'pending' && d.paymentMethod == 'cod'
+        && d.createdAt == request.time
+        && i.status == 'Active' && i.isDeleted == false
+        && d.supplierId == i.supplierId && d.listingType == i.listingType
+        && d.unitPriceMinor == i.priceMinor
+        && isInt(d.quantity, 1, 100000)
+        && isStr(d.inputName, 1, 120) && isStr(d.deliveryAddress, 5, 300)
+        && ((d.listingType == 'rental' && isInt(d.days, 1, 60) && d.startDate is timestamp
+            && d.totalMinor == d.unitPriceMinor * d.quantity * d.days)
+          || (d.listingType == 'sale' && d.quantity <= i.stock
+            && !('days' in d) && !('startDate' in d)
+            && d.totalMinor == d.unitPriceMinor * d.quantity));
+    }
+    // A sale is confirmed in the same write that takes its stock.
+    function inputStockTaken(r) {
+      return getAfter(docPath('inputs/' + r.inputId)).data.stock
+        == get(docPath('inputs/' + r.inputId)).data.stock - r.quantity;
+    }
+    function inputOrderUpdateOk() {
+      let d = request.resource.data;
+      let r = resource.data;
+      let rental = r.listingType == 'rental';
+      return affected().hasOnly(['status', 'updatedAt', d.status + 'At'])
+        && ((uid() == r.supplierId && (
+              (r.status == 'pending' && d.status == 'rejected')
+            || (r.status == 'pending' && d.status == 'confirmed'
+              && (rental || inputStockTaken(r)))
+            || (!rental && r.status == 'confirmed' && d.status == 'dispatched')
+            || (!rental && r.status == 'dispatched' && d.status == 'delivered')
+            || (rental && r.status == 'confirmed' && d.status == 'inUse')
+            || (rental && r.status == 'inUse' && d.status == 'returned')))
+          || (uid() == r.farmerId && r.status == 'pending' && d.status == 'cancelled'));
+    }
+    match /input_orders/{orderId} {
+      allow read: if admin() || (signedIn()
+        && (resource.data.farmerId == uid() || resource.data.supplierId == uid()));
+      allow create: if farmer() && inputOrderCreateOk();
+      allow update: if admin() || (active() && inputOrderUpdateOk());
+      allow delete: if admin();
+    }
+
     match /transportJobs/{jobId} {
       allow read, write: if false;
     }
@@ -683,7 +768,7 @@ service cloud.firestore {
         || resource.data.ownerId == request.auth.uid
         || admin()
       );
-      allow create: if (farmer() || transporter() || buyer())
+      allow create: if (farmer() || transporter() || buyer() || supplier())
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
         && request.resource.data.status == 'pending'
@@ -1038,7 +1123,7 @@ service cloud.firestore {
         && request.resource.data.read == false
         && request.resource.data.type in ['order', 'payment', 'message', 'offer',
           'transport', 'logistics', 'general', 'dispute', 'review', 'verification',
-          'produce_request', 'market_price', 'farm_task']
+          'produce_request', 'market_price', 'farm_task', 'input_order']
         && isStr(request.resource.data.title, 1, 120)
         && isStr(request.resource.data.body, 0, 500)
         && optStr(request.resource.data, 'referenceId', 128)

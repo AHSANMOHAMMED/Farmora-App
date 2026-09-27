@@ -1913,7 +1913,7 @@ class SparkBackend {
     required String role,
   }) async {
     final admin = await _requireAdmin();
-    if (!['farmer', 'buyer', 'transporter', 'admin'].contains(role)) {
+    if (!['farmer', 'buyer', 'transporter', 'supplier', 'admin'].contains(role)) {
       throw UserArgumentError('Invalid user or role.');
     }
     if (uid == _uid) throw UserStateError('You cannot change your own role.');
@@ -2100,7 +2100,7 @@ class SparkBackend {
     if (t.isEmpty || t.length > 120 || b.isEmpty || b.length > 2000) {
       throw UserArgumentError('Title and message are required.');
     }
-    if (!['all', 'farmer', 'buyer', 'transporter'].contains(audience)) {
+    if (!['all', 'farmer', 'buyer', 'transporter', 'supplier'].contains(audience)) {
       throw UserArgumentError('Invalid audience.');
     }
     Query<Map<String, dynamic>> query = _col('users');

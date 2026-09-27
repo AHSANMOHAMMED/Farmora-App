@@ -2853,7 +2853,7 @@ export const broadcastAdvisory = functions.https.onCall(async (data, context) =>
   const title = requiredString(data.title, "title", 1, 120);
   const body = requiredString(data.body, "message", 1, 2000);
   const audience = typeof data.audience === "string" ? data.audience : "";
-  if (!["all", "farmer", "buyer", "transporter"].includes(audience)) {
+  if (!["all", "farmer", "buyer", "transporter", "supplier"].includes(audience)) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid audience.");
   }
   const advisoryRef = db.collection("advisories").doc();
@@ -2904,7 +2904,7 @@ export const adminSetUserRole = functions.https.onCall(async (data, context) => 
   const adminUid = await requireAdmin(context);
   const targetUid = typeof data.uid === "string" ? data.uid.trim() : "";
   const role = typeof data.role === "string" ? data.role : "";
-  if (!targetUid || !["farmer", "buyer", "transporter", "admin"].includes(role)) {
+  if (!targetUid || !["farmer", "buyer", "transporter", "supplier", "admin"].includes(role)) {
     throw new functions.https.HttpsError("invalid-argument", "Invalid user or role.");
   }
   if (targetUid === adminUid) {

@@ -6740,4 +6740,222 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get loadMore => 'තවත් පූරණය කරන්න';
+
+  @override
+  String get roleSupplier => 'යෙදවුම් සැපයුම්කරු';
+
+  @override
+  String get roleSupplierDescription =>
+      'ගොවීන්ට බීජ, පොහොර, පළිබෝධනාශක සහ මෙවලම් විකුණන්න, නැතහොත් යන්ත්‍රෝපකරණ කුලියට දෙන්න.';
+
+  @override
+  String get inpTitle => 'ගොවි යෙදවුම්';
+
+  @override
+  String get inpSubtitle => 'බීජ, පොහොර, මෙවලම් සහ යන්ත්‍ර කුලියට';
+
+  @override
+  String get inpCatAll => 'සියල්ල';
+
+  @override
+  String get inpCatSeeds => 'බීජ';
+
+  @override
+  String get inpCatFertilizer => 'පොහොර';
+
+  @override
+  String get inpCatPesticide => 'පළිබෝධනාශක';
+
+  @override
+  String get inpCatTools => 'මෙවලම්';
+
+  @override
+  String get inpCatMachinery => 'යන්ත්‍රෝපකරණ';
+
+  @override
+  String get inpEmpty => 'මෙහි තවම යෙදවුම් ලැයිස්තුගත කර නැත.';
+
+  @override
+  String inpPricePer(String price, String unit) {
+    return '$price / $unit';
+  }
+
+  @override
+  String get inpPerDay => 'දිනය';
+
+  @override
+  String inpInStock(String count, String unit) {
+    return '$unit $countක් තොගයේ ඇත';
+  }
+
+  @override
+  String inpMachinesFree(String count) {
+    return '$countක් ලබා ගත හැක';
+  }
+
+  @override
+  String get inpOutOfStock => 'තොගයේ නැත';
+
+  @override
+  String inpBy(String name) {
+    return '$name විසින්';
+  }
+
+  @override
+  String get inpMyOrders => 'මගේ යෙදවුම් ඇණවුම්';
+
+  @override
+  String get inpBuy => 'මිලදී ගන්න';
+
+  @override
+  String get inpBook => 'වෙන්කරවා ගන්න';
+
+  @override
+  String get inpQuantity => 'ප්‍රමාණය';
+
+  @override
+  String get inpDays => 'දින ගණන';
+
+  @override
+  String get inpStartDate => 'ආරම්භක දිනය';
+
+  @override
+  String get inpDeliveryAddress => 'බෙදාහැරීමේ ලිපිනය';
+
+  @override
+  String inpTotal(String amount) {
+    return 'මුළු මුදල: $amount';
+  }
+
+  @override
+  String get inpPayCod => 'බෙදාහැරීමේදී මුදලින් ගෙවන්න.';
+
+  @override
+  String get inpPlaceOrder => 'ඇණවුම කරන්න';
+
+  @override
+  String get inpOrderPlaced =>
+      'සැපයුම්කරු වෙත යවන ලදී. ඔවුන් තහවුරු කළ විට ඔබට දැනුම් දෙනු ලැබේ.';
+
+  @override
+  String get inpNoOrders => 'තවම යෙදවුම් ඇණවුම් නැත.';
+
+  @override
+  String get inpCancelOrder => 'ඇණවුම අවලංගු කරන්න';
+
+  @override
+  String inpRentalFor(String days, String date) {
+    return '$date සිට දින $days';
+  }
+
+  @override
+  String get inpStatusPending => 'සැපයුම්කරු එනතුරු';
+
+  @override
+  String get inpStatusConfirmed => 'තහවුරුයි';
+
+  @override
+  String get inpStatusDispatched => 'එමින් පවතී';
+
+  @override
+  String get inpStatusDelivered => 'බෙදා හරින ලදී';
+
+  @override
+  String get inpStatusInUse => 'භාවිතයේ';
+
+  @override
+  String get inpStatusReturned => 'ආපසු දෙන ලදී';
+
+  @override
+  String get inpStatusRejected => 'ප්‍රතික්ෂේපිතයි';
+
+  @override
+  String get inpStatusCancelled => 'අවලංගුයි';
+
+  @override
+  String get supDashboardTitle => 'සැපයුම්කරු පුවරුව';
+
+  @override
+  String get supListings => 'ලැයිස්තු';
+
+  @override
+  String get supAddListing => 'ලැයිස්තුවක් එක් කරන්න';
+
+  @override
+  String get supEditListing => 'ලැයිස්තුව සංස්කරණය';
+
+  @override
+  String get supActiveListings => 'සක්‍රිය ලැයිස්තු';
+
+  @override
+  String get supPendingOrders => 'තහවුරු කළ යුතු ඇණවුම්';
+
+  @override
+  String get supCompletedSales => 'සම්පූර්ණ විකුණුම්';
+
+  @override
+  String get supName => 'නම';
+
+  @override
+  String get supCategory => 'වර්ගය';
+
+  @override
+  String get supForRent => 'කුලියට (දිනකට මිල)';
+
+  @override
+  String get supPrice => 'මිල (රු.)';
+
+  @override
+  String get supUnit => 'ඒකකය (kg, බෑගය, බෝතලය…)';
+
+  @override
+  String get supStock => 'තොගය';
+
+  @override
+  String get supMachines => 'ලබා ගත හැකි යන්ත්‍ර';
+
+  @override
+  String get supDistrict => 'දිස්ත්‍රික්කය';
+
+  @override
+  String get supDescription => 'විස්තරය';
+
+  @override
+  String get supAddPhoto => 'ඡායාරූපය එක් කරන්න';
+
+  @override
+  String get supVisible => 'ගොවීන්ට පෙනේ';
+
+  @override
+  String get supHidden => 'සඟවා ඇත';
+
+  @override
+  String get supDeleteConfirm => 'මෙම ලැයිස්තුව මකන්නද? පැරණි ඇණවුම් තබා ගනී.';
+
+  @override
+  String get supNoListings =>
+      'තවම ලැයිස්තු නැත. ඔබේ පළමු නිෂ්පාදනය හෝ යන්ත්‍රය එක් කරන්න.';
+
+  @override
+  String get supNoOrders => 'තවම ඇණවුම් නැත.';
+
+  @override
+  String get supMarkDispatched => 'යවන ලදැයි සලකුණු කරන්න';
+
+  @override
+  String get supMarkDelivered => 'බෙදා හැරියා ලෙස සලකුණු කරන්න';
+
+  @override
+  String get supMarkInUse => 'භාර දුන්නා';
+
+  @override
+  String get supMarkReturned => 'ආපසු ලැබුණා ලෙස සලකුණු කරන්න';
+
+  @override
+  String supOrderFrom(String name) {
+    return '$name ගෙන්';
+  }
+
+  @override
+  String get supInvalidNumber => 'වලංගු අංකයක් ඇතුළත් කරන්න.';
 }
