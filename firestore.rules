@@ -660,7 +660,9 @@ service cloud.firestore {
               'courierLat', 'courierLng', 'locationUpdatedAt'])
           || (r.status == 'inTransit' && d.status == 'delivered'
             && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
-              'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt'])
+              'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt',
+              'distanceKm', 'co2Kg'])
+            && tripCarbonOk()
             && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
           || (r.status in ['accepted', 'pickedUp', 'inTransit']
             && affected().hasOnly(['courierLat', 'courierLng', 'locationUpdatedAt', 'updatedAt'])
@@ -668,6 +670,13 @@ service cloud.firestore {
           || carrierTempUpdate());
     }
     // Cold chain: the carrier records the latest cargo reading on the job.
+    // Trip carbon estimate written on delivery (bounded, optional).
+    function tripCarbonOk() {
+      let d = request.resource.data;
+      return (!('distanceKm' in d) || (d.distanceKm is number && d.distanceKm >= 0
+          && d.distanceKm <= 2000))
+        && (!('co2Kg' in d) || (d.co2Kg is number && d.co2Kg >= 0 && d.co2Kg <= 5000));
+    }
     function carrierTempUpdate() {
       let d = request.resource.data;
       let r = resource.data;
@@ -711,7 +720,9 @@ service cloud.firestore {
         || (r.get('transporterId', null) == uid() && d.transporterId == uid()
           && r.status == 'inTransit' && d.status == 'delivered'
           && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
-            'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt'])
+            'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt',
+            'distanceKm', 'co2Kg'])
+          && tripCarbonOk()
           && deliveryCodeOk(r.orderId) && podPhotoOk(r.orderId))
         // Assign / unassign one of the owner's active fleet drivers.
         || (r.get('transporterId', null) == uid()
@@ -1691,6 +1702,26 @@ service cloud.firestore {
         && optStr(request.resource.data, 'imageUrl', 2000)
         && request.resource.data.createdAt == request.time;
       allow update: if false;
+    }
+
+    // ── Farm carbon practices (estimated sequestration / avoided CO2) ──
+    match /carbon_practices/{practiceId} {
+      allow read: if admin() || (farmer() && resource.data.farmerId == uid());
+      allow create: if farmer() && farmAuditCreateOk()
+        && request.resource.data.keys().hasOnly(['farmerId', 'practice', 'quantity', 'unit',
+          'tonnesPerYear', 'startedAt', 'notes', 'isDeleted', 'createdAt', 'updatedAt',
+          'createdBy', 'updatedBy'])
+        && request.resource.data.practice in ['composting', 'mulching', 'no_till', 'cover_crop',
+          'agroforestry_trees', 'solar_pump', 'biogas', 'reduced_fertilizer']
+        && request.resource.data.quantity is number && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000
+        && request.resource.data.tonnesPerYear is number
+        && request.resource.data.tonnesPerYear >= 0 && request.resource.data.tonnesPerYear <= 10000
+        && request.resource.data.startedAt is timestamp
+        && optStr(request.resource.data, 'notes', 300);
+      allow update: if farmer() && farmAuditUpdateOk()
+        && affected().hasOnly(['isDeleted', 'updatedAt', 'updatedBy']);
+      allow delete: if admin();
     }
 
     // ── Notifications ────────────────────────────────────────

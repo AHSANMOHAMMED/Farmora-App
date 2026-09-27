@@ -13834,6 +13834,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Data logger'**
   String get ccLogger;
+
+  /// No description provided for @co2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbon footprint'**
+  String get co2Title;
+
+  /// No description provided for @co2Subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery emissions and climate-smart farming'**
+  String get co2Subtitle;
+
+  /// No description provided for @co2Deliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery emissions'**
+  String get co2Deliveries;
+
+  /// No description provided for @co2Total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total CO₂e'**
+  String get co2Total;
+
+  /// No description provided for @co2Distance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get co2Distance;
+
+  /// No description provided for @co2PerDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Per delivery'**
+  String get co2PerDelivery;
+
+  /// No description provided for @co2NoDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed deliveries with a carbon estimate yet.'**
+  String get co2NoDeliveries;
+
+  /// No description provided for @co2Tip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: combine orders from the same area and choose nearby farms to cut transport emissions.'**
+  String get co2Tip;
+
+  /// No description provided for @co2Practices.
+  ///
+  /// In en, this message translates to:
+  /// **'Climate-smart practices'**
+  String get co2Practices;
+
+  /// No description provided for @co2AddPractice.
+  ///
+  /// In en, this message translates to:
+  /// **'Add practice'**
+  String get co2AddPractice;
+
+  /// No description provided for @co2NoPractices.
+  ///
+  /// In en, this message translates to:
+  /// **'Record composting, tree planting, no-till and more to estimate your carbon benefit.'**
+  String get co2NoPractices;
+
+  /// No description provided for @co2Credits.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {tonnes} t CO₂e per year'**
+  String co2Credits(String tonnes);
+
+  /// No description provided for @co2CreditsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'About that many carbon credits a year, once verified by a registry (e.g. Verra, Gold Standard).'**
+  String get co2CreditsHint;
+
+  /// No description provided for @co2Estimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated benefit: {tonnes} t CO₂e / year'**
+  String co2Estimate(String tonnes);
+
+  /// No description provided for @co2PerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'{tonnes} t CO₂e / yr'**
+  String co2PerYear(String tonnes);
+
+  /// No description provided for @co2Disclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimates from average emission and sequestration factors, not a certified measurement.'**
+  String get co2Disclaimer;
+
+  /// No description provided for @co2Composting.
+  ///
+  /// In en, this message translates to:
+  /// **'Composting'**
+  String get co2Composting;
+
+  /// No description provided for @co2Mulching.
+  ///
+  /// In en, this message translates to:
+  /// **'Mulching'**
+  String get co2Mulching;
+
+  /// No description provided for @co2NoTill.
+  ///
+  /// In en, this message translates to:
+  /// **'No-till farming'**
+  String get co2NoTill;
+
+  /// No description provided for @co2CoverCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover crops'**
+  String get co2CoverCrop;
+
+  /// No description provided for @co2Trees.
+  ///
+  /// In en, this message translates to:
+  /// **'Trees planted (agroforestry)'**
+  String get co2Trees;
+
+  /// No description provided for @co2Solar.
+  ///
+  /// In en, this message translates to:
+  /// **'Solar pump (diesel saved)'**
+  String get co2Solar;
+
+  /// No description provided for @co2Biogas.
+  ///
+  /// In en, this message translates to:
+  /// **'Biogas digester'**
+  String get co2Biogas;
+
+  /// No description provided for @co2LessFertilizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Less nitrogen fertilizer'**
+  String get co2LessFertilizer;
 }
 
 class _AppLocalizationsDelegate

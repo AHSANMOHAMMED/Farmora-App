@@ -39,6 +39,7 @@ import '../../shop/presentation/shop_screens.dart';
 import '../../community/presentation/community_screens.dart';
 import '../../farmer/presentation/crop_doctor_screen.dart';
 import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
+import '../../carbon/presentation/carbon_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1104,6 +1105,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               builder: (_) => const MyFarmStoreScreen())),
         },
         {
+          'icon': Icons.eco_outlined,
+          'label': l10n.co2Title,
+          'color': const Color(0xFF2E7D32),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CarbonScreen()),
+              ),
+        },
+        {
           'icon': Icons.biotech_outlined,
           'label': l10n.cdTitle,
           'color': const Color(0xFFAD1457),
@@ -1220,6 +1230,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'bg': const Color(0xFFEFEBE9),
           'onTap': () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+              ),
+        },
+        {
+          'icon': Icons.eco_outlined,
+          'label': l10n.co2Title,
+          'color': const Color(0xFF2E7D32),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CarbonScreen()),
               ),
         },
         {
@@ -1492,6 +1511,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyFarmStoreScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.eco_outlined, color: Color(0xFF2E7D32)),
+                          title: Text(context.l10n.co2Title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.co2Subtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CarbonScreen()));
                           },
                         ),
                         ListTile(

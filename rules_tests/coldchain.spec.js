@@ -60,3 +60,30 @@ describe('cold chain', () => {
     }));
   });
 });
+
+describe('carbon', () => {
+  beforeEach(seed);
+  const audit = (uid) => ({ farmerId: uid, isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: uid, updatedBy: uid });
+  const practice = (uid, o = {}) => setDoc(doc(db(uid), 'carbon_practices', 'p1'), {
+    practice: 'agroforestry_trees', quantity: 100, unit: 'trees', tonnesPerYear: 2,
+    startedAt: serverTimestamp(), notes: '', ...audit(uid), ...o,
+  });
+
+  it('farmers log their own carbon practices', async () => {
+    await assertFails(practice('buyer1'));
+    await assertFails(practice('farmer1', { practice: 'magic' }));
+    await assertFails(practice('farmer1', { quantity: -1 }));
+    await assertSucceeds(practice('farmer1'));
+    await assertFails(getDocs(collection(db('farmer2'), 'carbon_practices')));
+  });
+
+  it('delivery carbon estimate is bounded', async () => {
+    const deliver = (co2Kg) => {
+      const d = db('trans1');
+      const b = writeBatch(d);
+      b.update(doc(d, 'transport_jobs', 'j1'), { status: 'delivered', deliveredAt: serverTimestamp(), updatedAt: serverTimestamp(), distanceKm: 150, co2Kg });
+      return b.commit();
+    };
+    await assertFails(deliver(99999));
+  });
+});

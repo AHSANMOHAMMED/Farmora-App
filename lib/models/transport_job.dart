@@ -60,6 +60,10 @@ class TransportJob {
   final double? lastTempC;
   final int tempBreachCount;
 
+  /// Carbon estimate recorded on delivery.
+  final double? distanceKm;
+  final double? co2Kg;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -103,6 +107,8 @@ class TransportJob {
     this.tempMaxC,
     this.lastTempC,
     this.tempBreachCount = 0,
+    this.distanceKm,
+    this.co2Kg,
   });
 
   /// True while the job waits for a transporter.
@@ -216,6 +222,8 @@ class TransportJob {
       tempMaxC: tempMaxC,
       lastTempC: lastTempC,
       tempBreachCount: tempBreachCount,
+      distanceKm: distanceKm,
+      co2Kg: co2Kg,
     );
   }
 
@@ -323,6 +331,8 @@ class TransportJob {
       tempMaxC: firebaseDouble(data['tempMaxC']),
       lastTempC: firebaseDouble(data['lastTempC']),
       tempBreachCount: firebaseInt(data['tempBreachCount']) ?? 0,
+      distanceKm: firebaseDouble(data['distanceKm']),
+      co2Kg: firebaseDouble(data['co2Kg']),
       createdAt: firebaseDate(data['createdAt']),
     );
   }

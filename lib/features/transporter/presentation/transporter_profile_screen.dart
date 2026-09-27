@@ -12,6 +12,7 @@ import '../application/transporter_controller.dart';
 import 'transporter_payouts_screen.dart';
 import 'widgets/transporter_actions.dart';
 import '../../driver/presentation/driver_dashboard_screen.dart';
+import '../../carbon/presentation/carbon_screen.dart';
 
 class TransporterProfileScreen extends StatelessWidget {
   const TransporterProfileScreen({super.key});
@@ -133,6 +134,16 @@ class TransporterProfileScreen extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const FleetDriversScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading:
+                      const Icon(Icons.eco_outlined, color: AppColors.primary),
+                  title: Text(l10n.co2Title),
+                  subtitle: Text(l10n.co2Deliveries),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const CarbonScreen())),
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(

@@ -9,6 +9,8 @@ import '../models/order.dart' show PaymentMethod;
 import '../models/product.dart';
 import 'service_errors.dart';
 import 'push_relay.dart';
+import '../core/utils/firebase_values.dart';
+import '../core/utils/carbon.dart';
 
 /// Firestore-only backend for the free Firebase Spark plan (no Cloud
 /// Functions). Each method ports the matching callable in
@@ -1191,6 +1193,21 @@ class SparkBackend {
     }
     final delivered = next == 'delivered';
     final code = (deliveryCode ?? '').trim();
+    // Carbon estimate for the finished trip (see core/utils/carbon.dart).
+    final km = delivered
+        ? Carbon.roadKm(
+            fromLat: firebaseDouble(job['pickupLat']),
+            fromLng: firebaseDouble(job['pickupLng']),
+            toLat: firebaseDouble(job['dropoffLat']),
+            toLng: firebaseDouble(job['dropoffLng']),
+            fromText: '${job['pickup'] ?? ''} ${job['pickupAddress'] ?? ''} ${job['district'] ?? ''}',
+            toText: '${job['dropoff'] ?? ''} ${job['dropoffAddress'] ?? ''}',
+          )
+        : null;
+    final co2 = km == null
+        ? null
+        : Carbon.deliveryKg(km, (me['vehicleType'] ?? '').toString(),
+            cold: job['coldChain'] == true);
     final batch = _db.batch()
       ..update(ref, {
         'status': next,
@@ -1200,6 +1217,8 @@ class SparkBackend {
         // delivery_codes/{orderId} document.
         if (delivered && code.isNotEmpty) 'deliveryCode': code,
         if (delivered && podPhotoPath != null) 'podPhotoPath': podPhotoPath,
+        if (km != null) 'distanceKm': km,
+        if (co2 != null) 'co2Kg': double.parse(co2.toStringAsFixed(2)),
         // Privacy: never keep the last courier position after delivery.
         if (delivered) 'courierLat': FieldValue.delete(),
         if (delivered) 'courierLng': FieldValue.delete(),

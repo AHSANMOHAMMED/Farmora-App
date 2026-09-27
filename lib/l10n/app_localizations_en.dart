@@ -7839,4 +7839,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ccLogger => 'Data logger';
+
+  @override
+  String get co2Title => 'Carbon footprint';
+
+  @override
+  String get co2Subtitle => 'Delivery emissions and climate-smart farming';
+
+  @override
+  String get co2Deliveries => 'Delivery emissions';
+
+  @override
+  String get co2Total => 'Total CO₂e';
+
+  @override
+  String get co2Distance => 'Distance';
+
+  @override
+  String get co2PerDelivery => 'Per delivery';
+
+  @override
+  String get co2NoDeliveries =>
+      'No completed deliveries with a carbon estimate yet.';
+
+  @override
+  String get co2Tip =>
+      'Tip: combine orders from the same area and choose nearby farms to cut transport emissions.';
+
+  @override
+  String get co2Practices => 'Climate-smart practices';
+
+  @override
+  String get co2AddPractice => 'Add practice';
+
+  @override
+  String get co2NoPractices =>
+      'Record composting, tree planting, no-till and more to estimate your carbon benefit.';
+
+  @override
+  String co2Credits(String tonnes) {
+    return '≈ $tonnes t CO₂e per year';
+  }
+
+  @override
+  String get co2CreditsHint =>
+      'About that many carbon credits a year, once verified by a registry (e.g. Verra, Gold Standard).';
+
+  @override
+  String co2Estimate(String tonnes) {
+    return 'Estimated benefit: $tonnes t CO₂e / year';
+  }
+
+  @override
+  String co2PerYear(String tonnes) {
+    return '$tonnes t CO₂e / yr';
+  }
+
+  @override
+  String get co2Disclaimer =>
+      'Estimates from average emission and sequestration factors, not a certified measurement.';
+
+  @override
+  String get co2Composting => 'Composting';
+
+  @override
+  String get co2Mulching => 'Mulching';
+
+  @override
+  String get co2NoTill => 'No-till farming';
+
+  @override
+  String get co2CoverCrop => 'Cover crops';
+
+  @override
+  String get co2Trees => 'Trees planted (agroforestry)';
+
+  @override
+  String get co2Solar => 'Solar pump (diesel saved)';
+
+  @override
+  String get co2Biogas => 'Biogas digester';
+
+  @override
+  String get co2LessFertilizer => 'Less nitrogen fertilizer';
 }

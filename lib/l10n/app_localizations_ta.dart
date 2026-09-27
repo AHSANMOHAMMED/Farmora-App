@@ -7956,4 +7956,88 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get ccLogger => 'தரவு பதிவி';
+
+  @override
+  String get co2Title => 'கார்பன் தடம்';
+
+  @override
+  String get co2Subtitle =>
+      'டெலிவரி உமிழ்வுகள் மற்றும் காலநிலை-நுண்ணறிவு விவசாயம்';
+
+  @override
+  String get co2Deliveries => 'டெலிவரி உமிழ்வுகள்';
+
+  @override
+  String get co2Total => 'மொத்த CO₂e';
+
+  @override
+  String get co2Distance => 'தூரம்';
+
+  @override
+  String get co2PerDelivery => 'ஒரு டெலிவரிக்கு';
+
+  @override
+  String get co2NoDeliveries =>
+      'இன்னும் கார்பன் மதிப்பீட்டுடன் முடிந்த டெலிவரிகள் இல்லை.';
+
+  @override
+  String get co2Tip =>
+      'குறிப்பு: போக்குவரத்து உமிழ்வைக் குறைக்க ஒரே பகுதியின் ஆர்டர்களை ஒன்றிணைத்து அருகிலுள்ள பண்ணைகளைத் தேர்வு செய்யுங்கள்.';
+
+  @override
+  String get co2Practices => 'காலநிலை-நுண்ணறிவு நடைமுறைகள்';
+
+  @override
+  String get co2AddPractice => 'நடைமுறையைச் சேர்';
+
+  @override
+  String get co2NoPractices =>
+      'உங்கள் கார்பன் நன்மையை மதிப்பிட உரமாக்கல், மரம் நடுதல், உழவில்லா விவசாயம் மற்றும் பலவற்றைப் பதிவு செய்யுங்கள்.';
+
+  @override
+  String co2Credits(String tonnes) {
+    return '≈ ஆண்டுக்கு $tonnes டன் CO₂e';
+  }
+
+  @override
+  String get co2CreditsHint =>
+      'பதிவேட்டால் (எ.கா. Verra, Gold Standard) சரிபார்க்கப்பட்ட பின் ஆண்டுக்கு சுமார் அத்தனை கார்பன் வரவுகள்.';
+
+  @override
+  String co2Estimate(String tonnes) {
+    return 'மதிப்பிடப்பட்ட நன்மை: ஆண்டுக்கு $tonnes டன் CO₂e';
+  }
+
+  @override
+  String co2PerYear(String tonnes) {
+    return 'ஆண்டுக்கு $tonnes டன் CO₂e';
+  }
+
+  @override
+  String get co2Disclaimer =>
+      'சராசரி உமிழ்வு மற்றும் உறிஞ்சல் காரணிகளின் மதிப்பீடுகள்; சான்றளிக்கப்பட்ட அளவீடு அல்ல.';
+
+  @override
+  String get co2Composting => 'உரமாக்கல்';
+
+  @override
+  String get co2Mulching => 'மூடாக்கு';
+
+  @override
+  String get co2NoTill => 'உழவில்லா விவசாயம்';
+
+  @override
+  String get co2CoverCrop => 'மூடு பயிர்கள்';
+
+  @override
+  String get co2Trees => 'நடப்பட்ட மரங்கள் (வேளாண் காடு)';
+
+  @override
+  String get co2Solar => 'சூரிய பம்ப் (சேமித்த டீசல்)';
+
+  @override
+  String get co2Biogas => 'உயிர்வாயு செரிப்பான்';
+
+  @override
+  String get co2LessFertilizer => 'குறைந்த நைட்ரஜன் உரம்';
 }

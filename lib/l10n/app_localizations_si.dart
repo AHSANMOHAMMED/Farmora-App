@@ -7834,4 +7834,87 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get ccLogger => 'දත්ත ලොගරය';
+
+  @override
+  String get co2Title => 'කාබන් පියසටහන';
+
+  @override
+  String get co2Subtitle => 'බෙදාහැරීමේ විමෝචන සහ දේශගුණ-බුද්ධිමත් ගොවිතැන';
+
+  @override
+  String get co2Deliveries => 'බෙදාහැරීමේ විමෝචන';
+
+  @override
+  String get co2Total => 'මුළු CO₂e';
+
+  @override
+  String get co2Distance => 'දුර';
+
+  @override
+  String get co2PerDelivery => 'බෙදාහැරීමකට';
+
+  @override
+  String get co2NoDeliveries =>
+      'තවම කාබන් ඇස්තමේන්තුවක් සහිත සම්පූර්ණ බෙදාහැරීම් නැත.';
+
+  @override
+  String get co2Tip =>
+      'ඉඟිය: ප්‍රවාහන විමෝචන අඩු කිරීමට එකම ප්‍රදේශයේ ඇණවුම් එකතු කර ආසන්න ගොවිපල තෝරන්න.';
+
+  @override
+  String get co2Practices => 'දේශගුණ-බුද්ධිමත් පිළිවෙත්';
+
+  @override
+  String get co2AddPractice => 'පිළිවෙතක් එක් කරන්න';
+
+  @override
+  String get co2NoPractices =>
+      'ඔබේ කාබන් ප්‍රතිලාභය ඇස්තමේන්තු කිරීමට කොම්පෝස්ට්, ගස් සිටුවීම, නොහෑම සහ තවත් දේ සටහන් කරන්න.';
+
+  @override
+  String co2Credits(String tonnes) {
+    return '≈ වසරකට CO₂e ටොන් $tonnes';
+  }
+
+  @override
+  String get co2CreditsHint =>
+      'ලේඛනයක් (උදා. Verra, Gold Standard) මඟින් තහවුරු කළ පසු වසරකට එපමණ කාබන් ණය පමණ.';
+
+  @override
+  String co2Estimate(String tonnes) {
+    return 'ඇස්තමේන්තුගත ප්‍රතිලාභය: වසරකට CO₂e ටොන් $tonnes';
+  }
+
+  @override
+  String co2PerYear(String tonnes) {
+    return 'වසරකට CO₂e ටොන් $tonnes';
+  }
+
+  @override
+  String get co2Disclaimer =>
+      'සාමාන්‍ය විමෝචන සහ අවශෝෂණ සාධක මත පදනම් වූ ඇස්තමේන්තු; සහතික කළ මිනුමක් නොවේ.';
+
+  @override
+  String get co2Composting => 'කොම්පෝස්ට් කිරීම';
+
+  @override
+  String get co2Mulching => 'වසුන් යෙදීම';
+
+  @override
+  String get co2NoTill => 'නොහෑම් ගොවිතැන';
+
+  @override
+  String get co2CoverCrop => 'ආවරණ බෝග';
+
+  @override
+  String get co2Trees => 'සිටවූ ගස් (කෘෂි වනවගාව)';
+
+  @override
+  String get co2Solar => 'සූර්ය පොම්පය (ඉතිරි කළ ඩීසල්)';
+
+  @override
+  String get co2Biogas => 'ජෛව වායු ජීරකය';
+
+  @override
+  String get co2LessFertilizer => 'අඩු නයිට්‍රජන් පොහොර';
 }
