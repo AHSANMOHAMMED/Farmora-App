@@ -7069,4 +7069,148 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get supInvalidNumber => 'சரியான எண்ணை உள்ளிடவும்.';
+
+  @override
+  String get farmTabPlots => 'நிலப்பகுதிகள்';
+
+  @override
+  String get farmTabFinances => 'நிதி';
+
+  @override
+  String get farmTabAdvice => 'ஆலோசனை';
+
+  @override
+  String get farmAddPlot => 'நிலப்பகுதியைச் சேர்';
+
+  @override
+  String get farmEditPlot => 'நிலப்பகுதியைத் திருத்து';
+
+  @override
+  String get farmNoPlots =>
+      'இன்னும் நிலப்பகுதிகள் இல்லை. பயிர்களை இணைக்க உங்கள் வயல்களைச் சேர்க்கவும்.';
+
+  @override
+  String get farmPlotName => 'நிலப்பகுதியின் பெயர்';
+
+  @override
+  String get farmArea => 'பரப்பளவு';
+
+  @override
+  String get farmAreaUnit => 'அலகு';
+
+  @override
+  String get farmSoilType => 'மண் வகை';
+
+  @override
+  String get farmIrrigation => 'நீர் ஆதாரம்';
+
+  @override
+  String get farmNotes => 'குறிப்புகள்';
+
+  @override
+  String get farmPlotOptional => 'நிலப்பகுதி (விருப்பம்)';
+
+  @override
+  String get farmNoPlot => 'நிலப்பகுதி இல்லை';
+
+  @override
+  String get farmRecordHarvest => 'அறுவடையைப் பதிவு செய்';
+
+  @override
+  String get farmHarvestQty => 'அறுவடை செய்த அளவு';
+
+  @override
+  String farmYieldActual(String qty, String unit) {
+    return '$qty $unit அறுவடை';
+  }
+
+  @override
+  String get farmDeleteConfirm => 'இதை நீக்கவா? இதைத் திரும்பப் பெற முடியாது.';
+
+  @override
+  String get farmIncome => 'வருமானம்';
+
+  @override
+  String get farmExpense => 'செலவு';
+
+  @override
+  String get farmProfit => 'லாபம்';
+
+  @override
+  String get farmAddEntry => 'பதிவைச் சேர்';
+
+  @override
+  String get farmAmount => 'தொகை (ரூ.)';
+
+  @override
+  String get farmCategory => 'வகை';
+
+  @override
+  String get farmCropOptional => 'பயிர் (விருப்பம்)';
+
+  @override
+  String get farmGeneral => 'பொது';
+
+  @override
+  String get farmDate => 'தேதி';
+
+  @override
+  String get farmNoEntries =>
+      'இன்னும் வருமானம் அல்லது செலவுகள் பதிவு செய்யப்படவில்லை.';
+
+  @override
+  String get farmByCrop => 'பயிர் வாரியான லாபம்';
+
+  @override
+  String get farmSalesNote =>
+      'செலுத்தப்பட்ட விளைபொருள் ஆர்டர்கள் தானாகக் கணக்கிடப்படும்.';
+
+  @override
+  String get farmAppSales => 'Farmora விற்பனை';
+
+  @override
+  String get farmNoAdvice =>
+      'இன்னும் ஆலோசனை இல்லை. வானிலை, பூச்சிகள் மற்றும் விலைகள் பற்றிய புதுப்பிப்புகள் இங்கே தோன்றும்.';
+
+  @override
+  String get farmAddToExpenses => 'பண்ணைச் செலவுகளில் சேர்';
+
+  @override
+  String get farmAddedToExpenses => 'பண்ணைச் செலவுகளில் சேர்க்கப்பட்டது';
+
+  @override
+  String get catSeed => 'விதை';
+
+  @override
+  String get catFertilizer => 'உரம்';
+
+  @override
+  String get catPesticide => 'பூச்சிக்கொல்லி';
+
+  @override
+  String get catLabour => 'உழைப்பு';
+
+  @override
+  String get catWater => 'நீர்';
+
+  @override
+  String get catFuel => 'எரிபொருள்';
+
+  @override
+  String get catMachinery => 'இயந்திரம்';
+
+  @override
+  String get catTransport => 'போக்குவரத்து';
+
+  @override
+  String get catLand => 'நிலம் / வாடகை';
+
+  @override
+  String get catOther => 'மற்றவை';
+
+  @override
+  String get catProduceSale => 'விளைபொருள் விற்பனை';
+
+  @override
+  String get catSubsidy => 'மானியம்';
 }

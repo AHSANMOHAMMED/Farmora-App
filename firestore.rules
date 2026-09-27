@@ -1062,7 +1062,9 @@ service cloud.firestore {
         && request.resource.data.status == 'planned'
         && request.resource.data.keys().hasOnly(['farmerId', 'cropName', 'area',
           'areaUnit', 'plantedAt', 'expectedHarvestAt', 'expectedYield', 'yieldUnit',
-          'status', 'notes', 'createdAt', 'updatedAt'])
+          'status', 'notes', 'plotId', 'plotName', 'createdAt', 'updatedAt'])
+        && optStr(request.resource.data, 'plotId', 128)
+        && optStr(request.resource.data, 'plotName', 80)
         && isStr(request.resource.data.cropName, 1, 100)
         && request.resource.data.area is number
         && request.resource.data.area > 0 && request.resource.data.area <= 100000
@@ -1073,7 +1075,11 @@ service cloud.firestore {
         && isStr(request.resource.data.get('notes', ''), 0, 1000);
       allow update: if farmer() && verified()
         && resource.data.farmerId == uid()
-        && affected().hasOnly(['status', 'harvestedAt', 'notes', 'expectedYield', 'updatedAt'])
+        && affected().hasOnly(['status', 'harvestedAt', 'notes', 'expectedYield',
+          'actualYield', 'yieldUnit', 'updatedAt'])
+        && request.resource.data.get('actualYield', 0) is number
+        && request.resource.data.get('actualYield', 0) >= 0
+        && optStr(request.resource.data, 'yieldUnit', 20)
         && request.resource.data.status in ['planned', 'planted', 'growing', 'harvested', 'cancelled']
         && isStr(request.resource.data.get('notes', ''), 0, 1000)
         && request.resource.data.get('expectedYield', 0) is number
@@ -1100,6 +1106,66 @@ service cloud.firestore {
         && isStr(request.resource.data.title, 1, 120)
         && request.resource.data.dueAt is timestamp;
       allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
+    }
+
+    // ── Farm records: plots and the income / expense ledger ──
+    // Audit fields on create / update; deletion is a soft isDeleted flag.
+    function farmAuditCreateOk() {
+      let d = request.resource.data;
+      return d.farmerId == uid() && d.createdBy == uid() && d.updatedBy == uid()
+        && d.isDeleted == false && d.createdAt == request.time;
+    }
+    function farmAuditUpdateOk() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return r.farmerId == uid() && d.farmerId == r.farmerId
+        && d.createdBy == r.createdBy && d.createdAt == r.createdAt
+        && d.updatedBy == uid() && d.isDeleted is bool;
+    }
+    function plotShapeOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['farmerId', 'name', 'area', 'areaUnit', 'soilType',
+          'irrigation', 'notes', 'isDeleted', 'createdAt', 'updatedAt', 'createdBy',
+          'updatedBy'])
+        && isStr(d.name, 1, 80)
+        && d.area is number && d.area > 0 && d.area <= 100000
+        && d.areaUnit in ['acres', 'hectares', 'perches']
+        && optStr(d, 'soilType', 40) && optStr(d, 'irrigation', 40)
+        && optStr(d, 'notes', 500);
+    }
+    match /farm_plots/{plotId} {
+      allow read: if admin() || (farmer() && resource.data.farmerId == uid());
+      allow create: if farmer() && farmAuditCreateOk() && plotShapeOk();
+      allow update: if farmer() && farmAuditUpdateOk() && plotShapeOk();
+      allow delete: if admin();
+    }
+
+    function ledgerShapeOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['farmerId', 'type', 'category', 'amountMinor', 'date',
+          'cropId', 'cropName', 'note', 'sourceId', 'isDeleted', 'createdAt',
+          'updatedAt', 'createdBy', 'updatedBy'])
+        && ((d.type == 'expense' && d.category in ['seed', 'fertilizer', 'pesticide',
+              'labour', 'water', 'fuel', 'machinery', 'transport', 'land', 'other'])
+          || (d.type == 'income' && d.category in ['produce_sale', 'subsidy', 'other']))
+        && isInt(d.amountMinor, 1, 10000000000)
+        && d.date is timestamp
+        && optStr(d, 'cropId', 128) && optStr(d, 'cropName', 100)
+        && optStr(d, 'note', 300) && optStr(d, 'sourceId', 128);
+    }
+    match /farm_ledger/{entryId} {
+      // get: the app probes io_{inputOrderId} before booking an input expense.
+      allow get: if admin()
+        || (farmer() && (resource == null || resource.data.farmerId == uid()));
+      allow list: if admin() || (farmer() && resource.data.farmerId == uid());
+      allow create: if farmer() && farmAuditCreateOk() && ledgerShapeOk()
+        && (request.resource.data.get('sourceId', '') == ''
+          || (entryId == 'io_' + request.resource.data.sourceId
+            && get(docPath('input_orders/' + request.resource.data.sourceId)).data.farmerId
+              == uid()));
+      allow update: if farmer() && farmAuditUpdateOk() && ledgerShapeOk()
+        && request.resource.data.get('sourceId', '') == resource.data.get('sourceId', '');
+      allow delete: if admin();
     }
 
     // ── Notifications ────────────────────────────────────────

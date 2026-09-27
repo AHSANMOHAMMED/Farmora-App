@@ -5,6 +5,7 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../models/farm_input.dart';
+import '../../../services/farm_records_service.dart';
 import '../../../services/input_market_service.dart';
 import 'inputs_l10n.dart';
 
@@ -19,6 +20,36 @@ class MyInputOrdersScreen extends StatefulWidget {
 class _MyInputOrdersScreenState extends State<MyInputOrdersScreen> {
   final _service = InputMarketService();
   late final _stream = _service.farmerOrders();
+
+  final _records = FarmRecordsService();
+
+  /// Books a delivered purchase / finished rental as a farm expense.
+  Future<void> _addExpense(InputOrder o) async {
+    final l = context.l10n;
+    try {
+      if (!await _records.hasEntryFor(o.id)) {
+        await _records.addEntry(
+          isExpense: true,
+          category: o.isRental ? 'machinery' : 'other',
+          amountMinor: o.totalMinor,
+          date: DateTime.now(),
+          note: o.inputName,
+          sourceId: o.id,
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l.farmAddedToExpenses)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(userMessage(e, action: 'add the expense')),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
 
   Future<void> _cancel(InputOrder o) async {
     try {
@@ -64,6 +95,14 @@ class _MyInputOrdersScreenState extends State<MyInputOrdersScreen> {
                     style: TextButton.styleFrom(
                         foregroundColor: AppColors.error),
                     child: Text(l.inpCancelOrder),
+                  ),
+                if (orders[i].status == InputOrderStatus.delivered ||
+                    orders[i].status == InputOrderStatus.returned)
+                  TextButton.icon(
+                    onPressed: () => _addExpense(orders[i]),
+                    icon: const Icon(Icons.account_balance_wallet_outlined,
+                        size: 18),
+                    label: Text(l.farmAddToExpenses),
                   ),
               ],
             ),

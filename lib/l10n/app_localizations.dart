@@ -12202,6 +12202,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a valid number.'**
   String get supInvalidNumber;
+
+  /// No description provided for @farmTabPlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Plots'**
+  String get farmTabPlots;
+
+  /// No description provided for @farmTabFinances.
+  ///
+  /// In en, this message translates to:
+  /// **'Finances'**
+  String get farmTabFinances;
+
+  /// No description provided for @farmTabAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'Advice'**
+  String get farmTabAdvice;
+
+  /// No description provided for @farmAddPlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Add plot'**
+  String get farmAddPlot;
+
+  /// No description provided for @farmEditPlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit plot'**
+  String get farmEditPlot;
+
+  /// No description provided for @farmNoPlots.
+  ///
+  /// In en, this message translates to:
+  /// **'No plots yet. Add your fields to link crops to them.'**
+  String get farmNoPlots;
+
+  /// No description provided for @farmPlotName.
+  ///
+  /// In en, this message translates to:
+  /// **'Plot name'**
+  String get farmPlotName;
+
+  /// No description provided for @farmArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get farmArea;
+
+  /// No description provided for @farmAreaUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get farmAreaUnit;
+
+  /// No description provided for @farmSoilType.
+  ///
+  /// In en, this message translates to:
+  /// **'Soil type'**
+  String get farmSoilType;
+
+  /// No description provided for @farmIrrigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Water source'**
+  String get farmIrrigation;
+
+  /// No description provided for @farmNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get farmNotes;
+
+  /// No description provided for @farmPlotOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Plot (optional)'**
+  String get farmPlotOptional;
+
+  /// No description provided for @farmNoPlot.
+  ///
+  /// In en, this message translates to:
+  /// **'No plot'**
+  String get farmNoPlot;
+
+  /// No description provided for @farmRecordHarvest.
+  ///
+  /// In en, this message translates to:
+  /// **'Record harvest'**
+  String get farmRecordHarvest;
+
+  /// No description provided for @farmHarvestQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Harvested quantity'**
+  String get farmHarvestQty;
+
+  /// No description provided for @farmYieldActual.
+  ///
+  /// In en, this message translates to:
+  /// **'Harvested {qty} {unit}'**
+  String farmYieldActual(String qty, String unit);
+
+  /// No description provided for @farmDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this? It cannot be undone.'**
+  String get farmDeleteConfirm;
+
+  /// No description provided for @farmIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get farmIncome;
+
+  /// No description provided for @farmExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get farmExpense;
+
+  /// No description provided for @farmProfit.
+  ///
+  /// In en, this message translates to:
+  /// **'Profit'**
+  String get farmProfit;
+
+  /// No description provided for @farmAddEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get farmAddEntry;
+
+  /// No description provided for @farmAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (LKR)'**
+  String get farmAmount;
+
+  /// No description provided for @farmCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get farmCategory;
+
+  /// No description provided for @farmCropOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop (optional)'**
+  String get farmCropOptional;
+
+  /// No description provided for @farmGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get farmGeneral;
+
+  /// No description provided for @farmDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get farmDate;
+
+  /// No description provided for @farmNoEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'No income or expenses recorded yet.'**
+  String get farmNoEntries;
+
+  /// No description provided for @farmByCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Profit by crop'**
+  String get farmByCrop;
+
+  /// No description provided for @farmSalesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid produce orders are counted automatically.'**
+  String get farmSalesNote;
+
+  /// No description provided for @farmAppSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmora sales'**
+  String get farmAppSales;
+
+  /// No description provided for @farmNoAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'No advice yet. Admin updates on weather, pests and prices will appear here.'**
+  String get farmNoAdvice;
+
+  /// No description provided for @farmAddToExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to farm expenses'**
+  String get farmAddToExpenses;
+
+  /// No description provided for @farmAddedToExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to farm expenses'**
+  String get farmAddedToExpenses;
+
+  /// No description provided for @catSeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed'**
+  String get catSeed;
+
+  /// No description provided for @catFertilizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fertilizer'**
+  String get catFertilizer;
+
+  /// No description provided for @catPesticide.
+  ///
+  /// In en, this message translates to:
+  /// **'Pesticide'**
+  String get catPesticide;
+
+  /// No description provided for @catLabour.
+  ///
+  /// In en, this message translates to:
+  /// **'Labour'**
+  String get catLabour;
+
+  /// No description provided for @catWater.
+  ///
+  /// In en, this message translates to:
+  /// **'Water'**
+  String get catWater;
+
+  /// No description provided for @catFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get catFuel;
+
+  /// No description provided for @catMachinery.
+  ///
+  /// In en, this message translates to:
+  /// **'Machinery'**
+  String get catMachinery;
+
+  /// No description provided for @catTransport.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport'**
+  String get catTransport;
+
+  /// No description provided for @catLand.
+  ///
+  /// In en, this message translates to:
+  /// **'Land / rent'**
+  String get catLand;
+
+  /// No description provided for @catOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get catOther;
+
+  /// No description provided for @catProduceSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Produce sale'**
+  String get catProduceSale;
+
+  /// No description provided for @catSubsidy.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsidy'**
+  String get catSubsidy;
 }
 
 class _AppLocalizationsDelegate

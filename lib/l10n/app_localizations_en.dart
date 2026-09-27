@@ -6963,4 +6963,146 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get supInvalidNumber => 'Enter a valid number.';
+
+  @override
+  String get farmTabPlots => 'Plots';
+
+  @override
+  String get farmTabFinances => 'Finances';
+
+  @override
+  String get farmTabAdvice => 'Advice';
+
+  @override
+  String get farmAddPlot => 'Add plot';
+
+  @override
+  String get farmEditPlot => 'Edit plot';
+
+  @override
+  String get farmNoPlots =>
+      'No plots yet. Add your fields to link crops to them.';
+
+  @override
+  String get farmPlotName => 'Plot name';
+
+  @override
+  String get farmArea => 'Area';
+
+  @override
+  String get farmAreaUnit => 'Unit';
+
+  @override
+  String get farmSoilType => 'Soil type';
+
+  @override
+  String get farmIrrigation => 'Water source';
+
+  @override
+  String get farmNotes => 'Notes';
+
+  @override
+  String get farmPlotOptional => 'Plot (optional)';
+
+  @override
+  String get farmNoPlot => 'No plot';
+
+  @override
+  String get farmRecordHarvest => 'Record harvest';
+
+  @override
+  String get farmHarvestQty => 'Harvested quantity';
+
+  @override
+  String farmYieldActual(String qty, String unit) {
+    return 'Harvested $qty $unit';
+  }
+
+  @override
+  String get farmDeleteConfirm => 'Delete this? It cannot be undone.';
+
+  @override
+  String get farmIncome => 'Income';
+
+  @override
+  String get farmExpense => 'Expense';
+
+  @override
+  String get farmProfit => 'Profit';
+
+  @override
+  String get farmAddEntry => 'Add entry';
+
+  @override
+  String get farmAmount => 'Amount (LKR)';
+
+  @override
+  String get farmCategory => 'Category';
+
+  @override
+  String get farmCropOptional => 'Crop (optional)';
+
+  @override
+  String get farmGeneral => 'General';
+
+  @override
+  String get farmDate => 'Date';
+
+  @override
+  String get farmNoEntries => 'No income or expenses recorded yet.';
+
+  @override
+  String get farmByCrop => 'Profit by crop';
+
+  @override
+  String get farmSalesNote => 'Paid produce orders are counted automatically.';
+
+  @override
+  String get farmAppSales => 'Farmora sales';
+
+  @override
+  String get farmNoAdvice =>
+      'No advice yet. Admin updates on weather, pests and prices will appear here.';
+
+  @override
+  String get farmAddToExpenses => 'Add to farm expenses';
+
+  @override
+  String get farmAddedToExpenses => 'Added to farm expenses';
+
+  @override
+  String get catSeed => 'Seed';
+
+  @override
+  String get catFertilizer => 'Fertilizer';
+
+  @override
+  String get catPesticide => 'Pesticide';
+
+  @override
+  String get catLabour => 'Labour';
+
+  @override
+  String get catWater => 'Water';
+
+  @override
+  String get catFuel => 'Fuel';
+
+  @override
+  String get catMachinery => 'Machinery';
+
+  @override
+  String get catTransport => 'Transport';
+
+  @override
+  String get catLand => 'Land / rent';
+
+  @override
+  String get catOther => 'Other';
+
+  @override
+  String get catProduceSale => 'Produce sale';
+
+  @override
+  String get catSubsidy => 'Subsidy';
 }

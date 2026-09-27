@@ -6958,4 +6958,146 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get supInvalidNumber => 'වලංගු අංකයක් ඇතුළත් කරන්න.';
+
+  @override
+  String get farmTabPlots => 'කැබලි';
+
+  @override
+  String get farmTabFinances => 'මූල්‍ය';
+
+  @override
+  String get farmTabAdvice => 'උපදෙස්';
+
+  @override
+  String get farmAddPlot => 'කැබැල්ලක් එක් කරන්න';
+
+  @override
+  String get farmEditPlot => 'කැබැල්ල සංස්කරණය';
+
+  @override
+  String get farmNoPlots =>
+      'තවම කැබලි නැත. බෝග සම්බන්ධ කිරීමට ඔබේ කෙත් එක් කරන්න.';
+
+  @override
+  String get farmPlotName => 'කැබැල්ලේ නම';
+
+  @override
+  String get farmArea => 'ප්‍රමාණය';
+
+  @override
+  String get farmAreaUnit => 'ඒකකය';
+
+  @override
+  String get farmSoilType => 'පස් වර්ගය';
+
+  @override
+  String get farmIrrigation => 'ජල මූලාශ්‍රය';
+
+  @override
+  String get farmNotes => 'සටහන්';
+
+  @override
+  String get farmPlotOptional => 'කැබැල්ල (විකල්ප)';
+
+  @override
+  String get farmNoPlot => 'කැබැල්ලක් නැත';
+
+  @override
+  String get farmRecordHarvest => 'අස්වැන්න සටහන් කරන්න';
+
+  @override
+  String get farmHarvestQty => 'නෙළූ ප්‍රමාණය';
+
+  @override
+  String farmYieldActual(String qty, String unit) {
+    return '$unit $qtyක් නෙළන ලදී';
+  }
+
+  @override
+  String get farmDeleteConfirm => 'මෙය මකන්නද? එය ආපසු හැරවිය නොහැක.';
+
+  @override
+  String get farmIncome => 'ආදායම';
+
+  @override
+  String get farmExpense => 'වියදම';
+
+  @override
+  String get farmProfit => 'ලාභය';
+
+  @override
+  String get farmAddEntry => 'ඇතුළත් කිරීමක් එක් කරන්න';
+
+  @override
+  String get farmAmount => 'මුදල (රු.)';
+
+  @override
+  String get farmCategory => 'වර්ගය';
+
+  @override
+  String get farmCropOptional => 'බෝගය (විකල්ප)';
+
+  @override
+  String get farmGeneral => 'සාමාන්‍ය';
+
+  @override
+  String get farmDate => 'දිනය';
+
+  @override
+  String get farmNoEntries => 'තවම ආදායම් හෝ වියදම් සටහන් කර නැත.';
+
+  @override
+  String get farmByCrop => 'බෝගය අනුව ලාභය';
+
+  @override
+  String get farmSalesNote => 'ගෙවූ නිෂ්පාදන ඇණවුම් ස්වයංක්‍රීයව ගණනය වේ.';
+
+  @override
+  String get farmAppSales => 'Farmora විකුණුම්';
+
+  @override
+  String get farmNoAdvice =>
+      'තවම උපදෙස් නැත. කාලගුණය, පළිබෝධ සහ මිල ගැන යාවත්කාලීන මෙහි දිස්වේ.';
+
+  @override
+  String get farmAddToExpenses => 'ගොවි වියදම්වලට එක් කරන්න';
+
+  @override
+  String get farmAddedToExpenses => 'ගොවි වියදම්වලට එක් කළා';
+
+  @override
+  String get catSeed => 'බීජ';
+
+  @override
+  String get catFertilizer => 'පොහොර';
+
+  @override
+  String get catPesticide => 'පළිබෝධනාශක';
+
+  @override
+  String get catLabour => 'ශ්‍රමය';
+
+  @override
+  String get catWater => 'ජලය';
+
+  @override
+  String get catFuel => 'ඉන්ධන';
+
+  @override
+  String get catMachinery => 'යන්ත්‍ර';
+
+  @override
+  String get catTransport => 'ප්‍රවාහනය';
+
+  @override
+  String get catLand => 'ඉඩම / කුලිය';
+
+  @override
+  String get catOther => 'වෙනත්';
+
+  @override
+  String get catProduceSale => 'නිෂ්පාදන විකිණීම';
+
+  @override
+  String get catSubsidy => 'සහනාධාරය';
 }

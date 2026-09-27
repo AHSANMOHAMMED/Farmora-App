@@ -2728,6 +2728,8 @@ class SparkBackend {
     double expectedYield = 0,
     String yieldUnit = 'kg',
     String notes = '',
+    String plotId = '',
+    String plotName = '',
   }) async {
     final uid = _uid;
     await _requireVerifiedRole(['farmer']);
@@ -2755,6 +2757,9 @@ class SparkBackend {
       'yieldUnit': yieldUnit.length > 20 ? yieldUnit.substring(0, 20) : yieldUnit,
       'status': 'planned',
       'notes': text.length > 1000 ? text.substring(0, 1000) : text,
+      if (plotId.isNotEmpty) 'plotId': plotId,
+      if (plotId.isNotEmpty)
+        'plotName': plotName.length > 80 ? plotName.substring(0, 80) : plotName,
       'createdAt': _now,
       'updatedAt': _now,
     });
@@ -2786,6 +2791,13 @@ class SparkBackend {
     final yieldValue = data['expectedYield'];
     if (yieldValue is num && yieldValue.isFinite && yieldValue >= 0) {
       updates['expectedYield'] = yieldValue;
+    }
+    // Harvest record: the actual yield and its unit.
+    final actual = data['actualYield'];
+    if (actual is num && actual.isFinite && actual >= 0) {
+      updates['actualYield'] = actual;
+      final unit = (data['yieldUnit'] ?? 'kg').toString().trim();
+      updates['yieldUnit'] = unit.length > 20 ? unit.substring(0, 20) : unit;
     }
     await ref.update(updates);
   }

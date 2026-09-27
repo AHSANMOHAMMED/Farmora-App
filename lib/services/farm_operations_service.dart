@@ -36,11 +36,13 @@ class FarmOperationsService {
 
   Future<void> createCrop({required String cropName, required double area,
     required String areaUnit, required DateTime plantedAt,
-    required DateTime harvestAt, String notes = ''}) async {
+    required DateTime harvestAt, String notes = '',
+    String plotId = '', String plotName = ''}) async {
     if (!kUseCloudFunctions) {
       await _spark.createCropPlan(
         cropName: cropName, area: area, areaUnit: areaUnit,
         plantedAt: plantedAt, expectedHarvestAt: harvestAt, notes: notes,
+        plotId: plotId, plotName: plotName,
       );
       return;
     }
@@ -84,6 +86,13 @@ class FarmOperationsService {
   }
 
   /// Spark computes reminders on the client (self-notifications).
+  /// The owner removes a crop plan or task (allowed by the rules).
+  Future<void> deleteCrop(String id) =>
+      _db.collection('crop_plans').doc(id).delete();
+
+  Future<void> deleteTask(String id) =>
+      _db.collection('farm_tasks').doc(id).delete();
+
   Future<int> checkTaskReminders() async {
     if (!kUseCloudFunctions) return _spark.checkFarmTaskReminders();
     final result = await _functions.httpsCallable('checkFarmTaskReminders').call();

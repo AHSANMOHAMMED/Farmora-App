@@ -9,6 +9,9 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/farm_operations_service.dart';
 import '../../../services/farm_weather_service.dart';
 import '../../../services/community_market_service.dart';
+import '../../../services/farm_records_service.dart';
+import '../../../core/localization/l10n.dart';
+import 'farm_records_tabs.dart';
 
 class FarmWorkspaceScreen extends StatefulWidget {
   const FarmWorkspaceScreen({super.key});
@@ -22,7 +25,8 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
   final _farm = FarmOperationsService();
   final _market = CommunityMarketService();
   final _weather = FarmWeatherService();
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  final _records = FarmRecordsService();
+  late final TabController _tabs = TabController(length: 8, vsync: this);
   Future<Map<String, dynamic>>? _forecast;
   bool _remindersChecked = false;
 
@@ -58,34 +62,56 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Text('My Farm'),
-          bottom: TabBar(controller: _tabs, isScrollable: true, tabs: const [
-            Tab(icon: Icon(Icons.spa_outlined), text: 'Crops'),
-            Tab(icon: Icon(Icons.checklist_rounded), text: 'Tasks'),
-            Tab(icon: Icon(Icons.cloud_outlined), text: 'Weather'),
-            Tab(icon: Icon(Icons.bar_chart_rounded), text: 'Reports'),
-            Tab(icon: Icon(Icons.campaign_outlined), text: 'Buyer requests'),
+          bottom: TabBar(controller: _tabs, isScrollable: true, tabs: [
+            const Tab(icon: Icon(Icons.spa_outlined), text: 'Crops'),
+            Tab(icon: const Icon(Icons.grid_view_outlined), text: context.l10n.farmTabPlots),
+            const Tab(icon: Icon(Icons.checklist_rounded), text: 'Tasks'),
+            Tab(icon: const Icon(Icons.account_balance_wallet_outlined), text: context.l10n.farmTabFinances),
+            const Tab(icon: Icon(Icons.cloud_outlined), text: 'Weather'),
+            Tab(icon: const Icon(Icons.tips_and_updates_outlined), text: context.l10n.farmTabAdvice),
+            const Tab(icon: Icon(Icons.bar_chart_rounded), text: 'Reports'),
+            const Tab(icon: Icon(Icons.campaign_outlined), text: 'Buyer requests'),
           ]),
         ),
         body: TabBarView(controller: _tabs, children: [
-          _crops(), _tasks(), _weatherTab(), _reports(), _buyerRequests(),
+          _crops(),
+          PlotsTab(service: _records),
+          _tasks(),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _farm.watchCrops(),
+            builder: (context, snap) => FinancesTab(
+                service: _records, crops: snap.data ?? const []),
+          ),
+          _weatherTab(),
+          AdviceTab(service: _records),
+          _reports(),
+          _buyerRequests(),
         ]),
         floatingActionButton: AnimatedBuilder(
           animation: _tabs,
-          builder: (context, _) => _tabs.index > 1
-              ? const SizedBox.shrink()
-              : FloatingActionButton.extended(
-            onPressed: () => _tabs.index == 0
-                ? _createCrop()
-                : _tabs.index == 1
-                    ? _createTask()
-                    : _tabs.index == 4
-                        ? null
-                        : null,
-            icon: const Icon(Icons.add),
-            label: Text(_tabs.index == 0 ? 'Add crop' : 'Add task'),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
+          builder: (context, _) {
+            final l = context.l10n;
+            final (String? label, Future<void> Function()? action) =
+                switch (_tabs.index) {
+              0 => ('Add crop', _createCrop),
+              1 => (l.farmAddPlot, () => PlotsTab.edit(context, _records)),
+              2 => ('Add task', _createTask),
+              3 => (
+                  l.farmAddEntry,
+                  () async => FinancesTab.addEntry(
+                      context, _records, await _farm.watchCrops().first)
+                ),
+              _ => (null, null),
+            };
+            if (label == null) return const SizedBox.shrink();
+            return FloatingActionButton.extended(
+              onPressed: action,
+              icon: const Icon(Icons.add),
+              label: Text(label),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            );
+          },
         ),
       );
 
@@ -104,7 +130,12 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
               return Card(child: ListTile(
                 leading: CircleAvatar(backgroundColor: AppColors.primary.withValues(alpha: .1), child: const Icon(Icons.eco, color: AppColors.primary)),
                 title: Text('${crop['cropName']} · ${crop['area']} ${crop['areaUnit']}'),
-                subtitle: Text('Harvest target ${harvest == null ? 'not set' : MaterialLocalizations.of(context).formatMediumDate(harvest)}${crop['expectedYield'] != null && crop['expectedYield'] != 0 ? ' · ${crop['expectedYield']} ${crop['yieldUnit']}' : ''}'),
+                subtitle: Text([
+                  'Harvest target ${harvest == null ? 'not set' : MaterialLocalizations.of(context).formatMediumDate(harvest)}${crop['expectedYield'] != null && crop['expectedYield'] != 0 ? ' · ${crop['expectedYield']} ${crop['yieldUnit']}' : ''}',
+                  if ((crop['plotName'] ?? '').toString().isNotEmpty) crop['plotName'].toString(),
+                  if (crop['actualYield'] is num) context.l10n.farmYieldActual('${crop['actualYield']}', '${crop['yieldUnit'] ?? 'kg'}'),
+                ].join(' · ')),
+                onLongPress: () => _cropActions(crop),
                 trailing: DropdownButton<String>(value: (crop['status'] as String?) ?? 'planned', underline: const SizedBox(), items: const [
                   DropdownMenuItem(value: 'planned', child: Text('Planned')),
                   DropdownMenuItem(value: 'planted', child: Text('Planted')),
@@ -136,11 +167,14 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
                 leading: Icon(status == 'completed' ? Icons.task_alt : overdue ? Icons.warning_amber_rounded : Icons.event_note, color: status == 'completed' ? AppColors.primary : overdue ? Colors.red : Colors.orange),
                 title: Text(task['title']?.toString() ?? 'Farm task', style: TextStyle(decoration: status == 'completed' ? TextDecoration.lineThrough : null)),
                 subtitle: Text('${overdue ? 'OVERDUE · ' : ''}${due == null ? 'No due date' : MaterialLocalizations.of(context).formatFullDate(due)}${(task['cropName'] as String?)?.isNotEmpty == true ? ' · ${task['cropName']}' : ''}'),
-                trailing: PopupMenuButton<String>(onSelected: (value) => _run(() => _farm.updateTask(task['id'], {'status': value})), itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'pending', child: Text('Mark pending')),
-                  PopupMenuItem(value: 'inProgress', child: Text('Start task')),
-                  PopupMenuItem(value: 'completed', child: Text('Complete task')),
-                  PopupMenuItem(value: 'cancelled', child: Text('Cancel task')),
+                trailing: PopupMenuButton<String>(onSelected: (value) => value == 'delete'
+                    ? _deleteThen(() => _farm.deleteTask(task['id']))
+                    : _run(() => _farm.updateTask(task['id'], {'status': value})), itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'pending', child: Text('Mark pending')),
+                  const PopupMenuItem(value: 'inProgress', child: Text('Start task')),
+                  const PopupMenuItem(value: 'completed', child: Text('Complete task')),
+                  const PopupMenuItem(value: 'cancelled', child: Text('Cancel task')),
+                  PopupMenuItem(value: 'delete', child: Text(context.l10n.delete)),
                 ]),
               ));
             },
@@ -230,6 +264,9 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
 
   Future<void> _createCrop() async {
     final name = TextEditingController(), area = TextEditingController(), notes = TextEditingController();
+    final plots = await _records.watchPlots().first.catchError((_) => <FarmPlot>[]);
+    if (!mounted) return;
+    String plotId = '';
     var areaUnit = 'acres';
     var planted = DateTime.now();
     var harvest = DateTime.now().add(const Duration(days: 90));
@@ -238,6 +275,11 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Crop name')),
         TextField(controller: area, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Farm area')),
         DropdownButtonFormField(initialValue: areaUnit, decoration: const InputDecoration(labelText: 'Area unit'), items: const [DropdownMenuItem(value: 'acres', child: Text('Acres')), DropdownMenuItem(value: 'hectares', child: Text('Hectares')), DropdownMenuItem(value: 'perches', child: Text('Perches'))], onChanged: (v) => setDialog(() => areaUnit = v ?? 'acres')),
+        if (plots.isNotEmpty) DropdownButtonFormField<String>(initialValue: plotId, decoration: InputDecoration(labelText: context.l10n.farmPlotOptional), items: [DropdownMenuItem(value: '', child: Text(context.l10n.farmNoPlot)), for (final p in plots) DropdownMenuItem(value: p.id, child: Text('${p.name} · ${p.area} ${p.areaUnit}'))], onChanged: (v) => setDialog(() {
+          plotId = v ?? '';
+          final plot = plots.where((p) => p.id == plotId).firstOrNull;
+          if (plot != null) { area.text = '${plot.area}'; areaUnit = plot.areaUnit; }
+        })),
         TextField(controller: notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes')),
         TextButton(onPressed: () async { final d = await showDatePicker(context: ctx, initialDate: planted, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365))); if (d != null) setDialog(() => planted = d); }, child: Text('Planted: ${MaterialLocalizations.of(ctx).formatMediumDate(planted)}')),
         TextButton(onPressed: () async { final d = await showDatePicker(context: ctx, initialDate: harvest, firstDate: planted.add(const Duration(days: 1)), lastDate: DateTime.now().add(const Duration(days: 900))); if (d != null) setDialog(() => harvest = d); }, child: Text('Expected harvest: ${MaterialLocalizations.of(ctx).formatMediumDate(harvest)}')),
@@ -246,7 +288,46 @@ class _FarmWorkspaceScreenState extends State<FarmWorkspaceScreen>
     if (ok != true) return;
     final parsed = double.tryParse(area.text);
     if (name.text.trim().isEmpty || parsed == null || parsed <= 0 || harvest.isBefore(planted)) return _message('Enter a crop and valid area/date range.');
-    await _run(() => _farm.createCrop(cropName: name.text.trim(), area: parsed, areaUnit: areaUnit, plantedAt: planted, harvestAt: harvest, notes: notes.text.trim()));
+    final plot = plots.where((p) => p.id == plotId).firstOrNull;
+    await _run(() => _farm.createCrop(cropName: name.text.trim(), area: parsed, areaUnit: areaUnit, plantedAt: planted, harvestAt: harvest, notes: notes.text.trim(), plotId: plot?.id ?? '', plotName: plot?.name ?? ''));
+  }
+
+  /// Long-press on a crop: record the harvest or delete the plan.
+  Future<void> _cropActions(Map<String, dynamic> crop) async {
+    final l = context.l10n;
+    final action = await showModalBottomSheet<String>(context: context, builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      ListTile(leading: const Icon(Icons.agriculture_rounded), title: Text(l.farmRecordHarvest), onTap: () => Navigator.pop(ctx, 'harvest')),
+      ListTile(leading: const Icon(Icons.delete_outline, color: Colors.red), title: Text(l.delete), onTap: () => Navigator.pop(ctx, 'delete')),
+    ])));
+    if (!mounted || action == null) return;
+    if (action == 'delete') return _deleteThen(() => _farm.deleteCrop(crop['id']));
+    final qty = TextEditingController(text: crop['actualYield'] is num ? '${crop['actualYield']}' : '');
+    var unit = (crop['yieldUnit'] ?? 'kg').toString();
+    if (!const ['kg', 'tonnes', 'bushels', 'crates'].contains(unit)) unit = 'kg';
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDialog) => AlertDialog(
+      title: Text('${l.farmRecordHarvest} · ${crop['cropName']}'),
+      content: Row(children: [
+        Expanded(child: TextField(controller: qty, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: l.farmHarvestQty))),
+        const SizedBox(width: 12),
+        DropdownButton<String>(value: unit, items: const [
+          DropdownMenuItem(value: 'kg', child: Text('kg')), DropdownMenuItem(value: 'tonnes', child: Text('tonnes')),
+          DropdownMenuItem(value: 'bushels', child: Text('bushels')), DropdownMenuItem(value: 'crates', child: Text('crates')),
+        ], onChanged: (v) => setDialog(() => unit = v ?? unit)),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l.save))],
+    )));
+    final value = double.tryParse(qty.text.trim());
+    if (ok != true || value == null || value < 0) return;
+    await _run(() => _farm.updateCrop(crop['id'], {'status': 'harvested', 'actualYield': value, 'yieldUnit': unit}));
+  }
+
+  Future<void> _deleteThen(Future<void> Function() action) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(content: Text(l.farmDeleteConfirm), actions: [
+      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+      FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: Text(l.delete)),
+    ]));
+    if (ok == true) await _run(action);
   }
 
   Future<void> _createTask() async {
