@@ -9,6 +9,7 @@ import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
 import '../../payments/presentation/order_payment_card.dart' show paymentMethodIcon;
 import 'order_detail_screen.dart';
+import '../../../core/widgets/load_more_button.dart';
 
 class FarmerOrdersScreen extends StatefulWidget {
   const FarmerOrdersScreen({super.key});
@@ -181,9 +182,14 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: displayOrders.length,
+                      itemCount: displayOrders.length +
+                          (context.watch<FarmoraState>().hasMoreOrders ? 1 : 0),
                       separatorBuilder: (_, __) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
+                        if (index == displayOrders.length) {
+                          return LoadMoreButton(
+                              onPressed: context.read<FarmoraState>().loadMoreOrders);
+                        }
                         final order = displayOrders[index];
                         return _buildOrderCard(context, state, order);
                       },

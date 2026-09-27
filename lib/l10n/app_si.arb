@@ -1952,5 +1952,9 @@
   "deliveryProofAddPhoto": "බෙදාහැරීමේ ඡායාරූපය එක් කරන්න (විකල්ප)",
   "deliveryProofPhotoAdded": "ඡායාරූපය එක් කළා",
   "deliveryProofPhoto": "බෙදාහැරීමේ ඡායාරූපය",
-  "deliveryProofConfirmed": "ගැනුම්කරුගේ කේතය සමඟ බෙදා හරින ලදී"
+  "deliveryProofConfirmed": "ගැනුම්කරුගේ කේතය සමඟ බෙදා හරින ලදී",
+  "farmerVerifyToListTitle": "විකිණීමට ඔබේ ගිණුම තහවුරු කරන්න",
+  "farmerVerifyToListBody": "ගැනුම්කරුවන්ට පෙනෙන්නේ තහවුරු කළ ගොවීන්ගේ නිෂ්පාදන පමණි. ඔබේ ලේඛන උඩුගත කරන්න; පරිපාලකයෙක් සාමාන්‍යයෙන් දිනක් තුළ ඒවා සමාලෝචනය කරයි.",
+  "farmerVerifyNow": "දැන් තහවුරු කරන්න",
+  "loadMore": "තවත් පූරණය කරන්න"
 }

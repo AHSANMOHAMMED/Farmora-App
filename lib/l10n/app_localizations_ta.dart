@@ -6837,4 +6837,17 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get deliveryProofConfirmed =>
       'வாங்குபவரின் குறியீட்டுடன் வழங்கப்பட்டது';
+
+  @override
+  String get farmerVerifyToListTitle => 'விற்க உங்கள் கணக்கைச் சரிபார்க்கவும்';
+
+  @override
+  String get farmerVerifyToListBody =>
+      'சரிபார்க்கப்பட்ட விவசாயிகளின் விளைபொருட்களை மட்டுமே வாங்குபவர்கள் பார்க்க முடியும். உங்கள் ஆவணங்களைப் பதிவேற்றவும்; நிர்வாகி பொதுவாக ஒரு நாளுக்குள் சரிபார்ப்பார்.';
+
+  @override
+  String get farmerVerifyNow => 'இப்போது சரிபார்க்கவும்';
+
+  @override
+  String get loadMore => 'மேலும் ஏற்று';
 }

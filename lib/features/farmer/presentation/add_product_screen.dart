@@ -12,6 +12,7 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../../core/constants/demo_catalog_data.dart';
 import '../../auth/presentation/auth_l10n.dart' show districtLabel;
+import 'account_verification_screen.dart';
 import 'farmer_l10n.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -521,9 +522,47 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
+  /// Unverified farmers learn up front that listing needs verification
+  /// (the backend and rules reject their products anyway).
+  Widget _buildVerificationGate(AppLocalizations l) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.tertiary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.tertiary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.verified_user_outlined, color: AppColors.tertiary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(l.farmerVerifyToListTitle,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          Text(l.farmerVerifyToListBody,
+              style: const TextStyle(color: AppColors.onSurfaceVariant)),
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AccountVerificationScreen())),
+            child: Text(l.farmerVerifyNow),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final mustVerify = widget.existingProduct == null &&
+        !context.select<FarmoraState, bool>((s) => s.isVerified);
     return Scaffold(
       backgroundColor: AppColors.surface,
       // Stitch: fixed top-0 h-16 px-margin-mobile flex items-center gap-md
@@ -557,6 +596,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (mustVerify) _buildVerificationGate(l),
                   // 1. Basic Details — Stitch: bg-surface-container-low rounded-xl p-md shadow-sm
                   _buildSectionCard(
                     title: l.farmerAddProductBasicDetails,
@@ -836,7 +876,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
               child: SizedBox(
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: _isSubmitting || _isPicking ? null : _submit,
+                  onPressed: _isSubmitting || _isPicking || mustVerify
+                      ? null
+                      : _submit,
                   style: ElevatedButton.styleFrom(
                     // Stitch: bg-primary text-on-primary rounded-xl h-touch-target
                     backgroundColor: AppColors.primary,

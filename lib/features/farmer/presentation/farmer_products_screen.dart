@@ -11,6 +11,7 @@ import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
 import 'farmer_l10n.dart';
+import '../../../core/widgets/load_more_button.dart';
 
 class FarmerProductsScreen extends StatefulWidget {
   const FarmerProductsScreen({super.key});
@@ -179,9 +180,14 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: products.length,
+                    itemCount: products.length +
+                        (context.watch<FarmoraState>().hasMoreProducts ? 1 : 0),
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
+                      if (index == products.length) {
+                        return LoadMoreButton(
+                            onPressed: context.read<FarmoraState>().loadMoreProducts);
+                      }
                       final product = products[index];
                       return _buildProductCard(context, state, product);
                     },

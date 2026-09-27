@@ -6732,4 +6732,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deliveryProofConfirmed => 'Delivered with the buyer\'s code';
+
+  @override
+  String get farmerVerifyToListTitle => 'Verify your account to sell';
+
+  @override
+  String get farmerVerifyToListBody =>
+      'Buyers can only see produce from verified farmers. Upload your documents; an admin reviews them, usually within a day.';
+
+  @override
+  String get farmerVerifyNow => 'Verify now';
+
+  @override
+  String get loadMore => 'Load more';
 }

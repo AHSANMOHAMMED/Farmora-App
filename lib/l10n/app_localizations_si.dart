@@ -6727,4 +6727,17 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get deliveryProofConfirmed => 'ගැනුම්කරුගේ කේතය සමඟ බෙදා හරින ලදී';
+
+  @override
+  String get farmerVerifyToListTitle => 'විකිණීමට ඔබේ ගිණුම තහවුරු කරන්න';
+
+  @override
+  String get farmerVerifyToListBody =>
+      'ගැනුම්කරුවන්ට පෙනෙන්නේ තහවුරු කළ ගොවීන්ගේ නිෂ්පාදන පමණි. ඔබේ ලේඛන උඩුගත කරන්න; පරිපාලකයෙක් සාමාන්‍යයෙන් දිනක් තුළ ඒවා සමාලෝචනය කරයි.';
+
+  @override
+  String get farmerVerifyNow => 'දැන් තහවුරු කරන්න';
+
+  @override
+  String get loadMore => 'තවත් පූරණය කරන්න';
 }

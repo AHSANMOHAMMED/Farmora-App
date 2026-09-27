@@ -9,6 +9,7 @@ import '../../../core/widgets/trust_badge.dart';
 import 'cart_screen.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
+import '../../../core/widgets/load_more_button.dart';
 
 class BuyerProductsScreen extends StatefulWidget {
   const BuyerProductsScreen({super.key});
@@ -292,9 +293,14 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: products.length,
+                    itemCount: products.length +
+                        (context.watch<FarmoraState>().hasMoreProducts ? 1 : 0),
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
+                      if (index == products.length) {
+                        return LoadMoreButton(
+                            onPressed: context.read<FarmoraState>().loadMoreProducts);
+                      }
                       return _buildProductCard(context, state, products[index]);
                     },
                   ),

@@ -9,6 +9,7 @@ import 'buyer_order_detail_screen.dart';
 import 'cart_screen.dart';
 import 'buyer_products_screen.dart';
 import 'buyer_l10n.dart';
+import '../../../core/widgets/load_more_button.dart';
 
 class BuyerOrdersScreen extends StatefulWidget {
   const BuyerOrdersScreen({super.key});
@@ -219,9 +220,14 @@ class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: displayOrders.length,
+                      itemCount: displayOrders.length +
+                          (context.watch<FarmoraState>().hasMoreOrders ? 1 : 0),
                       separatorBuilder: (_, __) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
+                        if (index == displayOrders.length) {
+                          return LoadMoreButton(
+                              onPressed: context.read<FarmoraState>().loadMoreOrders);
+                        }
                         return _buildOrderCard(
                             context, state, displayOrders[index]);
                       },

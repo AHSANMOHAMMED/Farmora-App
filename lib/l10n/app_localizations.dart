@@ -11776,6 +11776,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delivered with the buyer\'s code'**
   String get deliveryProofConfirmed;
+
+  /// No description provided for @farmerVerifyToListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your account to sell'**
+  String get farmerVerifyToListTitle;
+
+  /// No description provided for @farmerVerifyToListBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Buyers can only see produce from verified farmers. Upload your documents; an admin reviews them, usually within a day.'**
+  String get farmerVerifyToListBody;
+
+  /// No description provided for @farmerVerifyNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify now'**
+  String get farmerVerifyNow;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get loadMore;
 }
 
 class _AppLocalizationsDelegate

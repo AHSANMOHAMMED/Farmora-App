@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
+import '../../../core/widgets/delivery_proof_view.dart';
 import '../../../models/dispute_model.dart';
 import '../../../models/order.dart';
 import '../../../providers/farmora_state.dart';
@@ -198,6 +199,9 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
         ? dispute.userName
         : _partyName(order, dispute.userId);
     final evidence = dispute.evidenceImages ?? const <String>[];
+    final deliveryJob = state.jobs
+        .where((j) => j.orderId == dispute.orderId && dispute.orderId.isNotEmpty)
+        .firstOrNull;
     final statusColor = dispute.getStatusColor();
 
     return Card(
@@ -365,6 +369,7 @@ class _DisputeResolutionScreenState extends State<DisputeResolutionScreen> {
                 ),
               ),
             ],
+            if (deliveryJob != null) DeliveryProofView(job: deliveryJob),
             if (isResolved &&
                 (dispute.adminResponse ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 10),

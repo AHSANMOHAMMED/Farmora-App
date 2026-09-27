@@ -3691,5 +3691,9 @@
   "deliveryProofAddPhoto": "Add delivery photo (optional)",
   "deliveryProofPhotoAdded": "Photo added",
   "deliveryProofPhoto": "Delivery photo",
-  "deliveryProofConfirmed": "Delivered with the buyer's code"
+  "deliveryProofConfirmed": "Delivered with the buyer's code",
+  "farmerVerifyToListTitle": "Verify your account to sell",
+  "farmerVerifyToListBody": "Buyers can only see produce from verified farmers. Upload your documents; an admin reviews them, usually within a day.",
+  "farmerVerifyNow": "Verify now",
+  "loadMore": "Load more"
 }

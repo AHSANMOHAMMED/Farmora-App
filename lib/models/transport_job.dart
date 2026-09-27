@@ -44,6 +44,11 @@ class TransportJob {
   final String? requestedTransporterId;
   final DateTime? createdAt;
 
+  /// Proof of delivery: Storage path of the transporter's delivery photo,
+  /// and whether the buyer's code was entered.
+  final String? podPhotoPath;
+  final bool deliveredWithCode;
+
   const TransportJob({
     required this.id,
     required this.title,
@@ -78,6 +83,8 @@ class TransportJob {
     this.orderNumber,
     this.requestedTransporterId,
     this.createdAt,
+    this.podPhotoPath,
+    this.deliveredWithCode = false,
   });
 
   /// True while the job waits for a transporter.
@@ -142,6 +149,8 @@ class TransportJob {
     String? orderNumber,
     String? requestedTransporterId,
     DateTime? createdAt,
+    String? podPhotoPath,
+    bool? deliveredWithCode,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -178,6 +187,8 @@ class TransportJob {
       requestedTransporterId:
           requestedTransporterId ?? this.requestedTransporterId,
       createdAt: createdAt ?? this.createdAt,
+      podPhotoPath: podPhotoPath ?? this.podPhotoPath,
+      deliveredWithCode: deliveredWithCode ?? this.deliveredWithCode,
     );
   }
 
@@ -276,6 +287,8 @@ class TransportJob {
       buyerName: text(['buyerName']),
       orderNumber: text(['orderNumber']),
       requestedTransporterId: text(['requestedTransporterId']),
+      podPhotoPath: text(['podPhotoPath']),
+      deliveredWithCode: (text(['deliveryCode']) ?? '').isNotEmpty,
       createdAt: firebaseDate(data['createdAt']),
     );
   }

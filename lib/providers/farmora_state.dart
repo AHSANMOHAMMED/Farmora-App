@@ -4,8 +4,10 @@ import 'package:cloud_functions/cloud_functions.dart'
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/services/firebase_auth_service.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/user_role.dart';
@@ -383,11 +385,13 @@ class FarmoraState extends ChangeNotifier {
       _cartItems.add(
           CartItem(product: product, quantity: _capToStock(product, quantity)));
     }
+    _saveCart();
     notifyListeners();
   }
 
   void removeFromCart(String productId) {
     _cartItems.removeWhere((c) => c.product.id == productId);
+    _saveCart();
     notifyListeners();
   }
 
@@ -401,13 +405,70 @@ class FarmoraState extends ChangeNotifier {
         _cartItems[index] =
             item.copyWith(quantity: _capToStock(item.product, quantity));
       }
+      _saveCart();
       notifyListeners();
     }
   }
 
   void clearCart() {
     _cartItems.clear();
+    _saveCart();
     notifyListeners();
+  }
+
+  // ── Cart persistence (per user, on this device) ─────────────
+  bool _cartRestored = false;
+  String get _cartKey => 'cart_v1_$_currentUserId';
+
+  /// Saves product ids + quantities; products are re-read from the live
+  /// catalogue on restore so prices and stock are never stale.
+  void _saveCart() {
+    if (_currentUserId.isEmpty || !_cartRestored) return;
+    final data = jsonEncode([
+      for (final c in _cartItems) {'id': c.product.id, 'q': c.quantity},
+    ]);
+    final key = _cartKey;
+    SharedPreferences.getInstance()
+        .then((p) => p.setString(key, data))
+        .catchError((Object e) {
+      debugPrint('Cart save skipped: $e');
+      return false;
+    });
+  }
+
+  /// Keeps cart lines in step with the catalogue and, once per sign-in,
+  /// restores the saved cart. Products no longer listed are dropped.
+  Future<void> _syncCartWithCatalogue() async {
+    if (_cartItems.isNotEmpty) {
+      final byId = {for (final p in _products) p.id: p};
+      for (var i = 0; i < _cartItems.length; i++) {
+        final fresh = byId[_cartItems[i].product.id];
+        if (fresh != null) {
+          _cartItems[i] = _cartItems[i].copyWith(
+              product: fresh,
+              quantity: _capToStock(fresh, _cartItems[i].quantity));
+        }
+      }
+    }
+    if (_cartRestored || _currentUserId.isEmpty || role != Role.buyer) return;
+    _cartRestored = true;
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(_cartKey);
+      if (raw == null) return;
+      final byId = {for (final p in _products) p.id: p};
+      for (final entry in (jsonDecode(raw) as List).cast<Map>()) {
+        final product = byId[entry['id']];
+        final qty = (entry['q'] as num?)?.toInt() ?? 0;
+        if (product == null || qty <= 0) continue;
+        if (_cartItems.any((c) => c.product.id == product.id)) continue;
+        _cartItems.add(
+            CartItem(product: product, quantity: _capToStock(product, qty)));
+      }
+      _saveCart();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Cart restore skipped: $e');
+    }
   }
 
   bool _placingOrder = false;
@@ -510,6 +571,7 @@ class FarmoraState extends ChangeNotifier {
       _lastOrderKey = fingerprint;
       _lastOrderAt = DateTime.now();
       _cartItems.clear();
+      _saveCart();
       _checkoutAttemptFingerprint = null;
       _checkoutAttemptKey = null;
       paymentMethodDraft = PaymentMethod.cod;
@@ -671,6 +733,90 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Paged live lists ─────────────────────────────────────
+  /// Page size for "load more" on long lists (the query limit grows by
+  /// this much, so records stay live and reads stay bounded).
+  static const int pageSize = 25;
+  static const int _initialListLimit = 50;
+  int _productsLimit = _initialListLimit;
+  int _ordersLimit = _initialListLimit;
+  bool get hasMoreProducts => _products.length >= _productsLimit;
+  bool get hasMoreOrders => _orders.length >= _ordersLimit;
+
+  void loadMoreProducts() {
+    if (_currentUserId.isEmpty || !hasMoreProducts) return;
+    _productsLimit += pageSize;
+    _subscribeProducts(_currentUserId);
+  }
+
+  void loadMoreOrders() {
+    if (_currentUserId.isEmpty || !hasMoreOrders) return;
+    _ordersLimit += pageSize;
+    _subscribeOrders(_currentUserId);
+  }
+
+  void _subscribeProducts(String uid) {
+    _productsSub?.cancel();
+    final productsStream = role == Role.farmer
+        ? _firestoreService.productsByFarmerStream(uid,
+            limit: _productsLimit)
+        // Buyers/transporters see the Active catalogue; admins see all.
+        : _firestoreService.productsStream(
+            activeOnly: role != Role.admin, limit: _productsLimit);
+    _productsSub = productsStream.listen(
+      (firestoreProducts) {
+        _products
+          ..clear()
+          ..addAll(firestoreProducts.isEmpty && kDemoData
+              ? DemoCatalogData.sampleProducts
+              : firestoreProducts);
+        if (firestoreProducts.isNotEmpty) _syncCartWithCatalogue();
+        notifyListeners();
+      },
+      onError: (e) {
+        if (kDemoData && _products.isEmpty) {
+          _products.addAll(DemoCatalogData.sampleProducts);
+        }
+        debugPrint('Firestore products stream error: $e');
+        notifyListeners();
+      },
+    );
+  }
+
+  void _subscribeOrders(String uid) {
+    _ordersSub?.cancel();
+    _ordersLoading = true;
+    notifyListeners();
+    final ordersStream = switch (role) {
+      Role.admin => _firestoreService.ordersStream(limit: _ordersLimit),
+      Role.farmer => _firestoreService.ordersByFarmerStream(uid, limit: _ordersLimit),
+      Role.buyer => _firestoreService.ordersByBuyerStream(uid, limit: _ordersLimit),
+      Role.transporter => _firestoreService.ordersByTransporterStream(uid, limit: _ordersLimit),
+    };
+    _ordersSub = ordersStream.listen(
+      (firestoreOrders) {
+        _orders
+          ..clear()
+          ..addAll(firestoreOrders.isEmpty && kDemoData
+              ? DemoCatalogData.sampleOrders
+              : firestoreOrders);
+        if (role == Role.buyer) _ensureDeliveryCodes(firestoreOrders);
+        _recalculateStats();
+        _ordersLoading = false;
+        notifyListeners();
+      },
+      onError: (e) {
+        if (kDemoData && _orders.isEmpty) {
+          _orders.addAll(DemoCatalogData.sampleOrders);
+          _recalculateStats();
+        }
+        _ordersLoading = false;
+        debugPrint('Firestore orders stream error: $e');
+        notifyListeners();
+      },
+    );
+  }
+
   /// Orders whose delivery code this session already created or found.
   final Set<String> _deliveryCodesEnsured = {};
 
@@ -707,6 +853,9 @@ class FarmoraState extends ChangeNotifier {
     _disputes.clear();
     _conversations.clear();
     _cartItems.clear();
+    _cartRestored = false;
+    _productsLimit = _initialListLimit;
+    _ordersLimit = _initialListLimit;
     _adminStats = AdminStats.empty;
     notificationPrefs = const {};
     nicNumber = '';
@@ -1453,29 +1602,7 @@ class FarmoraState extends ChangeNotifier {
     }
     final isAdmin = role == Role.admin;
 
-    // Subscribe to products stream
-    _productsSub?.cancel();
-    final productsStream = role == Role.farmer
-        ? _firestoreService.productsByFarmerStream(uid)
-        // Buyers/transporters see the Active catalogue; admins see all.
-        : _firestoreService.productsStream(activeOnly: !isAdmin);
-    _productsSub = productsStream.listen(
-      (firestoreProducts) {
-        _products
-          ..clear()
-          ..addAll(firestoreProducts.isEmpty && kDemoData
-              ? DemoCatalogData.sampleProducts
-              : firestoreProducts);
-        notifyListeners();
-      },
-      onError: (e) {
-        if (kDemoData && _products.isEmpty) {
-          _products.addAll(DemoCatalogData.sampleProducts);
-        }
-        debugPrint('Firestore products stream error: $e');
-        notifyListeners();
-      },
-    );
+    _subscribeProducts(uid);
 
     // Subscribe to users stream
     _usersSub?.cancel();
@@ -1490,38 +1617,7 @@ class FarmoraState extends ChangeNotifier {
       );
     }
 
-    // Subscribe to orders stream
-    _ordersSub?.cancel();
-    _ordersLoading = true;
-    notifyListeners();
-    final ordersStream = switch (role) {
-      Role.admin => _firestoreService.ordersStream(),
-      Role.farmer => _firestoreService.ordersByFarmerStream(uid),
-      Role.buyer => _firestoreService.ordersByBuyerStream(uid),
-      Role.transporter => _firestoreService.ordersByTransporterStream(uid),
-    };
-    _ordersSub = ordersStream.listen(
-      (firestoreOrders) {
-        _orders
-          ..clear()
-          ..addAll(firestoreOrders.isEmpty && kDemoData
-              ? DemoCatalogData.sampleOrders
-              : firestoreOrders);
-        if (role == Role.buyer) _ensureDeliveryCodes(firestoreOrders);
-        _recalculateStats();
-        _ordersLoading = false;
-        notifyListeners();
-      },
-      onError: (e) {
-        if (kDemoData && _orders.isEmpty) {
-          _orders.addAll(DemoCatalogData.sampleOrders);
-          _recalculateStats();
-        }
-        _ordersLoading = false;
-        debugPrint('Firestore orders stream error: $e');
-        notifyListeners();
-      },
-    );
+    _subscribeOrders(uid);
 
     // Subscribe to transport jobs stream
     _jobsSub?.cancel();

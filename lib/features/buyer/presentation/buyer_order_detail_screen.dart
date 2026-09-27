@@ -14,6 +14,7 @@ import '../../payments/presentation/order_payment_card.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
+import '../../../core/widgets/delivery_proof_view.dart';
 import 'buyer_l10n.dart';
 
 class BuyerOrderDetailScreen extends StatefulWidget {
@@ -564,7 +565,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                 builder: (context, snap) {
                   final jobs = snap.data ?? const <TransportJob>[];
                   if (jobs.isEmpty) return const SizedBox.shrink();
-                  return _buildJobCard(l, jobs.first);
+                  return Column(children: [
+                    _buildJobCard(l, jobs.first),
+                    DeliveryProofView(job: jobs.first),
+                  ]);
                 },
               ),
           ],
