@@ -7372,4 +7372,137 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get shopMarkDelivered => 'இந்தச் சுழற்சி வழங்கப்பட்டது';
+
+  @override
+  String get roleExpert => 'விவசாய நிபுணர்';
+
+  @override
+  String get roleExpertDescription =>
+      'பயிர்கள், பூச்சிகள், மண் மற்றும் கால்நடைகள் பற்றிய விவசாயிகளின் கேள்விகளுக்குப் பதிலளிக்கவும்.';
+
+  @override
+  String get comTitle => 'சமூகம்';
+
+  @override
+  String get comSubtitle =>
+      'விவசாயிகளின் குறிப்புகள், கேள்விகள் மற்றும் கதைகள்';
+
+  @override
+  String get comComposeHint =>
+      'ஒரு குறிப்பு, புகைப்படம் அல்லது கேள்வியைப் பகிரவும்…';
+
+  @override
+  String get comPost => 'பதிவிடு';
+
+  @override
+  String get comEmpty => 'இன்னும் பதிவுகள் இல்லை. முதலில் ஏதாவது பகிருங்கள்.';
+
+  @override
+  String get comLike => 'விருப்பம்';
+
+  @override
+  String comComments(String count) {
+    return '$count கருத்துகள்';
+  }
+
+  @override
+  String get comAddComment => 'ஒரு கருத்தை எழுதுங்கள்…';
+
+  @override
+  String get comReport => 'புகாரளி';
+
+  @override
+  String get comReported =>
+      'நன்றி. நிர்வாகி இந்தப் பதிவை மதிப்பாய்வு செய்வார்.';
+
+  @override
+  String get comReadOnly =>
+      'விவசாயிகளும் நிபுணர்களும் பதிவிடலாம். நீங்கள் விரும்பலாம், கருத்து தெரிவிக்கலாம்.';
+
+  @override
+  String get conAskExpert => 'நிபுணரிடம் கேளுங்கள்';
+
+  @override
+  String get conAskSubtitle => 'பயிர்கள், பூச்சிகள், மண் பற்றிய இலவச ஆலோசனை';
+
+  @override
+  String get conNewQuestion => 'புதிய கேள்வி';
+
+  @override
+  String get conTopic => 'தலைப்பு';
+
+  @override
+  String get conQuestion => 'பிரச்சனையை விவரிக்கவும்';
+
+  @override
+  String get conAddPhoto => 'செடி அல்லது விலங்கின் புகைப்படத்தைச் சேர்க்கவும்';
+
+  @override
+  String get conSend => 'நிபுணர்களுக்கு அனுப்பு';
+
+  @override
+  String get conNoQuestions =>
+      'இன்னும் கேள்விகள் இல்லை. பூச்சி, நோய் அல்லது மண் பிரச்சனை பற்றி கேளுங்கள்.';
+
+  @override
+  String get conTopicCrop => 'பயிர்கள்';
+
+  @override
+  String get conTopicPest => 'பூச்சிகள் & நோய்';
+
+  @override
+  String get conTopicSoil => 'மண் & உரம்';
+
+  @override
+  String get conTopicLivestock => 'கால்நடைகள்';
+
+  @override
+  String get conTopicMarket => 'சந்தை & விலைகள்';
+
+  @override
+  String get conTopicOther => 'மற்றவை';
+
+  @override
+  String get conStatusOpen => 'நிபுணருக்காக காத்திருக்கிறது';
+
+  @override
+  String get conStatusClaimed => 'நிபுணர் மதிப்பாய்வு செய்கிறார்';
+
+  @override
+  String get conStatusAnswered => 'பதிலளிக்கப்பட்டது';
+
+  @override
+  String get conStatusClosed => 'மூடப்பட்டது';
+
+  @override
+  String get conStatusCancelled => 'ரத்து செய்யப்பட்டது';
+
+  @override
+  String conAnswerFrom(String name) {
+    return '$name இன் பதில்';
+  }
+
+  @override
+  String get conRateAnswer => 'இது உதவியதா? பதிலை மதிப்பிடுங்கள்';
+
+  @override
+  String get conOpenQueue => 'திறந்த கேள்விகள்';
+
+  @override
+  String get conMyCases => 'எனது வழக்குகள்';
+
+  @override
+  String get conClaim => 'இந்தக் கேள்வியை எடு';
+
+  @override
+  String get conYourAnswer => 'உங்கள் பதில்';
+
+  @override
+  String get conSendAnswer => 'பதிலை அனுப்பு';
+
+  @override
+  String get conQueueEmpty => 'தற்போது திறந்த கேள்விகள் இல்லை.';
+
+  @override
+  String get conCancelQuestion => 'கேள்வியை ரத்து செய்';
 }

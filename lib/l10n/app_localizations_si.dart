@@ -7256,4 +7256,134 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get shopMarkDelivered => 'මෙම වාරය බෙදා හැරියා';
+
+  @override
+  String get roleExpert => 'කෘෂි විශේෂඥ';
+
+  @override
+  String get roleExpertDescription =>
+      'බෝග, පළිබෝධ, පස සහ සතුන් ගැන ගොවීන්ගේ ප්‍රශ්නවලට පිළිතුරු දෙන්න.';
+
+  @override
+  String get comTitle => 'ප්‍රජාව';
+
+  @override
+  String get comSubtitle => 'ගොවීන්ගේ ඉඟි, ප්‍රශ්න සහ කතා';
+
+  @override
+  String get comComposeHint => 'ඉඟියක්, ඡායාරූපයක් හෝ ප්‍රශ්නයක් බෙදාගන්න…';
+
+  @override
+  String get comPost => 'පළ කරන්න';
+
+  @override
+  String get comEmpty => 'තවම පළ කිරීම් නැත. පළමුව යමක් බෙදාගන්න.';
+
+  @override
+  String get comLike => 'කැමතියි';
+
+  @override
+  String comComments(String count) {
+    return 'අදහස් $count';
+  }
+
+  @override
+  String get comAddComment => 'අදහසක් ලියන්න…';
+
+  @override
+  String get comReport => 'වාර්තා කරන්න';
+
+  @override
+  String get comReported => 'ස්තූතියි. පරිපාලකයෙක් මෙම පළ කිරීම සමාලෝචනය කරයි.';
+
+  @override
+  String get comReadOnly =>
+      'ගොවීන්ට සහ විශේෂඥයින්ට පළ කළ හැක. ඔබට කැමති වීමට සහ අදහස් දැක්වීමට හැක.';
+
+  @override
+  String get conAskExpert => 'විශේෂඥයෙකුගෙන් අසන්න';
+
+  @override
+  String get conAskSubtitle => 'බෝග, පළිබෝධ සහ පස ගැන නොමිලේ උපදෙස්';
+
+  @override
+  String get conNewQuestion => 'නව ප්‍රශ්නය';
+
+  @override
+  String get conTopic => 'මාතෘකාව';
+
+  @override
+  String get conQuestion => 'ගැටලුව විස්තර කරන්න';
+
+  @override
+  String get conAddPhoto => 'ශාකයේ හෝ සතාගේ ඡායාරූපයක් එක් කරන්න';
+
+  @override
+  String get conSend => 'විශේෂඥයින්ට යවන්න';
+
+  @override
+  String get conNoQuestions =>
+      'තවම ප්‍රශ්න නැත. පළිබෝධයක්, රෝගයක් හෝ පස් ගැටලුවක් ගැන අසන්න.';
+
+  @override
+  String get conTopicCrop => 'බෝග';
+
+  @override
+  String get conTopicPest => 'පළිබෝධ සහ රෝග';
+
+  @override
+  String get conTopicSoil => 'පස සහ පොහොර';
+
+  @override
+  String get conTopicLivestock => 'සත්ව පාලනය';
+
+  @override
+  String get conTopicMarket => 'වෙළඳපොළ සහ මිල';
+
+  @override
+  String get conTopicOther => 'වෙනත්';
+
+  @override
+  String get conStatusOpen => 'විශේෂඥයෙකු එනතුරු';
+
+  @override
+  String get conStatusClaimed => 'විශේෂඥයා සමාලෝචනය කරයි';
+
+  @override
+  String get conStatusAnswered => 'පිළිතුරු දී ඇත';
+
+  @override
+  String get conStatusClosed => 'වසා ඇත';
+
+  @override
+  String get conStatusCancelled => 'අවලංගුයි';
+
+  @override
+  String conAnswerFrom(String name) {
+    return '$name ගේ පිළිතුර';
+  }
+
+  @override
+  String get conRateAnswer => 'මෙය ප්‍රයෝජනවත්ද? පිළිතුර ශ්‍රේණිගත කරන්න';
+
+  @override
+  String get conOpenQueue => 'විවෘත ප්‍රශ්න';
+
+  @override
+  String get conMyCases => 'මගේ නඩු';
+
+  @override
+  String get conClaim => 'මෙම ප්‍රශ්නය ගන්න';
+
+  @override
+  String get conYourAnswer => 'ඔබේ පිළිතුර';
+
+  @override
+  String get conSendAnswer => 'පිළිතුර යවන්න';
+
+  @override
+  String get conQueueEmpty => 'දැනට විවෘත ප්‍රශ්න නැත.';
+
+  @override
+  String get conCancelQuestion => 'ප්‍රශ්නය අවලංගු කරන්න';
 }

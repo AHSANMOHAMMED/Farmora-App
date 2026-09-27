@@ -793,7 +793,7 @@ class FarmoraState extends ChangeNotifier {
       Role.buyer => _firestoreService.ordersByBuyerStream(uid, limit: _ordersLimit),
       Role.transporter => _firestoreService.ordersByTransporterStream(uid, limit: _ordersLimit),
       // Suppliers trade inputs (input_orders), not produce orders.
-      Role.supplier => const Stream<List<FarmoraOrder>>.empty(),
+      Role.supplier || Role.expert => const Stream<List<FarmoraOrder>>.empty(),
     };
     _ordersSub = ordersStream.listen(
       (firestoreOrders) {

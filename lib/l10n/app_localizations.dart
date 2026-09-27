@@ -12766,6 +12766,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delivered this cycle'**
   String get shopMarkDelivered;
+
+  /// No description provided for @roleExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Agri Expert'**
+  String get roleExpert;
+
+  /// No description provided for @roleExpertDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer farmers\' questions on crops, pests, soil and livestock.'**
+  String get roleExpertDescription;
+
+  /// No description provided for @comTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get comTitle;
+
+  /// No description provided for @comSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips, questions and stories from farmers'**
+  String get comSubtitle;
+
+  /// No description provided for @comComposeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share a tip, photo or question…'**
+  String get comComposeHint;
+
+  /// No description provided for @comPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get comPost;
+
+  /// No description provided for @comEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts yet. Be the first to share something.'**
+  String get comEmpty;
+
+  /// No description provided for @comLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get comLike;
+
+  /// No description provided for @comComments.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} comments'**
+  String comComments(String count);
+
+  /// No description provided for @comAddComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a comment…'**
+  String get comAddComment;
+
+  /// No description provided for @comReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get comReport;
+
+  /// No description provided for @comReported.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. An admin will review this post.'**
+  String get comReported;
+
+  /// No description provided for @comReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmers and experts can post. You can like and comment.'**
+  String get comReadOnly;
+
+  /// No description provided for @conAskExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask an expert'**
+  String get conAskExpert;
+
+  /// No description provided for @conAskSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Free advice on crops, pests and soil'**
+  String get conAskSubtitle;
+
+  /// No description provided for @conNewQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'New question'**
+  String get conNewQuestion;
+
+  /// No description provided for @conTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get conTopic;
+
+  /// No description provided for @conQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the problem'**
+  String get conQuestion;
+
+  /// No description provided for @conAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a photo of the plant or animal'**
+  String get conAddPhoto;
+
+  /// No description provided for @conSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to experts'**
+  String get conSend;
+
+  /// No description provided for @conNoQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'No questions yet. Ask about a pest, disease or soil problem.'**
+  String get conNoQuestions;
+
+  /// No description provided for @conTopicCrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Crops'**
+  String get conTopicCrop;
+
+  /// No description provided for @conTopicPest.
+  ///
+  /// In en, this message translates to:
+  /// **'Pests & disease'**
+  String get conTopicPest;
+
+  /// No description provided for @conTopicSoil.
+  ///
+  /// In en, this message translates to:
+  /// **'Soil & fertilizer'**
+  String get conTopicSoil;
+
+  /// No description provided for @conTopicLivestock.
+  ///
+  /// In en, this message translates to:
+  /// **'Livestock'**
+  String get conTopicLivestock;
+
+  /// No description provided for @conTopicMarket.
+  ///
+  /// In en, this message translates to:
+  /// **'Market & prices'**
+  String get conTopicMarket;
+
+  /// No description provided for @conTopicOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get conTopicOther;
+
+  /// No description provided for @conStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for an expert'**
+  String get conStatusOpen;
+
+  /// No description provided for @conStatusClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert is reviewing'**
+  String get conStatusClaimed;
+
+  /// No description provided for @conStatusAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get conStatusAnswered;
+
+  /// No description provided for @conStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get conStatusClosed;
+
+  /// No description provided for @conStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get conStatusCancelled;
+
+  /// No description provided for @conAnswerFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer from {name}'**
+  String conAnswerFrom(String name);
+
+  /// No description provided for @conRateAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Was this helpful? Rate the answer'**
+  String get conRateAnswer;
+
+  /// No description provided for @conOpenQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Open questions'**
+  String get conOpenQueue;
+
+  /// No description provided for @conMyCases.
+  ///
+  /// In en, this message translates to:
+  /// **'My cases'**
+  String get conMyCases;
+
+  /// No description provided for @conClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Take this question'**
+  String get conClaim;
+
+  /// No description provided for @conYourAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answer'**
+  String get conYourAnswer;
+
+  /// No description provided for @conSendAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Send answer'**
+  String get conSendAnswer;
+
+  /// No description provided for @conQueueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No open questions right now.'**
+  String get conQueueEmpty;
+
+  /// No description provided for @conCancelQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel question'**
+  String get conCancelQuestion;
 }
 
 class _AppLocalizationsDelegate

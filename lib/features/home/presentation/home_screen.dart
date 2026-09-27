@@ -41,6 +41,7 @@ import '../../buyer/presentation/buyer_offers_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
 import 'widgets/awaiting_verification_view.dart';
 import '../../inputs/presentation/supplier_screens.dart';
+import '../../community/presentation/community_screens.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'widgets/platform_gate_views.dart';
 import '../../auth/presentation/session_actions.dart';
@@ -140,7 +141,9 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Transporters trade only once verified by admin; farmers enter their role dashboard upon completing simple profile.
     final isUnverified =
-        (role == Role.transporter || role == Role.supplier) &&
+        (role == Role.transporter ||
+                role == Role.supplier ||
+                role == Role.expert) &&
             !state.isVerified;
     if (isUnverified) {
       screens = [
@@ -192,6 +195,31 @@ class _HomeScreenState extends State<HomeScreen>
             label: l10n.homeNavEarnings,
             icon: Icons.payments_outlined,
             activeIcon: Icons.payments_rounded),
+        _NavItem(
+            label: l10n.homeNavProfile,
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded),
+      ];
+    } else if (role == Role.expert) {
+      screens = const [
+        ExpertQueueScreen(),
+        CommunityFeedScreen(),
+        NotificationsScreen(),
+        ProfileScreen(),
+      ];
+      navItems = [
+        _NavItem(
+            label: l10n.conOpenQueue,
+            icon: Icons.support_agent_outlined,
+            activeIcon: Icons.support_agent_rounded),
+        _NavItem(
+            label: l10n.comTitle,
+            icon: Icons.forum_outlined,
+            activeIcon: Icons.forum_rounded),
+        _NavItem(
+            label: l10n.homeNavAlerts,
+            icon: Icons.notifications_none_rounded,
+            activeIcon: Icons.notifications_rounded),
         _NavItem(
             label: l10n.homeNavProfile,
             icon: Icons.person_outline_rounded,

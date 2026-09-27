@@ -7261,4 +7261,134 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shopMarkDelivered => 'Delivered this cycle';
+
+  @override
+  String get roleExpert => 'Agri Expert';
+
+  @override
+  String get roleExpertDescription =>
+      'Answer farmers\' questions on crops, pests, soil and livestock.';
+
+  @override
+  String get comTitle => 'Community';
+
+  @override
+  String get comSubtitle => 'Tips, questions and stories from farmers';
+
+  @override
+  String get comComposeHint => 'Share a tip, photo or question…';
+
+  @override
+  String get comPost => 'Post';
+
+  @override
+  String get comEmpty => 'No posts yet. Be the first to share something.';
+
+  @override
+  String get comLike => 'Like';
+
+  @override
+  String comComments(String count) {
+    return '$count comments';
+  }
+
+  @override
+  String get comAddComment => 'Write a comment…';
+
+  @override
+  String get comReport => 'Report';
+
+  @override
+  String get comReported => 'Thanks. An admin will review this post.';
+
+  @override
+  String get comReadOnly =>
+      'Farmers and experts can post. You can like and comment.';
+
+  @override
+  String get conAskExpert => 'Ask an expert';
+
+  @override
+  String get conAskSubtitle => 'Free advice on crops, pests and soil';
+
+  @override
+  String get conNewQuestion => 'New question';
+
+  @override
+  String get conTopic => 'Topic';
+
+  @override
+  String get conQuestion => 'Describe the problem';
+
+  @override
+  String get conAddPhoto => 'Add a photo of the plant or animal';
+
+  @override
+  String get conSend => 'Send to experts';
+
+  @override
+  String get conNoQuestions =>
+      'No questions yet. Ask about a pest, disease or soil problem.';
+
+  @override
+  String get conTopicCrop => 'Crops';
+
+  @override
+  String get conTopicPest => 'Pests & disease';
+
+  @override
+  String get conTopicSoil => 'Soil & fertilizer';
+
+  @override
+  String get conTopicLivestock => 'Livestock';
+
+  @override
+  String get conTopicMarket => 'Market & prices';
+
+  @override
+  String get conTopicOther => 'Other';
+
+  @override
+  String get conStatusOpen => 'Waiting for an expert';
+
+  @override
+  String get conStatusClaimed => 'Expert is reviewing';
+
+  @override
+  String get conStatusAnswered => 'Answered';
+
+  @override
+  String get conStatusClosed => 'Closed';
+
+  @override
+  String get conStatusCancelled => 'Cancelled';
+
+  @override
+  String conAnswerFrom(String name) {
+    return 'Answer from $name';
+  }
+
+  @override
+  String get conRateAnswer => 'Was this helpful? Rate the answer';
+
+  @override
+  String get conOpenQueue => 'Open questions';
+
+  @override
+  String get conMyCases => 'My cases';
+
+  @override
+  String get conClaim => 'Take this question';
+
+  @override
+  String get conYourAnswer => 'Your answer';
+
+  @override
+  String get conSendAnswer => 'Send answer';
+
+  @override
+  String get conQueueEmpty => 'No open questions right now.';
+
+  @override
+  String get conCancelQuestion => 'Cancel question';
 }

@@ -37,6 +37,7 @@ service cloud.firestore {
     function buyer() { return active() && roleIs('buyer'); }
     function transporter() { return active() && roleIs('transporter'); }
     function supplier() { return active() && roleIs('supplier'); }
+    function expert() { return active() && roleIs('expert'); }
 
     function isStr(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
     function optStr(d, k, max) { return !(k in d) || d[k] == null || isStr(d[k], 0, max); }
@@ -103,7 +104,8 @@ service cloud.firestore {
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.id == userId
         // Admin profiles must be provisioned by a trusted Admin SDK tool.
-        && request.resource.data.role in ['farmer', 'buyer', 'transporter', 'supplier']
+        && request.resource.data.role in ['farmer', 'buyer', 'transporter', 'supplier',
+          'expert']
         && request.resource.data.isVerified == false
         && request.resource.data.get('isSuspended', false) == false
         && !request.resource.data.keys().hasAny(['isDeleted', 'deviceTokens', 'admin'])
@@ -781,7 +783,7 @@ service cloud.firestore {
         || resource.data.ownerId == request.auth.uid
         || admin()
       );
-      allow create: if (farmer() || transporter() || buyer() || supplier())
+      allow create: if (farmer() || transporter() || buyer() || supplier() || expert())
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
         && request.resource.data.status == 'pending'
@@ -1275,6 +1277,103 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    // ── Community feed ───────────────────────────────────────
+    // Farmers, experts and admins post; every signed-in user can like and
+    // comment. Counters change only together with their like / comment doc.
+    function postPath(postId) { return docPath('community_posts/' + postId); }
+    function likePath(postId) { return docPath('community_posts/' + postId + '/likes/' + uid()); }
+    match /community_posts/{postId} {
+      allow read: if signedIn() && (resource.data.isDeleted == false
+        || resource.data.authorId == uid() || admin());
+      allow create: if active() && userDoc(uid()).role in ['farmer', 'expert', 'admin']
+        && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorRole',
+          'text', 'imageUrl', 'likeCount', 'commentCount', 'isDeleted', 'createdAt',
+          'updatedAt'])
+        && request.resource.data.authorId == uid()
+        && request.resource.data.authorRole == userDoc(uid()).role
+        && isStr(request.resource.data.text, 1, 2000)
+        && isStr(request.resource.data.authorName, 1, 120)
+        && optStr(request.resource.data, 'imageUrl', 2000)
+        && request.resource.data.likeCount == 0
+        && request.resource.data.commentCount == 0
+        && request.resource.data.isDeleted == false
+        && request.resource.data.createdAt == request.time;
+      allow update: if active() && (
+          ((resource.data.authorId == uid() || admin())
+            && request.resource.data.isDeleted == true
+            && request.resource.data.deletedBy == uid()
+            && affected().hasOnly(['isDeleted', 'deletedBy', 'updatedAt']))
+          || (affected().hasOnly(['likeCount'])
+            && ((request.resource.data.likeCount == resource.data.likeCount + 1
+                && !exists(likePath(postId)) && existsAfter(likePath(postId)))
+              || (request.resource.data.likeCount == resource.data.likeCount - 1
+                && exists(likePath(postId)) && !existsAfter(likePath(postId)))))
+          || (affected().hasOnly(['commentCount'])
+            && request.resource.data.commentCount == resource.data.commentCount + 1));
+      allow delete: if admin();
+
+      match /likes/{likerId} {
+        allow read: if signedIn();
+        allow create: if active() && likerId == uid()
+          && request.resource.data.keys().hasOnly(['createdAt'])
+          && getAfter(postPath(postId)).data.likeCount
+            == get(postPath(postId)).data.likeCount + 1;
+        allow delete: if active() && likerId == uid()
+          && getAfter(postPath(postId)).data.likeCount
+            == get(postPath(postId)).data.likeCount - 1;
+      }
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if active()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == uid()
+          && isStr(request.resource.data.text, 1, 1000)
+          && isStr(request.resource.data.authorName, 1, 120)
+          && request.resource.data.createdAt == request.time
+          && getAfter(postPath(postId)).data.commentCount
+            == get(postPath(postId)).data.commentCount + 1;
+        allow delete: if active() && (resource.data.authorId == uid() || admin());
+      }
+    }
+
+    // ── Expert consultations ─────────────────────────────────
+    // open → claimed (verified expert) → answered → closed (farmer rates);
+    // the farmer may cancel while open.
+    match /consultations/{consultId} {
+      allow read: if admin() || (signedIn() && (resource.data.farmerId == uid()
+        || (expert() && verified() && (resource.data.status == 'open'
+          || resource.data.get('expertId', '') == uid()))));
+      allow create: if farmer()
+        && request.resource.data.keys().hasOnly(['farmerId', 'farmerName', 'topic',
+          'question', 'imageUrl', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.status == 'open'
+        && request.resource.data.topic in ['crop', 'pest', 'soil', 'livestock', 'market', 'other']
+        && isStr(request.resource.data.question, 10, 2000)
+        && isStr(request.resource.data.farmerName, 1, 120)
+        && optStr(request.resource.data, 'imageUrl', 2000)
+        && request.resource.data.createdAt == request.time;
+      allow update: if active() && (
+          (expert() && verified() && resource.data.status == 'open'
+            && request.resource.data.status == 'claimed'
+            && request.resource.data.expertId == uid()
+            && isStr(request.resource.data.expertName, 1, 120)
+            && affected().hasOnly(['status', 'expertId', 'expertName', 'claimedAt', 'updatedAt']))
+          || (expert() && resource.data.get('expertId', '') == uid()
+            && resource.data.status == 'claimed'
+            && request.resource.data.status == 'answered'
+            && isStr(request.resource.data.answer, 5, 4000)
+            && affected().hasOnly(['status', 'answer', 'answeredAt', 'updatedAt']))
+          || (uid() == resource.data.farmerId && resource.data.status == 'answered'
+            && request.resource.data.status == 'closed'
+            && isInt(request.resource.data.rating, 1, 5)
+            && affected().hasOnly(['status', 'rating', 'closedAt', 'updatedAt']))
+          || (uid() == resource.data.farmerId && resource.data.status == 'open'
+            && request.resource.data.status == 'cancelled'
+            && affected().hasOnly(['status', 'updatedAt'])));
+      allow delete: if admin();
+    }
+
     // ── Notifications ────────────────────────────────────────
     // Spark: the acting client writes the other party's in-app notification
     // (order / offer / chat / transport events). Farm-task reminders are the
@@ -1297,7 +1396,7 @@ service cloud.firestore {
         && request.resource.data.type in ['order', 'payment', 'message', 'offer',
           'transport', 'logistics', 'general', 'dispute', 'review', 'verification',
           'produce_request', 'market_price', 'farm_task', 'input_order',
-          'subscription']
+          'subscription', 'consultation']
         && isStr(request.resource.data.title, 1, 120)
         && isStr(request.resource.data.body, 0, 500)
         && optStr(request.resource.data, 'referenceId', 128)

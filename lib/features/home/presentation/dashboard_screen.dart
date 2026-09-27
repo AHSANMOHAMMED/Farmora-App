@@ -36,6 +36,7 @@ import '../../auth/presentation/auth_l10n.dart';
 import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
+import '../../community/presentation/community_screens.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1101,6 +1102,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               builder: (_) => const MyFarmStoreScreen())),
         },
         {
+          'icon': Icons.support_agent_outlined,
+          'label': l10n.conAskExpert,
+          'color': const Color(0xFF283593),
+          'bg': const Color(0xFFE8EAF6),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const AskExpertScreen())),
+        },
+        {
+          'icon': Icons.forum_outlined,
+          'label': l10n.comTitle,
+          'color': const Color(0xFF6D4C41),
+          'bg': const Color(0xFFEFEBE9),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const CommunityFeedScreen())),
+        },
+        {
           'icon': Icons.receipt_long_outlined,
           'label': l10n.dashboardManageOrders,
           'color': const Color(0xFFE65100),
@@ -1184,6 +1201,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'bg': const Color(0xFFE0F2F1),
           'onTap': () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MySubscriptionsScreen()),
+              ),
+        },
+        {
+          'icon': Icons.forum_outlined,
+          'label': l10n.comTitle,
+          'color': const Color(0xFF6D4C41),
+          'bg': const Color(0xFFEFEBE9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
               ),
         },
         {
@@ -1447,6 +1473,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyFarmStoreScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.support_agent_outlined, color: Color(0xFF283593)),
+                          title: Text(context.l10n.conAskExpert, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.conAskSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AskExpertScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.forum_outlined, color: Color(0xFF6D4C41)),
+                          title: Text(context.l10n.comTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.comSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CommunityFeedScreen()));
                           },
                         ),
                         ListTile(

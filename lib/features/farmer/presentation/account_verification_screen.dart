@@ -113,6 +113,24 @@ List<_RequiredDoc> _requiredDocsFor(Role role) {
           keywords: const ['insurance'],
         ),
       ];
+    case Role.expert:
+      return [
+        _RequiredDoc(
+          documentType: 'NIC',
+          label: VerificationDoc.documentTypeLabel('NIC'),
+          description: 'National Identity Card (front and back in one file).',
+          icon: Icons.badge_outlined,
+          keywords: const ['nic', 'national id'],
+        ),
+        const _RequiredDoc(
+          documentType: 'Qualification',
+          label: 'Qualification',
+          description: 'Degree, diploma or extension officer appointment in '
+              'agriculture, plant protection or veterinary science.',
+          icon: Icons.school_outlined,
+          keywords: ['degree', 'diploma', 'qualification', 'officer', 'certificate'],
+        ),
+      ];
     case Role.supplier:
       return [
         _RequiredDoc(
