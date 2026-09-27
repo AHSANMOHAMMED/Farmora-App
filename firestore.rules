@@ -1181,6 +1181,100 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    // ── Direct-to-consumer: wishlist, farm stores, subscription boxes ──
+    match /users/{userId}/wishlist/{productId} {
+      allow read, delete: if signedIn() && uid() == userId;
+      allow create: if signedIn() && uid() == userId
+        && request.resource.data.keys().hasOnly(['productId', 'addedAt'])
+        && request.resource.data.productId == productId;
+    }
+
+    match /farm_stores/{farmerId} {
+      allow read: if true;
+      allow create, update: if farmer() && uid() == farmerId
+        && request.resource.data.keys().hasOnly(['farmerId', 'farmName', 'story',
+          'district', 'certifications', 'coverImageUrl', 'updatedAt'])
+        && request.resource.data.farmerId == farmerId
+        && isStr(request.resource.data.farmName, 1, 80)
+        && optStr(request.resource.data, 'story', 2000)
+        && optStr(request.resource.data, 'district', 60)
+        && optStr(request.resource.data, 'coverImageUrl', 2000)
+        && request.resource.data.certifications is list
+        && request.resource.data.certifications.size() <= 10;
+      allow delete: if admin();
+    }
+
+    function boxShapeOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['farmerId', 'farmerName', 'title', 'contents', 'priceMinor',
+          'frequency', 'status', 'isDeleted', 'createdAt', 'updatedAt', 'createdBy',
+          'updatedBy'])
+        && isStr(d.title, 1, 100) && optStr(d, 'contents', 1000)
+        && isStr(d.farmerName, 1, 120)
+        && isInt(d.priceMinor, 1, 100000000)
+        && d.frequency in ['weekly', 'biweekly', 'monthly']
+        && d.status in ['Active', 'Inactive'] && d.isDeleted is bool
+        && d.updatedBy == uid();
+    }
+    match /subscription_boxes/{boxId} {
+      allow read: if (resource.data.status == 'Active' && resource.data.isDeleted == false)
+        || (signedIn() && resource.data.farmerId == uid()) || admin();
+      allow create: if farmer() && verified()
+        && request.resource.data.farmerId == uid()
+        && request.resource.data.createdBy == uid()
+        && request.resource.data.isDeleted == false
+        && request.resource.data.createdAt == request.time
+        && boxShapeOk();
+      allow update: if farmer() && resource.data.farmerId == uid()
+        && request.resource.data.farmerId == resource.data.farmerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && boxShapeOk();
+      allow delete: if admin();
+    }
+
+    // Buyers subscribe at the box's current price and frequency (cash on
+    // delivery); they pause / resume / cancel; the farmer records deliveries.
+    function subCreateOk() {
+      let d = request.resource.data;
+      let b = get(docPath('subscription_boxes/' + d.boxId)).data;
+      return d.keys().hasOnly(['boxId', 'boxTitle', 'farmerId', 'farmerName', 'buyerId',
+          'buyerName', 'priceMinor', 'frequency', 'deliveryAddress', 'paymentMethod',
+          'status', 'nextDeliveryAt', 'deliveriesCount', 'createdAt', 'updatedAt'])
+        && d.buyerId == uid() && d.createdAt == request.time
+        && b.status == 'Active' && b.isDeleted == false
+        && d.farmerId == b.farmerId && d.priceMinor == b.priceMinor
+        && d.frequency == b.frequency && d.boxTitle == b.title
+        && d.paymentMethod == 'cod' && d.status == 'active' && d.deliveriesCount == 0
+        && d.nextDeliveryAt is timestamp && d.nextDeliveryAt > request.time
+        && d.nextDeliveryAt < request.time + duration.value(60, 'd')
+        && isStr(d.deliveryAddress, 5, 300) && isStr(d.buyerName, 1, 120);
+    }
+    function subBuyerUpdate() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return uid() == r.buyerId && r.status != 'cancelled'
+        && d.status in ['active', 'paused', 'cancelled']
+        && affected().hasOnly(['status', 'updatedAt']);
+    }
+    function subFarmerDelivery() {
+      let d = request.resource.data;
+      let r = resource.data;
+      return uid() == r.farmerId && r.status == 'active'
+        && affected().hasOnly(['deliveriesCount', 'lastDeliveredAt', 'nextDeliveryAt',
+          'updatedAt'])
+        && d.deliveriesCount == r.deliveriesCount + 1
+        && d.lastDeliveredAt == request.time
+        && d.nextDeliveryAt > r.nextDeliveryAt;
+    }
+    match /box_subscriptions/{subId} {
+      allow read: if admin() || (signedIn()
+        && (resource.data.buyerId == uid() || resource.data.farmerId == uid()));
+      allow create: if buyer() && subCreateOk();
+      allow update: if active() && (subBuyerUpdate() || subFarmerDelivery());
+      allow delete: if admin();
+    }
+
     // ── Notifications ────────────────────────────────────────
     // Spark: the acting client writes the other party's in-app notification
     // (order / offer / chat / transport events). Farm-task reminders are the
@@ -1202,7 +1296,8 @@ service cloud.firestore {
         && request.resource.data.read == false
         && request.resource.data.type in ['order', 'payment', 'message', 'offer',
           'transport', 'logistics', 'general', 'dispute', 'review', 'verification',
-          'produce_request', 'market_price', 'farm_task', 'input_order']
+          'produce_request', 'market_price', 'farm_task', 'input_order',
+          'subscription']
         && isStr(request.resource.data.title, 1, 120)
         && isStr(request.resource.data.body, 0, 500)
         && optStr(request.resource.data, 'referenceId', 128)

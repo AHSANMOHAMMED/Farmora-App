@@ -7124,4 +7124,136 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get supCreditOutstanding => 'හිඟ ණය';
+
+  @override
+  String get shopWishlist => 'ප්‍රියතම ලැයිස්තුව';
+
+  @override
+  String get shopAddWishlist => 'ප්‍රියතම ලැයිස්තුවට සුරකින්න';
+
+  @override
+  String get shopRemoveWishlist => 'ප්‍රියතම ලැයිස්තුවෙන් ඉවත් කරන්න';
+
+  @override
+  String get shopWishlistEmpty =>
+      'ඕනෑම නිෂ්පාදනයක හදවත තට්ටු කර මෙහි සුරකින්න.';
+
+  @override
+  String get shopVisitStore => 'ගොවි වෙළඳසැලට යන්න';
+
+  @override
+  String get shopMyStore => 'මගේ ගොවි වෙළඳසැල';
+
+  @override
+  String get shopStoreSubtitle => 'ඔබේ පොදු පිටුව, කතාව සහ නිෂ්පාදන පෙට්ටි';
+
+  @override
+  String get shopFarmName => 'ගොවිපලේ නම';
+
+  @override
+  String get shopStory => 'අපේ කතාව';
+
+  @override
+  String get shopCertifications => 'සහතික (කොමාවෙන් වෙන් කර)';
+
+  @override
+  String get shopCoverPhoto => 'කවර ඡායාරූපය';
+
+  @override
+  String get shopNoStoryYet => 'මෙම ගොවිපල තවම එහි කතාව ලියා නැත.';
+
+  @override
+  String get shopProducts => 'මෙම ගොවිපලෙන් නැවුම්';
+
+  @override
+  String get shopNoProducts => 'දැනට නිෂ්පාදන ලැයිස්තුගත කර නැත.';
+
+  @override
+  String get shopBoxes => 'දායක පෙට්ටි';
+
+  @override
+  String get shopBoxesSubtitle => 'සතිපතා හෝ මාසික නිෂ්පාදන පෙට්ටි';
+
+  @override
+  String get shopSubscribe => 'දායක වන්න';
+
+  @override
+  String get shopSubscribed => 'දායක විය. ගොවියාට දැනුම් දී ඇත.';
+
+  @override
+  String get shopFirstDelivery => 'පළමු බෙදාහැරීම';
+
+  @override
+  String shopPerDelivery(String price) {
+    return 'බෙදාහැරීමකට $price';
+  }
+
+  @override
+  String get shopWeekly => 'සතිපතා';
+
+  @override
+  String get shopBiweekly => 'සති 2කට වරක්';
+
+  @override
+  String get shopMonthly => 'මාසිකව';
+
+  @override
+  String get shopMySubscriptions => 'මගේ දායකත්ව';
+
+  @override
+  String get shopNoSubscriptions =>
+      'තවම දායකත්ව නැත. ගොවි වෙළඳසැල් පිටුවල පෙට්ටි සොයන්න.';
+
+  @override
+  String shopNextDelivery(String date) {
+    return 'ඊළඟ බෙදාහැරීම $date';
+  }
+
+  @override
+  String shopDeliveries(String count) {
+    return '$countක් බෙදා හැර ඇත';
+  }
+
+  @override
+  String get shopPause => 'නවත්වන්න';
+
+  @override
+  String get shopResume => 'නැවත අරඹන්න';
+
+  @override
+  String get shopCancelSub => 'දායකත්වය අවලංගු කරන්න';
+
+  @override
+  String get shopStatusActive => 'සක්‍රියයි';
+
+  @override
+  String get shopStatusPaused => 'නවතා ඇත';
+
+  @override
+  String get shopStatusCancelled => 'අවලංගුයි';
+
+  @override
+  String get shopAddBox => 'පෙට්ටියක් එක් කරන්න';
+
+  @override
+  String get shopBoxName => 'පෙට්ටියේ නම';
+
+  @override
+  String get shopBoxContents => 'ඇතුළත ඇති දේ';
+
+  @override
+  String get shopFrequency => 'කොපමණ වාරයක්';
+
+  @override
+  String get shopNoBoxes =>
+      'තවම පෙට්ටි නැත. නිත්‍ය පාරිභෝගිකයින්ට සතිපතා එළවළු පෙට්ටියක් ලබා දෙන්න.';
+
+  @override
+  String get shopSubscribers => 'දායකයින්';
+
+  @override
+  String get shopNoSubscribers => 'තවම දායකයින් නැත.';
+
+  @override
+  String get shopMarkDelivered => 'මෙම වාරය බෙදා හැරියා';
 }

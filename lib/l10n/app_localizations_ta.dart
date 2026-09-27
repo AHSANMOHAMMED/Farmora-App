@@ -7237,4 +7237,139 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get supCreditOutstanding => 'நிலுவையிலுள்ள கடன்';
+
+  @override
+  String get shopWishlist => 'விருப்பப்பட்டியல்';
+
+  @override
+  String get shopAddWishlist => 'விருப்பப்பட்டியலில் சேமி';
+
+  @override
+  String get shopRemoveWishlist => 'விருப்பப்பட்டியலில் இருந்து நீக்கு';
+
+  @override
+  String get shopWishlistEmpty =>
+      'எந்தப் பொருளிலும் இதயத்தைத் தட்டி இங்கே சேமிக்கவும்.';
+
+  @override
+  String get shopVisitStore => 'பண்ணைக் கடையைப் பார்';
+
+  @override
+  String get shopMyStore => 'எனது பண்ணைக் கடை';
+
+  @override
+  String get shopStoreSubtitle =>
+      'உங்கள் பொதுப் பக்கம், கதை மற்றும் விளைபொருள் பெட்டிகள்';
+
+  @override
+  String get shopFarmName => 'பண்ணையின் பெயர்';
+
+  @override
+  String get shopStory => 'எங்கள் கதை';
+
+  @override
+  String get shopCertifications => 'சான்றிதழ்கள் (காற்புள்ளியால் பிரிக்கவும்)';
+
+  @override
+  String get shopCoverPhoto => 'அட்டைப் புகைப்படம்';
+
+  @override
+  String get shopNoStoryYet => 'இந்தப் பண்ணை இன்னும் தன் கதையை எழுதவில்லை.';
+
+  @override
+  String get shopProducts => 'இந்தப் பண்ணையிலிருந்து புதியவை';
+
+  @override
+  String get shopNoProducts => 'தற்போது விளைபொருட்கள் பட்டியலிடப்படவில்லை.';
+
+  @override
+  String get shopBoxes => 'சந்தா பெட்டிகள்';
+
+  @override
+  String get shopBoxesSubtitle =>
+      'வாராந்திர அல்லது மாதாந்திர விளைபொருள் பெட்டிகள்';
+
+  @override
+  String get shopSubscribe => 'சந்தா சேர்';
+
+  @override
+  String get shopSubscribed =>
+      'சந்தா சேர்ந்தீர்கள். விவசாயிக்கு அறிவிக்கப்பட்டது.';
+
+  @override
+  String get shopFirstDelivery => 'முதல் டெலிவரி';
+
+  @override
+  String shopPerDelivery(String price) {
+    return 'ஒவ்வொரு டெலிவரிக்கும் $price';
+  }
+
+  @override
+  String get shopWeekly => 'வாராந்திர';
+
+  @override
+  String get shopBiweekly => '2 வாரங்களுக்கு ஒருமுறை';
+
+  @override
+  String get shopMonthly => 'மாதாந்திர';
+
+  @override
+  String get shopMySubscriptions => 'எனது சந்தாக்கள்';
+
+  @override
+  String get shopNoSubscriptions =>
+      'இன்னும் சந்தாக்கள் இல்லை. பண்ணைக் கடைப் பக்கங்களில் பெட்டிகளைக் கண்டறியவும்.';
+
+  @override
+  String shopNextDelivery(String date) {
+    return 'அடுத்த டெலிவரி $date';
+  }
+
+  @override
+  String shopDeliveries(String count) {
+    return '$count வழங்கப்பட்டது';
+  }
+
+  @override
+  String get shopPause => 'இடைநிறுத்து';
+
+  @override
+  String get shopResume => 'மீண்டும் தொடங்கு';
+
+  @override
+  String get shopCancelSub => 'சந்தாவை ரத்து செய்';
+
+  @override
+  String get shopStatusActive => 'செயலில்';
+
+  @override
+  String get shopStatusPaused => 'இடைநிறுத்தப்பட்டது';
+
+  @override
+  String get shopStatusCancelled => 'ரத்து செய்யப்பட்டது';
+
+  @override
+  String get shopAddBox => 'பெட்டியைச் சேர்';
+
+  @override
+  String get shopBoxName => 'பெட்டியின் பெயர்';
+
+  @override
+  String get shopBoxContents => 'உள்ளே என்ன உள்ளது';
+
+  @override
+  String get shopFrequency => 'எத்தனை முறை';
+
+  @override
+  String get shopNoBoxes =>
+      'இன்னும் பெட்டிகள் இல்லை. வழக்கமான வாடிக்கையாளர்களுக்கு வாராந்திர காய்கறிப் பெட்டியை வழங்குங்கள்.';
+
+  @override
+  String get shopSubscribers => 'சந்தாதாரர்கள்';
+
+  @override
+  String get shopNoSubscribers => 'இன்னும் சந்தாதாரர்கள் இல்லை.';
+
+  @override
+  String get shopMarkDelivered => 'இந்தச் சுழற்சி வழங்கப்பட்டது';
 }

@@ -12,6 +12,7 @@ import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
 import '../../farmer/presentation/add_product_screen.dart';
+import '../../shop/presentation/shop_screens.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
@@ -97,6 +98,16 @@ class ProductDetailScreen extends StatelessWidget {
               },
             ),
           ],
+          if (state.role == Role.buyer && state.currentUserId.isNotEmpty)
+            WishlistButton(productId: product.id),
+          if (state.currentUserId != product.farmerId)
+            IconButton(
+              tooltip: l.shopVisitStore,
+              icon: const Icon(Icons.storefront_outlined,
+                  color: AppColors.onSurface),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => FarmStoreScreen(farmerId: product.farmerId))),
+            ),
           if (isInCart)
             IconButton(
               tooltip: l.buyerRemoveFromCart,

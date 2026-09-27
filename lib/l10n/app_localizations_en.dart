@@ -7129,4 +7129,136 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get supCreditOutstanding => 'Credit outstanding';
+
+  @override
+  String get shopWishlist => 'Wishlist';
+
+  @override
+  String get shopAddWishlist => 'Save to wishlist';
+
+  @override
+  String get shopRemoveWishlist => 'Remove from wishlist';
+
+  @override
+  String get shopWishlistEmpty =>
+      'Tap the heart on any product to save it here.';
+
+  @override
+  String get shopVisitStore => 'Visit farm store';
+
+  @override
+  String get shopMyStore => 'My farm store';
+
+  @override
+  String get shopStoreSubtitle => 'Your public page, story and produce boxes';
+
+  @override
+  String get shopFarmName => 'Farm name';
+
+  @override
+  String get shopStory => 'Our story';
+
+  @override
+  String get shopCertifications => 'Certifications (comma separated)';
+
+  @override
+  String get shopCoverPhoto => 'Cover photo';
+
+  @override
+  String get shopNoStoryYet => 'This farm hasn\'t written its story yet.';
+
+  @override
+  String get shopProducts => 'Fresh from this farm';
+
+  @override
+  String get shopNoProducts => 'No produce listed right now.';
+
+  @override
+  String get shopBoxes => 'Subscription boxes';
+
+  @override
+  String get shopBoxesSubtitle => 'Weekly or monthly produce boxes';
+
+  @override
+  String get shopSubscribe => 'Subscribe';
+
+  @override
+  String get shopSubscribed => 'Subscribed. The farmer has been notified.';
+
+  @override
+  String get shopFirstDelivery => 'First delivery';
+
+  @override
+  String shopPerDelivery(String price) {
+    return '$price per delivery';
+  }
+
+  @override
+  String get shopWeekly => 'Weekly';
+
+  @override
+  String get shopBiweekly => 'Every 2 weeks';
+
+  @override
+  String get shopMonthly => 'Monthly';
+
+  @override
+  String get shopMySubscriptions => 'My subscriptions';
+
+  @override
+  String get shopNoSubscriptions =>
+      'No subscriptions yet. Find boxes on farm store pages.';
+
+  @override
+  String shopNextDelivery(String date) {
+    return 'Next delivery $date';
+  }
+
+  @override
+  String shopDeliveries(String count) {
+    return '$count delivered';
+  }
+
+  @override
+  String get shopPause => 'Pause';
+
+  @override
+  String get shopResume => 'Resume';
+
+  @override
+  String get shopCancelSub => 'Cancel subscription';
+
+  @override
+  String get shopStatusActive => 'Active';
+
+  @override
+  String get shopStatusPaused => 'Paused';
+
+  @override
+  String get shopStatusCancelled => 'Cancelled';
+
+  @override
+  String get shopAddBox => 'Add box';
+
+  @override
+  String get shopBoxName => 'Box name';
+
+  @override
+  String get shopBoxContents => 'What\'s inside';
+
+  @override
+  String get shopFrequency => 'How often';
+
+  @override
+  String get shopNoBoxes =>
+      'No boxes yet. Offer a weekly vegetable box to regular customers.';
+
+  @override
+  String get shopSubscribers => 'Subscribers';
+
+  @override
+  String get shopNoSubscribers => 'No subscribers yet.';
+
+  @override
+  String get shopMarkDelivered => 'Delivered this cycle';
 }

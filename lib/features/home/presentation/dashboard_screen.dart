@@ -35,6 +35,7 @@ import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
 import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
+import '../../shop/presentation/shop_screens.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1092,6 +1093,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               builder: (_) => const InputCatalogScreen())),
         },
         {
+          'icon': Icons.store_mall_directory_outlined,
+          'label': l10n.shopMyStore,
+          'color': const Color(0xFF00695C),
+          'bg': const Color(0xFFE0F2F1),
+          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const MyFarmStoreScreen())),
+        },
+        {
           'icon': Icons.receipt_long_outlined,
           'label': l10n.dashboardManageOrders,
           'color': const Color(0xFFE65100),
@@ -1159,6 +1168,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]);
     } else if (role == Role.buyer) {
       actions.addAll([
+        {
+          'icon': Icons.favorite_border_rounded,
+          'label': l10n.shopWishlist,
+          'color': const Color(0xFFC62828),
+          'bg': const Color(0xFFFFEBEE),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WishlistScreen()),
+              ),
+        },
+        {
+          'icon': Icons.autorenew_rounded,
+          'label': l10n.shopMySubscriptions,
+          'color': const Color(0xFF00695C),
+          'bg': const Color(0xFFE0F2F1),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MySubscriptionsScreen()),
+              ),
+        },
         {
           'icon': Icons.storefront_outlined,
           'label': l10n.dashboardProduce,
@@ -1414,6 +1441,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           },
                         ),
                         ListTile(
+                          leading: const Icon(Icons.store_mall_directory_outlined, color: Color(0xFF00695C)),
+                          title: Text(context.l10n.shopMyStore, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.shopStoreSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyFarmStoreScreen()));
+                          },
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.receipt_long_outlined, color: Color(0xFFE65100)),
                           title: const Text('Manage Orders', style: TextStyle(fontWeight: FontWeight.w600)),
                           onTap: () {
@@ -1438,6 +1474,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           },
                         ),
                       ] else if (role == Role.buyer) ...[
+                        ListTile(
+                          leading: const Icon(Icons.favorite_border_rounded, color: Color(0xFFC62828)),
+                          title: Text(context.l10n.shopWishlist, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WishlistScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.autorenew_rounded, color: Color(0xFF00695C)),
+                          title: Text(context.l10n.shopMySubscriptions, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(context.l10n.shopBoxesSubtitle),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MySubscriptionsScreen()));
+                          },
+                        ),
                         ListTile(
                           leading: const Icon(Icons.storefront_outlined, color: AppColors.primary),
                           title: const Text('Browse Produce', style: TextStyle(fontWeight: FontWeight.w600)),

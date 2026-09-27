@@ -12520,6 +12520,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Credit outstanding'**
   String get supCreditOutstanding;
+
+  /// No description provided for @shopWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Wishlist'**
+  String get shopWishlist;
+
+  /// No description provided for @shopAddWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to wishlist'**
+  String get shopAddWishlist;
+
+  /// No description provided for @shopRemoveWishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from wishlist'**
+  String get shopRemoveWishlist;
+
+  /// No description provided for @shopWishlistEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the heart on any product to save it here.'**
+  String get shopWishlistEmpty;
+
+  /// No description provided for @shopVisitStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit farm store'**
+  String get shopVisitStore;
+
+  /// No description provided for @shopMyStore.
+  ///
+  /// In en, this message translates to:
+  /// **'My farm store'**
+  String get shopMyStore;
+
+  /// No description provided for @shopStoreSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your public page, story and produce boxes'**
+  String get shopStoreSubtitle;
+
+  /// No description provided for @shopFarmName.
+  ///
+  /// In en, this message translates to:
+  /// **'Farm name'**
+  String get shopFarmName;
+
+  /// No description provided for @shopStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Our story'**
+  String get shopStory;
+
+  /// No description provided for @shopCertifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Certifications (comma separated)'**
+  String get shopCertifications;
+
+  /// No description provided for @shopCoverPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover photo'**
+  String get shopCoverPhoto;
+
+  /// No description provided for @shopNoStoryYet.
+  ///
+  /// In en, this message translates to:
+  /// **'This farm hasn\'t written its story yet.'**
+  String get shopNoStoryYet;
+
+  /// No description provided for @shopProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'Fresh from this farm'**
+  String get shopProducts;
+
+  /// No description provided for @shopNoProducts.
+  ///
+  /// In en, this message translates to:
+  /// **'No produce listed right now.'**
+  String get shopNoProducts;
+
+  /// No description provided for @shopBoxes.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription boxes'**
+  String get shopBoxes;
+
+  /// No description provided for @shopBoxesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly or monthly produce boxes'**
+  String get shopBoxesSubtitle;
+
+  /// No description provided for @shopSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe'**
+  String get shopSubscribe;
+
+  /// No description provided for @shopSubscribed.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribed. The farmer has been notified.'**
+  String get shopSubscribed;
+
+  /// No description provided for @shopFirstDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'First delivery'**
+  String get shopFirstDelivery;
+
+  /// No description provided for @shopPerDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} per delivery'**
+  String shopPerDelivery(String price);
+
+  /// No description provided for @shopWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get shopWeekly;
+
+  /// No description provided for @shopBiweekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Every 2 weeks'**
+  String get shopBiweekly;
+
+  /// No description provided for @shopMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get shopMonthly;
+
+  /// No description provided for @shopMySubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'My subscriptions'**
+  String get shopMySubscriptions;
+
+  /// No description provided for @shopNoSubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'No subscriptions yet. Find boxes on farm store pages.'**
+  String get shopNoSubscriptions;
+
+  /// No description provided for @shopNextDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Next delivery {date}'**
+  String shopNextDelivery(String date);
+
+  /// No description provided for @shopDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} delivered'**
+  String shopDeliveries(String count);
+
+  /// No description provided for @shopPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get shopPause;
+
+  /// No description provided for @shopResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get shopResume;
+
+  /// No description provided for @shopCancelSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel subscription'**
+  String get shopCancelSub;
+
+  /// No description provided for @shopStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get shopStatusActive;
+
+  /// No description provided for @shopStatusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get shopStatusPaused;
+
+  /// No description provided for @shopStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get shopStatusCancelled;
+
+  /// No description provided for @shopAddBox.
+  ///
+  /// In en, this message translates to:
+  /// **'Add box'**
+  String get shopAddBox;
+
+  /// No description provided for @shopBoxName.
+  ///
+  /// In en, this message translates to:
+  /// **'Box name'**
+  String get shopBoxName;
+
+  /// No description provided for @shopBoxContents.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s inside'**
+  String get shopBoxContents;
+
+  /// No description provided for @shopFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'How often'**
+  String get shopFrequency;
+
+  /// No description provided for @shopNoBoxes.
+  ///
+  /// In en, this message translates to:
+  /// **'No boxes yet. Offer a weekly vegetable box to regular customers.'**
+  String get shopNoBoxes;
+
+  /// No description provided for @shopSubscribers.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribers'**
+  String get shopSubscribers;
+
+  /// No description provided for @shopNoSubscribers.
+  ///
+  /// In en, this message translates to:
+  /// **'No subscribers yet.'**
+  String get shopNoSubscribers;
+
+  /// No description provided for @shopMarkDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered this cycle'**
+  String get shopMarkDelivered;
 }
 
 class _AppLocalizationsDelegate
