@@ -5,11 +5,13 @@ import '../../../core/widgets/harvest_video_player.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
+import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
+import '../../farmer/presentation/add_product_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
@@ -42,6 +44,59 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          if (state.role == Role.farmer || state.currentUserId == product.farmerId) ...[
+            IconButton(
+              tooltip: 'Edit listing',
+              icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AddProductScreen(existingProduct: product),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              tooltip: 'Delete listing',
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete product?'),
+                    content: Text('Are you sure you want to delete ${product.name}?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  try {
+                    await state.deleteProduct(product.id);
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('${product.name} deleted')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not delete product: ${userMessage(e, action: "delete product")}')),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+          ],
           if (isInCart)
             IconButton(
               tooltip: l.buyerRemoveFromCart,

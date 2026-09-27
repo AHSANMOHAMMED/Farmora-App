@@ -204,6 +204,29 @@ class FirestoreService {
     await _db.collection('users').doc(uid).update(data);
   }
 
+  /// Update farmer-specific profile info (NIC, land size, location, GPS).
+  Future<void> updateFarmerProfile({
+    required String farmerId,
+    required String nicNumber,
+    required String farmSize,
+    required String location,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? farmerId;
+    if (uid.isEmpty) throw UserStateError(L10n.current.errorSignInAgain);
+    final data = <String, dynamic>{
+      'nicNumber': nicNumber,
+      'farmSize': farmSize,
+      'location': location,
+      'isProfileComplete': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (latitude != null) data['latitude'] = latitude;
+    if (longitude != null) data['longitude'] = longitude;
+    await _db.collection('users').doc(uid).set(data, SetOptions(merge: true));
+  }
+
   // ── Products ──────────────────────────────────────────────
 
   /// Add a new product to Firestore

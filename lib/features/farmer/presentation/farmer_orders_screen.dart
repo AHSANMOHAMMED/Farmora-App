@@ -209,19 +209,14 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
             borderRadius: BorderRadius.circular(9999),
           ),
           alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-                color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-              ),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
             ),
           ),
         ),
@@ -280,36 +275,42 @@ class _FarmerOrdersScreenState extends State<FarmerOrdersScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Stitch: inline-flex items-center gap-xs px-sm py-xs rounded-full bg-surface-container
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainer,
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.hourglass_top_rounded,
-                              size: 13,
-                              color: AppColors.onSurface,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              statusLabel(order.status, context.l10n)
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.8,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.hourglass_top_rounded,
+                                size: 13,
                                 color: AppColors.onSurface,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  statusLabel(order.status, context.l10n)
+                                      .toUpperCase(),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.8,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           '${order.displayNumber} · ${order.createdAt.millisecondsSinceEpoch > 0 ? AppFormat.relative(order.createdAt) : order.timestamp}',

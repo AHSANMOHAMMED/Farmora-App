@@ -33,6 +33,7 @@ import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
 import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
+import '../../auth/presentation/session_actions.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -178,23 +179,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHeader(BuildContext context, FarmoraState state) {
     return Row(
       children: [
+        IconButton(
+          icon: const Icon(Icons.menu_rounded, color: AppColors.primary, size: 28),
+          tooltip: 'Open menu',
+          onPressed: () => _openQuickActionsDrawer(context, state),
+        ),
+        const SizedBox(width: 4),
         // Profile avatar
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3), width: 2),
-          ),
-          child: ClipOval(
-            child: state.photoUrl.isNotEmpty
-                ? Image.network(
-                    state.photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildAvatarFallback(),
-                  )
-                : _buildAvatarFallback(),
+        GestureDetector(
+          onTap: () => _openQuickActionsDrawer(context, state),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+            ),
+            child: ClipOval(
+              child: state.photoUrl.isNotEmpty
+                  ? Image.network(
+                      state.photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildAvatarFallback(),
+                    )
+                  : _buildAvatarFallback(),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -1298,6 +1308,203 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
         }).toList(),
       ),
+    );
+  }
+
+  void _openQuickActionsDrawer(BuildContext context, FarmoraState state) {
+    final role = state.role;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.apps_rounded, color: AppColors.primary, size: 26),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Quick Menu & Actions',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Role Actions',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurfaceVariant,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (role == Role.farmer) ...[
+                        ListTile(
+                          leading: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                          title: const Text('Add Produce', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddProductScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.agriculture_outlined, color: Color(0xFF33691E)),
+                          title: const Text('My Farm Workspace', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Weather, crop management, finances & labor'),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.receipt_long_outlined, color: Color(0xFFE65100)),
+                          title: const Text('Manage Orders', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.local_offer_outlined, color: Color(0xFF6A1B9A)),
+                          title: const Text('Price Offers', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmerOffersScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                          title: const Text('View Earnings', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EarningsScreen()));
+                          },
+                        ),
+                      ] else if (role == Role.buyer) ...[
+                        ListTile(
+                          leading: const Icon(Icons.storefront_outlined, color: AppColors.primary),
+                          title: const Text('Browse Produce', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerProductsScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF1565C0)),
+                          title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()));
+                          },
+                        ),
+                      ] else if (role == Role.transporter) ...[
+                        ListTile(
+                          leading: const Icon(Icons.local_shipping_outlined, color: AppColors.primary),
+                          title: const Text('Available Jobs', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AvailableJobsScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.history_rounded, color: Color(0xFF1565C0)),
+                          title: const Text('Delivery History', style: TextStyle(fontWeight: FontWeight.w600)),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DeliveryHistoryScreen()));
+                          },
+                        ),
+                      ],
+                      const Divider(height: 24),
+                      const Text(
+                        'Common Settings & Account',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurfaceVariant,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        leading: const Icon(Icons.person_outline_rounded, color: AppColors.onSurface),
+                        title: const Text('Edit Profile & Documents', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.trending_up_rounded, color: Color(0xFFC2185B)),
+                        title: const Text('Market Price Index', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketPriceBoardScreen()));
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.near_me_rounded, color: Color(0xFF1565C0)),
+                        title: const Text('Nearby Logistics Providers', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NearbyTransportersScreen()));
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                        title: const Text('Sign Out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                        onTap: () async {
+                          Navigator.of(ctx).pop();
+                          await confirmAndSignOut(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

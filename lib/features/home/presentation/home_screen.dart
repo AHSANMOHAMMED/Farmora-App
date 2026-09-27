@@ -136,10 +136,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     final l10n = context.l10n;
 
-    // Farmers and transporters trade only once verified; buyers are not
-    // gated (they can still submit documents from their profile).
-    final isUnverified = (role == Role.farmer || role == Role.transporter) &&
-        !state.isVerified;
+    // Transporters trade only once verified by admin; farmers enter their role dashboard upon completing simple profile.
+    final isUnverified = role == Role.transporter && !state.isVerified;
     if (isUnverified) {
       screens = [
         const AwaitingVerificationView(),

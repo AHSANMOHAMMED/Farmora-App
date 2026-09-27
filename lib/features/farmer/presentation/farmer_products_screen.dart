@@ -677,10 +677,36 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
     Product product,
   ) async {
     final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.videocam_rounded, color: AppColors.primary),
+              title: const Text('Record Live Video (Camera Only)', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Record up to 3 minutes of harvest video using device camera'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_rounded, color: AppColors.onSurfaceVariant),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !context.mounted) return;
+
     var dialogShown = false;
     try {
       final file = await picker.pickVideo(
-        source: ImageSource.gallery,
+        source: source,
         maxDuration: const Duration(minutes: 3),
       );
       if (file == null) return;
