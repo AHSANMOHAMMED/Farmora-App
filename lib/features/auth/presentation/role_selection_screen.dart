@@ -43,18 +43,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Role? _selectedRole;
 
   List<_RoleOption> _roleOptions(AppLocalizations l10n) => [
+        // 1. Farmer
         _RoleOption(
           role: Role.farmer,
           title: l10n.farmer,
           description: l10n.iWantToSell,
           icon: Icons.agriculture_rounded,
         ),
+        // 2. Buyer
         _RoleOption(
           role: Role.buyer,
           title: l10n.buyer,
           description: l10n.iWantToBuy,
           icon: Icons.shopping_basket_rounded,
         ),
+        // 3. Transport Provider
         _RoleOption(
           role: Role.transporter,
           title: l10n.transporter,
