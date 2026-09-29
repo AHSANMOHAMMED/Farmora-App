@@ -61,7 +61,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ...kSelfSignupRoles.map(
+            ...const [Role.farmer, Role.buyer, Role.transporter].map(
                   (r) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Material(
