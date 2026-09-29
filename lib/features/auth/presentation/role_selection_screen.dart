@@ -64,36 +64,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           description: l10n.iWantToDeliver,
           icon: Icons.local_shipping_rounded,
         ),
-        _RoleOption(
-          role: Role.driver,
-          title: 'Driver',
-          description: 'Drive fleet vehicles and deliver produce shipments',
-          icon: Icons.drive_eta_rounded,
-        ),
-        _RoleOption(
-          role: Role.warehouse,
-          title: 'Warehouse Manager',
-          description: 'Manage collection center storage, inventory and dispatch',
-          icon: Icons.warehouse_rounded,
-        ),
-        _RoleOption(
-          role: Role.inspector,
-          title: 'Quality Inspector',
-          description: 'Grade produce quality, inspect lots and issue certificates',
-          icon: Icons.fact_check_rounded,
-        ),
-        _RoleOption(
-          role: Role.supplier,
-          title: 'Input Supplier',
-          description: 'Supply seeds, fertilizers, tools and farm machinery',
-          icon: Icons.storefront_rounded,
-        ),
-        _RoleOption(
-          role: Role.expert,
-          title: 'Agricultural Expert',
-          description: 'Provide advisory, crop disease diagnosis and consultations',
-          icon: Icons.school_rounded,
-        ),
       ];
 
   @override

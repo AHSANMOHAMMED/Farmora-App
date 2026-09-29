@@ -21,11 +21,6 @@ const kSelfSignupRoles = [
   Role.farmer,
   Role.buyer,
   Role.transporter,
-  Role.driver,
-  Role.supplier,
-  Role.warehouse,
-  Role.inspector,
-  Role.expert,
 ];
 
 extension RoleInfo on Role {
