@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import '../../../core/navigation/app_navigator.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,7 +15,6 @@ import '../../../providers/farmora_state.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../services/firebase_service.dart';
 import '../../../core/widgets/route_progress_map.dart';
-import '../../messaging/presentation/conversations_screen.dart';
 
 class LogisticsTrackingScreen extends StatefulWidget {
   final FarmoraOrder order;
@@ -34,6 +34,51 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   TransportJob? _job;
   Map<String, dynamic>? _transporter;
   bool _handoverBusy = false;
+
+  /// Haversine straight-line distance between two GPS points (km).
+  static double _haversineKm(
+      double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371.0; // Earth radius in km
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLon = (lon2 - lon1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  /// ETA string based on live courier GPS and destination coordinates.
+  /// Returns null when coordinates are unavailable or GPS is stale.
+  String? _computeEta(TransportJob? job, AppLocalizations l) {
+    if (job == null) return null;
+    if (!job.hasCourierLocation) return null;
+    if (!DeliveryLocationService.isLocationFresh(job.locationUpdatedAt)) {
+      return null;
+    }
+    // Need destination coordinates — use dropoff if available, else skip.
+    final destLat = job.dropoffLat;
+    final destLng = job.dropoffLng;
+    if (destLat == null || destLng == null) return null;
+
+    final distKm = _haversineKm(
+      job.courierLat!,
+      job.courierLng!,
+      destLat,
+      destLng,
+    );
+
+    // Average speed assumption: 40 km/h for Sri Lankan rural roads.
+    const avgSpeedKmh = 40.0;
+    final etaMinutes = ((distKm / avgSpeedKmh) * 60).round();
+    if (etaMinutes <= 0) return l.statusDelivered;
+    if (etaMinutes < 60) return l.transporterEtaMinutes(etaMinutes);
+    final hours = etaMinutes ~/ 60;
+    final mins = etaMinutes % 60;
+    return l.transporterEtaHours(hours, mins);
+  }
 
   Future<void> _confirmHandover(FarmoraOrder order) async {
     if (_handoverBusy) return;
@@ -409,7 +454,8 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.onSurface)),
                                 Text(
-                                  l.farmerTrackEtaUnavailable,
+                                  _computeEta(_job, l) ??
+                                      l.farmerTrackEtaUnavailable,
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 11,
@@ -883,32 +929,33 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                   if ((order.statusKey == 'assigned' ||
                           order.statusKey == 'pickedUp') &&
                       order.farmerHandedOverAt == null) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _handoverBusy
-                          ? null
-                          : () => _confirmHandover(order),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: _handoverBusy
+                            ? null
+                            : () => _confirmHandover(order),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon:
+                            const Icon(Icons.local_shipping_rounded, size: 18),
+                        label: Text(l.farmerTrackConfirmHanded,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700)),
                       ),
-                      icon: const Icon(Icons.local_shipping_rounded, size: 18),
-                      label: Text(l.farmerTrackConfirmHanded,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 8),
                   ],
                   SizedBox(
                     width: double.infinity,

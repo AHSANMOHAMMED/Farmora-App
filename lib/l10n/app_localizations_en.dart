@@ -7945,4 +7945,103 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiListingFilled(String grade) {
     return 'AI suggestion from the photo: looks grade $grade. Check and edit before publishing.';
   }
+
+  @override
+  String get transporterChooseTitle => 'Choose a transporter';
+
+  @override
+  String get transporterNoVerifiedAvailable =>
+      'No verified transporters are available right now. Try again later.';
+
+  @override
+  String get transporterVerifiedBadge => 'Verified transporter';
+
+  @override
+  String get transporterPickerCancel => 'Cancel';
+
+  @override
+  String get transporterPickerRetry => 'Retry';
+
+  @override
+  String get jobDeclineRequestTitle => 'Decline this request?';
+
+  @override
+  String get jobDeclineRequestMessage =>
+      'The farmer will be notified so the delivery can be offered to another transporter.';
+
+  @override
+  String get jobDeclineRequestAction => 'Decline';
+
+  @override
+  String get jobDeclinedSuccess => 'Request declined.';
+
+  @override
+  String get transporterAvailableToWithdraw => 'Available to withdraw';
+
+  @override
+  String get transporterRequestWithdrawal => 'Request withdrawal';
+
+  @override
+  String get transporterWithdrawals => 'Withdrawals';
+
+  @override
+  String get transporterNoWithdrawalsYet => 'No withdrawal requests yet.';
+
+  @override
+  String get adminLogisticsCancelJobTitle => 'Cancel this transport job?';
+
+  @override
+  String get adminLogisticsCancelJobMessage =>
+      'The transporter will be notified and the job will be removed from their queue.';
+
+  @override
+  String get adminLogisticsCancelJobAction => 'Cancel Job';
+
+  @override
+  String get adminLogisticsJobCancelled => 'Transport job cancelled.';
+
+  @override
+  String get adminLogisticsReassignTitle => 'Reassign to another transporter?';
+
+  @override
+  String get adminLogisticsReassignMessage =>
+      'This will unassign the current transporter and return the job to the open pool.';
+
+  @override
+  String get adminLogisticsReassignAction => 'Reassign';
+
+  @override
+  String get adminLogisticsJobReassigned => 'Job returned to open pool.';
+
+  @override
+  String get adminLogisticsActions => 'Admin Actions';
+
+  @override
+  String get adminLogisticsForceDeliver => 'Mark as Delivered';
+
+  @override
+  String get adminLogisticsForceDeliverTitle => 'Force-mark as delivered?';
+
+  @override
+  String get adminLogisticsForceDeliverMessage =>
+      'Use only if the delivery is confirmed but the transporter did not update the status.';
+
+  @override
+  String get adminLogisticsJobDelivered => 'Job marked as delivered.';
+
+  @override
+  String transporterEtaMinutes(int minutes) {
+    return '$minutes min away';
+  }
+
+  @override
+  String transporterEtaHours(int hours, int minutes) {
+    return '${hours}h ${minutes}m away';
+  }
+
+  @override
+  String get transporterEtaCalculating => 'Calculating ETA…';
+
+  @override
+  String get transporterEtaLive => 'Live ETA';
 }

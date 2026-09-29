@@ -431,7 +431,7 @@ class TransporterController extends ChangeNotifier {
       );
       _jobs.removeWhere((item) => item.id == jobId);
       notifyListeners();
-      return const TransporterActionResult.success('Request declined.');
+      return TransporterActionResult.success(L10n.current.jobDeclinedSuccess);
     } catch (error) {
       return TransporterActionResult.failure(_friendlyError(error));
     }
@@ -630,10 +630,8 @@ class TransporterController extends ChangeNotifier {
         vehicleCapacityUnit: capacityUnit,
         vehicleDescription: description.trim(),
         isAvailable: isAvailable,
-        serviceDistricts: districts
-            ?.map((d) => d.trim())
-            .where((d) => d.isNotEmpty)
-            .toList(),
+        serviceDistricts:
+            districts?.map((d) => d.trim()).where((d) => d.isNotEmpty).toList(),
       );
       return TransporterActionResult.success(
         L10n.current.transporterProfileUpdated,

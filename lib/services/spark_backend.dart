@@ -31,13 +31,31 @@ class SparkBackend {
   static const settingsCollection = 'platform_settings';
   static const settingsDocId = 'global';
 
-  static const _openJobStatuses = ['requested', 'accepted', 'pickedUp', 'inTransit'];
+  static const _openJobStatuses = [
+    'requested',
+    'accepted',
+    'pickedUp',
+    'inTransit'
+  ];
   static const _earningPaymentStatuses = ['paid', 'released', 'settled_split'];
   static const _marketUnits = [
-    'kg', 'g', 'ton', 'piece', 'pcs', 'box', 'crate', 'bunch', 'bag', 'liter',
+    'kg',
+    'g',
+    'ton',
+    'piece',
+    'pcs',
+    'box',
+    'crate',
+    'bunch',
+    'bag',
+    'liter',
   ];
   static const _harvestStatuses = [
-    'growing', 'harvested', 'packed', 'inTransit', 'delivered',
+    'growing',
+    'harvested',
+    'packed',
+    'inTransit',
+    'delivered',
   ];
 
   String get _uid {
@@ -87,8 +105,7 @@ class SparkBackend {
   Future<Map<String, dynamic>> _requireVerifiedRole(List<String> roles) async {
     final me = await _requireRole(roles);
     if (me['isVerified'] != true) {
-      throw UserStateError(
-          'Account verification is required for this action.');
+      throw UserStateError('Account verification is required for this action.');
     }
     return me;
   }
@@ -248,8 +265,7 @@ class SparkBackend {
 
   Future<Map<String, dynamic>> getPlatformSettings() async {
     try {
-      final snap =
-          await _col(settingsCollection).doc(settingsDocId).get();
+      final snap = await _col(settingsCollection).doc(settingsDocId).get();
       return sanitizeSettings(snap.data());
     } catch (e) {
       debugPrint('Platform settings unavailable ($e); using defaults');
@@ -320,15 +336,13 @@ class SparkBackend {
         updates['maintenanceMode'] != before['maintenanceMode'];
     await _audit(
       actor: admin,
-      actionType:
-          toggled ? 'MAINTENANCE_TOGGLE' : 'PLATFORM_SETTINGS_UPDATED',
+      actionType: toggled ? 'MAINTENANCE_TOGGLE' : 'PLATFORM_SETTINGS_UPDATED',
       targetEntity: settingsCollection,
       targetId: settingsDocId,
       details:
           'Updated ${updates.entries.map((e) => '${e.key}=${e.value}').join(', ')}',
-      severity: toggled || updates.containsKey('platformFeeBps')
-          ? 'warning'
-          : 'info',
+      severity:
+          toggled || updates.containsKey('platformFeeBps') ? 'warning' : 'info',
     );
   }
 
@@ -407,7 +421,8 @@ class SparkBackend {
   }
 
   /// Port of `updateProduct` (owner farmer).
-  Future<void> updateProduct(String productId, Map<String, dynamic> data) async {
+  Future<void> updateProduct(
+      String productId, Map<String, dynamic> data) async {
     final uid = _uid;
     await _requireVerifiedRole(['farmer']);
     final ref = _col('products').doc(productId);
@@ -440,8 +455,9 @@ class SparkBackend {
         quantityAvailable < 0) {
       throw UserArgumentError('Invalid product details.');
     }
-    final media =
-        data['media'] is List ? _mediaOf(data['media']) : _mediaOf(existing['media']);
+    final media = data['media'] is List
+        ? _mediaOf(data['media'])
+        : _mediaOf(existing['media']);
     final availabilityDate = data.containsKey('availabilityDate')
         ? _isoOrNull(data['availabilityDate'])
         : (existing['availabilityDate'] is String
@@ -454,8 +470,9 @@ class SparkBackend {
       'availabilityDate': availabilityDate,
       'name': name,
       'category': category,
-      'description':
-          description.length > 4000 ? description.substring(0, 4000) : description,
+      'description': description.length > 4000
+          ? description.substring(0, 4000)
+          : description,
       'unit': unit,
       'location': location,
       'priceMinor': priceMinor,
@@ -488,13 +505,16 @@ class SparkBackend {
         .where('farmerId', isEqualTo: uid)
         .where('productId', isEqualTo: productId)
         .where('status', whereIn: [
-          'pending', 'confirmed', 'assigned', 'pickedUp', 'inTransit',
+          'pending',
+          'confirmed',
+          'assigned',
+          'pickedUp',
+          'inTransit',
         ])
         .limit(1)
         .get();
     if (active.docs.isNotEmpty) {
-      throw UserStateError(
-          'Product has active orders and cannot be removed.');
+      throw UserStateError('Product has active orders and cannot be removed.');
     }
     await ref.delete();
   }
@@ -549,7 +569,8 @@ class SparkBackend {
         updates['videoPath'] = videoPath;
       }
       if (videoUrl != null) {
-        if (!videoUrl.startsWith('https://') && !videoUrl.startsWith('http://')) {
+        if (!videoUrl.startsWith('https://') &&
+            !videoUrl.startsWith('http://')) {
           throw UserArgumentError('Invalid video URL.');
         }
         updates['videoUrl'] = videoUrl;
@@ -762,7 +783,8 @@ class SparkBackend {
               (transporterId?.isNotEmpty ?? false) ? transporterId : null,
         ),
       );
-      tx.update(productRef, _stockUpdate(product, available - quantity, orderRef.id));
+      tx.update(
+          productRef, _stockUpdate(product, available - quantity, orderRef.id));
       return true;
     });
     if (created) {
@@ -789,19 +811,22 @@ class SparkBackend {
     final productName =
         (order['productName'] ?? order['title'] ?? 'Produce').toString();
     final pickup =
-        (order['pickupAddress'] ?? order['location'] ?? 'Farm pickup').toString();
+        (order['pickupAddress'] ?? order['location'] ?? 'Farm pickup')
+            .toString();
     final dropoff =
         (order['deliveryAddress'] ?? 'Buyer delivery point').toString();
     final unit = (order['unit'] ?? 'units').toString();
     final items = order['items'];
-    final quantityValue = items is List && items.isNotEmpty && items.first is Map
-        ? _int((items.first as Map)['quantity'])
-        : 0;
+    final quantityValue =
+        items is List && items.isNotEmpty && items.first is Map
+            ? _int((items.first as Map)['quantity'])
+            : 0;
     final qtyLabel = (order['quantity'] ?? '$quantityValue $unit').toString();
     final requested = (order['requestedTransporterId'] ?? '').toString();
     return {
       'orderId': orderId,
-      'orderNumber': (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
+      'orderNumber':
+          (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
       'farmerId': order['farmerId'],
       'buyerId': order['buyerId'],
       'farmerName': (order['farmerName'] ?? 'Farmer').toString(),
@@ -869,13 +894,20 @@ class SparkBackend {
       await batch.commit();
       final selected = (order['requestedTransporterId'] ?? '').toString();
       if (selected.isNotEmpty) {
-        await _notify(selected, 'Delivery request',
+        await _notify(
+            selected,
+            'Delivery request',
             'A confirmed order for $productName is ready for delivery.',
-            'logistics', orderId, extra: {'jobId': jobRef.id});
+            'logistics',
+            orderId,
+            extra: {'jobId': jobRef.id});
       }
-      await _notify(order['buyerId']?.toString(), 'Order Confirmed',
+      await _notify(
+          order['buyerId']?.toString(),
+          'Order Confirmed',
           'Your order for $productName was confirmed. Transport is being arranged.',
-          'order', orderId);
+          'order',
+          orderId);
       return;
     }
 
@@ -975,9 +1007,8 @@ class SparkBackend {
         .where('farmerId', isEqualTo: uid)
         .where('status', whereIn: _openJobStatuses)
         .get();
-    final open = existing.docs
-        .where((d) => d.data()['status'] == 'requested')
-        .toList();
+    final open =
+        existing.docs.where((d) => d.data()['status'] == 'requested').toList();
     if (open.isNotEmpty) {
       if (fee != null) {
         await open.first.reference.update({
@@ -1056,13 +1087,16 @@ class SparkBackend {
 
     Future<void> notifyParties(String title, String body) async {
       await _notify(job['buyerId']?.toString(), title, body, 'logistics',
-          orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
+          orderId.isEmpty ? null : orderId,
+          extra: {'jobId': jobId});
       await _notify(job['farmerId']?.toString(), title, body, 'logistics',
-          orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
+          orderId.isEmpty ? null : orderId,
+          extra: {'jobId': jobId});
       // The fleet owner hears about their driver's progress.
       if (isDriver) {
         await _notify(assignedTo, title, body, 'logistics',
-            orderId.isEmpty ? null : orderId, extra: {'jobId': jobId});
+            orderId.isEmpty ? null : orderId,
+            extra: {'jobId': jobId});
       }
     }
 
@@ -1107,7 +1141,9 @@ class SparkBackend {
     if (next == 'accepted') {
       if (current != 'requested' ||
           (assignedTo != null && assignedTo.isNotEmpty && assignedTo != uid) ||
-          (requestedFor != null && requestedFor.isNotEmpty && requestedFor != uid)) {
+          (requestedFor != null &&
+              requestedFor.isNotEmpty &&
+              requestedFor != uid)) {
         throw UserStateError(
             'This delivery request is assigned to another transporter.');
       }
@@ -1200,7 +1236,8 @@ class SparkBackend {
             fromLng: firebaseDouble(job['pickupLng']),
             toLat: firebaseDouble(job['dropoffLat']),
             toLng: firebaseDouble(job['dropoffLng']),
-            fromText: '${job['pickup'] ?? ''} ${job['pickupAddress'] ?? ''} ${job['district'] ?? ''}',
+            fromText:
+                '${job['pickup'] ?? ''} ${job['pickupAddress'] ?? ''} ${job['district'] ?? ''}',
             toText: '${job['dropoff'] ?? ''} ${job['dropoffAddress'] ?? ''}',
           )
         : null;
@@ -1310,7 +1347,8 @@ class SparkBackend {
       return current;
     });
     final targeted =
-        (job['transporterId'] ?? job['requestedTransporterId'] ?? '').toString();
+        (job['transporterId'] ?? job['requestedTransporterId'] ?? '')
+            .toString();
     await _notify(
       targeted,
       'Delivery request cancelled',
@@ -1415,7 +1453,8 @@ class SparkBackend {
     if (farmerId == null || farmerId.isEmpty) {
       throw UserArgumentError('farmerId or orderId is required.');
     }
-    final bank = usableBank((await _col('bank_details').doc(farmerId).get()).data());
+    final bank =
+        usableBank((await _col('bank_details').doc(farmerId).get()).data());
     return {'available': bank != null};
   }
 
@@ -1567,7 +1606,8 @@ class SparkBackend {
           offerId: offerId,
         ),
       );
-      tx.update(productRef, _stockUpdate(product, available - quantity, orderRef.id));
+      tx.update(
+          productRef, _stockUpdate(product, available - quantity, orderRef.id));
       tx.update(offerRef, {
         'status': 'accepted',
         'orderId': orderRef.id,
@@ -1724,7 +1764,9 @@ class SparkBackend {
       final label = (doc['documentType'] ?? 'verification document').toString();
       await _notify(
         ownerId,
-        status == 'approved' ? 'Verification approved' : 'Verification rejected',
+        status == 'approved'
+            ? 'Verification approved'
+            : 'Verification rejected',
         status == 'approved'
             ? 'Your $label was approved. Your account is now verified.'
             : 'Your $label was rejected${note.isEmpty ? '.' : ': $note'} '
@@ -1736,8 +1778,9 @@ class SparkBackend {
     }
     await _audit(
       actor: admin,
-      actionType:
-          status == 'approved' ? 'VERIFICATION_APPROVED' : 'VERIFICATION_REJECTED',
+      actionType: status == 'approved'
+          ? 'VERIFICATION_APPROVED'
+          : 'VERIFICATION_REJECTED',
       targetEntity: 'verification_docs',
       targetId: documentId,
       details: '${doc['documentType'] ?? 'Document'} of '
@@ -1752,7 +1795,8 @@ class SparkBackend {
   static Map<String, dynamic> transporterProjection(
       String uid, Map<String, dynamic> user) {
     final rawCapacity = user['vehicleCapacity'] ?? user['capacityKg'];
-    final capacity = rawCapacity is num ? rawCapacity : num.tryParse('$rawCapacity');
+    final capacity =
+        rawCapacity is num ? rawCapacity : num.tryParse('$rawCapacity');
     return {
       'id': uid,
       'uid': uid,
@@ -1773,8 +1817,9 @@ class SparkBackend {
               : const <String>[])
           .take(25)
           .toList(),
-      'availabilityStatus':
-          user['availabilityStatus'] == 'unavailable' ? 'unavailable' : 'available',
+      'availabilityStatus': user['availabilityStatus'] == 'unavailable'
+          ? 'unavailable'
+          : 'available',
       'isVerified': user['isVerified'] == true,
     };
   }
@@ -1828,8 +1873,13 @@ class SparkBackend {
             ? 'unavailable'
             : '';
     const profileKeys = [
-      'displayName', 'phone', 'vehicleType', 'vehicleRegistration',
-      'vehicleCapacity', 'vehicleCapacityUnit', 'vehicleDescription',
+      'displayName',
+      'phone',
+      'vehicleType',
+      'vehicleRegistration',
+      'vehicleCapacity',
+      'vehicleCapacityUnit',
+      'vehicleDescription',
       'serviceDistricts',
     ];
     final availabilityOnly = !profileKeys.any((k) => data[k] != null);
@@ -1838,7 +1888,8 @@ class SparkBackend {
       if (availability.isEmpty) {
         throw UserArgumentError('Invalid availability status.');
       }
-      await userRef.update({'availabilityStatus': availability, 'updatedAt': _now});
+      await userRef
+          .update({'availabilityStatus': availability, 'updatedAt': _now});
       await syncMyTransporterProfile();
       return;
     }
@@ -1885,8 +1936,9 @@ class SparkBackend {
       'vehicleRegistration': registration,
       'vehicleCapacity': capacity,
       'vehicleCapacityUnit': unit,
-      'vehicleDescription':
-          description.length > 500 ? description.substring(0, 500) : description,
+      'vehicleDescription': description.length > 500
+          ? description.substring(0, 500)
+          : description,
       'availabilityStatus': availability,
       if (districts != null) 'serviceDistricts': districts,
       'updatedAt': _now,
@@ -1908,7 +1960,8 @@ class SparkBackend {
     final results = <Map<String, dynamic>>[];
     for (final doc in snap.docs) {
       final d = doc.data();
-      if (d['isSuspended'] == true || d['availabilityStatus'] == 'unavailable') {
+      if (d['isSuspended'] == true ||
+          d['availabilityStatus'] == 'unavailable') {
         continue;
       }
       if (wanted.isNotEmpty) {
@@ -1949,7 +2002,8 @@ class SparkBackend {
       actionType: suspended ? 'USER_SUSPENDED' : 'USER_UNSUSPENDED',
       targetEntity: 'users',
       targetId: userId,
-      details: '${suspended ? 'Suspended' : 'Reinstated'} ${_nameOf(user, userId)}',
+      details:
+          '${suspended ? 'Suspended' : 'Reinstated'} ${_nameOf(user, userId)}',
       severity: suspended ? 'warning' : 'info',
     );
   }
@@ -1959,8 +2013,18 @@ class SparkBackend {
     required String role,
   }) async {
     final admin = await _requireAdmin();
-    if (!['farmer', 'buyer', 'transporter', 'supplier', 'expert', 'driver',
-          'warehouse', 'inspector', 'finance', 'admin'].contains(role)) {
+    if (![
+      'farmer',
+      'buyer',
+      'transporter',
+      'supplier',
+      'expert',
+      'driver',
+      'warehouse',
+      'inspector',
+      'finance',
+      'admin'
+    ].contains(role)) {
       throw UserArgumentError('Invalid user or role.');
     }
     if (uid == _uid) throw UserStateError('You cannot change your own role.');
@@ -1979,14 +2043,17 @@ class SparkBackend {
       actionType: 'USER_ROLE_CHANGED',
       targetEntity: 'users',
       targetId: uid,
-      details: '${_nameOf(user, uid)}: ${previous.isEmpty ? 'none' : previous} → $role',
+      details:
+          '${_nameOf(user, uid)}: ${previous.isEmpty ? 'none' : previous} → $role',
       severity: role == 'admin' || previous == 'admin' ? 'critical' : 'warning',
     );
   }
 
   Future<void> adminDeleteUser(String uid) async {
     final admin = await _requireAdmin();
-    if (uid == _uid) throw UserStateError('You cannot delete your own account.');
+    if (uid == _uid) {
+      throw UserStateError('You cannot delete your own account.');
+    }
     final ref = _col('users').doc(uid);
     final user = (await ref.get()).data();
     if (user == null) throw UserStateError(L10n.current.errorNotFound);
@@ -2066,7 +2133,9 @@ class SparkBackend {
         throw UserStateError(L10n.current.svcDisputeNotOpen);
       }
       final disputeId = (order['disputeId'] ?? '').toString();
-      if (disputeId.isEmpty) throw UserStateError(L10n.current.svcDisputeNotOpen);
+      if (disputeId.isEmpty) {
+        throw UserStateError(L10n.current.svcDisputeNotOpen);
+      }
       final disputeRef = _col('disputes').doc(disputeId);
       final dispute = (await tx.get(disputeRef)).data();
       if (dispute == null || dispute['status'] != 'open') {
@@ -2110,7 +2179,8 @@ class SparkBackend {
         'paymentStatus': paymentStatus,
         'buyerId': (order['buyerId'] ?? '').toString(),
         'farmerId': (order['farmerId'] ?? '').toString(),
-        'orderNumber': (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
+        'orderNumber':
+            (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
       };
     });
     final label = resolution == 'refund_buyer'
@@ -2121,14 +2191,16 @@ class SparkBackend {
     final body =
         'The dispute on order ${result['orderNumber']} was resolved with $label.';
     for (final party in [result['buyerId'], result['farmerId']]) {
-      await _notify(party as String?, 'Dispute resolved', body, 'dispute', orderId);
+      await _notify(
+          party as String?, 'Dispute resolved', body, 'dispute', orderId);
     }
     await _audit(
       actor: admin,
       actionType: 'DISPUTE_RESOLVED',
       targetEntity: 'disputes',
       targetId: result['disputeId'] as String,
-      details: '${result['orderNumber']}: $resolution (refund $refundPercent%). $notes',
+      details:
+          '${result['orderNumber']}: $resolution (refund $refundPercent%). $notes',
       severity: 'critical',
     );
     return {'success': true, 'refundPercent': refundPercent, ...result};
@@ -2147,8 +2219,17 @@ class SparkBackend {
     if (t.isEmpty || t.length > 120 || b.isEmpty || b.length > 2000) {
       throw UserArgumentError('Title and message are required.');
     }
-    if (!['all', 'farmer', 'buyer', 'transporter', 'supplier', 'expert',
-          'driver', 'warehouse', 'inspector'].contains(audience)) {
+    if (![
+      'all',
+      'farmer',
+      'buyer',
+      'transporter',
+      'supplier',
+      'expert',
+      'driver',
+      'warehouse',
+      'inspector'
+    ].contains(audience)) {
       throw UserArgumentError('Invalid audience.');
     }
     Query<Map<String, dynamic>> query = _col('users');
@@ -2205,7 +2286,8 @@ class SparkBackend {
       throw UserArgumentError('Invalid settlement update.');
     }
     final reference = (transactionReference ?? '').trim();
-    if (reference.isNotEmpty && (reference.length < 4 || reference.length > 100)) {
+    if (reference.isNotEmpty &&
+        (reference.length < 4 || reference.length > 100)) {
       throw UserArgumentError(L10n.current.stateSettlementReferenceRequired);
     }
     if (status == 'settled' && reference.isEmpty) {
@@ -2223,9 +2305,10 @@ class SparkBackend {
       tx.update(ref, {
         'status': status,
         if (reference.isNotEmpty) 'transactionReference': reference,
-        'holdReason': (status == 'on_hold' || status == 'rejected') && hold.isNotEmpty
-            ? hold
-            : FieldValue.delete(),
+        'holdReason':
+            (status == 'on_hold' || status == 'rejected') && hold.isNotEmpty
+                ? hold
+                : FieldValue.delete(),
         if (status == 'settled') 'settledAt': _now,
         'reviewedBy': _uid,
         'updatedAt': _now,
@@ -2243,7 +2326,8 @@ class SparkBackend {
     final bodies = {
       'settled': 'Your payout of $amount was sent (ref $reference).',
       'processing': 'Your payout of $amount is being processed.',
-      'on_hold': 'Your payout of $amount is on hold${hold.isEmpty ? '.' : ': $hold'}',
+      'on_hold':
+          'Your payout of $amount is on hold${hold.isEmpty ? '.' : ': $hold'}',
       'rejected':
           'Your payout of $amount was rejected${hold.isEmpty ? '.' : ': $hold'}',
     };
@@ -2258,7 +2342,8 @@ class SparkBackend {
       details: '${settlement['orderNumber'] ?? settlementId} $amount → $status'
           '${reference.isEmpty ? '' : ' (ref $reference)'}'
           '${hold.isEmpty ? '' : ' — $hold'}',
-      severity: status == 'settled' || status == 'rejected' ? 'warning' : 'info',
+      severity:
+          status == 'settled' || status == 'rejected' ? 'warning' : 'info',
     );
   }
 
@@ -2280,9 +2365,11 @@ class SparkBackend {
             o['status'] == 'cancelled') {
           continue;
         }
-        final delivery =
-            (o['transporterId'] ?? '').toString().isNotEmpty ? _int(o['deliveryFeeMinor']) : 0;
-        earned += max(0, _int(o['totalMinor']) - _int(o['platformFeeMinor']) - delivery);
+        final delivery = (o['transporterId'] ?? '').toString().isNotEmpty
+            ? _int(o['deliveryFeeMinor'])
+            : 0;
+        earned += max(
+            0, _int(o['totalMinor']) - _int(o['platformFeeMinor']) - delivery);
       }
     } else {
       final jobs = await _col('transport_jobs')
@@ -2365,7 +2452,8 @@ class SparkBackend {
 
   Future<Map<String, dynamic>> exportUserData() async {
     final uid = _uid;
-    Future<List<Map<String, dynamic>>> q(Query<Map<String, dynamic>> query) async {
+    Future<List<Map<String, dynamic>>> q(
+        Query<Map<String, dynamic>> query) async {
       try {
         final snap = await query.limit(200).get();
         return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
@@ -2394,7 +2482,8 @@ class SparkBackend {
       'userId': uid,
       'profile': {'id': uid, ...profile},
       'ordersAsBuyer': await q(_col('orders').where('buyerId', isEqualTo: uid)),
-      'ordersAsFarmer': await q(_col('orders').where('farmerId', isEqualTo: uid)),
+      'ordersAsFarmer':
+          await q(_col('orders').where('farmerId', isEqualTo: uid)),
       'ordersAsTransporter':
           await q(_col('orders').where('transporterId', isEqualTo: uid)),
       'products': await q(_col('products').where('farmerId', isEqualTo: uid)),
@@ -2447,7 +2536,8 @@ class SparkBackend {
     await tryRun(() => _col('bank_details').doc(uid).delete());
     await tryRun(() => _col('transporter_profiles').doc(uid).delete());
     await tryRun(() async {
-      final tokens = await _col('users').doc(uid).collection('device_tokens').get();
+      final tokens =
+          await _col('users').doc(uid).collection('device_tokens').get();
       for (final d in tokens.docs) {
         await d.reference.delete();
       }
@@ -2491,7 +2581,8 @@ class SparkBackend {
     if (peerId.isEmpty || peerId == uid) {
       throw UserStateError(L10n.current.svcNoChatPeer);
     }
-    final ref = _col('conversations').doc(conversationIdFor(orderId, uid, peerId));
+    final ref =
+        _col('conversations').doc(conversationIdFor(orderId, uid, peerId));
     final snap = await ref.get();
     if (!snap.exists) {
       await ref.set({
@@ -2539,7 +2630,9 @@ class SparkBackend {
     final convoRef = _col('conversations').doc(convoId);
     final preview = hasImage
         ? (kind == 'payment_proof' ? 'Payment receipt' : 'Photo')
-        : (ciphertext!.length > 140 ? ciphertext.substring(0, 140) : ciphertext);
+        : (ciphertext!.length > 140
+            ? ciphertext.substring(0, 140)
+            : ciphertext);
     final msgRef = _col('messages').doc();
 
     Future<void> write(bool exists) async {
@@ -2591,7 +2684,9 @@ class SparkBackend {
     }
     await _notify(
       recipientId,
-      hasImage && kind == 'payment_proof' ? 'Payment receipt received' : 'New message',
+      hasImage && kind == 'payment_proof'
+          ? 'Payment receipt received'
+          : 'New message',
       hasImage
           ? 'You received a photo in your order chat.'
           : 'You have a new encrypted order message.',
@@ -2690,7 +2785,8 @@ class SparkBackend {
     }
     await _col('reviews').doc('${orderId}_$uid').set({
       'orderId': orderId,
-      'orderNumber': (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
+      'orderNumber':
+          (order['orderNumber'] ?? orderNumberFor(orderId)).toString(),
       'reviewerId': uid,
       'reviewerName': _nameOf(me, (order['buyerName'] ?? 'Buyer').toString()),
       'subjectId': order['farmerId'],
@@ -2802,7 +2898,8 @@ class SparkBackend {
       'plantedAt': Timestamp.fromDate(plantedAt),
       'expectedHarvestAt': Timestamp.fromDate(expectedHarvestAt),
       'expectedYield': max(0.0, expectedYield),
-      'yieldUnit': yieldUnit.length > 20 ? yieldUnit.substring(0, 20) : yieldUnit,
+      'yieldUnit':
+          yieldUnit.length > 20 ? yieldUnit.substring(0, 20) : yieldUnit,
       'status': 'planned',
       'notes': text.length > 1000 ? text.substring(0, 1000) : text,
       if (plotId.isNotEmpty) 'plotId': plotId,
@@ -2873,7 +2970,8 @@ class SparkBackend {
       'cropId': cropId,
       'cropName': cropName.length > 100 ? cropName.substring(0, 100) : cropName,
       'dueAt': Timestamp.fromDate(dueAt),
-      'priority': ['low', 'normal', 'high'].contains(priority) ? priority : 'normal',
+      'priority':
+          ['low', 'normal', 'high'].contains(priority) ? priority : 'normal',
       'status': 'pending',
       'createdAt': _now,
       'updatedAt': _now,
@@ -2892,7 +2990,8 @@ class SparkBackend {
     final updates = <String, dynamic>{'updatedAt': _now};
     final status = data['status'];
     if (status is String) {
-      if (!['pending', 'inProgress', 'completed', 'cancelled'].contains(status)) {
+      if (!['pending', 'inProgress', 'completed', 'cancelled']
+          .contains(status)) {
         throw UserArgumentError('Invalid task status.');
       }
       updates['status'] = status;
@@ -2932,7 +3031,9 @@ class SparkBackend {
       final dueAt = task['dueAt'] is Timestamp
           ? (task['dueAt'] as Timestamp).toDate()
           : null;
-      if (dueAt == null || dueAt.isAfter(tomorrow) || task['reminderDate'] == today) {
+      if (dueAt == null ||
+          dueAt.isAfter(tomorrow) ||
+          task['reminderDate'] == today) {
         continue;
       }
       final overdue = dueAt.isBefore(now);
@@ -2941,7 +3042,8 @@ class SparkBackend {
         ..set(_col('notifications').doc(), {
           'userId': uid,
           'title': overdue ? 'Farm task overdue' : 'Farm task due soon',
-          'body': '${task['title']} is due ${overdue ? 'now' : 'within 24 hours'}.',
+          'body':
+              '${task['title']} is due ${overdue ? 'now' : 'within 24 hours'}.',
           'type': 'farm_task',
           'referenceId': doc.id,
           'read': false,
@@ -3132,7 +3234,8 @@ class SparkBackend {
           sourceRequestId: requestId,
         ),
       );
-      tx.update(productRef, _stockUpdate(product, available - quantity, orderRef.id));
+      tx.update(
+          productRef, _stockUpdate(product, available - quantity, orderRef.id));
       tx.update(quoteRef, {
         'status': 'accepted',
         'orderId': orderRef.id,
@@ -3145,9 +3248,12 @@ class SparkBackend {
         'updatedAt': _now,
       });
     });
-    await _notify(farmerId, 'Quote accepted',
+    await _notify(
+        farmerId,
+        'Quote accepted',
         'The buyer accepted your quote and an order was created.',
-        'produce_request', orderRef.id);
+        'produce_request',
+        orderRef.id);
     return orderRef.id;
   }
 
@@ -3211,15 +3317,14 @@ class SparkBackend {
       DocumentReference<Map<String, dynamic>>? priceRef;
       Map<String, dynamic>? benchmark;
       if (decision == 'approve') {
-        String slug(Object? v) => v
-            .toString()
-            .toLowerCase()
-            .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-        priceRef = _col('market_prices')
-            .doc('${slug(report['cropName'])}-${slug(report['district'])}-${report['unit']}');
+        String slug(Object? v) =>
+            v.toString().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+        priceRef = _col('market_prices').doc(
+            '${slug(report['cropName'])}-${slug(report['district'])}-${report['unit']}');
         final existing = (await tx.get(priceRef)).data();
         final oldCount = _int(existing?['reportCount']);
-        final oldAvg = (existing?['averagePricePerKg'] as num?)?.toDouble() ?? 0;
+        final oldAvg =
+            (existing?['averagePricePerKg'] as num?)?.toDouble() ?? 0;
         final price = _int(report['priceMinor']) / 100;
         final count = oldCount + 1;
         benchmark = {
@@ -3230,10 +3335,12 @@ class SparkBackend {
           'unit': report['unit'],
           'minPricePerKg': existing == null
               ? price
-              : min((existing['minPricePerKg'] as num?)?.toDouble() ?? price, price),
+              : min((existing['minPricePerKg'] as num?)?.toDouble() ?? price,
+                  price),
           'maxPricePerKg': existing == null
               ? price
-              : max((existing['maxPricePerKg'] as num?)?.toDouble() ?? price, price),
+              : max((existing['maxPricePerKg'] as num?)?.toDouble() ?? price,
+                  price),
           'averagePricePerKg': (oldAvg * oldCount + price) / count,
           'trend': existing == null
               ? 'stable'
@@ -3263,11 +3370,13 @@ class SparkBackend {
     );
     await _audit(
       actor: admin,
-      actionType:
-          decision == 'approve' ? 'MARKET_PRICE_APPROVED' : 'MARKET_PRICE_REJECTED',
+      actionType: decision == 'approve'
+          ? 'MARKET_PRICE_APPROVED'
+          : 'MARKET_PRICE_REJECTED',
       targetEntity: 'market_price_reports',
       targetId: reportId,
-      details: '${report['cropName'] ?? 'Report'} (${report['district'] ?? '-'})',
+      details:
+          '${report['cropName'] ?? 'Report'} (${report['district'] ?? '-'})',
     );
   }
 

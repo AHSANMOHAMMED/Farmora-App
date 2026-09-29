@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../services/firebase_service.dart';
 
@@ -51,8 +52,9 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return AlertDialog(
-      title: const Text('Choose a transporter'),
+      title: Text(l10n.transporterChooseTitle),
       content: SizedBox(
         width: double.maxFinite,
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -73,6 +75,7 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
                 color: AppColors.error,
                 message: message,
                 onRetry: _retry,
+                retryLabel: l10n.transporterPickerRetry,
               );
             }
             final transporters = snap.data ?? const [];
@@ -80,9 +83,9 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
               return _StateMessage(
                 icon: Icons.local_shipping_outlined,
                 color: AppColors.onSurfaceVariant,
-                message:
-                    'No verified transporters are available right now. Try again later.',
+                message: l10n.transporterNoVerifiedAvailable,
                 onRetry: _retry,
+                retryLabel: l10n.transporterPickerRetry,
               );
             }
             return ListView.separated(
@@ -114,8 +117,9 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
                         : null,
                   ),
                   title: Text(name),
-                  subtitle:
-                      Text(details.isEmpty ? 'Verified transporter' : details),
+                  subtitle: Text(details.isEmpty
+                      ? l10n.transporterVerifiedBadge
+                      : details),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).pop(t),
                 );
@@ -127,7 +131,7 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.transporterPickerCancel),
         ),
       ],
     );
@@ -140,12 +144,14 @@ class _StateMessage extends StatelessWidget {
     required this.color,
     required this.message,
     required this.onRetry,
+    required this.retryLabel,
   });
 
   final IconData icon;
   final Color color;
   final String message;
   final VoidCallback onRetry;
+  final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +165,7 @@ class _StateMessage extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh),
-          label: const Text('Retry'),
+          label: Text(retryLabel),
         ),
       ],
     );

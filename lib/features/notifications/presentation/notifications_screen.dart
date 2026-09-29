@@ -190,7 +190,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _snack('This conversation is no longer available.');
         return;
       }
-      await AppNavigator.push(context, ChatScreen(conversation: conversation!));
+      await AppNavigator.push(context, ChatScreen(conversation: conversation));
     } catch (e, st) {
       _snack(userMessage(e, action: 'open the chat', stack: st));
     }

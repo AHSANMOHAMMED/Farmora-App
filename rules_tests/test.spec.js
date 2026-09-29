@@ -69,4 +69,44 @@ describe("Farmora Firestore Rules", () => {
     await assertSucceeds(adminDb.collection("products").doc("prod1").delete());
     await assertSucceeds(adminDb.collection("orders").doc("order1").delete());
   });
+
+  it("scopes transport_jobs reads to participants and denies all client writes", async () => {
+    // Seed an assigned job plus an open request, bypassing rules.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await db.collection("transport_jobs").doc("job1").set({
+        orderId: "order1",
+        farmerId: "farmer1",
+        buyerId: "buyer1",
+        transporterId: "transporter1",
+        status: "accepted",
+      });
+      await db.collection("transport_jobs").doc("job2").set({
+        orderId: "order1",
+        farmerId: "farmer1",
+        buyerId: "buyer1",
+        status: "requested",
+      });
+    });
+
+    const farmer1Db = testEnv.authenticatedContext('farmer1').firestore();
+    const buyer1Db = testEnv.authenticatedContext('buyer1').firestore();
+    const transporter1Db = testEnv.authenticatedContext('transporter1').firestore();
+    const strangerDb = testEnv.authenticatedContext('stranger').firestore();
+
+    // Participants read their own jobs; the open request is public to
+    // verified transporters.
+    await assertSucceeds(farmer1Db.collection("transport_jobs").doc("job1").get());
+    await assertSucceeds(buyer1Db.collection("transport_jobs").doc("job1").get());
+    await assertSucceeds(transporter1Db.collection("transport_jobs").doc("job1").get());
+    await assertSucceeds(transporter1Db.collection("transport_jobs").doc("job2").get());
+    await assertFails(strangerDb.collection("transport_jobs").doc("job1").get());
+
+    // State changes only via the transitionTransport callable.
+    await assertFails(transporter1Db.collection("transport_jobs").doc("job2").update({
+      status: "accepted",
+      transporterId: "transporter1",
+    }));
+    await assertFails(farmer1Db.collection("transport_jobs").doc("job2").delete());
+  });
 });

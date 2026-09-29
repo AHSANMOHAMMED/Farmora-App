@@ -162,14 +162,14 @@ class _FarmerProfileCompletionScreenState
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.agriculture, color: AppColors.primary, size: 36),
-                    const SizedBox(width: 12),
+                    Icon(Icons.agriculture, color: AppColors.primary, size: 36),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'Quick & Easy Setup for Farmers',
                             style: TextStyle(
@@ -248,7 +248,7 @@ class _FarmerProfileCompletionScreenState
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _landType,
+                      initialValue: _landType,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,

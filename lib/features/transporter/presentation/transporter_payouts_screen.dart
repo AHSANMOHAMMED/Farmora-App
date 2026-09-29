@@ -17,10 +17,9 @@ class TransporterPayoutsScreen extends StatelessWidget {
 
   /// Minor units already requested/paid out (rejected requests don't count),
   /// mirroring the server's balance check.
-  static int withdrawnMinor(List<SettlementPayout> settlements) =>
-      settlements
-          .where((s) => s.status != 'rejected')
-          .fold(0, (sum, s) => sum + (s.netAmount * 100).round());
+  static int withdrawnMinor(List<SettlementPayout> settlements) => settlements
+      .where((s) => s.status != 'rejected')
+      .fold(0, (sum, s) => sum + (s.netAmount * 100).round());
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +50,9 @@ class TransporterPayoutsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Available to withdraw',
-                      style: TextStyle(color: AppColors.onSurfaceVariant)),
+                  Text(l10n.transporterAvailableToWithdraw,
+                      style:
+                          const TextStyle(color: AppColors.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   Text(
                     money(available),
@@ -77,25 +77,25 @@ class TransporterPayoutsScreen extends StatelessWidget {
                         ? null
                         : () => _requestWithdrawal(context, available),
                     icon: const Icon(Icons.account_balance_outlined),
-                    label: const Text('Request withdrawal'),
+                    label: Text(l10n.transporterRequestWithdrawal),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Withdrawals',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          Text(
+            l10n.transporterWithdrawals,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           if (settlements.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                'No withdrawal requests yet.',
+                l10n.transporterNoWithdrawalsYet,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.onSurfaceVariant),
+                style: const TextStyle(color: AppColors.onSurfaceVariant),
               ),
             )
           else
@@ -190,7 +190,7 @@ class _WithdrawalDialogState extends State<_WithdrawalDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return AlertDialog(
-      title: const Text('Request withdrawal'),
+      title: Text(context.l10n.transporterRequestWithdrawal),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -324,9 +324,7 @@ class _SettlementTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            label.isEmpty
-                ? '-'
-                : label[0].toUpperCase() + label.substring(1),
+            label.isEmpty ? '-' : label[0].toUpperCase() + label.substring(1),
             style: TextStyle(
               color: color,
               fontSize: 12,

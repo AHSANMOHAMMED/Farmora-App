@@ -1445,9 +1445,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   const Icon(Icons.apps_rounded, color: AppColors.primary, size: 26),
                   const SizedBox(width: 10),
-                  Text(
+                  const Text(
                     'Quick Menu & Actions',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
