@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://farmora-1da5a.web.app/sitemap.xml
+Sitemap: https://farmingapp-24b34.web.app/sitemap.xml

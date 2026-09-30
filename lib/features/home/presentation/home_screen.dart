@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Initialize Firestore sync when user is authenticated
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null && state.currentUserId.isEmpty) {
+    if (firebaseUser != null && (state.currentUserId.isEmpty || !state.profileLoaded) && !state.profileLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         state.initFromFirestore(firebaseUser.uid);
       });
@@ -122,8 +122,28 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (firebaseUser != null && !state.profileLoaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              const Text(
+                'Loading profile...',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  state.signOut();
+                },
+                child: const Text('Back to Sign In'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

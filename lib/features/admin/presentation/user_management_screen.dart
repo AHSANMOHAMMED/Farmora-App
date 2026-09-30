@@ -190,6 +190,160 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCreateUserDialog(context, state),
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text('Add Member', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
+    );
+  }
+
+  void _showCreateUserDialog(BuildContext context, FarmoraState state) {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    String selectedRole = 'driver';
+    String selectedDistrict = 'Colombo';
+
+    final allowedRoles = [
+      {'key': 'driver', 'label': 'Driver (Logistics)'},
+      {'key': 'supplier', 'label': 'Input Supplier'},
+      {'key': 'warehouse', 'label': 'Warehouse Manager'},
+      {'key': 'inspector', 'label': 'Quality Inspector'},
+      {'key': 'expert', 'label': 'Agricultural Expert'},
+      {'key': 'farmer', 'label': 'Farmer'},
+      {'key': 'buyer', 'label': 'Buyer'},
+      {'key': 'transporter', 'label': 'Transporter'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Create New Member', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select Role', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: allowedRoles.map((r) => DropdownMenuItem(
+                      value: r['key'],
+                      child: Text(r['label']!),
+                    )).toList(),
+                    onChanged: (val) {
+                      if (val != null) setDlgState(() => selectedRole = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Kamal Perera',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 0771234567',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('District', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  DropdownButtonFormField<String>(
+                    value: selectedDistrict,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: const [
+                      'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
+                      'Galle', 'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara',
+                      'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar',
+                      'Matale', 'Matara', 'Monaragala', 'Mullaitivu', 'Nuwara Eliya',
+                      'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya',
+                    ].map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                    onChanged: (val) {
+                      if (val != null) setDlgState(() => selectedDistrict = val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.of(ctx).pop();
+                try {
+                  await state.adminCreateUser(
+                    name: nameCtrl.text.trim(),
+                    phone: phoneCtrl.text.trim(),
+                    role: selectedRole,
+                    district: selectedDistrict,
+                    email: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Member "' + selectedRole + '" successfully created!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to create member: ' + e.toString()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

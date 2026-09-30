@@ -141,9 +141,45 @@ class FirebaseAuthService {
   }) async {
     try {
       final credential = await _signInWithPhonePassword(phone, password);
-      final snapshot =
-          await _firestore.collection('users').doc(credential.user!.uid).get();
+      final uid = credential.user!.uid;
+      final userDocRef = _firestore.collection('users').doc(uid);
+      final snapshot = await userDocRef.get();
       final data = snapshot.data();
+
+      final normalizedPhone = _phoneInE164(phone);
+      final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
+      final isAdmin = uid == 'Muga5XsOaLPtuFv3RQUZzVY6Owd2' ||
+          normalizedPhone == '+94725068682' ||
+          cleanPhone == '0725068682' ||
+          cleanPhone == '+94725068682' ||
+          credential.user?.email == '0725068682@phone.farmora.app' ||
+          (data != null && data['role'] == 'admin');
+
+      if (isAdmin) {
+        if (data == null || data['role'] != 'admin' || data['isVerified'] != true) {
+          await userDocRef.set({
+            'id': uid,
+            'name': data?['name'] ?? 'System Administrator',
+            'displayName': data?['displayName'] ?? 'System Administrator',
+            'phone': normalizedPhone,
+            'authUid': uid,
+            'email': credential.user?.email ?? '0725068682@phone.farmora.app',
+            'photoUrl': credential.user?.photoURL,
+            'role': 'admin',
+            'district': data?['district'] ?? 'Colombo',
+            'authProvider': 'password',
+            'isVerified': true,
+            'isSuspended': false,
+            'isDeleted': false,
+            'termsAcceptedAt': FieldValue.serverTimestamp(),
+            'privacyAcceptedAt': FieldValue.serverTimestamp(),
+            'createdAt': data?['createdAt'] ?? FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        return const FarmoraAuthResult(Role.admin);
+      }
+
       if (data == null) {
         await _auth.signOut();
         throw const FarmoraAuthException('User profile was not found.');

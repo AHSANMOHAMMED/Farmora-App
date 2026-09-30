@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart'
     show FirebaseFunctionsException;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -54,6 +54,9 @@ class FarmoraState extends ChangeNotifier {
   String get currentUserId => _currentUserId;
   bool _profileLoaded = false;
   bool get profileLoaded => _profileLoaded;
+  bool _profileLoading = false;
+  bool get profileLoading => _profileLoading;
+
 
   // Stream subscriptions for real-time Firestore sync
   StreamSubscription<List<Product>>? _productsSub;
@@ -721,6 +724,8 @@ class FarmoraState extends ChangeNotifier {
     signedIn = false;
     _currentUserId = '';
     _profileLoaded = false;
+    _profileLoading = false;
+
     isVerified = false;
     authBlockedReason = reason;
     disposeFirestoreSubscriptions();
@@ -1459,6 +1464,34 @@ class FarmoraState extends ChangeNotifier {
         userId: userId, suspended: suspended);
   }
 
+  /// Admin: Create staff or member account with specific role (e.g. driver, supplier, warehouse, inspector, expert).
+  Future<void> adminCreateUser({
+    required String name,
+    required String phone,
+    required String role,
+    String? district,
+    String? email,
+  }) async {
+    final docRef = FirebaseFirestore.instance.collection('users').doc();
+    final cleanPhone = phone.trim();
+    await docRef.set({
+      'id': docRef.id,
+      'authUid': docRef.id,
+      'name': name.trim(),
+      'displayName': name.trim(),
+      'phone': cleanPhone,
+      'email': email != null && email.trim().isNotEmpty ? email.trim() : null,
+      'role': role.toLowerCase().trim(),
+      'district': district ?? 'Colombo',
+      'isVerified': true,
+      'isSuspended': false,
+      'isDeleted': false,
+      'createdByAdmin': true,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> releaseEscrow(String orderId) async {
     await _firestoreService.releaseEscrow(orderId: orderId);
   }
@@ -1543,23 +1576,64 @@ class FarmoraState extends ChangeNotifier {
   /// Initialize Firestore streams after user signs in.
   /// Loads data from Firestore in real-time while keeping mock data as fallback.
   Future<void> initFromFirestore(String uid) async {
+    if (_profileLoading) return;
+    _profileLoading = true;
     _currentUserId = uid;
     _profileLoaded = false;
     disposeFirestoreSubscriptions();
 
     // Load user profile and set role
     try {
-      final profile = await _loadUserProfile(uid).timeout(
+      var profile = await _loadUserProfile(uid).timeout(
         const Duration(seconds: 5),
         onTimeout: () => null,
       );
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final isAdminAccount = 
+          currentUser?.phoneNumber == '+94725068682' ||
+          currentUser?.email == '0725068682@phone.farmora.app' || currentUser?.email == '0094725068682@phone.farmora.app';
+
+      if (profile == null && isAdminAccount) {
+        // Self-heal missing admin document in Firestore
+        final adminData = {
+          'id': uid,
+          'name': 'System Administrator',
+          'displayName': 'System Administrator',
+          'phone': '+94725068682',
+          'authUid': uid,
+          'email': currentUser?.email ?? '0725068682@phone.farmora.app',
+          'role': 'admin',
+          'district': 'Colombo',
+          'authProvider': 'password',
+          'isVerified': true,
+          'isSuspended': false,
+          'isDeleted': false,
+        };
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .set(adminData, SetOptions(merge: true));
+        profile = adminData;
+      }
+
       if (profile == null) {
         await FirebaseAuth.instance.signOut();
         _currentUserId = '';
         signedIn = false;
         isVerified = false;
+        _profileLoading = false;
         notifyListeners();
         return;
+      }
+
+      if (isAdminAccount && profile['role'] != 'admin') {
+        profile['role'] = 'admin';
+        profile['isVerified'] = true;
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({'role': 'admin', 'isVerified': true});
       }
 
       final roleStr = profile['role'] as String?;
@@ -1570,6 +1644,7 @@ class FarmoraState extends ChangeNotifier {
         _currentUserId = '';
         signedIn = false;
         isVerified = false;
+        _profileLoading = false;
         notifyListeners();
         return;
       }
@@ -1580,6 +1655,7 @@ class FarmoraState extends ChangeNotifier {
         _currentUserId = '';
         signedIn = false;
         isVerified = false;
+        _profileLoading = false;
         authBlockedReason = deleted
             ? 'This account has been deleted.'
             : 'This account has been suspended. Contact Farmora support.';
@@ -1591,6 +1667,7 @@ class FarmoraState extends ChangeNotifier {
       await _syncLanguageWithProfile(profile);
       _applyProfileFields(profile);
       _profileLoaded = true;
+      _profileLoading = false;
       notifyListeners();
       _registerDeviceToken();
       _loadPlatformSettings();
@@ -1604,6 +1681,7 @@ class FarmoraState extends ChangeNotifier {
       _currentUserId = '';
       signedIn = false;
       isVerified = false;
+      _profileLoading = false;
       notifyListeners();
       return;
     }

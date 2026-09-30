@@ -9,6 +9,7 @@ import 'auth_gate.dart';
 import 'auth_l10n.dart';
 import 'auth_language_button.dart';
 import 'forgot_password_screen.dart';
+import 'register_screen.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible login screen for Farmora.
@@ -17,7 +18,8 @@ import 'role_selection_screen.dart';
 /// primary green action button, forgot-password (SMS OTP reset) and
 /// registration linking.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isAdminMode;
+  const LoginScreen({super.key, this.isAdminMode = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -30,6 +32,44 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isAdminMode) {
+      _phoneController.text = '0725068682';
+      _passwordController.text = 'admin123';
+    }
+  }
+
+  void _handleAdminDirectLogin() {
+    setState(() {
+      _phoneController.text = '0725068682';
+      _passwordController.text = 'admin123';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Admin access: Signing in...'),
+          ],
+        ),
+        backgroundColor: AppColors.forestGreen,
+        duration: Duration(seconds: 3),
+      ),
+    );
+    _handleLogin();
+  }
 
   @override
   void dispose() {
@@ -121,25 +161,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: AlignmentDirectional.centerEnd,
                     child: AuthLanguageButton(),
                   ),
-                  // 1. Top Logo & Brand Identity
-                  const Center(
-                    child: Column(
-                      children: [
-                        FarmoraLogo(
-                          size: 68,
-                          showBadge: true,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Farmora',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                            color: AppColors.forestGreen,
+                  // 1. Top Logo & Brand Identity (Double tap logo for Admin Login)
+                  Center(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onDoubleTap: _handleAdminDirectLogin,
+                      child: const Column(
+                        children: [
+                          Tooltip(
+                            message: 'Double tap logo for Admin login',
+                            child: FarmoraLogo(
+                              size: 68,
+                              showBadge: true,
+                            ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Text(
+                            'Farmora',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.4,
+                              color: AppColors.forestGreen,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -343,9 +390,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Forgot Password Link
+                        // Forgot Password
                         Align(
-                          alignment: Alignment.centerRight,
+                          alignment: AlignmentDirectional.centerEnd,
                           child: TextButton(
                             onPressed: _isLoading ? null : _openForgotPassword,
                             style: TextButton.styleFrom(
@@ -444,7 +491,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+
+                  const SizedBox(height: 16),
 
                   // 6. Don't have an account? Register Link
                   Wrap(

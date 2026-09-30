@@ -108,31 +108,35 @@ class AdminOverviewScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
-            child: OutlinedButton.icon(
-              onPressed: () => confirmAndSignOut(context),
-              icon: const Icon(
-                Icons.logout_rounded,
-                size: 16,
-                color: AppColors.error,
-              ),
-              label: Text(
-                l.signOut,
-                style: const TextStyle(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+              child: SizedBox(
+                width: 104,
+                child: OutlinedButton.icon(
+                  onPressed: () => confirmAndSignOut(context),
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    size: 16,
+                    color: AppColors.error,
                 ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: AppColors.error.withValues(alpha: 0.4),
-                  width: 0.9,
+                  label: Text(
+                    l.signOut,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: AppColors.error.withValues(alpha: 0.4),
+                      width: 0.9,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    visualDensity: VisualDensity.compact,
                 ),
-                visualDensity: VisualDensity.compact,
               ),
             ),
           ),

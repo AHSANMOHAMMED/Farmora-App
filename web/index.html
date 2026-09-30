@@ -57,6 +57,7 @@
   </script>
 
   <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Farmora">
@@ -139,8 +140,11 @@
     }
 
     /* Hide spinner once Flutter loads */
-    .flutter-loaded .loading-container {
-      display: none;
+    .flutter-loaded .loading-container,
+    .loading-hidden {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
     }
   </style>
 </head>
@@ -170,10 +174,29 @@
 
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    // Hide spinner once Flutter engine signals ready
-    window.addEventListener('flutter-first-frame', function() {
+    function hideLoading() {
       document.body.classList.add('flutter-loaded');
+      var container = document.querySelector('.loading-container');
+      if (container) {
+        container.classList.add('loading-hidden');
+        container.style.display = 'none';
+      }
+    }
+
+    // Hide spinner once Flutter engine signals ready
+    window.addEventListener('flutter-first-frame', hideLoading);
+
+    // Watch for Flutter elements being added to DOM
+    var observer = new MutationObserver(function() {
+      if (document.querySelector('flutter-view, flt-glass-pane, [flt-renderer], canvas')) {
+        hideLoading();
+        observer.disconnect();
+      }
     });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Fallback: hide after 2.5s maximum so it NEVER gets stuck
+    setTimeout(hideLoading, 2500);
   </script>
 </body>
 </html>

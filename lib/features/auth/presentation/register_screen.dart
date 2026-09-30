@@ -37,6 +37,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  late Role _selectedRole;
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -60,6 +61,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _photoContentType;
 
   static const List<String> _districts = sriLankaDistricts;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRole = widget.selectedRole;
+  }
+
+  @override
+  void didUpdateWidget(covariant RegisterScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedRole != widget.selectedRole) {
+      _selectedRole = widget.selectedRole;
+    }
+  }
 
   @override
   void dispose() {
@@ -102,7 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         name: _nameController.text,
         phone: _phoneController.text,
         password: _passwordController.text,
-        role: widget.selectedRole,
+        role: _selectedRole,
         district: _selectedDistrict,
         phoneOtpCode: phoneOtpCode,
       ),
@@ -209,7 +224,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       () => state.registerWithGoogle(
         name: _nameController.text,
         phone: phone,
-        role: widget.selectedRole,
+        role: _selectedRole,
         district: _selectedDistrict,
       ),
     );
@@ -296,7 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
           child: Form(
             key: _formKey,
             child: Column(
@@ -304,15 +319,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 // 1. Top Selected Role Banner
                 _buildRoleBanner(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
 
                 // 2. Optional Profile Photo Upload
                 _buildPhotoUploader(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
                 // 3. Card Container for Form Inputs
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(16),
@@ -351,7 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // Field 2: Phone Number
                       _buildFieldLabel(context.l10n.phoneNumber),
@@ -374,7 +389,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // Field 3: District / Location
                       _buildFieldLabel(context.l10n.districtLocation),
@@ -425,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // Field 4: Password
                       _buildFieldLabel(context.l10n.password),
@@ -465,7 +480,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // Field 5: Confirm Password
                       _buildFieldLabel(context.l10n.confirmPassword),
@@ -509,7 +524,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
 
                 if (!kIsWeb)
                   SwitchListTile(
@@ -615,7 +630,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
 
                 // 5. Already have an account? Log In Link
                 Wrap(
@@ -668,80 +683,163 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Selected Role Context Banner at the top
+  /// Interactive 3-role selector directly on the registration form
   Widget _buildRoleBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.25),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              widget.selectedRole.icon,
-              color: Colors.white,
-              size: 20,
+    final roles = [
+      (Role.farmer, Icons.agriculture_rounded, 'Farmer', 'Sell produce'),
+      (Role.buyer, Icons.shopping_basket_rounded, 'Buyer', 'Buy produce'),
+      (Role.transporter, Icons.local_shipping_rounded, 'Transporter', 'Deliver goods'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.25),
+              width: 1.2,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.joiningAs(widget.selectedRole.label),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: AppColors.forestGreen,
-                    fontWeight: FontWeight.w900,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  widget.selectedRole.description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Icon(
+                  _selectedRole.icon,
+                  color: Colors.white,
+                  size: 20,
                 ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const RoleSelectionScreen(),
-                ),
-              );
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              foregroundColor: AppColors.primary,
-            ),
-            child: Text(
-              context.l10n.changeRole,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.joiningAs(_selectedRole.label),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.forestGreen,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      _selectedRole.description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.l10n.changeRole),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Select Account Role',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.forestGreen,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: roles.map((item) {
+            final role = item.$1;
+            final icon = item.$2;
+            final label = item.$3;
+            final desc = item.$4;
+            final isSelected = _selectedRole == role;
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedRole = role),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primaryContainer
+                        : AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        size: 26,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        desc,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 6),
+        const Center(
+          child: Text(
+            'Driver, Supplier, Warehouse, Inspector & Expert accounts are created via Admin.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textMuted,
+              fontStyle: FontStyle.italic,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -756,8 +854,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Stack(
               children: [
                 Container(
-                  width: 88,
-                  height: 88,
+                  width: 68,
+                  height: 68,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color:
@@ -779,7 +877,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _hasPhoto
                           ? Icons.person_rounded
                           : Icons.person_outline_rounded,
-                      size: 48,
+                      size: 36,
                       color: AppColors.primary,
                     ),
                   ),
