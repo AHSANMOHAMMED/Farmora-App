@@ -7940,4 +7940,107 @@ class AppLocalizationsSi extends AppLocalizations {
   String aiListingFilled(String grade) {
     return 'ඡායාරූපයෙන් AI යෝජනාව: ශ්‍රේණිය $grade ලෙස පෙනේ. ප්‍රකාශයට පෙර පරීක්ෂා කර සංස්කරණය කරන්න.';
   }
+
+  @override
+  String get transporterChooseTitle => 'ප්‍රවාහන සේවාදායකයෙකු තෝරන්න';
+
+  @override
+  String get transporterNoVerifiedAvailable =>
+      'දැනට සත්‍යාපිත ප්‍රවාහන සේවාදායකයින් නොමැත. පසුව නැවත උත්සාහ කරන්න.';
+
+  @override
+  String get transporterVerifiedBadge => 'සත්‍යාපිත ප්‍රවාහන සේවාදායකයා';
+
+  @override
+  String get transporterPickerCancel => 'අවලංගු කරන්න';
+
+  @override
+  String get transporterPickerRetry => 'නැවත උත්සාහ කරන්න';
+
+  @override
+  String get jobDeclineRequestTitle => 'මෙම ඉල්ලීම ප්‍රතික්ෂේප කරන්නද?';
+
+  @override
+  String get jobDeclineRequestMessage =>
+      'වෙනත් ප්‍රවාහන සේවාදායකයෙකුට බාරදුර ලබා දිය හැකි වන පරිදි ගොවියා දැනුවත් කරනු ලැබේ.';
+
+  @override
+  String get jobDeclineRequestAction => 'ප්‍රතික්ෂේප කරන්න';
+
+  @override
+  String get jobDeclinedSuccess => 'ඉල්ලීම ප්‍රතික්ෂේප කරන ලදී.';
+
+  @override
+  String get transporterAvailableToWithdraw => 'ඉල්ලා අස්කර ගැනීමට ඇති';
+
+  @override
+  String get transporterRequestWithdrawal => 'ඉල්ලා අස්කර ගැනීම ඉල්ලන්න';
+
+  @override
+  String get transporterWithdrawals => 'ඉල්ලා අස්කර ගැනීම්';
+
+  @override
+  String get transporterNoWithdrawalsYet => 'තවම ඉල්ලා අස්කර ගැනීම් නොමැත.';
+
+  @override
+  String get adminLogisticsCancelJobTitle =>
+      'මෙම ප්‍රවාහන රැකියාව අවලංගු කරන්නද?';
+
+  @override
+  String get adminLogisticsCancelJobMessage =>
+      'ප්‍රවාහන සේවාදායකයා දැනුවත් කර රැකියාව ඔවුන්ගේ පෝලිමෙන් ඉවත් කරනු ලැබේ.';
+
+  @override
+  String get adminLogisticsCancelJobAction => 'රැකියාව අවලංගු කරන්න';
+
+  @override
+  String get adminLogisticsJobCancelled => 'ප්‍රවාහන රැකියාව අවලංගු කරන ලදී.';
+
+  @override
+  String get adminLogisticsReassignTitle =>
+      'වෙනත් ප්‍රවාහන සේවාදායකයෙකුට නැවත පවරන්නද?';
+
+  @override
+  String get adminLogisticsReassignMessage =>
+      'මෙය දැනට ඇති ප්‍රවාහන සේවාදායකයාගේ පැවරුම ඉවත් කර රැකියාව විවෘත පොලට ආපසු යවයි.';
+
+  @override
+  String get adminLogisticsReassignAction => 'නැවත පවරන්න';
+
+  @override
+  String get adminLogisticsJobReassigned => 'රැකියාව විවෘත පොලට ආපසු යවන ලදී.';
+
+  @override
+  String get adminLogisticsActions => 'පරිපාලක ක්‍රියාමාර්ග';
+
+  @override
+  String get adminLogisticsForceDeliver => 'බාරදුරු ලෙස සලකුණු කරන්න';
+
+  @override
+  String get adminLogisticsForceDeliverTitle =>
+      'බාරදුරු ලෙස බලහත්කාරයෙන් සලකුණු කරන්නද?';
+
+  @override
+  String get adminLogisticsForceDeliverMessage =>
+      'බාරදුර තහවුරු වුවද ප්‍රවාහන සේවාදායකයා තත්‍ය කාලය යාවත්කාලීන නොකළේ නම් පමණක් භාවිත කරන්න.';
+
+  @override
+  String get adminLogisticsJobDelivered =>
+      'රැකියාව බාරදුරු ලෙස සලකුණු කරන ලදී.';
+
+  @override
+  String transporterEtaMinutes(int minutes) {
+    return 'මිනිත්තු $minutes ක් දුරින්';
+  }
+
+  @override
+  String transporterEtaHours(int hours, int minutes) {
+    return 'පැය $hours මිනිත්තු $minutes ක් දුරින්';
+  }
+
+  @override
+  String get transporterEtaCalculating => 'ETA ගණනය කරමින්…';
+
+  @override
+  String get transporterEtaLive => 'සජීවී ETA';
 }

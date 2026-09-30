@@ -69,6 +69,8 @@ class FirestoreCollectionJobRepository implements CollectionJobRepository {
     final available = <String, CollectionJob>{};
     final assigned = <String, CollectionJob>{};
     void emit() {
+      // Never fall back to demo data: an empty result is a real, empty
+      // job board, and mock jobs must not leak into production UIs.
       final merged = {...available, ...assigned}.values.toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (merged.isEmpty && kDemoData) {

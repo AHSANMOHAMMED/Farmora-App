@@ -764,8 +764,7 @@ class FarmoraState extends ChangeNotifier {
   void _subscribeProducts(String uid) {
     _productsSub?.cancel();
     final productsStream = role == Role.farmer
-        ? _firestoreService.productsByFarmerStream(uid,
-            limit: _productsLimit)
+        ? _firestoreService.productsByFarmerStream(uid, limit: _productsLimit)
         // Buyers/transporters see the Active catalogue; admins see all.
         : _firestoreService.productsStream(
             activeOnly: role != Role.admin, limit: _productsLimit);
@@ -795,9 +794,12 @@ class FarmoraState extends ChangeNotifier {
     notifyListeners();
     final ordersStream = switch (role) {
       Role.admin => _firestoreService.ordersStream(limit: _ordersLimit),
-      Role.farmer => _firestoreService.ordersByFarmerStream(uid, limit: _ordersLimit),
-      Role.buyer => _firestoreService.ordersByBuyerStream(uid, limit: _ordersLimit),
-      Role.transporter => _firestoreService.ordersByTransporterStream(uid, limit: _ordersLimit),
+      Role.farmer =>
+        _firestoreService.ordersByFarmerStream(uid, limit: _ordersLimit),
+      Role.buyer =>
+        _firestoreService.ordersByBuyerStream(uid, limit: _ordersLimit),
+      Role.transporter =>
+        _firestoreService.ordersByTransporterStream(uid, limit: _ordersLimit),
       // Suppliers trade inputs (input_orders), not produce orders.
       Role.finance => _firestoreService.ordersStream(limit: _ordersLimit),
       _ => const Stream<List<FarmoraOrder>>.empty(),
@@ -1714,18 +1716,31 @@ class FarmoraState extends ChangeNotifier {
     };
     _jobsSub = jobsStream.listen(
       (firestoreJobs) {
-        _jobs
-          ..clear()
-          ..addAll(firestoreJobs.isEmpty && kDemoData
-              ? DemoCatalogData.sampleJobs
-              : firestoreJobs);
+        // For transporters: the open-pool (available) jobs are managed by
+        // TransporterController via its dual-query Firestore stream.
+        // FarmoraState only holds assigned jobs for the transporter.
+        // Never fall back to demo data for a signed-in transporter — an
+        // empty list simply means no assigned jobs yet.
+        if (firestoreJobs.isNotEmpty) {
+          _jobs
+            ..clear()
+            ..addAll(firestoreJobs);
+        } else if (role == Role.transporter) {
+          // Clear any lingering demo jobs so history/earnings show accurate empties.
+          _jobs.removeWhere((j) => j.id.startsWith('job_demo'));
+        } else {
+          _jobs
+            ..clear()
+            ..addAll(kDemoData ? DemoCatalogData.sampleJobs : const []);
+        }
         notifyListeners();
       },
       onError: (e) {
-        if (kDemoData && _jobs.isEmpty) {
+        if (kDemoData && role != Role.transporter && _jobs.isEmpty) {
           _jobs.addAll(DemoCatalogData.sampleJobs);
         }
         debugPrint('Firestore jobs stream error: $e');
+        notifyListeners();
       },
     );
 

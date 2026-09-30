@@ -14015,6 +14015,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI suggestion from the photo: looks grade {grade}. Check and edit before publishing.'**
   String aiListingFilled(String grade);
+
+  /// No description provided for @transporterChooseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a transporter'**
+  String get transporterChooseTitle;
+
+  /// No description provided for @transporterNoVerifiedAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No verified transporters are available right now. Try again later.'**
+  String get transporterNoVerifiedAvailable;
+
+  /// No description provided for @transporterVerifiedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified transporter'**
+  String get transporterVerifiedBadge;
+
+  /// No description provided for @transporterPickerCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get transporterPickerCancel;
+
+  /// No description provided for @transporterPickerRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get transporterPickerRetry;
+
+  /// No description provided for @jobDeclineRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this request?'**
+  String get jobDeclineRequestTitle;
+
+  /// No description provided for @jobDeclineRequestMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The farmer will be notified so the delivery can be offered to another transporter.'**
+  String get jobDeclineRequestMessage;
+
+  /// No description provided for @jobDeclineRequestAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get jobDeclineRequestAction;
+
+  /// No description provided for @jobDeclinedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined.'**
+  String get jobDeclinedSuccess;
+
+  /// No description provided for @transporterAvailableToWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Available to withdraw'**
+  String get transporterAvailableToWithdraw;
+
+  /// No description provided for @transporterRequestWithdrawal.
+  ///
+  /// In en, this message translates to:
+  /// **'Request withdrawal'**
+  String get transporterRequestWithdrawal;
+
+  /// No description provided for @transporterWithdrawals.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawals'**
+  String get transporterWithdrawals;
+
+  /// No description provided for @transporterNoWithdrawalsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No withdrawal requests yet.'**
+  String get transporterNoWithdrawalsYet;
+
+  /// No description provided for @adminLogisticsCancelJobTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this transport job?'**
+  String get adminLogisticsCancelJobTitle;
+
+  /// No description provided for @adminLogisticsCancelJobMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The transporter will be notified and the job will be removed from their queue.'**
+  String get adminLogisticsCancelJobMessage;
+
+  /// No description provided for @adminLogisticsCancelJobAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Job'**
+  String get adminLogisticsCancelJobAction;
+
+  /// No description provided for @adminLogisticsJobCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport job cancelled.'**
+  String get adminLogisticsJobCancelled;
+
+  /// No description provided for @adminLogisticsReassignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign to another transporter?'**
+  String get adminLogisticsReassignTitle;
+
+  /// No description provided for @adminLogisticsReassignMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will unassign the current transporter and return the job to the open pool.'**
+  String get adminLogisticsReassignMessage;
+
+  /// No description provided for @adminLogisticsReassignAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign'**
+  String get adminLogisticsReassignAction;
+
+  /// No description provided for @adminLogisticsJobReassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Job returned to open pool.'**
+  String get adminLogisticsJobReassigned;
+
+  /// No description provided for @adminLogisticsActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Actions'**
+  String get adminLogisticsActions;
+
+  /// No description provided for @adminLogisticsForceDeliver.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Delivered'**
+  String get adminLogisticsForceDeliver;
+
+  /// No description provided for @adminLogisticsForceDeliverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Force-mark as delivered?'**
+  String get adminLogisticsForceDeliverTitle;
+
+  /// No description provided for @adminLogisticsForceDeliverMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Use only if the delivery is confirmed but the transporter did not update the status.'**
+  String get adminLogisticsForceDeliverMessage;
+
+  /// No description provided for @adminLogisticsJobDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Job marked as delivered.'**
+  String get adminLogisticsJobDelivered;
+
+  /// No description provided for @transporterEtaMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min away'**
+  String transporterEtaMinutes(int minutes);
+
+  /// No description provided for @transporterEtaHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m away'**
+  String transporterEtaHours(int hours, int minutes);
+
+  /// No description provided for @transporterEtaCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating ETA…'**
+  String get transporterEtaCalculating;
+
+  /// No description provided for @transporterEtaLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live ETA'**
+  String get transporterEtaLive;
 }
 
 class _AppLocalizationsDelegate

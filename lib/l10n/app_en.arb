@@ -4095,5 +4095,56 @@
   "aiListingButton": "Fill from photo with AI",
   "aiListingNeedsPhoto": "Add a product photo first.",
   "aiListingFilled": "AI suggestion from the photo: looks grade {grade}. Check and edit before publishing.",
-  "@aiListingFilled": {"placeholders": {"grade": {"type": "String"}}}
+  "@aiListingFilled": {"placeholders": {"grade": {"type": "String"}}},
+  "transporterChooseTitle": "Choose a transporter",
+  "transporterNoVerifiedAvailable": "No verified transporters are available right now. Try again later.",
+  "transporterVerifiedBadge": "Verified transporter",
+  "transporterPickerCancel": "Cancel",
+  "transporterPickerRetry": "Retry",
+
+  "jobDeclineRequestTitle": "Decline this request?",
+  "jobDeclineRequestMessage": "The farmer will be notified so the delivery can be offered to another transporter.",
+  "jobDeclineRequestAction": "Decline",
+  "jobDeclinedSuccess": "Request declined.",
+
+  "transporterAvailableToWithdraw": "Available to withdraw",
+  "transporterRequestWithdrawal": "Request withdrawal",
+  "transporterWithdrawals": "Withdrawals",
+  "transporterNoWithdrawalsYet": "No withdrawal requests yet.",
+
+  "adminLogisticsCancelJobTitle": "Cancel this transport job?",
+  "adminLogisticsCancelJobMessage": "The transporter will be notified and the job will be removed from their queue.",
+  "adminLogisticsCancelJobAction": "Cancel Job",
+  "adminLogisticsJobCancelled": "Transport job cancelled.",
+  "adminLogisticsReassignTitle": "Reassign to another transporter?",
+  "adminLogisticsReassignMessage": "This will unassign the current transporter and return the job to the open pool.",
+  "adminLogisticsReassignAction": "Reassign",
+  "adminLogisticsJobReassigned": "Job returned to open pool.",
+  "adminLogisticsActions": "Admin Actions",
+  "adminLogisticsForceDeliver": "Mark as Delivered",
+  "adminLogisticsForceDeliverTitle": "Force-mark as delivered?",
+  "adminLogisticsForceDeliverMessage": "Use only if the delivery is confirmed but the transporter did not update the status.",
+  "adminLogisticsJobDelivered": "Job marked as delivered.",
+
+  "transporterEtaMinutes": "{minutes} min away",
+  "@transporterEtaMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterEtaHours": "{hours}h {minutes}m away",
+  "@transporterEtaHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "transporterEtaCalculating": "Calculating ETA…",
+  "transporterEtaLive": "Live ETA"
 }

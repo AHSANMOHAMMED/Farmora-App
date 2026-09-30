@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../providers/farmora_state.dart';
+import '../../../providers/farmora_state.dart';
 import '../../../models/transport_job.dart';
 import '../../../services/delivery_location_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/utils/app_errors.dart';
 
 class LogisticsManagementScreen extends StatefulWidget {
   const LogisticsManagementScreen({super.key});
@@ -16,6 +17,7 @@ class LogisticsManagementScreen extends StatefulWidget {
 
 class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
   String _selectedStatus = 'all';
+  bool _actionBusy = false;
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
@@ -35,6 +37,132 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
     }
   }
 
+  // ── Admin action helpers ─────────────────────────────────────────────────
+
+  /// Admin cancels an active transport job.
+  Future<void> _adminCancelJob(
+      BuildContext context, FarmoraState state, TransportJob job) async {
+    final l = context.l10n;
+    final confirmed = await _confirm(
+      context,
+      title: l.adminLogisticsCancelJobTitle,
+      message: l.adminLogisticsCancelJobMessage,
+      confirmLabel: l.adminLogisticsCancelJobAction,
+      destructive: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    setState(() => _actionBusy = true);
+    try {
+      await state.updateJobStatus(job.id, 'cancelled');
+      if (context.mounted) _snack(context, l.adminLogisticsJobCancelled);
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, userMessage(error, action: 'cancel the job'),
+            error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  /// Admin reassigns job back to the open pool (removes transporterId).
+  Future<void> _adminReassignJob(
+      BuildContext context, FarmoraState state, TransportJob job) async {
+    final l = context.l10n;
+    final confirmed = await _confirm(
+      context,
+      title: l.adminLogisticsReassignTitle,
+      message: l.adminLogisticsReassignMessage,
+      confirmLabel: l.adminLogisticsReassignAction,
+      destructive: false,
+    );
+    if (!confirmed || !context.mounted) return;
+    setState(() => _actionBusy = true);
+    try {
+      // Transition back to 'requested' and clear the transporter assignment.
+      await state.updateJobStatus(job.id, 'requested');
+      if (context.mounted) _snack(context, l.adminLogisticsJobReassigned);
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, userMessage(error, action: 'reassign the job'),
+            error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  /// Admin force-marks an active job as delivered.
+  Future<void> _adminForceDeliver(
+      BuildContext context, FarmoraState state, TransportJob job) async {
+    final l = context.l10n;
+    final confirmed = await _confirm(
+      context,
+      title: l.adminLogisticsForceDeliverTitle,
+      message: l.adminLogisticsForceDeliverMessage,
+      confirmLabel: l.adminLogisticsForceDeliver,
+      destructive: false,
+    );
+    if (!confirmed || !context.mounted) return;
+    setState(() => _actionBusy = true);
+    try {
+      await state.updateJobStatus(job.id, 'delivered');
+      if (context.mounted) _snack(context, l.adminLogisticsJobDelivered);
+    } catch (error) {
+      if (context.mounted) {
+        _snack(context, userMessage(error, action: 'mark the job delivered'),
+            error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<bool> _confirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool destructive = false,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: destructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  )
+                : null,
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  static void _snack(BuildContext context, String message,
+      {bool error = false}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
+      ));
+  }
+
+  // ── Detail bottom sheet ──────────────────────────────────────────────────
+
   void _showJobDetail(BuildContext context, TransportJob job) {
     showModalBottomSheet(
       context: context,
@@ -42,227 +170,45 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        final l = ctx.l10n;
-        final color = _statusColor(job.status);
-        final load = job.weightKg != null
-            ? l.adminLogisticsWeightKg('${job.weightKg}')
-            : (job.detail.isNotEmpty
-                ? job.detail
-                : l.adminLogisticsStandardCrates);
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            20,
-            24,
-            MediaQuery.of(ctx).viewInsets.bottom + 28,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      statusLabel(job.status, l).toUpperCase(),
-                      style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      job.id,
-                      textAlign: TextAlign.end,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: 'monospace',
-                          color: Colors.grey.shade600,
-                          fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                job.route.isNotEmpty ? job.route : l.adminLogisticsDefaultRoute,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              if (job.orderId != null && job.orderId!.isNotEmpty) ...[
-                Text(l.adminLogisticsLinkedOrder(job.orderId!),
-                    style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                const SizedBox(height: 4),
-              ],
-              Text(
-                  l.adminLogisticsCargoLoad(load),
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-              // Live courier GPS panel for active hauls.
-              if (job.hasCourierLocation) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: DeliveryLocationService.isLocationFresh(
-                            job.locationUpdatedAt)
-                        ? const Color(0xFFE8F5E9)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: DeliveryLocationService.isLocationFresh(
-                              job.locationUpdatedAt)
-                          ? const Color(0xFF2E7D32)
-                          : Colors.grey.shade300,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        DeliveryLocationService.isLocationFresh(
-                                job.locationUpdatedAt)
-                            ? Icons.my_location_rounded
-                            : Icons.location_searching_rounded,
-                        size: 18,
-                        color: DeliveryLocationService.isLocationFresh(
-                                job.locationUpdatedAt)
-                            ? const Color(0xFF2E7D32)
-                            : Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          DeliveryLocationService.isLocationFresh(
-                                  job.locationUpdatedAt)
-                              ? l.adminLogisticsGpsLive(
-                                  job.courierLat!.toStringAsFixed(4),
-                                  job.courierLng!.toStringAsFixed(4))
-                              : l.adminLogisticsGpsLast(
-                                  job.courierLat!.toStringAsFixed(4),
-                                  job.courierLng!.toStringAsFixed(4)),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(l.adminLogisticsFee,
-                        style: const TextStyle(fontSize: 14)),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    job.fee.isNotEmpty ? job.fee : l.adminLogisticsNotSet,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF2E7D32)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(l.adminLogisticsMilestones,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
-              _buildMilestoneRow(l.adminLogisticsMilestoneRequested, true),
-              _buildMilestoneRow(
-                l.adminLogisticsMilestonePickup,
-                const {'pickedUp', 'inTransit', 'delivered'}
-                    .contains(job.status),
-              ),
-              _buildMilestoneRow(
-                  l.adminLogisticsMilestoneDelivered, job.isDelivered),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(l.commonClose),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMilestoneRow(String title, bool isCompleted) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            isCompleted
-                ? Icons.check_circle_rounded
-                : Icons.radio_button_unchecked_rounded,
-            size: 18,
-            color: isCompleted ? const Color(0xFF2E7D32) : Colors.grey,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              color: isCompleted ? AppColors.textPrimary : Colors.grey,
-              fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-          ),
-        ],
+      builder: (ctx) => _AdminJobDetailSheet(
+        job: job,
+        actionBusy: _actionBusy,
+        statusColor: _statusColor(job.status),
+        onCancel: (job.isCancelled || job.isDelivered)
+            ? null
+            : () {
+                Navigator.pop(ctx);
+                _adminCancelJob(context, context.read<FarmoraState>(), job);
+              },
+        onReassign: (job.isCancelled ||
+                job.isDelivered ||
+                job.status == 'requested' ||
+                job.transporterId == null ||
+                job.transporterId!.isEmpty)
+            ? null
+            : () {
+                Navigator.pop(ctx);
+                _adminReassignJob(context, context.read<FarmoraState>(), job);
+              },
+        onForceDeliver: (job.isDelivered ||
+                job.isCancelled ||
+                job.status == 'requested')
+            ? null
+            : () {
+                Navigator.pop(ctx);
+                _adminForceDeliver(context, context.read<FarmoraState>(), job);
+              },
       ),
     );
   }
+
+  // ── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final state = context.watch<FarmoraState>();
 
-    // Compute fleet metrics
     final totalJobs = state.jobs.length;
     final activeShipments = state.jobs
         .where((j) =>
@@ -326,14 +272,15 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Filter Tabs
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('all', l.adminLogisticsAllJobs(totalJobs)),
+                      _buildFilterChip(
+                          'all', l.adminLogisticsAllJobs(totalJobs)),
                       const SizedBox(width: 6),
-                      _buildFilterChip('active', l.adminLogisticsActiveInTransit),
+                      _buildFilterChip(
+                          'active', l.adminLogisticsActiveInTransit),
                       const SizedBox(width: 6),
                       _buildFilterChip('requested', l.statusRequested),
                       const SizedBox(width: 6),
@@ -376,7 +323,6 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                     itemBuilder: (ctx, i) {
                       final job = filtered[i];
                       final color = _statusColor(job.status);
-
                       return Card(
                         elevation: 0.5,
                         shape: RoundedRectangleBorder(
@@ -395,24 +341,25 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
                                   children: [
                                     Flexible(
                                       child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        statusLabel(job.status, l)
-                                            .toUpperCase(),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: color,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          statusLabel(job.status, l)
+                                              .toUpperCase(),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: color,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ),
-                                    ),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -516,6 +463,281 @@ class _LogisticsManagementScreenState extends State<LogisticsManagementScreen> {
     );
   }
 }
+
+// ── Detail sheet widget ────────────────────────────────────────────────────
+
+class _AdminJobDetailSheet extends StatelessWidget {
+  const _AdminJobDetailSheet({
+    required this.job,
+    required this.actionBusy,
+    required this.statusColor,
+    this.onCancel,
+    this.onReassign,
+    this.onForceDeliver,
+  });
+
+  final TransportJob job;
+  final bool actionBusy;
+  final Color statusColor;
+  final VoidCallback? onCancel;
+  final VoidCallback? onReassign;
+  final VoidCallback? onForceDeliver;
+
+  Widget _milestoneRow(String title, bool isCompleted) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isCompleted
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            size: 18,
+            color: isCompleted ? const Color(0xFF2E7D32) : Colors.grey,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                color: isCompleted ? AppColors.textPrimary : Colors.grey,
+                fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final load = job.weightKg != null
+        ? l.adminLogisticsWeightKg('${job.weightKg}')
+        : (job.detail.isNotEmpty ? job.detail : l.adminLogisticsStandardCrates);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        20,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusLabel(job.status, l).toUpperCase(),
+                  style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  job.id,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: Colors.grey.shade600,
+                      fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            job.route.isNotEmpty ? job.route : l.adminLogisticsDefaultRoute,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          if (job.orderId != null && job.orderId!.isNotEmpty) ...[
+            Text(l.adminLogisticsLinkedOrder(job.orderId!),
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+            const SizedBox(height: 4),
+          ],
+          Text(l.adminLogisticsCargoLoad(load),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+
+          // Live GPS panel for active hauls
+          if (job.hasCourierLocation) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: DeliveryLocationService.isLocationFresh(
+                        job.locationUpdatedAt)
+                    ? const Color(0xFFE8F5E9)
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: DeliveryLocationService.isLocationFresh(
+                          job.locationUpdatedAt)
+                      ? const Color(0xFF2E7D32)
+                      : Colors.grey.shade300,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    DeliveryLocationService.isLocationFresh(
+                            job.locationUpdatedAt)
+                        ? Icons.my_location_rounded
+                        : Icons.location_searching_rounded,
+                    size: 18,
+                    color: DeliveryLocationService.isLocationFresh(
+                            job.locationUpdatedAt)
+                        ? const Color(0xFF2E7D32)
+                        : Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      DeliveryLocationService.isLocationFresh(
+                              job.locationUpdatedAt)
+                          ? l.adminLogisticsGpsLive(
+                              job.courierLat!.toStringAsFixed(4),
+                              job.courierLng!.toStringAsFixed(4))
+                          : l.adminLogisticsGpsLast(
+                              job.courierLat!.toStringAsFixed(4),
+                              job.courierLng!.toStringAsFixed(4)),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(l.adminLogisticsFee,
+                    style: const TextStyle(fontSize: 14)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                job.fee.isNotEmpty ? job.fee : l.adminLogisticsNotSet,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF2E7D32)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(l.adminLogisticsMilestones,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          _milestoneRow(l.adminLogisticsMilestoneRequested, true),
+          _milestoneRow(
+            l.adminLogisticsMilestonePickup,
+            const {'pickedUp', 'inTransit', 'delivered'}.contains(job.status),
+          ),
+          _milestoneRow(l.adminLogisticsMilestoneDelivered, job.isDelivered),
+
+          // ── Admin Actions ────────────────────────────────────────────────
+          if (onCancel != null ||
+              onReassign != null ||
+              onForceDeliver != null) ...[
+            const Divider(height: 24),
+            Text(l.adminLogisticsActions,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (onReassign != null)
+                  OutlinedButton.icon(
+                    onPressed: actionBusy ? null : onReassign,
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                    label: Text(l.adminLogisticsReassignAction),
+                  ),
+                if (onForceDeliver != null)
+                  OutlinedButton.icon(
+                    onPressed: actionBusy ? null : onForceDeliver,
+                    icon: const Icon(Icons.task_alt_rounded, size: 18),
+                    label: Text(l.adminLogisticsForceDeliver),
+                  ),
+                if (onCancel != null)
+                  OutlinedButton.icon(
+                    onPressed: actionBusy ? null : onCancel,
+                    icon: const Icon(Icons.cancel_outlined, size: 18),
+                    label: Text(l.adminLogisticsCancelJobAction),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      side: BorderSide(
+                          color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Text(l.commonClose),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── KPI card widget ────────────────────────────────────────────────────────
 
 class _FleetKpiCard extends StatelessWidget {
   final String title;

@@ -132,6 +132,25 @@ class TransportJob {
     'cancelled': <String>[],
   };
 
+  /// Canonical `transport_jobs.status` key for any stored spelling — the
+  /// single vocabulary shared with the `transitionTransport` Cloud Function.
+  /// One of: requested, accepted, pickedUp, inTransit, delivered,
+  /// cancelled, declined.
+  static String normalizeStatus(String raw) {
+    final normalized =
+        raw.trim().toUpperCase().replaceAll(RegExp(r'[\s_-]'), '');
+    return switch (normalized) {
+      '' || 'OPEN' || 'REQUESTED' || 'PENDING' => 'requested',
+      'ACCEPTED' => 'accepted',
+      'COLLECTED' || 'PICKEDUP' => 'pickedUp',
+      'INTRANSIT' => 'inTransit',
+      'COMPLETED' || 'DELIVERED' => 'delivered',
+      'CANCELLED' || 'CANCELED' => 'cancelled',
+      'DECLINED' || 'DECLINE' => 'declined',
+      _ => raw.trim(),
+    };
+  }
+
   List<String> get nextStatuses => validTransitions[status] ?? const [];
   bool get canTransition => nextStatuses.isNotEmpty;
   bool get isActive =>
@@ -270,9 +289,11 @@ class TransportJob {
       return null;
     }
 
-    final status = (data['status'] ??
-            (data['accepted'] == true ? 'accepted' : 'requested'))
-        .toString();
+    final status = TransportJob.normalizeStatus(
+      (data['status'] ??
+              (data['accepted'] == true ? 'accepted' : 'requested'))
+          .toString(),
+    );
     final feeMinor = firebaseInt(data['deliveryFeeMinor']) ??
         firebaseInt(data['offeredFeeMinor']);
     final rawFee = data['fee'];

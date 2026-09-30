@@ -371,7 +371,7 @@ class _CollectionJobDetailsScreenState
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
-                child: const Text('Decline request'),
+                child: Text(context.l10n.jobDeclineRequestAction),
               ),
             ],
             if (job.logisticsProviderId == state.providerId &&
@@ -472,12 +472,12 @@ class _CollectionJobDetailsScreenState
     TransporterController state,
     CollectionJob job,
   ) async {
+    final l10n = context.l10n;
     final confirmed = await confirmTransporterAction(
       context,
-      title: 'Decline this request?',
-      message: 'The farmer will be notified so the delivery can be offered '
-          'to another transporter.',
-      confirmLabel: 'Decline',
+      title: l10n.jobDeclineRequestTitle,
+      message: l10n.jobDeclineRequestMessage,
+      confirmLabel: l10n.jobDeclineRequestAction,
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
@@ -737,7 +737,7 @@ class _CollectionJobDetailsScreenState
       opened = false;
     }
     if (!opened && mounted) {
-      _showError(context, 'Could not open this link on your device.');
+      _showError(context, context.l10n.errorGeneric);
     }
   }
 
@@ -934,8 +934,8 @@ class _ContactRow extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (hasPhone)
                     Text(phone,
-                        style: const TextStyle(
-                            color: AppColors.onSurfaceVariant)),
+                        style:
+                            const TextStyle(color: AppColors.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -951,8 +951,7 @@ class _ContactRow extends StatelessWidget {
               if (onChat != null)
                 OutlinedButton.icon(
                   onPressed: onChat,
-                  icon: const Icon(Icons.chat_bubble_outline_rounded,
-                      size: 18),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
                   label: Text(
                     '${context.l10n.chat} · $role',
                     maxLines: 1,

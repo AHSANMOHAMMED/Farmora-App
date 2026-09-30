@@ -435,7 +435,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       media = signedIn
           ? await _uploadPendingImages()
           : [for (final slot in _images) if (slot.url != null) slot.url!];
-    } catch (e, st) {
+    } catch (e) {
       debugPrint('Photo upload error, using local/preset urls: $e');
       media = [for (final slot in _images) if (slot.url != null) slot.url!];
     }
