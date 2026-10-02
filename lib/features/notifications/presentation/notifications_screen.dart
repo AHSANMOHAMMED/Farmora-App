@@ -8,6 +8,7 @@ import '../../../core/utils/app_errors.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../../../models/conversation_model.dart';
 import '../../../models/notification_model.dart';
+import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
 import '../../../core/navigation/app_navigator.dart';
@@ -25,6 +26,7 @@ class _NotifItem {
   String get conversationId => notif.conversationId ?? '';
   String get senderId => notif.senderId ?? '';
   String get orderId => notif.orderId ?? notif.referenceId ?? '';
+  String get jobId => notif.jobId ?? '';
 
   static _NotifItem fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) =>
       _NotifItem(FarmoraNotification.fromMap(doc.id, doc.data()));
@@ -141,14 +143,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         try {
           await state.markNotificationRead(notif.id);
         } catch (e, st) {
-          _snack(userMessage(e, action: 'mark the notification read',
-              stack: st));
+          _snack(
+              userMessage(e, action: 'mark the notification read', stack: st));
         }
       }
       if (!mounted) return;
       final type = notif.type.toLowerCase();
       if (type == 'message' || item.conversationId.isNotEmpty) {
         await _openChat(item);
+        return;
+      }
+      if (item.jobId.isNotEmpty &&
+          const {'logistics', 'transport'}.contains(type) &&
+          state.role == Role.transporter) {
+        await AppNavigator.openCollectionJobDetail(context, item.jobId);
         return;
       }
       final orderId = item.orderId;
@@ -161,7 +169,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
         return;
       }
-      openOrderDetail(context, order);
+      if (const {'logistics', 'transport'}.contains(type)) {
+        await AppNavigator.openLogisticsTracking(context, order);
+      } else {
+        openOrderDetail(context, order);
+      }
     } finally {
       _opening.remove(notif.id);
     }
@@ -307,8 +319,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ).whenComplete(() {
       // Closed without saving: show the saved preferences again.
       if (!saved && mounted) {
-        setState(() =>
-            _loadPrefs(context.read<FarmoraState>().notificationPrefs));
+        setState(
+            () => _loadPrefs(context.read<FarmoraState>().notificationPrefs));
       }
     });
   }
@@ -394,9 +406,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   )
                 : Builder(
                     builder: (context) {
-                      final items = _filterNotifications(state.notifications
-                          .map(_NotifItem.new)
-                          .toList());
+                      final items = _filterNotifications(
+                          state.notifications.map(_NotifItem.new).toList());
                       return AsyncStateView(
                         isLoading: false,
                         isEmpty: items.isEmpty,
@@ -494,8 +505,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: AppColors.error,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.delete_outline_rounded,
-                color: Colors.white),
+            child:
+                const Icon(Icons.delete_outline_rounded, color: Colors.white),
           ),
           child: _buildNotificationCard(item, state),
         );
