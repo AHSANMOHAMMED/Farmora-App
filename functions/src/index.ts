@@ -72,6 +72,42 @@ const requireVerifiedRole = async (
   return user;
 };
 
+const requireTransportParticipant = async (
+  uid: string,
+  job: Record<string, unknown>
+): Promise<void> => {
+  const user = await requireVerifiedRole(uid, ["transporter", "driver"]);
+  if (user.role === "transporter") {
+    const isTargetedRequest = job.requestedTransporterId === uid;
+    if (job.transporterId !== uid && !isTargetedRequest) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only the assigned transporter can manage this delivery."
+      );
+    }
+    return;
+  }
+
+  if (job.driverId !== uid || typeof job.transporterId !== "string") {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Only the assigned driver can manage this delivery."
+    );
+  }
+  const fleetLink = await db.collection("fleet_links")
+    .where("transporterId", "==", job.transporterId)
+    .where("driverId", "==", uid)
+    .where("status", "==", "active")
+    .limit(1)
+    .get();
+  if (fleetLink.empty) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "The driver is not an active member of this transporter fleet."
+    );
+  }
+};
+
 const isWithinQuietHours = (
   prefs: Record<string, unknown> | undefined
 ): boolean => {
@@ -1829,7 +1865,6 @@ export const markPaymentReceived = functions.https.onCall(async (data, context) 
 export const transitionTransport = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   await assertNotMaintenance(context);
-  await requireVerifiedRole(uid, ["transporter"]);
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const nextStatus = typeof data.status === "string" ? data.status : "";
   const reason = typeof data.reason === "string" ? data.reason.trim().slice(0, 500) : "";
@@ -1842,6 +1877,7 @@ export const transitionTransport = functions.https.onCall(async (data, context) 
   const snapshot = await ref.get();
   const job = snapshot.data();
   if (!job) throw new functions.https.HttpsError("not-found", "Transport job not found.");
+  await requireTransportParticipant(uid, job);
   const normalizeStatus = (value: unknown): string => {
     switch (String(value ?? "").trim().toUpperCase().replace(/[\s-]/g, "_")) {
       case "OPEN":
@@ -2085,7 +2121,6 @@ export const listAvailableTransporters = functions.https.onCall(async (data, con
 /** Live courier coordinates while a job is active. Cleared after delivered. */
 export const updateTransportLocation = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
-  await requireRole(uid, ["transporter"]);
   const jobId = typeof data.jobId === "string" ? data.jobId : "";
   const lat = Number(data.lat);
   const lng = Number(data.lng);
@@ -2098,9 +2133,10 @@ export const updateTransportLocation = functions.https.onCall(async (data, conte
   const ref = db.collection("transport_jobs").doc(jobId);
   const snap = await ref.get();
   const job = snap.data();
-  if (!job || job.transporterId !== uid) {
-    throw new functions.https.HttpsError("permission-denied", "Not your job.");
+  if (!job) {
+    throw new functions.https.HttpsError("not-found", "Transport job not found.");
   }
+  await requireTransportParticipant(uid, job);
   if (!["accepted", "pickedUp", "inTransit"].includes(String(job.status))) {
     throw new functions.https.HttpsError(
       "failed-precondition",
