@@ -9,7 +9,6 @@ import 'auth_gate.dart';
 import 'auth_l10n.dart';
 import 'auth_language_button.dart';
 import 'forgot_password_screen.dart';
-import 'register_screen.dart';
 import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible login screen for Farmora.

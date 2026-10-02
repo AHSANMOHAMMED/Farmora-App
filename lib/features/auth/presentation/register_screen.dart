@@ -14,7 +14,6 @@ import 'auth_gate.dart';
 import 'auth_l10n.dart';
 import 'login_screen.dart';
 import 'phone_otp_dialog.dart';
-import 'role_selection_screen.dart';
 
 /// Clean, modern, and accessible registration form screen for Farmora.
 ///
