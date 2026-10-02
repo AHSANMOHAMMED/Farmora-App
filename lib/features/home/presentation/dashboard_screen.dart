@@ -18,27 +18,21 @@ import '../../farmer/presentation/farmer_orders_screen.dart';
 import '../../farmer/presentation/farmer_products_screen.dart';
 import '../../farmer/presentation/farmer_offers_screen.dart';
 import '../../farmer/presentation/earnings_screen.dart';
-import '../../farmer/presentation/farmer_jobs_screen.dart';
 import '../../farmer/presentation/farm_workspace_screen.dart';
 import '../../market/presentation/market_price_board_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../buyer/presentation/buyer_products_screen.dart';
 import '../../buyer/presentation/buyer_orders_screen.dart';
-import '../../buyer/presentation/buyer_offers_screen.dart';
-import '../../buyer/presentation/cart_screen.dart';
 import '../../buyer/presentation/buyer_market_screen.dart';
-import '../../transporter/presentation/active_delivery_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
-import '../../transporter/presentation/transporter_earnings_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
 import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
 import '../../community/presentation/community_screens.dart';
 import '../../farmer/presentation/crop_doctor_screen.dart';
-import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 import '../../carbon/presentation/carbon_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -1063,354 +1057,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // 6. QUICK ACTIONS
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildQuickActions(BuildContext context, Role role) {
-    final l10n = context.l10n;
-    final actions = <Map<String, dynamic>>[];
-
-    if (role == Role.farmer) {
-      actions.addAll([
-        {
-          'icon': Icons.add_circle_outline_rounded,
-          'label': l10n.dashboardAddProduce,
-          'color': const Color(0xFF2E7D32),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddProductScreen()),
-              ),
-        },
-        {
-          'icon': Icons.agriculture_outlined,
-          'label': 'My Farm',
-          'color': const Color(0xFF33691E),
-          'bg': const Color(0xFFF1F8E9),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen())),
-        },
-        {
-          'icon': Icons.storefront_outlined,
-          'label': l10n.inpTitle,
-          'color': const Color(0xFF4E342E),
-          'bg': const Color(0xFFEFEBE9),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const InputCatalogScreen())),
-        },
-        {
-          'icon': Icons.store_mall_directory_outlined,
-          'label': l10n.shopMyStore,
-          'color': const Color(0xFF00695C),
-          'bg': const Color(0xFFE0F2F1),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const MyFarmStoreScreen())),
-        },
-        {
-          'icon': Icons.eco_outlined,
-          'label': l10n.co2Title,
-          'color': const Color(0xFF2E7D32),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CarbonScreen()),
-              ),
-        },
-        {
-          'icon': Icons.biotech_outlined,
-          'label': l10n.cdTitle,
-          'color': const Color(0xFFAD1457),
-          'bg': const Color(0xFFFCE4EC),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const CropDoctorScreen())),
-        },
-        {
-          'icon': Icons.support_agent_outlined,
-          'label': l10n.conAskExpert,
-          'color': const Color(0xFF283593),
-          'bg': const Color(0xFFE8EAF6),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const AskExpertScreen())),
-        },
-        {
-          'icon': Icons.forum_outlined,
-          'label': l10n.comTitle,
-          'color': const Color(0xFF6D4C41),
-          'bg': const Color(0xFFEFEBE9),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const CommunityFeedScreen())),
-        },
-        {
-          'icon': Icons.receipt_long_outlined,
-          'label': l10n.dashboardManageOrders,
-          'color': const Color(0xFFE65100),
-          'bg': const Color(0xFFFFF3E0),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
-              ),
-        },
-        {
-          'icon': Icons.local_offer_outlined,
-          'label': l10n.dashboardPriceOffers,
-          'color': const Color(0xFF6A1B9A),
-          'bg': const Color(0xFFF3E5F5),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FarmerOffersScreen()),
-              ),
-        },
-        {
-          'icon': Icons.payments_outlined,
-          'label': l10n.dashboardViewEarnings,
-          'color': const Color(0xFF006E1C),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EarningsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.person_outline_rounded,
-          'label': l10n.dashboardFarmProfile,
-          'color': const Color(0xFF1565C0),
-          'bg': const Color(0xFFE3F2FD),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ),
-        },
-        {
-          'icon': Icons.trending_up_rounded,
-          'label': l10n.dashboardMarketRates,
-          'color': const Color(0xFFC2185B),
-          'bg': const Color(0xFFFCE4EC),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const MarketPriceBoardScreen()),
-              ),
-        },
-        {
-          'icon': Icons.local_shipping_outlined,
-          'label': l10n.deliveries,
-          'color': const Color(0xFF00796B),
-          'bg': const Color(0xFFE0F2F1),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FarmerJobsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.near_me_rounded,
-          'label': l10n.dashboardNearbyTransport,
-          'color': const Color(0xFF1565C0),
-          'bg': const Color(0xFFE3F2FD),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const NearbyTransportersScreen()),
-              ),
-        },
-      ]);
-    } else if (role == Role.buyer) {
-      actions.addAll([
-        {
-          'icon': Icons.favorite_border_rounded,
-          'label': l10n.shopWishlist,
-          'color': const Color(0xFFC62828),
-          'bg': const Color(0xFFFFEBEE),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WishlistScreen()),
-              ),
-        },
-        {
-          'icon': Icons.autorenew_rounded,
-          'label': l10n.shopMySubscriptions,
-          'color': const Color(0xFF00695C),
-          'bg': const Color(0xFFE0F2F1),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MySubscriptionsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.forum_outlined,
-          'label': l10n.comTitle,
-          'color': const Color(0xFF6D4C41),
-          'bg': const Color(0xFFEFEBE9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
-              ),
-        },
-        {
-          'icon': Icons.eco_outlined,
-          'label': l10n.co2Title,
-          'color': const Color(0xFF2E7D32),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CarbonScreen()),
-              ),
-        },
-        {
-          'icon': Icons.warehouse_outlined,
-          'label': l10n.whStockForBuyers,
-          'color': const Color(0xFF0277BD),
-          'bg': const Color(0xFFE1F5FE),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WarehouseStockScreen()),
-              ),
-        },
-        {
-          'icon': Icons.storefront_outlined,
-          'label': l10n.dashboardProduce,
-          'color': const Color(0xFF2E7D32),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.shopping_basket_outlined,
-          'label': l10n.dashboardMyOrders,
-          'color': const Color(0xFFE65100),
-          'bg': const Color(0xFFFFF3E0),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()),
-              ),
-        },
-        {
-          'icon': Icons.local_offer_outlined,
-          'label': l10n.myOffers,
-          'color': const Color(0xFF6A1B9A),
-          'bg': const Color(0xFFF3E5F5),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const BuyerOffersScreen()),
-              ),
-        },
-        {
-          'icon': Icons.shopping_cart_outlined,
-          'label': l10n.dashboardMyCart,
-          'color': const Color(0xFF006D44),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen()),
-              ),
-        },
-        {
-          'icon': Icons.campaign_outlined,
-          'label': 'Request & Rates',
-          'color': const Color(0xFF00838F),
-          'bg': const Color(0xFFE0F7FA),
-          'onTap': () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerMarketScreen())),
-        },
-        {
-          'icon': Icons.near_me_rounded,
-          'label': l10n.dashboardNearbyTransport,
-          'color': const Color(0xFF1565C0),
-          'bg': const Color(0xFFE3F2FD),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const NearbyTransportersScreen()),
-              ),
-        },
-      ]);
-    } else if (role == Role.transporter) {
-      actions.addAll([
-        {
-          'icon': Icons.local_shipping_outlined,
-          'label': l10n.availableJobs,
-          'color': const Color(0xFF2E7D32),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.history_rounded,
-          'label': l10n.deliveries,
-          'color': const Color(0xFF1565C0),
-          'bg': const Color(0xFFE3F2FD),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const DeliveryHistoryScreen()),
-              ),
-        },
-        {
-          'icon': Icons.payments_outlined,
-          'label': l10n.earnings,
-          'color': const Color(0xFF006E1C),
-          'bg': const Color(0xFFE8F5E9),
-          'onTap': () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const TransporterEarningsScreen()),
-              ),
-        },
-        {
-          'icon': Icons.my_location_rounded,
-          'label': l10n.dashboardLiveTracking,
-          'color': const Color(0xFF00796B),
-          'bg': const Color(0xFFE0F2F1),
-          'onTap': () {
-            final jobs = context
-                .read<FarmoraState>()
-                .jobs
-                .where((j) => j.isActive)
-                .toList();
-            if (jobs.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(l10n.dashboardNoActiveDelivery),
-              ));
-              return;
-            }
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => ActiveDeliveryScreen(job: jobs.first)),
-            );
-          },
-        },
-      ]);
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: actions.map((action) {
-          return Container(
-            width: 96,
-            margin: const EdgeInsets.only(right: 10),
-            child: GestureDetector(
-              onTap: action['onTap'] as VoidCallback,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                decoration: _cardDecoration(),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: action['bg'] as Color,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        action['icon'] as IconData,
-                        color: action['color'] as Color,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      action['label'] as String,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.onSurface,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   void _openQuickActionsDrawer(BuildContext context, FarmoraState state) {
     final role = state.role;
     showModalBottomSheet(
@@ -1605,6 +1251,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.local_shipping_outlined, color: Color(0xFF0277BD)),
+                          title: const Text('Live Delivery Tracking', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Track ongoing shipments & driver route'),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            final activeOrders = state.orders.where((o) =>
+                                o.status == 'in_transit' ||
+                                o.status == 'accepted' ||
+                                o.status == 'confirmed' ||
+                                o.status == 'pending').toList();
+                            if (activeOrders.isNotEmpty) {
+                              AppNavigator.openLogisticsTracking(context, activeOrders.first);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('No active in-transit deliveries. Opening My Orders.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()));
+                            }
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.near_me_rounded, color: Color(0xFF2E7D32)),
+                          title: const Text('Nearby Transporters', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Find verified logistics & transport providers'),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NearbyTransportersScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.campaign_outlined, color: Color(0xFFE65100)),
+                          title: const Text('Market & Produce Requests', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Request bulk produce & transport quotes'),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerMarketScreen()));
                           },
                         ),
                       ] else if (role == Role.transporter) ...[
@@ -2288,6 +1976,215 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 14),
         _buildQuickActions(context, Role.transporter),
       ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context, Role role) {
+    final l10n = context.l10n;
+    final state = context.read<FarmoraState>();
+    final actions = <Map<String, dynamic>>[];
+
+    if (role == Role.farmer) {
+      actions.addAll([
+        {
+          'icon': Icons.add_circle_outline_rounded,
+          'label': l10n.dashboardAddProduce,
+          'color': const Color(0xFF2E7D32),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddProductScreen()),
+              ),
+        },
+        {
+          'icon': Icons.receipt_long_outlined,
+          'label': l10n.dashboardManageOrders,
+          'color': const Color(0xFFE65100),
+          'bg': const Color(0xFFFFF3E0),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FarmerOrdersScreen()),
+              ),
+        },
+        {
+          'icon': Icons.local_offer_outlined,
+          'label': l10n.dashboardPriceOffers,
+          'color': const Color(0xFF6A1B9A),
+          'bg': const Color(0xFFF3E5F5),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FarmerOffersScreen()),
+              ),
+        },
+        {
+          'icon': Icons.payments_outlined,
+          'label': l10n.dashboardViewEarnings,
+          'color': const Color(0xFF006E1C),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EarningsScreen()),
+              ),
+        },
+        {
+          'icon': Icons.agriculture_outlined,
+          'label': 'Farm Workspace',
+          'color': const Color(0xFF33691E),
+          'bg': const Color(0xFFF1F8E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FarmWorkspaceScreen()),
+              ),
+        },
+        {
+          'icon': Icons.near_me_rounded,
+          'label': l10n.dashboardNearbyTransport,
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const NearbyTransportersScreen()),
+              ),
+        },
+      ]);
+    } else if (role == Role.buyer) {
+      actions.addAll([
+        {
+          'icon': Icons.storefront_outlined,
+          'label': l10n.dashboardProduce,
+          'color': const Color(0xFF2E7D32),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BuyerProductsScreen()),
+              ),
+        },
+        {
+          'icon': Icons.shopping_basket_outlined,
+          'label': l10n.dashboardMyOrders,
+          'color': const Color(0xFFE65100),
+          'bg': const Color(0xFFFFF3E0),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()),
+              ),
+        },
+        {
+          'icon': Icons.local_shipping_outlined,
+          'label': l10n.dashboardLiveTracking,
+          'color': const Color(0xFF0277BD),
+          'bg': const Color(0xFFE1F5FE),
+          'onTap': () {
+            final activeOrders = state.orders.where((o) =>
+                o.status == 'in_transit' ||
+                o.status == 'accepted' ||
+                o.status == 'confirmed' ||
+                o.status == 'pending').toList();
+            if (activeOrders.isNotEmpty) {
+              AppNavigator.openLogisticsTracking(context, activeOrders.first);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No active in-transit deliveries. Opening My Orders.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BuyerOrdersScreen()));
+            }
+          },
+        },
+        {
+          'icon': Icons.near_me_rounded,
+          'label': l10n.dashboardNearbyTransport,
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const NearbyTransportersScreen()),
+              ),
+        },
+        {
+          'icon': Icons.campaign_outlined,
+          'label': l10n.request,
+          'color': const Color(0xFFE65100),
+          'bg': const Color(0xFFFFF3E0),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BuyerMarketScreen()),
+              ),
+        },
+      ]);
+    } else if (role == Role.transporter) {
+      actions.addAll([
+        {
+          'icon': Icons.local_shipping_outlined,
+          'label': l10n.availableJobs,
+          'color': const Color(0xFF2E7D32),
+          'bg': const Color(0xFFE8F5E9),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AvailableJobsScreen()),
+              ),
+        },
+        {
+          'icon': Icons.history_rounded,
+          'label': l10n.deliveries,
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DeliveryHistoryScreen()),
+              ),
+        },
+        {
+          'icon': Icons.near_me_rounded,
+          'label': l10n.dashboardNearbyTransport,
+          'color': const Color(0xFF1565C0),
+          'bg': const Color(0xFFE3F2FD),
+          'onTap': () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const NearbyTransportersScreen()),
+              ),
+        },
+      ]);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: actions.map((action) {
+          return Container(
+            width: 96,
+            margin: const EdgeInsets.only(right: 10),
+            child: GestureDetector(
+              onTap: action['onTap'] as VoidCallback,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                decoration: _cardDecoration(),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: action['bg'] as Color,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        action['icon'] as IconData,
+                        color: action['color'] as Color,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      action['label'] as String,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 

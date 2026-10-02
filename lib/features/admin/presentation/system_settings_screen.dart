@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../profile/presentation/change_password_dialog.dart';
 import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -371,6 +372,14 @@ class _SystemSettingsScreenState extends State<SystemSettingsScreen> {
             subtitle: Text(l.adminSettingsAuditSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => AppNavigator.push(context, const AuditLogScreen()),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+            title: const Text('Change Password'),
+            subtitle: const Text('Update admin account password'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showChangePasswordDialog(context),
           ),
         ],
       ),

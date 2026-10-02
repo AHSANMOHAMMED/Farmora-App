@@ -301,8 +301,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
+                            final raw = (value ?? '').trim();
+                            if (raw.isEmpty) {
                               return context.l10n.phoneRequiredError;
+                            }
+                            if (raw.contains('@')) {
+                              final emailRegex = RegExp(
+                                  r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                              if (!emailRegex.hasMatch(raw)) {
+                                return 'Please enter a valid email address';
+                              }
+                            } else {
+                              final clean =
+                                  raw.replaceAll(RegExp(r'[\s\-()]'), '');
+                              final phoneRegex = RegExp(r'^\+?[0-9]{9,15}$');
+                              if (!phoneRegex.hasMatch(clean)) {
+                                return 'Please enter a valid phone number (e.g. 07XXXXXXXX)';
+                              }
                             }
                             return null;
                           },
@@ -383,6 +398,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return context.l10n.authPasswordRequired;
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
                             }
                             return null;
                           },

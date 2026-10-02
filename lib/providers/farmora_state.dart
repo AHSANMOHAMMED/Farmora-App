@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart'
     show FirebaseFunctionsException;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -1471,20 +1472,43 @@ class FarmoraState extends ChangeNotifier {
     required String name,
     required String phone,
     required String role,
+    required String password,
     String? district,
     String? email,
   }) async {
-    final docRef = FirebaseFirestore.instance.collection('users').doc();
     final cleanPhone = phone.trim();
+    final emailToUse = (email != null && email.trim().isNotEmpty) 
+        ? email.trim() 
+        : _authService.loginEmailCandidates(cleanPhone).first;
+
+    final secondaryApp = await Firebase.initializeApp(
+      name: 'SecondaryApp_${DateTime.now().millisecondsSinceEpoch}',
+      options: Firebase.app().options,
+    );
+    final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+    UserCredential credential;
+    try {
+      credential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: emailToUse,
+        password: password,
+      );
+    } finally {
+      await secondaryApp.delete();
+    }
+
+    final uid = credential.user!.uid;
+    final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
     await docRef.set({
-      'id': docRef.id,
-      'authUid': docRef.id,
+      'id': uid,
+      'authUid': uid,
+      'uid': uid,
       'name': name.trim(),
       'displayName': name.trim(),
       'phone': cleanPhone,
       'email': email != null && email.trim().isNotEmpty ? email.trim() : null,
       'role': role.toLowerCase().trim(),
       'district': district ?? 'Colombo',
+      'authProvider': 'password',
       'isVerified': true,
       'isSuspended': false,
       'isDeleted': false,

@@ -16,21 +16,21 @@ async function signedToken(claims, kid = 'k1') {
 }
 
 const now = Math.floor(Date.now() / 1000);
-const good = { aud: 'farmora-1da5a', iss: 'https://securetoken.google.com/farmora-1da5a', sub: 'u1', iat: now - 10, exp: now + 3600 };
+const good = { aud: 'farmingapp-24b34', iss: 'https://securetoken.google.com/farmingapp-24b34', sub: 'u1', iat: now - 10, exp: now + 3600 };
 
 test('verifyIdToken accepts a valid Firebase token and rejects bad ones', async () => {
   const { token, jwk } = await signedToken(good);
   globalThis.fetch = async () => new Response(JSON.stringify({ keys: [jwk] }), { headers: { 'cache-control': 'max-age=60' } });
-  assert.equal(await verifyIdToken(token, 'farmora-1da5a'), 'u1');
+  assert.equal(await verifyIdToken(token, 'farmingapp-24b34'), 'u1');
   await assert.rejects(verifyIdToken(token, 'other-project'));
   const tampered = token.replace(/\.[^.]+\./, `.${enc({ ...good, sub: 'attacker' })}.`);
-  await assert.rejects(verifyIdToken(tampered, 'farmora-1da5a'));
+  await assert.rejects(verifyIdToken(tampered, 'farmingapp-24b34'));
 });
 
 test('verifyIdToken rejects expired tokens', async () => {
   const { token, jwk } = await signedToken({ ...good, exp: now - 5 }, 'k2');
   globalThis.fetch = async () => new Response(JSON.stringify({ keys: [jwk] }));
-  await assert.rejects(verifyIdToken(token, 'farmora-1da5a', now + 1e6));
+  await assert.rejects(verifyIdToken(token, 'farmingapp-24b34', now + 1e6));
 });
 
 test('Firestore values decode', () => {

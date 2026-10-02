@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-FIREBASE_PROJECT_ID = "farmora-1da5a"
+FIREBASE_PROJECT_ID = "farmingapp-24b34"
 
 # Secrets (never commit them):
 #   npx wrangler secret put SA_CLIENT_EMAIL

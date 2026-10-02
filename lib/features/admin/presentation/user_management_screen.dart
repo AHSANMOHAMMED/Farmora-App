@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/navigation/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/farmora_state.dart';
@@ -27,6 +28,289 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _selectedRole = 'all'; // all, farmer, buyer, transporter, admin
   String _selectedStatus = 'all'; // all, verified, suspended
+
+
+  bool _isSeeding = false;
+
+  Future<void> _seedTestUsers(BuildContext context) async {
+    if (_isSeeding) return;
+    setState(() => _isSeeding = true);
+    final state = context.read<FarmoraState>();
+    final db = FirebaseFirestore.instance;
+    
+    final roles = [
+      {'role': 'farmer', 'name': 'Test Farmer', 'phone': '0710000001'},
+      {'role': 'buyer', 'name': 'Test Buyer', 'phone': '0710000002'},
+      {'role': 'transporter', 'name': 'Test Transporter', 'phone': '0710000003'},
+      {'role': 'supplier', 'name': 'Test Supplier', 'phone': '0710000004'},
+      {'role': 'expert', 'name': 'Test Expert', 'phone': '0710000005'},
+    ];
+    
+    Map<String, String> uids = {};
+    
+    // 1. Seed Users (Smart check: only create if they don't exist)
+    for (final r in roles) {
+        final snap = await db.collection('users').where('phone', isEqualTo: r['phone']).limit(1).get();
+        if (snap.docs.isNotEmpty) {
+            uids[r['role']!] = snap.docs.first.id;
+        } else {
+            try {
+                await state.adminCreateUser(
+                  name: r['name']!,
+                  phone: r['phone']!,
+                  role: r['role']!,
+                  password: 'password123',
+                  district: 'Colombo',
+                );
+                final newSnap = await db.collection('users').where('phone', isEqualTo: r['phone']).limit(1).get();
+                if (newSnap.docs.isNotEmpty) uids[r['role']!] = newSnap.docs.first.id;
+            } catch (e) {
+                debugPrint('Failed to seed user ${r['role']}: $e');
+            }
+        }
+    }
+    
+    final farmerId = uids['farmer'];
+    final buyerId = uids['buyer'];
+    final transId = uids['transporter'];
+    
+    final now = FieldValue.serverTimestamp();
+    
+    if (farmerId != null) {
+      final cropNames = ['Tomatoes', 'Carrots', 'Potatoes', 'Onions', 'Cabbage', 'Chili', 'Beans', 'Pumpkin', 'Brinjal', 'Beetroot'];
+      final batch = db.batch();
+      
+      // 2. Seed Crop Plans & 3. Tasks
+      final List<String> cropIds = [];
+      for (int i = 0; i < 15; i++) {
+        final cropName = cropNames[i % cropNames.length];
+        final cropRef = db.collection('crop_plans').doc();
+        cropIds.add(cropRef.id);
+        batch.set(cropRef, {
+          'farmerId': farmerId,
+          'cropName': 'Organic $cropName',
+          'area': (i + 1) * 1.5,
+          'areaUnit': 'Acres',
+          'plantedAt': now,
+          'expectedHarvestAt': now,
+          'notes': 'Test crop plan $i',
+          'createdAt': now,
+          'updatedAt': now,
+        });
+        
+        final taskRef = db.collection('farm_tasks').doc();
+        batch.set(taskRef, {
+          'farmerId': farmerId,
+          'cropId': cropRef.id,
+          'cropName': 'Organic $cropName',
+          'title': 'Farm Task $i for $cropName',
+          'description': 'Description for task $i',
+          'dueAt': now,
+          'priority': i % 2 == 0 ? 'High' : 'Normal',
+          'status': i % 3 == 0 ? 'completed' : 'pending',
+          'createdAt': now,
+          'updatedAt': now,
+        });
+      }
+
+      // 4. Seed Products (Harvest)
+      final List<String> productIds = [];
+      for (int i = 0; i < 15; i++) {
+        final cropName = cropNames[i % cropNames.length];
+        final prodRef = db.collection('products').doc();
+        productIds.add(prodRef.id);
+        batch.set(prodRef, {
+          'farmerId': farmerId,
+          'name': 'Fresh $cropName',
+          'category': 'Vegetables',
+          'location': 'Colombo, Sri Lanka',
+          'quantityAvailable': 100 + (i * 50),
+          'unit': 'kg',
+          'priceMinor': 45000 + (i * 5000),
+          'emoji': '🌱',
+          'color': 0xFFFFEbee,
+          'status': 'Active',
+          'isOrganic': true,
+          'trustLevel': 'Verified',
+          'description': 'Freshly picked organic $cropName.',
+          'harvestStatus': 'harvested',
+          'images': [],
+          'media': [],
+          'currency': 'LKR',
+          'createdAt': now,
+          'updatedAt': now,
+        });
+      }
+      
+      // 5. Seed Notifications
+      for (int i = 0; i < 15; i++) {
+        final notifRef = db.collection('notifications').doc();
+        batch.set(notifRef, {
+          'userId': farmerId,
+          'title': 'Notification $i',
+          'body': 'This is a test notification number $i for your account.',
+          'type': 'general',
+          'read': i % 4 == 0,
+          'createdAt': now,
+        });
+      }
+      
+      // 6. Seed Orders if buyer exists
+      if (buyerId != null) {
+        for (int i = 0; i < 15; i++) {
+          final prodId = productIds[i % productIds.length];
+          final cropName = cropNames[i % cropNames.length];
+          final orderRef = db.collection('orders').doc();
+          batch.set(orderRef, {
+            'buyerId': buyerId,
+            'farmerId': farmerId,
+            'productId': prodId,
+            'product': {
+               'name': 'Fresh $cropName',
+               'category': 'Vegetables',
+               'unit': 'kg',
+               'priceMinor': 45000 + (i * 1000),
+               'isOrganic': true,
+            },
+            'buyerName': 'Test Buyer',
+            'farmerName': 'Test Farmer',
+            'quantity': 25 + i,
+            'unitPriceMinor': 45000 + (i * 1000),
+            'deliveryFeeMinor': 50000,
+            'grossAmount': ((25 + i) * (45000 + (i * 1000))) + 50000,
+            'status': i % 3 == 0 ? 'completed' : 'pending',
+            'paymentMethod': 'cod',
+            'deliveryAddress': '123 Test Road, Colombo',
+            'createdAt': now,
+            'updatedAt': now,
+          });
+
+          // 7. Seed Transport Jobs
+          if (transId != null) {
+            final job = db.collection('transport_jobs').doc();
+            batch.set(job, {
+              'orderId': orderRef.id,
+              'buyerId': buyerId,
+              'farmerId': farmerId,
+              'productName': 'Fresh $cropName',
+              'quantity': 25 + i,
+              'unit': 'kg',
+              'pickupAddress': 'Farmer Location, Colombo',
+              'deliveryAddress': '123 Test Road, Colombo',
+              'feeMinor': 40000 + (i * 2000),
+              'distanceKm': 15.5 + i,
+              'status': i % 4 == 0 ? 'accepted' : 'requested',
+              'transporterId': i % 4 == 0 ? transId : null,
+              'createdAt': now,
+              'updatedAt': now,
+            });
+          }
+        }
+      }
+      
+
+      // 8. Seed Admin Data (Market Prices, Settlements, Audit Logs, Reports, Disputes, Verifications)
+      final List<String> cropTypes = ['Tomatoes', 'Carrots', 'Potatoes', 'Onions', 'Cabbage', 'Chili'];
+      for (int i = 0; i < 10; i++) {
+        final crop = cropTypes[i % cropTypes.length];
+        
+        // Market Prices
+        final marketRef = db.collection('market_prices').doc();
+        batch.set(marketRef, {
+          'commodityId': 'comm_$i',
+          'commodityName': crop,
+          'category': 'Vegetables',
+          'unit': 'kg',
+          'averagePriceMinor': 45000 + (i * 2000),
+          'lowestPriceMinor': 40000 + (i * 2000),
+          'highestPriceMinor': 50000 + (i * 2000),
+          'trend': i % 2 == 0 ? 'up' : 'down',
+          'marketCenter': 'Colombo',
+          'updatedAt': now,
+        });
+
+        // Settlements
+        final settlementRef = db.collection('settlements').doc();
+        batch.set(settlementRef, {
+          'orderId': 'order_$i',
+          'orderNumber': 'ORD-${1000 + i}',
+          'recipientId': farmerId,
+          'recipientName': 'Test Farmer',
+          'recipientRole': 'farmer',
+          'grossAmount': 10000.0,
+          'platformFee': 500.0,
+          'netAmount': 9500.0,
+          'bankName': 'BOC',
+          'accountNumber': '12345678',
+          'payoutMethod': 'CEFT',
+          'status': i % 3 == 0 ? 'settled' : 'pending',
+          'createdAt': now,
+          'updatedAt': now,
+        });
+
+        // Audit Logs
+        final auditRef = db.collection('audit_logs').doc();
+        batch.set(auditRef, {
+          'actorId': farmerId,
+          'actorRole': 'farmer',
+          'action': 'USER_LOGIN',
+          'targetId': farmerId,
+          'details': 'User logged in',
+          'timestamp': now,
+          'ipAddress': '127.0.0.1',
+        });
+
+        // Reports
+        final reportRef = db.collection('reports').doc();
+        batch.set(reportRef, {
+          'reporterId': buyerId,
+          'reportedId': farmerId,
+          'reason': 'Spam content',
+          'details': 'This listing is fake.',
+          'status': 'open',
+          'createdAt': now,
+        });
+
+        // Disputes
+        final disputeRef = db.collection('disputes').doc();
+        batch.set(disputeRef, {
+          'orderId': 'order_$i',
+          'plaintiffId': buyerId,
+          'plaintiffRole': 'buyer',
+          'defendantId': farmerId,
+          'defendantRole': 'farmer',
+          'reason': 'Quality mismatch',
+          'description': 'The tomatoes were rotten.',
+          'status': 'open',
+          'resolution': '',
+          'createdAt': now,
+          'updatedAt': now,
+        });
+
+        // Verifications
+        final verifRef = db.collection('verifications').doc();
+        batch.set(verifRef, {
+          'userId': transId,
+          'userName': 'Test Transporter',
+          'userRole': 'transporter',
+          'documentType': 'nic',
+          'documentUrl': 'https://example.com/doc.jpg',
+          'status': 'pending',
+          'submittedAt': now,
+        });
+      }
+      
+      // Commit all data in one fast batch!
+
+      await batch.commit();
+    }
+    
+    setState(() => _isSeeding = false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Successfully seeded 75+ items instantly!')),
+    );
+  }
 
   @override
   void dispose() {
@@ -74,6 +358,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.adminUsersTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        actions: [
+          if (_isSeeding)
+            const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+          else
+            TextButton.icon(
+              onPressed: () => _seedTestUsers(context),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Seed Data'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -313,13 +608,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 if (!formKey.currentState!.validate()) return;
                 Navigator.of(ctx).pop();
                 try {
-                  await state.adminCreateUser(
-                    name: nameCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    role: selectedRole,
-                    district: selectedDistrict,
-                    email: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,
-                  );
+                  await state.adminCreateUser(name: nameCtrl.text.trim(), phone: phoneCtrl.text.trim(), role: selectedRole, password: "password123", district: selectedDistrict, email: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

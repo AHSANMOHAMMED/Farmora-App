@@ -968,13 +968,13 @@ service cloud.firestore {
         || resource.data.ownerId == request.auth.uid
         || admin()
       );
-      allow create: if (farmer() || transporter() || buyer() || supplier() || expert()
+      allow create: if admin() || ((farmer() || transporter() || buyer() || supplier() || expert()
           || driver() || warehouse() || inspector())
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.storagePath is string
-        && request.resource.data.storagePath.matches('^verification/' + uid() + '/.+');
+        && request.resource.data.storagePath.matches('^verification/' + uid() + '/.+'));
       allow update: if admin();
       allow delete: if admin();
     }
@@ -985,7 +985,7 @@ service cloud.firestore {
         || admin()
         || (signedIn() && resource.data.reviewerId == request.auth.uid);
       // One review per delivered order, by its buyer, pending moderation.
-      allow create: if buyer()
+      allow create: if admin() || (buyer()
         && request.resource.data.reviewerId == uid()
         && reviewId == request.resource.data.orderId + '_' + uid()
         && request.resource.data.moderationStatus == 'pending'
@@ -995,7 +995,7 @@ service cloud.firestore {
         && orderDoc(request.resource.data.orderId).buyerId == uid()
         && orderDoc(request.resource.data.orderId).status == 'delivered'
         && request.resource.data.subjectId
-          == orderDoc(request.resource.data.orderId).farmerId;
+          == orderDoc(request.resource.data.orderId).farmerId);
       // Admin moderation writes status / moderationNote / moderatedAt.
       allow update: if admin();
       allow delete: if admin();
@@ -1003,12 +1003,12 @@ service cloud.firestore {
 
     match /disputes/{disputeId} {
       allow read: if signedIn() && (resource.data.openedBy == request.auth.uid || admin());
-      allow create: if active()
+      allow create: if admin() || (active()
         && request.resource.data.openedBy == uid()
         && request.resource.data.status == 'open'
         && isStr(request.resource.data.reason, 1, 2000)
         && request.resource.data.get('evidenceImages', []).size() <= 5
-        && participantByOrderId(request.resource.data.orderId);
+        && participantByOrderId(request.resource.data.orderId));
       // Admin resolution (resolveDispute in Spark mode).
       allow update: if admin();
       allow delete: if admin();
@@ -1171,7 +1171,7 @@ service cloud.firestore {
     }
     match /market_price_reports/{reportId} {
       allow read: if admin() || (signedIn() && resource.data.reporterId == request.auth.uid);
-      allow create: if (buyer() || farmer())
+      allow create: if admin() || ((buyer() || farmer())
         && request.resource.data.reporterId == uid()
         && request.resource.data.reporterRole == userDoc(uid()).role
         && request.resource.data.status == 'pending'
@@ -1183,7 +1183,7 @@ service cloud.firestore {
         && isStr(request.resource.data.marketName, 1, 100)
         && isStr(request.resource.data.get('category', ''), 0, 50)
         && marketUnit(request.resource.data.unit)
-        && isInt(request.resource.data.priceMinor, 1, 100000000);
+        && isInt(request.resource.data.priceMinor, 1, 100000000));
       allow update, delete: if admin();
     }
 
@@ -1258,7 +1258,7 @@ service cloud.firestore {
     // ── Farm workspace ───────────────────────────────────────
     match /crop_plans/{cropId} {
       allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
-      allow create: if farmer() && verified()
+      allow create: if admin() || (farmer() && verified()
         && request.resource.data.farmerId == uid()
         && request.resource.data.status == 'planned'
         && request.resource.data.keys().hasOnly(['farmerId', 'cropName', 'area',
@@ -1273,8 +1273,8 @@ service cloud.firestore {
         && request.resource.data.plantedAt is timestamp
         && request.resource.data.expectedHarvestAt is timestamp
         && request.resource.data.expectedHarvestAt > request.resource.data.plantedAt
-        && isStr(request.resource.data.get('notes', ''), 0, 1000);
-      allow update: if farmer() && verified()
+        && isStr(request.resource.data.get('notes', ''), 0, 1000));
+      allow update: if admin() || (farmer() && verified()
         && resource.data.farmerId == uid()
         && affected().hasOnly(['status', 'harvestedAt', 'notes', 'expectedYield',
           'actualYield', 'yieldUnit', 'updatedAt'])
@@ -1284,13 +1284,13 @@ service cloud.firestore {
         && request.resource.data.status in ['planned', 'planted', 'growing', 'harvested', 'cancelled']
         && isStr(request.resource.data.get('notes', ''), 0, 1000)
         && request.resource.data.get('expectedYield', 0) is number
-        && request.resource.data.get('expectedYield', 0) >= 0;
+        && request.resource.data.get('expectedYield', 0) >= 0);
       allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
     }
 
     match /farm_tasks/{taskId} {
       allow read: if admin() || (farmer() && resource.data.farmerId == request.auth.uid);
-      allow create: if farmer() && verified()
+      allow create: if admin() || (farmer() && verified()
         && request.resource.data.farmerId == uid()
         && request.resource.data.status == 'pending'
         && request.resource.data.keys().hasOnly(['farmerId', 'title', 'description',
@@ -1298,14 +1298,14 @@ service cloud.firestore {
         && isStr(request.resource.data.title, 1, 120)
         && isStr(request.resource.data.get('description', ''), 0, 1000)
         && request.resource.data.dueAt is timestamp
-        && request.resource.data.priority in ['low', 'normal', 'high'];
-      allow update: if farmer()
+        && request.resource.data.priority in ['low', 'normal', 'high']);
+      allow update: if admin() || (farmer()
         && resource.data.farmerId == uid()
         && affected().hasOnly(['status', 'completedAt', 'title', 'dueAt',
           'reminderDate', 'updatedAt'])
         && request.resource.data.status in ['pending', 'inProgress', 'completed', 'cancelled']
         && isStr(request.resource.data.title, 1, 120)
-        && request.resource.data.dueAt is timestamp;
+        && request.resource.data.dueAt is timestamp);
       allow delete: if admin() || (farmer() && resource.data.farmerId == uid());
     }
 

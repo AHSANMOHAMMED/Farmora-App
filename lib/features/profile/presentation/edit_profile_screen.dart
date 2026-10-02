@@ -121,6 +121,86 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+
+  Future<void> _showChangePasswordDialog(BuildContext context, FarmoraState state) async {
+    final l = AppLocalizations.of(context);
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool changing = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text('Change Password'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: currentCtrl,
+                  enabled: !changing,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: 'Current Password'),
+                  validator: (v) => (v ?? '').isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: newCtrl,
+                  enabled: !changing,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: 'New Password'),
+                  validator: (v) => (v ?? '').length < 6 ? 'Minimum 6 characters' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: changing ? null : () => Navigator.pop(ctx),
+              child: Text(l.commonCancel),
+            ),
+            FilledButton(
+              onPressed: changing
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => changing = true);
+                      try {
+                        await state.changePassword(
+                          currentPassword: currentCtrl.text,
+                          newPassword: newCtrl.text,
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('Password updated successfully!')),
+                        );
+                      } catch (e) {
+                        if (!ctx.mounted) return;
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        if (ctx.mounted) setDialogState(() => changing = false);
+                      }
+                    },
+              child: changing
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String? _maxLength(String? value, int max) {
     if ((value ?? '').trim().length > max) {
       return AppLocalizations.of(context).editProfileTooLong(max);
@@ -151,10 +231,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 label: Text(l.changePhoto),
               ),
             ),
-            const SizedBox(height: 16),
-            _FormCard(
+            const SizedBox(height: 16),            _FormCard(
               title: l.editProfilePersonal,
               children: [
+                OutlinedButton.icon(
+                  onPressed: () => _showChangePasswordDialog(context, state),
+                  icon: const Icon(Icons.lock_reset_rounded),
+                  label: const Text('Change Password'),
+                  style: OutlinedButton.styleFrom(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _nameController,
                   enabled: !_saving,

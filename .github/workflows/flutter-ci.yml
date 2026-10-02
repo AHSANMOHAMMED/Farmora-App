@@ -121,7 +121,7 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A }}
-          projectId: farmora-1da5a
+          projectId: farmingapp-24b34
           channelId: ${{ steps.deploy_channel.outputs.mode }}
 
       # Full deploy of backend rules AND indexes AND cloud functions, but only
@@ -140,7 +140,7 @@ jobs:
             firebase deploy \
               --only firestore:rules,firestore:indexes,storage,functions:default \
               --token "$FIREBASE_TOKEN" \
-              --project farmora-1da5a \
+              --project farmingapp-24b34 \
               --non-interactive
           else
             # No CI token: fall back to the ADC-style JSON service account.
@@ -148,6 +148,6 @@ jobs:
             export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
             firebase deploy \
               --only firestore:rules,firestore:indexes,storage,functions:default \
-              --project farmora-1da5a \
+              --project farmingapp-24b34 \
               --non-interactive
           fi

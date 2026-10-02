@@ -40,7 +40,10 @@ class FirebaseAuthService {
   /// Sign-in e-mails to try for [phone], newest scheme first: the E.164
   /// form, then the number exactly as typed and the local 0-prefixed form
   /// (accounts registered before phone numbers were normalised).
-  List<String> _loginEmailCandidates(String phone) {
+  List<String> loginEmailCandidates(String phone) {
+    if (phone.contains('@')) {
+      return [phone.trim()];
+    }
     final candidates = <String>[];
     void add(String value) {
       final email = _emailForPhone(value);
@@ -146,10 +149,14 @@ class FirebaseAuthService {
       final snapshot = await userDocRef.get();
       final data = snapshot.data();
 
-      final normalizedPhone = _phoneInE164(phone);
+      String? normalizedPhone;
+      try {
+        normalizedPhone = _phoneInE164(phone);
+      } catch (_) {}
+      
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
       final isAdmin = uid == 'Muga5XsOaLPtuFv3RQUZzVY6Owd2' ||
-          normalizedPhone == '+94725068682' ||
+          (normalizedPhone != null && normalizedPhone == '+94725068682') ||
           cleanPhone == '0725068682' ||
           cleanPhone == '+94725068682' ||
           credential.user?.email == '0725068682@phone.farmora.app' ||
@@ -161,7 +168,7 @@ class FirebaseAuthService {
             'id': uid,
             'name': data?['name'] ?? 'System Administrator',
             'displayName': data?['displayName'] ?? 'System Administrator',
-            'phone': normalizedPhone,
+            'phone': normalizedPhone ?? cleanPhone,
             'authUid': uid,
             'email': credential.user?.email ?? '0725068682@phone.farmora.app',
             'photoUrl': credential.user?.photoURL,
@@ -193,7 +200,33 @@ class FirebaseAuthService {
   Future<UserCredential> _signInWithPhonePassword(
       String phone, String password) async {
     FirebaseAuthException? firstError;
-    for (final email in _loginEmailCandidates(phone)) {
+    
+    // First, let's see if there is a real email registered in Firestore for this phone number
+    String? realEmailFromFirestore;
+    try {
+      final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+      if (cleanPhone.isNotEmpty) {
+        final querySnapshot = await _firestore
+            .collection('users')
+            .where('phone', isEqualTo: cleanPhone)
+            .limit(1)
+            .get();
+        if (querySnapshot.docs.isNotEmpty) {
+          final doc = querySnapshot.docs.first;
+          final email = doc.data()['email'] as String?;
+          if (email != null && email.contains('@') && !email.contains('phone.farmora.app')) {
+            realEmailFromFirestore = email.trim();
+          }
+        }
+      }
+    } catch (_) {}
+
+    final candidates = loginEmailCandidates(phone);
+    if (realEmailFromFirestore != null && !candidates.contains(realEmailFromFirestore)) {
+      candidates.insert(0, realEmailFromFirestore);
+    }
+
+    for (final email in candidates) {
       try {
         return await _auth.signInWithEmailAndPassword(
           email: email,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../profile/presentation/change_password_dialog.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -224,6 +225,14 @@ class TransporterProfileScreen extends StatelessWidget {
                     MaterialPageRoute(
                         builder: (_) => const EditTransporterProfileScreen()),
                   ),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+                  title: Text('Change password',
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => showChangePasswordDialog(context),
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(

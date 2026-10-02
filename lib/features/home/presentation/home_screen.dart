@@ -49,6 +49,7 @@ import '../../warehouse/presentation/warehouse_dashboard_screen.dart';
 import '../../driver/presentation/driver_dashboard_screen.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import 'widgets/platform_gate_views.dart';
+import 'widgets/quick_actions_drawer.dart';
 import '../../auth/presentation/session_actions.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -698,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen>
                     },
                   ),
                 )
-              : null,
+              : const QuickActionsDrawer(),
           body: IndexedStack(
             index: safeTabIndex,
             children: screens,
