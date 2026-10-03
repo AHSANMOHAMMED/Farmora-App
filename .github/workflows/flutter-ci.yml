@@ -108,10 +108,10 @@ jobs:
       - name: Validate Firebase secrets
         if: steps.deploy_channel.outputs.mode != 'none'
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMINGAPP_24B34 || secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A || secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A is not set in repository secrets; cannot deploy."
+            echo "::error::Firebase service account secret (FIREBASE_SERVICE_ACCOUNT_FARMINGAPP_24B34 or FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A) is not set in repository secrets; cannot deploy."
             exit 1
           fi
 
@@ -120,25 +120,22 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMINGAPP_24B34 || secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A || secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: farmingapp-24b34
           channelId: ${{ steps.deploy_channel.outputs.mode }}
 
-      # Full deploy of backend rules AND indexes AND cloud functions, but only
-      # from main so feature branches never mutate production Firestore rules,
-      # storage rules or functions. This step has NO continue-on-error: if the
-      # backend deploy fails, the pipeline fails loudly instead of silently
-      # shipping a frontend against stale rules.
-      - name: Deploy Firestore rules/indexes, Storage rules & Functions via CLI
+      # Full deploy of backend rules and indexes, but only from main so feature
+      # branches never mutate production Firestore rules or indexes.
+      - name: Deploy Firestore rules & indexes via CLI
         if: steps.deploy_channel.outputs.mode == 'live'
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FARMINGAPP_24B34 || secrets.FIREBASE_SERVICE_ACCOUNT_FARMORA_1DA5A || secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           npm install -g firebase-tools
           if [ -n "$FIREBASE_TOKEN" ]; then
             firebase deploy \
-              --only firestore:rules,firestore:indexes,storage,functions:default \
+              --only firestore:rules,firestore:indexes \
               --token "$FIREBASE_TOKEN" \
               --project farmingapp-24b34 \
               --non-interactive
@@ -147,7 +144,7 @@ jobs:
             echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
             export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
             firebase deploy \
-              --only firestore:rules,firestore:indexes,storage,functions:default \
+              --only firestore:rules,firestore:indexes \
               --project farmingapp-24b34 \
               --non-interactive
           fi
