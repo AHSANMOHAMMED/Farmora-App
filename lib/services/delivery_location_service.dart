@@ -31,25 +31,69 @@ class DeliveryLocationService {
   /// The most recent position captured while sharing (for map markers).
   Position? get lastPosition => _lastPosition;
 
+  /// Robust cross-platform location permission check supporting Web, Android, and iOS.
+  Future<bool> hasLocationPermission() async {
+    try {
+      if (kIsWeb) {
+        var perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) {
+          perm = await Geolocator.requestPermission();
+        }
+        return perm == LocationPermission.whileInUse ||
+            perm == LocationPermission.always;
+      }
+
+      var status = await Permission.locationWhenInUse.status;
+      if (!status.isGranted) {
+        status = await Permission.locationWhenInUse.request();
+      }
+      if (status.isGranted) return true;
+
+      // Fallback check directly via Geolocator
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      return perm == LocationPermission.whileInUse ||
+          perm == LocationPermission.always;
+    } catch (e) {
+      debugPrint('Location permission error: $e');
+      try {
+        final perm = await Geolocator.requestPermission();
+        return perm == LocationPermission.whileInUse ||
+            perm == LocationPermission.always;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   /// Requests permission consent and begins streaming the courier's live
   /// position to Firestore for [jobId]. Returns false when permission or
   /// device location services are unavailable.
   Future<bool> requestConsentAndStart({required String jobId}) async {
     if (_sharing && _activeJobId == jobId) return true;
 
-    final status = await Permission.locationWhenInUse.request();
-    if (!status.isGranted) return false;
+    final hasPerm = await hasLocationPermission();
+    if (!hasPerm) return false;
     final enabled = await Geolocator.isLocationServiceEnabled();
     if (!enabled) return false;
 
     // Capture an immediate first fix so the map shows something right away.
     try {
-      final first = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 10));
-      _lastPosition = first;
-      await _writePosition(jobId, first, force: true);
+      Position? first;
+      try {
+        first = await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.high),
+        ).timeout(const Duration(seconds: 10));
+      } catch (_) {
+        first = await Geolocator.getLastKnownPosition();
+      }
+      if (first != null) {
+        _lastPosition = first;
+        await _writePosition(jobId, first, force: true);
+      }
     } catch (e) {
       debugPrint('Initial location fix failed: $e');
     }
@@ -102,12 +146,19 @@ class DeliveryLocationService {
   Future<Position?> pushCurrentPosition({required String jobId}) async {
     if (!_sharing || _activeJobId != jobId) return null;
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 10));
-      _lastPosition = pos;
-      await _writePosition(jobId, pos, force: true);
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.high),
+        ).timeout(const Duration(seconds: 10));
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+      if (pos != null) {
+        _lastPosition = pos;
+        await _writePosition(jobId, pos, force: true);
+      }
       return pos;
     } catch (e) {
       debugPrint('Manual location push failed: $e');
@@ -119,12 +170,16 @@ class DeliveryLocationService {
   /// transition flows that want to stamp a position at pickup/transit time.
   Future<Position?> currentPositionQuick() async {
     try {
-      final status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) return null;
-      return await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 10));
+      final hasPerm = await hasLocationPermission();
+      if (!hasPerm) return null;
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.medium),
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {
+        return await Geolocator.getLastKnownPosition();
+      }
     } catch (e) {
       debugPrint('Quick location fix failed: $e');
       return null;

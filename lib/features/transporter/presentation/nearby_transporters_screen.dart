@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/app_format.dart';
@@ -80,18 +79,16 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
       _locationError = null;
     });
     try {
-      final status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) {
-        final req = await Permission.locationWhenInUse.request();
-        if (!req.isGranted) {
-          if (mounted) {
-            setState(() {
-              _locating = false;
-              _locationError = _LocationProblem.permissionOff;
-            });
-          }
-          return;
+      final hasPerm =
+          await DeliveryLocationService.instance.hasLocationPermission();
+      if (!hasPerm) {
+        if (mounted) {
+          setState(() {
+            _locating = false;
+            _locationError = _LocationProblem.permissionOff;
+          });
         }
+        return;
       }
       final enabled = await Geolocator.isLocationServiceEnabled();
       if (!enabled) {
@@ -103,10 +100,26 @@ class _NearbyTransportersScreenState extends State<NearbyTransportersScreen> {
         }
         return;
       }
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.medium),
-      ).timeout(const Duration(seconds: 10));
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.medium),
+        ).timeout(const Duration(seconds: 10));
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+
+      if (pos == null) {
+        if (mounted) {
+          setState(() {
+            _locating = false;
+            _locationError = _LocationProblem.failed;
+          });
+        }
+        return;
+      }
+
       _myPosition = pos;
       // One-shot local fix only — continuous sharing stays an explicit
       // opt-in via the profile toggle. Publish a single snapshot so
