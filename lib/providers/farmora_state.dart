@@ -1476,10 +1476,31 @@ class FarmoraState extends ChangeNotifier {
     String? district,
     String? email,
   }) async {
-    final cleanPhone = phone.trim();
-    final emailToUse = (email != null && email.trim().isNotEmpty) 
-        ? email.trim() 
-        : _authService.loginEmailCandidates(cleanPhone).first;
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-()]'), '').trim();
+    if (cleanPhone.isEmpty) {
+      throw const FarmoraAuthException('Phone number is required.');
+    }
+    if (password.trim().length < 6) {
+      throw const FarmoraAuthException('Password must be at least 6 characters.');
+    }
+
+    String normalizedPhone = cleanPhone;
+    try {
+      normalizedPhone = _authService.normalizePhone(cleanPhone);
+    } catch (_) {
+      if (!normalizedPhone.startsWith('+')) {
+        if (normalizedPhone.startsWith('0')) {
+          normalizedPhone = '+94${normalizedPhone.substring(1)}';
+        } else if (!normalizedPhone.startsWith('94')) {
+          normalizedPhone = '+94$normalizedPhone';
+        } else {
+          normalizedPhone = '+$normalizedPhone';
+        }
+      }
+    }
+
+    // In Farmora, login is phone-first: always register credentials with the phone candidate email.
+    final authEmail = _authService.loginEmailCandidates(normalizedPhone).first;
 
     final secondaryApp = await Firebase.initializeApp(
       name: 'SecondaryApp_${DateTime.now().millisecondsSinceEpoch}',
@@ -1489,9 +1510,17 @@ class FarmoraState extends ChangeNotifier {
     UserCredential credential;
     try {
       credential = await secondaryAuth.createUserWithEmailAndPassword(
-        email: emailToUse,
+        email: authEmail,
         password: password,
       );
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'email-already-in-use') {
+        throw const FarmoraAuthException('A member with this phone number is already registered.');
+      } else if (error.code == 'weak-password') {
+        throw const FarmoraAuthException('Password must be at least 6 characters.');
+      } else {
+        throw FarmoraAuthException(error.message ?? 'Failed to create member authentication.');
+      }
     } finally {
       await secondaryApp.delete();
     }
@@ -1504,8 +1533,8 @@ class FarmoraState extends ChangeNotifier {
       'uid': uid,
       'name': name.trim(),
       'displayName': name.trim(),
-      'phone': cleanPhone,
-      'email': email != null && email.trim().isNotEmpty ? email.trim() : null,
+      'phone': normalizedPhone,
+      'email': (email != null && email.trim().isNotEmpty) ? email.trim() : null,
       'role': role.toLowerCase().trim(),
       'district': district ?? 'Colombo',
       'authProvider': 'password',
@@ -1516,6 +1545,26 @@ class FarmoraState extends ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (role.toLowerCase().trim() == 'driver' || role.toLowerCase().trim() == 'transporter') {
+      try {
+        final profileRef = FirebaseFirestore.instance.collection('transporter_profiles').doc(uid);
+        await profileRef.set({
+          'id': uid,
+          'uid': uid,
+          'displayName': name.trim(),
+          'district': district ?? 'Colombo',
+          'vehicleType': 'Mini Truck',
+          'vehicleRegistration': 'WP-NA-${DateTime.now().millisecondsSinceEpoch % 10000}',
+          'vehicleCapacity': 1000,
+          'vehicleCapacityUnit': 'kg',
+          'availabilityStatus': 'available',
+          'isVerified': true,
+          'rating': 5.0,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {}
+    }
   }
 
   Future<void> releaseEscrow(String orderId) async {

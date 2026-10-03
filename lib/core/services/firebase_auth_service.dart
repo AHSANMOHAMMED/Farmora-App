@@ -316,6 +316,8 @@ class FirebaseAuthService {
     }
   }
 
+  String normalizePhone(String value) => _phoneInE164(value);
+
   String _phoneInE164(String value) {
     var phone = _normalizePhone(value);
     if (phone.startsWith('00')) phone = '+${phone.substring(2)}';

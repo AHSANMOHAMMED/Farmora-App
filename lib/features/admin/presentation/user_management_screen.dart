@@ -500,22 +500,30 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    final confirmPasswordCtrl = TextEditingController();
     String selectedRole = 'driver';
     String selectedDistrict = 'Colombo';
+    bool obscurePassword = true;
+    bool obscureConfirmPassword = true;
+    bool isSubmitting = false;
+    String? formError;
 
     final allowedRoles = [
       {'key': 'driver', 'label': 'Driver (Logistics)'},
+      {'key': 'transporter', 'label': 'Transporter'},
       {'key': 'supplier', 'label': 'Input Supplier'},
       {'key': 'warehouse', 'label': 'Warehouse Manager'},
       {'key': 'inspector', 'label': 'Quality Inspector'},
       {'key': 'expert', 'label': 'Agricultural Expert'},
+      {'key': 'finance', 'label': 'Finance Officer'},
       {'key': 'farmer', 'label': 'Farmer'},
       {'key': 'buyer', 'label': 'Buyer'},
-      {'key': 'transporter', 'label': 'Transporter'},
     ];
 
     showDialog(
       context: context,
+      barrierDismissible: !isSubmitting,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           title: const Row(
@@ -525,110 +533,243 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               Text('Create New Member', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Select Role', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          content: SizedBox(
+            width: 440,
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (formError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                formError!,
+                                style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const Text('Select Role', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: allowedRoles.map((r) => DropdownMenuItem(
+                        value: r['key'],
+                        child: Text(r['label']!),
+                      )).toList(),
+                      onChanged: isSubmitting ? null : (val) {
+                        if (val != null) setDlgState(() => selectedRole = val);
+                      },
                     ),
-                    items: allowedRoles.map((r) => DropdownMenuItem(
-                      value: r['key'],
-                      child: Text(r['label']!),
-                    )).toList(),
-                    onChanged: (val) {
-                      if (val != null) setDlgState(() => selectedRole = val);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
-                  TextFormField(
-                    controller: nameCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Kamal Perera',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(height: 12),
+                    const Text('Full Name', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: nameCtrl,
+                      enabled: !isSubmitting,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Kamal Perera',
+                        prefixIcon: const Icon(Icons.person_outline_rounded, size: 20, color: AppColors.primary),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
-                  TextFormField(
-                    controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      hintText: 'e.g. 0771234567',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(height: 12),
+                    const Text('Phone Number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: phoneCtrl,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 0771234567',
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 20, color: AppColors.primary),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Phone number is required';
+                        final clean = v.replaceAll(RegExp(r'[\s\-()]'), '');
+                        if (!RegExp(r'^\+?[0-9]{9,15}$').hasMatch(clean)) {
+                          return 'Enter a valid phone number (e.g. 07XXXXXXXX)';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('District', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
-                  DropdownButtonFormField<String>(
-                    value: selectedDistrict,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(height: 12),
+                    const Text('Email Address (Optional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: emailCtrl,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. member@example.com (optional)',
+                        prefixIcon: const Icon(Icons.email_outlined, size: 20, color: AppColors.primary),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) {
+                        if (v != null && v.trim().isNotEmpty) {
+                          final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                          if (!emailRegex.hasMatch(v.trim())) {
+                            return 'Enter a valid email address';
+                          }
+                        }
+                        return null;
+                      },
                     ),
-                    items: const [
-                      'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
-                      'Galle', 'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara',
-                      'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar',
-                      'Matale', 'Matara', 'Monaragala', 'Mullaitivu', 'Nuwara Eliya',
-                      'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya',
-                    ].map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                    onChanged: (val) {
-                      if (val != null) setDlgState(() => selectedDistrict = val);
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    const Text('District', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: selectedDistrict,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      items: const [
+                        'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
+                        'Galle', 'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara',
+                        'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar',
+                        'Matale', 'Matara', 'Monaragala', 'Mullaitivu', 'Nuwara Eliya',
+                        'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya',
+                      ].map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                      onChanged: isSubmitting ? null : (val) {
+                        if (val != null) setDlgState(() => selectedDistrict = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Create Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: passwordCtrl,
+                      enabled: !isSubmitting,
+                      obscureText: obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Minimum 6 characters',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: AppColors.primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                          onPressed: () => setDlgState(() => obscurePassword = !obscurePassword),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Password is required';
+                        if (v.trim().length < 6) return 'Password must be at least 6 characters';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Confirm Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    TextFormField(
+                      controller: confirmPasswordCtrl,
+                      enabled: !isSubmitting,
+                      obscureText: obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        hintText: 'Re-enter password',
+                        prefixIcon: const Icon(Icons.lock_reset_rounded, size: 20, color: AppColors.primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                          onPressed: () => setDlgState(() => obscureConfirmPassword = !obscureConfirmPassword),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Please confirm the password';
+                        if (v != passwordCtrl.text) return 'Passwords do not match';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.of(ctx).pop();
-                try {
-                  await state.adminCreateUser(name: nameCtrl.text.trim(), phone: phoneCtrl.text.trim(), role: selectedRole, password: "password123", district: selectedDistrict, email: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Member "' + selectedRole + '" successfully created!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to create member: ' + e.toString()),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Create'),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDlgState(() {
+                        isSubmitting = true;
+                        formError = null;
+                      });
+                      try {
+                        await state.adminCreateUser(
+                          name: nameCtrl.text.trim(),
+                          phone: phoneCtrl.text.trim(),
+                          role: selectedRole,
+                          password: passwordCtrl.text,
+                          district: selectedDistrict,
+                          email: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,
+                        );
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text('Member "${nameCtrl.text.trim()}" created successfully!'),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.green.shade700,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        final cleanMsg = e.toString()
+                            .replaceFirst('Exception: ', '')
+                            .replaceFirst('FarmoraAuthException: ', '');
+                        setDlgState(() {
+                          isSubmitting = false;
+                          formError = cleanMsg;
+                        });
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Create Member', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -636,7 +777,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildRoleChip(String roleKey, String label, {Color? color}) {
+    Widget _buildRoleChip(String roleKey, String label, {Color? color}) {
     final isSelected = _selectedRole == roleKey;
     return ChoiceChip(
       label: Text(label),
