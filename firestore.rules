@@ -1336,8 +1336,8 @@ service cloud.firestore {
     }
     match /farm_plots/{plotId} {
       allow read: if admin() || (farmer() && resource.data.farmerId == uid());
-      allow create: if farmer() && farmAuditCreateOk() && plotShapeOk();
-      allow update: if farmer() && farmAuditUpdateOk() && plotShapeOk();
+      allow create: if admin() || (farmer() && farmAuditCreateOk() && plotShapeOk());
+      allow update: if admin() || (farmer() && farmAuditUpdateOk() && plotShapeOk());
       allow delete: if admin();
     }
 
@@ -1359,13 +1359,13 @@ service cloud.firestore {
       allow get: if admin()
         || (farmer() && (resource == null || resource.data.farmerId == uid()));
       allow list: if admin() || (farmer() && resource.data.farmerId == uid());
-      allow create: if farmer() && farmAuditCreateOk() && ledgerShapeOk()
+      allow create: if admin() || (farmer() && farmAuditCreateOk() && ledgerShapeOk()
         && (request.resource.data.get('sourceId', '') == ''
           || (entryId == 'io_' + request.resource.data.sourceId
             && get(docPath('input_orders/' + request.resource.data.sourceId)).data.farmerId
-              == uid()));
-      allow update: if farmer() && farmAuditUpdateOk() && ledgerShapeOk()
-        && request.resource.data.get('sourceId', '') == resource.data.get('sourceId', '');
+              == uid())));
+      allow update: if admin() || (farmer() && farmAuditUpdateOk() && ledgerShapeOk()
+        && request.resource.data.get('sourceId', '') == resource.data.get('sourceId', ''));
       allow delete: if admin();
     }
 
