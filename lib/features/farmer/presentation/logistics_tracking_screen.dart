@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 import '../../../core/navigation/app_navigator.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -495,9 +496,9 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
                             child: OutlinedButton.icon(
                               onPressed: () =>
                                   _showCallDriverDialog(context, order),
-                              icon: const Icon(Icons.chat_bubble_outline,
+                              icon: const Icon(Icons.call_outlined,
                                   size: 16),
-                              label: Text(l.farmerTrackCallDriver,
+                              label: Text('Call Driver',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -1278,66 +1279,24 @@ class _LogisticsTrackingScreenState extends State<LogisticsTrackingScreen> {
   /// Contact is routed through the order-scoped, E2E-encrypted chat — the
   /// platform deliberately never exposes driver phone numbers or fabricated
   /// contact cards.
-  void _showCallDriverDialog(BuildContext context, FarmoraOrder order) {
+  Future<void> _showCallDriverDialog(BuildContext context, FarmoraOrder order) async {
     final l = context.l10n;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.chat_bubble_outline_rounded,
-                color: AppColors.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(l.farmerTrackContactPartner,
-                  style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18)),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.farmerTrackContactBody,
-              style: const TextStyle(
-                  fontFamily: 'Inter', fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l.farmerTrackContactNote,
-              style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: AppColors.onSurfaceVariant,
-                  height: 1.4),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonClose),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              AppNavigator.openConversations(context, orderId: order.id);
-            },
-            icon: const Icon(Icons.chat_bubble_outline, size: 16),
-            label: Text(l.openOrderChat),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
+    if (order.transporterId == null || order.transporterId!.isEmpty) return;
+    
+    try {
+      final doc = await FirebaseFirestore.instance.collection('transporter_public_profiles').doc(order.transporterId).get();
+      final phone = (doc.data()?['phone'] ?? '').toString().trim();
+      if (phone.isNotEmpty) {
+        final uri = Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'\s+'), ''));
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          return;
+        }
+      }
+    } catch (_) {}
+    
+    if (!context.mounted) return;
+    AppNavigator.openConversations(context, orderId: order.id);
   }
 
   void _showEscrowDetailsSheet(BuildContext context, FarmoraOrder order) {

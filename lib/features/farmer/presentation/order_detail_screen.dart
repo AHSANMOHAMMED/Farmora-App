@@ -51,10 +51,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return StreamBuilder<Map<String, dynamic>?>(
       stream: _driverProfile(transporterId),
       builder: (context, snapshot) {
-        final name =
-            (snapshot.data?['displayName'] ?? '').toString().trim();
-        return _buildSummaryRow(
-            label, name.isNotEmpty ? name : l.farmerTrackAssignedTransporter);
+        final name = (snapshot.data?['displayName'] ?? '').toString().trim();
+        final phone = (snapshot.data?['phone'] ?? '').toString().trim();
+        final displayName = name.isNotEmpty ? name : l.farmerTrackAssignedTransporter;
+        
+        if (phone.isEmpty) return _buildSummaryRow(label, displayName);
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppColors.onSurfaceVariant)),
+              Row(
+                children: [
+                  Text(displayName, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface)),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _callBuyer(phone), // We can reuse _callBuyer since it just launches a tel URL
+                    child: const Icon(Icons.call_outlined, size: 20, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }
