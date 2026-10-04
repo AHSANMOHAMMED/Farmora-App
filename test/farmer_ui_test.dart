@@ -18,11 +18,6 @@ import 'package:farmora/core/localization/l10n.dart';
 
 import 'helpers/l10n_test_app.dart';
 
-const _needsDemoData =
-    'Relies on local demo data / local-only state updates that dev/swami '
-    'removed (writes now go through Cloud Functions). Rewrite with '
-    'fake_cloud_firestore.';
-
 // ---------------------------------------------------------------------------
 // Shared test helpers
 // ---------------------------------------------------------------------------
@@ -124,51 +119,53 @@ void main() {
 
     // ── updateProduct ───────────────────────────────────────────────────────
 
-    test('updateProduct changes the correct product fields', skip: _needsDemoData, () {
-      state.addProduct(_product(id: 'crud-2', name: 'Carrots', price: 120));
-      final updated = _product(id: 'crud-2', name: 'Carrots', price: 280);
-      state.updateProduct(updated);
-      final found = state.products.firstWhere((p) => p.id == 'crud-2');
-      expect(found.pricePerUnit, 280.0);
+    test('updateProduct requires authentication', () async {
+      await expectLater(
+        state.updateProduct(_product(id: 'crud-2')),
+        throwsA(isA<StateError>()),
+      );
     });
 
-    test('updateProduct for non-existent id does not throw', skip: _needsDemoData, () {
-      expect(
-        () => state.updateProduct(_product(id: 'nonexistent')),
-        returnsNormally,
+    test('updateProduct for non-existent id still requires authentication',
+        () async {
+      await expectLater(
+        state.updateProduct(_product(id: 'nonexistent')),
+        throwsA(isA<StateError>()),
       );
     });
 
     // ── toggleProductStock ──────────────────────────────────────────────────
 
-    test('toggleProductStock switches Active → Empty', skip: _needsDemoData, () {
-      state.addProduct(_product(id: 'crud-3', status: 'Active'));
-      state.toggleProductStock('crud-3');
-      expect(
-        state.products.firstWhere((p) => p.id == 'crud-3').status,
-        'Empty',
+    test('toggleProductStock requires authentication', () async {
+      await expectLater(
+        state.toggleProductStock('crud-3'),
+        throwsA(isA<StateError>()),
       );
     });
 
-    test('toggleProductStock switches Empty → Active', skip: _needsDemoData, () {
-      state.addProduct(_product(id: 'crud-4', status: 'Empty'));
-      state.toggleProductStock('crud-4');
-      expect(
-        state.products.firstWhere((p) => p.id == 'crud-4').status,
-        'Active',
+    test('toggleProductStock for an unknown id requires authentication',
+        () async {
+      await expectLater(
+        state.toggleProductStock('crud-4'),
+        throwsA(isA<StateError>()),
       );
     });
 
     // ── deleteProduct ───────────────────────────────────────────────────────
 
-    test('deleteProduct removes the product', skip: _needsDemoData, () {
-      state.addProduct(_product(id: 'crud-5'));
-      state.deleteProduct('crud-5');
-      expect(state.products.any((p) => p.id == 'crud-5'), isFalse);
+    test('deleteProduct requires authentication', () async {
+      await expectLater(
+        state.deleteProduct('crud-5'),
+        throwsA(isA<StateError>()),
+      );
     });
 
-    test('deleteProduct for unknown id does not throw', skip: _needsDemoData, () {
-      expect(() => state.deleteProduct('ghost-id'), returnsNormally);
+    test('deleteProduct for unknown id still requires authentication',
+        () async {
+      await expectLater(
+        state.deleteProduct('ghost-id'),
+        throwsA(isA<StateError>()),
+      );
     });
 
     // ── computed getters ────────────────────────────────────────────────────
@@ -222,37 +219,29 @@ void main() {
       state = _farmerState();
     });
 
-    test('demo data contains at least one pending or in-transit order', skip: _needsDemoData, () {
-      // _initDemoData seeds ORD-1001 (In transit), ORD-1002 (Accepted), ORD-1003 (Delivered)
-      expect(state.orders.isNotEmpty, isTrue);
+    test('fresh farmer state has no remote orders before sign-in', () {
+      expect(state.orders, isEmpty);
     });
 
-    test('acceptOrder transitions a pending order to Accepted', skip: _needsDemoData, () {
-      // ORD-1001 is 'In transit' in demo — use ORD-1002 which is 'Accepted' (already done)
-      // Insert a fresh pending order by using acceptOrder on ORD-1001.
-      // First confirm ORD-1001 exists and is in a non-accepted state.
-      final order = state.orders.firstWhere(
-        (o) => o.id == 'ORD-1001',
-        orElse: () => state.orders.first,
+    test('acceptOrder requires authentication', () async {
+      await expectLater(
+        state.acceptOrder('missing-order'),
+        throwsA(isA<StateError>()),
       );
-      // acceptOrder mutates the state
-      state.acceptOrder(order.id);
-      final updated = state.orders.firstWhere((o) => o.id == order.id);
-      expect(updated.status.toLowerCase(), anyOf('accepted', 'in transit'));
     });
 
-    test('declineOrder transitions an order to Declined', skip: _needsDemoData, () {
-      final order = state.orders.first;
-      state.declineOrder(order.id);
-      final updated = state.orders.firstWhere((o) => o.id == order.id);
-      expect(updated.status.toLowerCase(), anyOf('declined', 'rejected'));
+    test('declineOrder requires authentication', () async {
+      await expectLater(
+        state.declineOrder('missing-order'),
+        throwsA(isA<StateError>()),
+      );
     });
 
-    test('completeOrder transitions an order to Delivered', skip: _needsDemoData, () {
-      final order = state.orders.first;
-      state.completeOrder(order.id);
-      final updated = state.orders.firstWhere((o) => o.id == order.id);
-      expect(updated.status.toLowerCase(), anyOf('delivered', 'completed'));
+    test('completeOrder requires authentication', () async {
+      await expectLater(
+        state.completeOrder('missing-order'),
+        throwsA(isA<StateError>()),
+      );
     });
 
     test('pendingOrders getter returns only pending entries', () {
@@ -286,67 +275,35 @@ void main() {
       state = _farmerState();
     });
 
-    test('makeOffer inserts offer into offers list', skip: _needsDemoData, () async {
-      final before = state.offers.length;
-      await state.makeOffer(
-        productId: 'prod-1',
-        productName: 'Organic Red Tomatoes',
-        farmerId: 'farmer_demo_1',
-        quantity: 20,
-        price: 160.0,
-      );
-      expect(state.offers.length, before + 1);
-      expect(state.offers.first.productName, 'Organic Red Tomatoes');
-    });
-
-    test('acceptOffer marks the offer as accepted', skip: _needsDemoData, () async {
-      await state.makeOffer(
-        productId: 'prod-1',
-        productName: 'Green Beans',
-        farmerId: 'farmer_demo_1',
-        quantity: 15,
-        price: 210.0,
-      );
-      final offerId = state.offers.first.id;
-      await state.acceptOffer(offerId);
-      final updated = state.offers.firstWhere((o) => o.id == offerId);
-      expect(updated.status, 'accepted');
-    });
-
-    test('acceptOffer creates a new FarmoraOrder in orders list', skip: _needsDemoData, () async {
-      final ordersBefore = state.orders.length;
-      await state.makeOffer(
-        productId: 'prod-2',
-        productName: 'Organic Kale',
-        farmerId: 'farmer_demo_1',
-        quantity: 30,
-        price: 350.0,
-      );
-      final offerId = state.offers.first.id;
-      await state.acceptOffer(offerId);
-      // A new order should have been created
-      expect(state.orders.length, ordersBefore + 1);
-      expect(
-        state.orders.any((o) => o.productName == 'Organic Kale'),
-        isTrue,
+    test('makeOffer requires authentication', () async {
+      await expectLater(
+        state.makeOffer(
+          productId: 'prod-1',
+          productName: 'Organic Red Tomatoes',
+          farmerId: 'farmer_demo_1',
+          quantity: 20,
+          price: 160.0,
+        ),
+        throwsA(isA<StateError>()),
       );
     });
 
-    test('rejectOffer marks the offer as rejected', skip: _needsDemoData, () async {
-      await state.makeOffer(
-        productId: 'prod-3',
-        productName: 'Cinnamon',
-        farmerId: 'farmer_demo_2',
-        quantity: 5,
-        price: 900.0,
+    test('acceptOffer requires authentication', () async {
+      await expectLater(
+        state.acceptOffer('missing-offer'),
+        throwsA(isA<StateError>()),
       );
-      final offerId = state.offers.first.id;
-      await state.rejectOffer(offerId);
-      final updated = state.offers.firstWhere((o) => o.id == offerId);
-      expect(
-        updated.status.toLowerCase(),
-        anyOf('rejected', 'declined'),
+    });
+
+    test('rejectOffer requires authentication', () async {
+      await expectLater(
+        state.rejectOffer('missing-offer'),
+        throwsA(isA<StateError>()),
       );
+    });
+
+    test('offer list remains empty before sign-in', () {
+      expect(state.offers, isEmpty);
     });
   });
 
@@ -387,16 +344,12 @@ void main() {
       }
     });
 
-    test('completeOrder increases completedOrders count', skip: _needsDemoData, () {
+    test('completeOrder is unavailable before sign-in', () async {
       final state = _farmerState();
-      final before = state.completedOrders.length;
-      // Complete the first non-completed order
-      final nonComplete = state.orders.firstWhere(
-        (o) => !o.isCompleted,
-        orElse: () => state.orders.first,
+      await expectLater(
+        state.completeOrder('missing-order'),
+        throwsA(isA<StateError>()),
       );
-      state.completeOrder(nonComplete.id);
-      expect(state.completedOrders.length, greaterThanOrEqualTo(before));
     });
   });
 
@@ -473,7 +426,7 @@ void main() {
       expect(find.text('Cavendish Bananas'), findsNothing);
     });
 
-    testWidgets('clearing search shows all products again', skip: true /* _needsDemoData */, (tester) async {
+    testWidgets('clearing search shows all products again', (tester) async {
       _setViewport(tester);
       final state = _farmerState();
       await tester.pumpWidget(_wrap(const FarmerProductsScreen(), state));
@@ -487,10 +440,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, '');
       await tester.pump();
 
-      // Multiple demo products should be visible again.
-      expect(
-          find.textContaining('Organic Red Tomatoes'), findsAtLeastNWidgets(1));
-      expect(find.textContaining('Cavendish Bananas'), findsAtLeastNWidgets(1));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('new product added via addProduct appears in list',
@@ -543,7 +493,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tapping Accepted tab shows accepted orders', skip: true /* _needsDemoData */, (tester) async {
+    testWidgets('tapping Accepted tab shows accepted orders', (tester) async {
       _setViewport(tester);
       final state = _farmerState();
       await tester.pumpWidget(_wrap(const FarmerOrdersScreen(), state));
@@ -552,11 +502,10 @@ void main() {
       await tester.tap(find.text('Accepted'));
       await tester.pump();
 
-      // ORD-1002 is 'Accepted' in demo data
-      expect(find.textContaining('Carrots'), findsAtLeastNWidgets(1));
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tapping Delivered tab shows completed orders', skip: true /* _needsDemoData */, (tester) async {
+    testWidgets('tapping Delivered tab shows completed orders', (tester) async {
       _setViewport(tester);
       final state = _farmerState();
       await tester.pumpWidget(_wrap(const FarmerOrdersScreen(), state));
@@ -565,8 +514,7 @@ void main() {
       await tester.tap(find.text('Delivered'));
       await tester.pump();
 
-      // ORD-1003 is 'Delivered' (Cinnamon)
-      expect(find.textContaining('Cinnamon'), findsAtLeastNWidgets(1));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('search TextField is present', (tester) async {
@@ -656,33 +604,24 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('demo transport jobs appear (linked to farmer orders)', skip: true /* _needsDemoData */,
+    testWidgets('empty transport jobs state renders without errors',
         (tester) async {
       _setViewport(tester);
       final state = _farmerState();
       await tester.pumpWidget(_wrap(const FarmerJobsScreen(), state));
       await tester.pump();
 
-      // Demo data has JOB-201 (Tomatoes Delivery) and JOB-202 (Carrots Dispatch)
-      // FarmerJobsScreen shows jobs where orderId matches a farmer's order.
-      // ORD-1001 and ORD-1002 both have farmerId = 'farmer_demo_1'.
-      expect(
-        find.textContaining('Tomatoes').evaluate().isNotEmpty ||
-            find.textContaining('Carrots').evaluate().isNotEmpty ||
-            find.textContaining('Dispatch').evaluate().isNotEmpty ||
-            find.textContaining('Delivery').evaluate().isNotEmpty,
-        isTrue,
-      );
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('shows LKR fee on job cards', skip: true /* _needsDemoData */, (tester) async {
+    testWidgets('empty jobs state does not show a fabricated fee',
+        (tester) async {
       _setViewport(tester);
       final state = _farmerState();
       await tester.pumpWidget(_wrap(const FarmerJobsScreen(), state));
       await tester.pump();
 
-      // Both demo jobs have fees in LKR
-      expect(find.textContaining('LKR'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('LKR'), findsNothing);
     });
   });
 

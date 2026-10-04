@@ -5,11 +5,6 @@ import 'package:farmora/services/earnings_calculator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _needsDemoData =
-    'Relies on local demo data / local-only state updates that dev/swami '
-    'removed (writes now go through Cloud Functions). Rewrite with '
-    'fake_cloud_firestore.';
-
 FarmoraOrder _o(
   String id, {
   double amount = 1000,
@@ -46,8 +41,10 @@ void main() {
         _o('b', amount: 2000, paidAt: DateTime(2026, 9, 2)), // this month
         _o('c', amount: 4000, paidAt: DateTime(2026, 8, 30)), // last month
         _o('d', amount: 8000, payment: 'pending'),
-        _o('e', amount: 16000, farmerId: 'other', paidAt: DateTime(2026, 9, 15)),
-        _o('f', amount: 32000, status: 'Cancelled', paidAt: DateTime(2026, 9, 15)),
+        _o('e',
+            amount: 16000, farmerId: 'other', paidAt: DateTime(2026, 9, 15)),
+        _o('f',
+            amount: 32000, status: 'Cancelled', paidAt: DateTime(2026, 9, 15)),
       ], farmerId: 'f1', now: now);
 
       expect(calc.totalEarnings, 7000);
@@ -58,8 +55,7 @@ void main() {
 
     test('uses paidAt, not createdAt, to place earnings in a month', () {
       final calc = EarningsCalculator([
-        _o('a',
-            createdAt: DateTime(2026, 8, 28), paidAt: DateTime(2026, 9, 3)),
+        _o('a', createdAt: DateTime(2026, 8, 28), paidAt: DateTime(2026, 9, 3)),
       ], now: now);
       expect(calc.thisMonth, 1000);
       expect(calc.summaryFor(DateTime(2026, 8)).total, 0);
@@ -131,19 +127,28 @@ void main() {
         _o('old', paidAt: DateTime(2026, 8, 2)),
       ], now: now);
       final sept = DateTime(2026, 9);
-      expect(calc.transactionsFor(sept).map((o) => o.id),
-          ['bank', 'due', 'cod']);
-      expect(calc.transactionsFor(sept, filter: EarningsFilter.cod)
-          .map((o) => o.id), ['due', 'cod']);
-      expect(calc.transactionsFor(sept, filter: EarningsFilter.bankDeposit)
-          .map((o) => o.id), ['bank']);
-      expect(calc.transactionsFor(sept, filter: EarningsFilter.pending)
-          .map((o) => o.id), ['due']);
+      expect(
+          calc.transactionsFor(sept).map((o) => o.id), ['bank', 'due', 'cod']);
+      expect(
+          calc
+              .transactionsFor(sept, filter: EarningsFilter.cod)
+              .map((o) => o.id),
+          ['due', 'cod']);
+      expect(
+          calc
+              .transactionsFor(sept, filter: EarningsFilter.bankDeposit)
+              .map((o) => o.id),
+          ['bank']);
+      expect(
+          calc
+              .transactionsFor(sept, filter: EarningsFilter.pending)
+              .map((o) => o.id),
+          ['due']);
     });
 
     test('legacy paid orders without dates count in total only', () {
-      final calc = EarningsCalculator([_o('legacy', payment: 'released')],
-          now: now);
+      final calc =
+          EarningsCalculator([_o('legacy', payment: 'released')], now: now);
       expect(calc.totalEarnings, 1000);
       expect(calc.thisMonth, 0);
       expect(calc.undatedPaidOrders, hasLength(1));
@@ -154,30 +159,20 @@ void main() {
     });
   });
 
-  group('FarmoraState earnings (demo farmer)', skip: _needsDemoData, () {
-    test('shows the demo farmer\'s real totals, not other farmers', () {
+  group('FarmoraState earnings before sign-in', () {
+    test('starts with empty earnings until remote orders load', () {
       final state = FarmoraState()..setRole(Role.farmer);
-      final calc = state.earnings;
-      expect(state.totalEarnings, greaterThan(0));
-      expect(state.thisMonth, calc.thisMonth);
-      expect(state.pendingPayments, greaterThan(0));
-      // ORD-1003 belongs to farmer_demo_2 and must not be counted.
-      expect(calc.paidOrders.any((o) => o.id == 'ORD-1003'), isFalse);
+      expect(state.totalEarnings, 0);
+      expect(state.pendingPayments, 0);
       expect(state.monthlyBars, hasLength(6));
-      expect(state.monthlyBars.where((b) => b.amount > 0).length,
-          greaterThan(1));
     });
 
-    test('marking cash received moves money from pending to earned', () {
+    test('cash received requires authentication', () async {
       final state = FarmoraState()..setRole(Role.farmer);
-      state.completeOrder('ORD-1002'); // COD, awaiting payment
-      final pendingBefore = state.pendingPayments;
-      final totalBefore = state.totalEarnings;
-      return state.markCashReceived('ORD-1002').then((_) {
-        expect(state.totalEarnings, closeTo(totalBefore + 12350, 0.01));
-        expect(state.pendingPayments, closeTo(pendingBefore - 12350, 0.01));
-        expect(state.thisWeek, greaterThanOrEqualTo(12350));
-      });
+      await expectLater(
+        state.markCashReceived('missing-order'),
+        throwsA(isA<StateError>()),
+      );
     });
   });
 }

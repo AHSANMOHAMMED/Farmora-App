@@ -88,18 +88,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   /// Fills name, category and description from the first new photo (AI).
   Future<void> _aiFill() async {
-    final photo = _images.map((s) => s.local).whereType<PickedImage>().firstOrNull;
+    PickedImage? photo =
+        _images.map((s) => s.local).whereType<PickedImage>().firstOrNull;
     if (photo == null) {
-      _showSnack(context.l10n.aiListingNeedsPhoto);
-      return;
+      setState(() => _isPicking = true);
+      try {
+        final PickedImage? picked = await _imagePicker.pickOne();
+        if (!mounted || picked == null) return;
+        photo = picked;
+        setState(() => _images.add(_ImageSlot.local(picked)));
+      } catch (e, st) {
+        if (mounted) {
+          _showSnack(userMessage(e, action: 'add a photo', stack: st),
+              error: true);
+        }
+        return;
+      } finally {
+        if (mounted) setState(() => _isPicking = false);
+      }
     }
+    final languageCode = context.read<FarmoraState>().locale.languageCode;
     setState(() => _aiBusy = true);
     try {
       final s = await suggestListing(
         photo.bytes,
         photo.contentType,
         categories: const ['Vegetables', 'Fruits', 'Spices', 'Grains', 'Herbs'],
-        languageCode: context.read<FarmoraState>().locale.languageCode,
+        languageCode: languageCode,
       );
       if (!mounted) return;
       setState(() {
@@ -107,7 +122,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           _nameController.text = s.name;
         }
         _category = s.category;
-        if (s.description.isNotEmpty) _descriptionController.text = s.description;
+        if (s.description.isNotEmpty) {
+          _descriptionController.text = s.description;
+        }
         _aiGrade = s.grade;
       });
     } catch (e) {
@@ -116,6 +133,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (mounted) setState(() => _aiBusy = false);
     }
   }
+
   bool _saved = false;
 
   @override
@@ -434,10 +452,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
     try {
       media = signedIn
           ? await _uploadPendingImages()
-          : [for (final slot in _images) if (slot.url != null) slot.url!];
+          : [
+              for (final slot in _images)
+                if (slot.url != null) slot.url!
+            ];
     } catch (e) {
-      debugPrint('Photo upload error, using local/preset urls: $e');
-      media = [for (final slot in _images) if (slot.url != null) slot.url!];
+      debugPrint('Photo upload error: $e');
+      if (mounted) {
+        _showSnack(userMessage(e, action: 'upload product photos'),
+            error: true);
+        setState(() => _isSubmitting = false);
+      }
+      return;
     }
     if (!mounted) return;
 
@@ -636,12 +662,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     title: l.farmerAddProductBasicDetails,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: _aiBusy || _isSubmitting ? null : _aiFill,
+                        onPressed: _aiBusy || _isPicking || _isSubmitting
+                            ? null
+                            : _aiFill,
                         icon: _aiBusy
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2))
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.auto_awesome_outlined),
                         label: Text(l.aiListingButton),
                       ),
@@ -651,8 +680,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _nameController,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductNameRequired : null,
-                        decoration: _inputDecoration(l.farmerAddProductNameHint),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? l.farmerAddProductNameRequired
+                            : null,
+                        decoration:
+                            _inputDecoration(l.farmerAddProductNameHint),
                       ),
                       const SizedBox(height: 18),
                       _buildFieldLabel(l.category),
@@ -714,8 +746,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: _quantityController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductQtyRequired : null,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                          ? l.farmerAddProductQtyRequired
+                                          : null,
                                   decoration: _inputDecoration('0.00'),
                                 ),
                               ],
@@ -730,7 +767,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 const SizedBox(height: 6),
                                 _buildDropdown(
                                   value: _unit,
-                                  items: const ['kg', 'lbs', 'pcs', 'box', 'bunches'],
+                                  items: const [
+                                    'kg',
+                                    'lbs',
+                                    'pcs',
+                                    'box',
+                                    'bunches'
+                                  ],
                                   labelOf: (v) => farmerUnitLabel(v, l),
                                   onChanged: (val) {
                                     if (val != null) {
@@ -754,8 +797,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? l.farmerAddProductPriceRequired : null,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? l.farmerAddProductPriceRequired
+                            : null,
                         decoration: InputDecoration(
                           hintText: '0.00',
                           hintStyle: TextStyle(
@@ -860,7 +906,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ? null
                             : _showPresetProducePicker,
                         icon: const Icon(Icons.auto_awesome, size: 18),
-                        label: const Text('Choose from Produce & Photo Presets'),
+                        label:
+                            const Text('Choose from Produce & Photo Presets'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
                           side: const BorderSide(color: AppColors.primary),
@@ -952,8 +999,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       : const Icon(Icons.publish_rounded, size: 20),
                   label: Text(
                     _isSubmitting
-                        ? (_images.any((i) =>
-                                i.local != null && i.uploadedUrl == null)
+                        ? (_images.any(
+                                (i) => i.local != null && i.uploadedUrl == null)
                             ? l.farmerAddProductUploadingPhotos
                             : l.farmerSaving)
                         : (widget.existingProduct != null
@@ -1026,7 +1073,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final uploading =
         _isSubmitting && slot.local != null && slot.uploadedUrl == null;
     final Widget preview = slot.local != null
-        ? Image.memory(slot.local!.bytes, fit: BoxFit.cover, gaplessPlayback: true)
+        ? Image.memory(slot.local!.bytes,
+            fit: BoxFit.cover, gaplessPlayback: true)
         : SafeImage(
             path: slot.url!,
             fit: BoxFit.cover,
@@ -1073,7 +1121,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 children: [
                   const Icon(Icons.error_outline, color: Colors.white),
                   Text(context.l10n.statusFailed,
-                      style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ],
               ),
             ),

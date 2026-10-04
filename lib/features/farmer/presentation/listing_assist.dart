@@ -156,16 +156,25 @@ Future<ListingSuggestion> suggestListing(
     ]),
   ]);
   final text = res.text ?? '';
-  final data =
-      jsonDecode(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1))
-          as Map<String, dynamic>;
-  final category = (data['category'] ?? '').toString();
+  final start = text.indexOf('{');
+  final end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) {
+    throw const FormatException('AI returned no listing data');
+  }
+  final data = jsonDecode(text.substring(start, end + 1));
+  if (data is! Map) {
+    throw const FormatException('AI returned invalid listing data');
+  }
+  final rawCategory = (data['category'] ?? '').toString().trim();
+  final category = categories.firstWhere(
+    (item) => item.toLowerCase() == rawCategory.toLowerCase(),
+    orElse: () => categories.first,
+  );
+  final rawGrade = (data['grade'] ?? '').toString().toUpperCase();
   return ListingSuggestion(
     name: (data['name'] ?? '').toString().trim(),
-    category: categories.contains(category) ? category : categories.first,
-    grade: const ['A', 'B', 'C'].contains(data['grade'])
-        ? data['grade'] as String
-        : 'B',
+    category: category,
+    grade: const ['A', 'B', 'C'].contains(rawGrade) ? rawGrade : 'B',
     description: (data['description'] ?? '').toString().trim(),
   );
 }

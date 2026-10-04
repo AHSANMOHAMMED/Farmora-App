@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
+import '../../../core/utils/profile_export.dart';
 import '../../../core/widgets/farmora_logo.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/review_model.dart';
@@ -27,6 +29,7 @@ import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
 import 'language_picker.dart';
 import 'legal_screens.dart';
+import '../../admin/presentation/admin_csv_export.dart';
 
 /// Verification state shown on the profile header and account section.
 enum ProfileVerification { verified, pending, notVerified }
@@ -220,9 +223,8 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
     final l = AppLocalizations.of(context);
     final state = context.watch<FarmoraState>();
     final isFarmer = state.role == Role.farmer;
-    final name = state.displayName.isNotEmpty
-        ? state.displayName
-        : l.profileUnnamedUser;
+    final name =
+        state.displayName.isNotEmpty ? state.displayName : l.profileUnnamedUser;
     final location = state.district.isEmpty
         ? state.country
         : '${state.district}, ${state.country}';
@@ -266,8 +268,8 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                               child: SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2.5),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.5),
                               ),
                             )
                           : state.photoUrl.isNotEmpty
@@ -330,8 +332,7 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
                 ),
                 const SizedBox(height: 8),
                 if (isFarmer && state.farmName.isNotEmpty)
-                  _HeaderInfo(
-                      icon: Icons.grass_rounded, text: state.farmName),
+                  _HeaderInfo(icon: Icons.grass_rounded, text: state.farmName),
                 _HeaderInfo(icon: Icons.location_on_outlined, text: location),
                 if (memberSince != null)
                   _HeaderInfo(
@@ -537,8 +538,8 @@ class _StatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+        border:
+            Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
@@ -779,7 +780,8 @@ class _Tile extends StatelessWidget {
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: color == AppColors.error ? AppColors.error : AppColors.onSurface,
+          color:
+              color == AppColors.error ? AppColors.error : AppColors.onSurface,
         ),
       ),
       subtitle: subtitle == null
@@ -861,8 +863,7 @@ class _AccountSection extends StatelessWidget {
             icon: Icons.verified_user_outlined,
             title: l.profileVerification,
             subtitle: switch (verification) {
-              ProfileVerification.verified =>
-                l.profileVerificationDoneSubtitle,
+              ProfileVerification.verified => l.profileVerificationDoneSubtitle,
               ProfileVerification.pending =>
                 l.profileVerificationPendingSubtitle,
               ProfileVerification.notVerified =>
@@ -920,9 +921,46 @@ class _PrivacySection extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final data = await context.read<FarmoraState>().exportUserData();
-      final encoded = const JsonEncoder.withIndent('  ').convert(data);
-      await Clipboard.setData(ClipboardData(text: encoded));
-      messenger.showSnackBar(SnackBar(content: Text(l.profileExportCopied)));
+      if (!context.mounted) return;
+      final format = await showModalBottomSheet<String>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.data_object),
+                title: const Text('Copy JSON'),
+                onTap: () => Navigator.pop(sheetContext, 'json'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.table_chart_outlined),
+                title: const Text('Export CSV'),
+                onTap: () => Navigator.pop(sheetContext, 'csv'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf_outlined),
+                title: const Text('Export PDF'),
+                onTap: () => Navigator.pop(sheetContext, 'pdf'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (!context.mounted) return;
+      if (format == 'json') {
+        final encoded = const JsonEncoder.withIndent('  ').convert(data);
+        await Clipboard.setData(ClipboardData(text: encoded));
+        messenger.showSnackBar(SnackBar(content: Text(l.profileExportCopied)));
+      } else if (format == 'csv') {
+        await exportCsv(context,
+            fileName: 'farmora-profile-export.csv',
+            csv: profileExportCsv(data));
+      } else if (format == 'pdf') {
+        final bytes = await profileExportPdf(data);
+        await Printing.sharePdf(
+            bytes: bytes, filename: 'farmora-profile-export.pdf');
+      }
     } catch (e) {
       messenger.showSnackBar(SnackBar(
         content: Text(userMessage(e, action: 'export your data')),
@@ -1096,10 +1134,9 @@ class _LogoutButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.error,
           side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
-          textStyle:
-              const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../core/config/app_backend.dart';
 import '../core/localization/l10n.dart';
 import '../core/utils/app_errors.dart';
+import '../core/utils/cloudinary_upload.dart';
 import '../core/utils/image_upload.dart';
 import '../models/product.dart';
 import '../models/order.dart';
@@ -945,13 +946,11 @@ class FirestoreService {
   }) async {
     if (kUseCloudFunctions) {
       try {
-        final result = await _functions
-            .httpsCallable('submitVerification')
-            .call({
-              'documentType': documentType,
-              'storagePath': storagePath,
-            })
-            .timeout(const Duration(seconds: 3));
+        final result =
+            await _functions.httpsCallable('submitVerification').call({
+          'documentType': documentType,
+          'storagePath': storagePath,
+        }).timeout(const Duration(seconds: 3));
         final docId = result.data['documentId'];
         if (docId != null) return docId as String;
       } catch (e) {
@@ -979,21 +978,13 @@ class FirestoreService {
     final path =
         'verification/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
     final ref = _storage.ref(path);
-    try {
-      await ref
-          .putData(
-            bytes,
-            SettableMetadata(
-              contentType: contentType,
-              cacheControl: 'private, max-age=86400',
-            ),
-          )
-          .timeout(const Duration(seconds: 3));
-    } catch (e) {
-      // If Storage is slow, has network delays, or bucket is unconfigured, proceed
-      // with the registered document path so the verification flow succeeds instantly.
-      debugPrint('Storage putData for $path completed with notice: $e');
-    }
+    await ref.putData(
+      bytes,
+      SettableMetadata(
+        contentType: contentType,
+        cacheControl: 'private, max-age=86400',
+      ),
+    );
     return path;
   }
 
@@ -1008,6 +999,15 @@ class FirestoreService {
       throw UserStateError(L10n.current.svcProfilePhotoTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    if (kUseCloudinary) {
+      final uploaded =
+          await uploadPublicImage(validateImageBytes(bytes, name: fileName));
+      await _db.collection('users').doc(uid).update({
+        'photoUrl': uploaded.url,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return uploaded.url;
+    }
     final ref = _storage.ref('users/$uid/profile_$safeName');
     await ref.putData(bytes, SettableMetadata(contentType: contentType));
     final url = await ref.getDownloadURL();
@@ -1043,6 +1043,11 @@ class FirestoreService {
   }) async {
     if (image.bytes.length > kMaxImageBytes) {
       throw AppException(L10n.current.svcImageTooLarge);
+    }
+    if (kUseCloudinary && path.startsWith('product_images/')) {
+      final uploaded = await uploadPublicImage(image);
+      onProgress?.call(1);
+      return StoredImage(url: uploaded.url, path: uploaded.publicId);
     }
     final ref = _storage.ref(path);
     final task = ref.putData(
@@ -1341,8 +1346,7 @@ class FirestoreService {
       String? oldVideo;
       if (!clearVideo && videoPath != null) {
         try {
-          final current =
-              await _db.collection('products').doc(productId).get();
+          final current = await _db.collection('products').doc(productId).get();
           oldVideo = current.data()?['videoPath']?.toString();
         } catch (_) {}
       }
@@ -1907,29 +1911,37 @@ class FirestoreService {
     } else {
       final result = await _functions
           .httpsCallable('listAvailableTransporters')
-          .call({if (district != null && district.isNotEmpty) 'district': district});
+          .call({
+        if (district != null && district.isNotEmpty) 'district': district
+      });
       data = result.data;
     }
     final list = data is List
         ? data
-        : (data is Map ? (data['transporters'] as List? ?? const []) : const []);
-    return list.whereType<Map>().map((raw) {
-      final d = Map<String, dynamic>.from(raw);
-      final uid = (d['uid'] ?? d['id'] ?? '').toString();
-      return <String, dynamic>{
-        ...d,
-        'uid': uid,
-        'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
-        'photoUrl': d['photoUrl'] ?? '',
-        'district': d['district'] ?? '',
-        'vehicleType': d['vehicleType'] ?? '',
-        'vehicleRegistration': d['vehicleRegistration'] ?? '',
-        'vehicleCapacity': d['vehicleCapacity'] ?? d['capacityKg'],
-        'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
-        'availabilityStatus': d['availabilityStatus'] ?? '',
-        'isVerified': d['isVerified'] != false,
-      };
-    }).where((t) => (t['uid'] as String).isNotEmpty).toList();
+        : (data is Map
+            ? (data['transporters'] as List? ?? const [])
+            : const []);
+    return list
+        .whereType<Map>()
+        .map((raw) {
+          final d = Map<String, dynamic>.from(raw);
+          final uid = (d['uid'] ?? d['id'] ?? '').toString();
+          return <String, dynamic>{
+            ...d,
+            'uid': uid,
+            'displayName': d['displayName'] ?? d['name'] ?? 'Transporter',
+            'photoUrl': d['photoUrl'] ?? '',
+            'district': d['district'] ?? '',
+            'vehicleType': d['vehicleType'] ?? '',
+            'vehicleRegistration': d['vehicleRegistration'] ?? '',
+            'vehicleCapacity': d['vehicleCapacity'] ?? d['capacityKg'],
+            'vehicleCapacityUnit': d['vehicleCapacityUnit'] ?? 'kg',
+            'availabilityStatus': d['availabilityStatus'] ?? '',
+            'isVerified': d['isVerified'] != false,
+          };
+        })
+        .where((t) => (t['uid'] as String).isNotEmpty)
+        .toList();
   }
 
   /// One-shot stream of [listAvailableTransporters] (kept for callers that

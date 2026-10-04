@@ -33,6 +33,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
   Stream<List<TransportJob>>? _jobStream;
   final Map<String, Stream<Map<String, dynamic>?>> _transporterStreams = {};
   bool _cancelling = false;
+  bool _sharingInvoice = false;
   Future<String>? _deliveryCode;
 
   FarmoraOrder get order => widget.order;
@@ -57,6 +58,19 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
       backgroundColor: error ? AppColors.error : null,
       behavior: SnackBarBehavior.floating,
     ));
+  }
+
+  Future<void> _shareInvoice(FarmoraOrder currentOrder) async {
+    if (_sharingInvoice) return;
+    setState(() => _sharingInvoice = true);
+    try {
+      await shareInvoice(currentOrder, farmerCopy: false);
+    } catch (e, st) {
+      _snack(userMessage(e, action: 'export the invoice', stack: st),
+          error: true);
+    } finally {
+      if (mounted) setState(() => _sharingInvoice = false);
+    }
   }
 
   /// Scans the harvest barcode; it only counts when the server verified it
@@ -262,13 +276,21 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         actions: [
           IconButton(
             tooltip: l.invoiceDownload,
-            icon: const Icon(Icons.receipt_long_outlined,
-                color: AppColors.onSurface),
-            onPressed: () => shareInvoice(currentOrder, farmerCopy: false),
+            icon: _sharingInvoice
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.receipt_long_outlined,
+                    color: AppColors.onSurface),
+            onPressed:
+                _sharingInvoice ? null : () => _shareInvoice(currentOrder),
           ),
           IconButton(
             tooltip: l.message,
-            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.onSurface),
+            icon: const Icon(Icons.chat_bubble_outline,
+                color: AppColors.onSurface),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => ConversationsScreen(orderId: order.id),
@@ -479,7 +501,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                         IconButton(
                           tooltip: l.editDeliveryAddress,
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: () => _editDeliveryAddress(state, currentOrder),
+                          onPressed: () =>
+                              _editDeliveryAddress(state, currentOrder),
                           color: AppColors.primary,
                         ),
                     ],
@@ -552,14 +575,14 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
                           child: Text(
-                        buyerOrderTotal(currentOrder),
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
+                            buyerOrderTotal(currentOrder),
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -584,86 +607,86 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         ),
       ),
       bottomNavigationBar: (() {
-            final trackable = !currentOrder.isCancelled &&
-                (currentOrder.statusStep == 1 || currentOrder.statusStep == 2);
-            return trackable
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => TrackOrderScreen(order: currentOrder),
+        final trackable = !currentOrder.isCancelled &&
+            (currentOrder.statusStep == 1 || currentOrder.statusStep == 2);
+        return trackable
+            ? Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
                     ),
-                  );
-                },
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  backgroundColor: AppColors.primary,
+                  ],
                 ),
-                child: Text(
-                  l.trackOrder,
-                  style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TrackOrderScreen(order: currentOrder),
+                      ),
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: Text(
+                    l.trackOrder,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-            )
-          : currentOrder.isPending
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  child: OutlinedButton(
-                    onPressed: _cancelling
-                        ? null
-                        : () => _cancelOrder(state, currentOrder),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.error),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+              )
+            : currentOrder.isPending
+                ? Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
                     ),
-                    child: _cancelling
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(
-                      l.buyerCancelOrderButton,
-                      style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
+                    child: OutlinedButton(
+                      onPressed: _cancelling
+                          ? null
+                          : () => _cancelOrder(state, currentOrder),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: _cancelling
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(
+                              l.buyerCancelOrderButton,
+                              style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold),
+                            ),
                     ),
-                  ),
-                )
-              : null;
-          })(),
+                  )
+                : null;
+      })(),
     );
   }
 
@@ -924,7 +947,11 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(label,
-          style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color)),
     );
   }
 

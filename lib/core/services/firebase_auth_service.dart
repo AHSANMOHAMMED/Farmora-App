@@ -153,7 +153,7 @@ class FirebaseAuthService {
       try {
         normalizedPhone = _phoneInE164(phone);
       } catch (_) {}
-      
+
       final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
       final isAdmin = uid == 'Muga5XsOaLPtuFv3RQUZzVY6Owd2' ||
           (normalizedPhone != null && normalizedPhone == '+94725068682') ||
@@ -163,7 +163,9 @@ class FirebaseAuthService {
           (data != null && data['role'] == 'admin');
 
       if (isAdmin) {
-        if (data == null || data['role'] != 'admin' || data['isVerified'] != true) {
+        if (data == null ||
+            data['role'] != 'admin' ||
+            data['isVerified'] != true) {
           await userDocRef.set({
             'id': uid,
             'name': data?['name'] ?? 'System Administrator',
@@ -199,54 +201,35 @@ class FirebaseAuthService {
 
   Future<UserCredential> _signInWithPhonePassword(
       String phone, String password) async {
-    // ── Step 1: resolve the exact auth email from Firestore ──────────────────
-    // Try the phone in every plausible format so we pick the right email on
-    // the very first Firebase Auth attempt, producing zero 400 console errors
-    // on a successful login.
-    String? resolvedEmail;
+    FirebaseAuthException? firstError;
+
+    // First, let's see if there is a real email registered in Firestore for this phone number
+    String? realEmailFromFirestore;
     try {
-      final phonesToTry = <String>{};
-      try { phonesToTry.add(_phoneInE164(phone)); } catch (_) {}
-      final clean = _normalizePhone(phone);
-      if (clean.isNotEmpty) phonesToTry.add(clean);
-      // Local 0-prefix Sri Lanka form.
-      if (clean.startsWith('0') && clean.length == 10) {
-        phonesToTry.add('+94${clean.substring(1)}');
-      }
-      for (final p in phonesToTry) {
-        final snap = await _firestore
+      final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+      if (cleanPhone.isNotEmpty) {
+        final querySnapshot = await _firestore
             .collection('users')
-            .where('phone', isEqualTo: p)
+            .where('phone', isEqualTo: cleanPhone)
             .limit(1)
             .get();
-        if (snap.docs.isNotEmpty) {
-          final email = snap.docs.first.data()['email'] as String?;
-          if (email != null && email.contains('@')) resolvedEmail = email.trim();
-          break;
+        if (querySnapshot.docs.isNotEmpty) {
+          final doc = querySnapshot.docs.first;
+          final email = doc.data()['email'] as String?;
+          if (email != null &&
+              email.contains('@') &&
+              !email.contains('phone.farmora.app')) {
+            realEmailFromFirestore = email.trim();
+          }
         }
       }
-    } catch (_) {
-      // Firestore not accessible before auth (rules may require auth) — fall
-      // through to the candidate list below.
-    }
+    } catch (_) {}
 
-    // ── Step 2: build ordered candidate list ─────────────────────────────────
-    // Put the Firestore-resolved email first (highest confidence), then the
-    // generated candidates as fallbacks.
-    final candidates = <String>[];
-    if (resolvedEmail != null) candidates.add(resolvedEmail);
-    for (final e in loginEmailCandidates(phone)) {
-      if (!candidates.contains(e)) candidates.add(e);
+    final candidates = loginEmailCandidates(phone);
+    if (realEmailFromFirestore != null &&
+        !candidates.contains(realEmailFromFirestore)) {
+      candidates.insert(0, realEmailFromFirestore);
     }
-
-    // ── Step 3: try each candidate ────────────────────────────────────────────
-    // Only keep retrying when the error is definitively "account not found"
-    // (error code 'user-not-found'). Stop immediately on 'invalid-credential'
-    // after the first candidate — that code can mean wrong password, and
-    // retrying every format would generate one 400 per extra candidate for no
-    // benefit. We do keep 'wrong-password' in retryable for older SDK compat.
-    FirebaseAuthException? firstError;
-    bool seenInvalidCredential = false;
 
     for (final email in candidates) {
       try {
@@ -255,30 +238,17 @@ class FirebaseAuthService {
           password: password,
         );
       } on FirebaseAuthException catch (error) {
+        const retryable = {
+          'user-not-found',
+          'invalid-credential',
+          'invalid-email',
+          'wrong-password',
+        };
         firstError ??= error;
-        switch (error.code) {
-          case 'user-not-found':
-          case 'invalid-email':
-            continue; // Definitively no account at this email — try next.
-          case 'invalid-credential':
-          case 'wrong-password':
-            // Could be "account not found" OR "wrong password". Only retry
-            // once (the first time we see this code) to cover the case where
-            // the account is registered under a different email format.
-            if (!seenInvalidCredential) {
-              seenInvalidCredential = true;
-              continue;
-            }
-            // Second occurrence: password is almost certainly wrong — stop.
-            throw FarmoraAuthException(_authMessage(error));
-          default:
-            rethrow;
-        }
+        if (!retryable.contains(error.code)) rethrow;
       }
     }
-    throw firstError != null
-        ? FarmoraAuthException(_authMessage(firstError!))
-        : FirebaseAuthException(code: 'invalid-credential');
+    throw firstError ?? FirebaseAuthException(code: 'invalid-credential');
   }
 
   Future<UserCredential> _signInWithGoogleProvider() async {
@@ -406,8 +376,7 @@ class FirebaseAuthService {
 
   /// Phone credential for the last OTP requested with [sendPhoneOtp] /
   /// [sendPasswordResetOtp] (mobile platforms).
-  PhoneAuthCredential _phoneCredential(String code,
-      {String? verificationId}) {
+  PhoneAuthCredential _phoneCredential(String code, {String? verificationId}) {
     final trimmedCode = code.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(trimmedCode)) {
       throw const FarmoraAuthException('Enter the 6-digit verification code.');
@@ -419,7 +388,8 @@ class FirebaseAuthService {
     if (id == null || id.isEmpty) {
       throw const FarmoraAuthException('Request a new OTP first.');
     }
-    return PhoneAuthProvider.credential(verificationId: id, smsCode: trimmedCode);
+    return PhoneAuthProvider.credential(
+        verificationId: id, smsCode: trimmedCode);
   }
 
   /// Best-effort: link the verified phone number to a new password account.

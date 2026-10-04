@@ -58,7 +58,6 @@ class FarmoraState extends ChangeNotifier {
   bool _profileLoading = false;
   bool get profileLoading => _profileLoading;
 
-
   // Stream subscriptions for real-time Firestore sync
   StreamSubscription<List<Product>>? _productsSub;
   StreamSubscription<List<FarmoraOrder>>? _ordersSub;
@@ -1144,6 +1143,7 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> toggleProductStock(String id) async {
+    _requireSignedIn();
     final current = _products.where((p) => p.id == id).firstOrNull;
     if (current == null) return;
     final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
@@ -1151,6 +1151,7 @@ class FarmoraState extends ChangeNotifier {
   }
 
   Future<void> deleteProduct(String id) async {
+    _requireSignedIn();
     await _firestoreService.deleteProduct(id);
   }
 
@@ -1481,7 +1482,8 @@ class FarmoraState extends ChangeNotifier {
       throw const FarmoraAuthException('Phone number is required.');
     }
     if (password.trim().length < 6) {
-      throw const FarmoraAuthException('Password must be at least 6 characters.');
+      throw const FarmoraAuthException(
+          'Password must be at least 6 characters.');
     }
 
     String normalizedPhone = cleanPhone;
@@ -1515,11 +1517,14 @@ class FarmoraState extends ChangeNotifier {
       );
     } on FirebaseAuthException catch (error) {
       if (error.code == 'email-already-in-use') {
-        throw const FarmoraAuthException('A member with this phone number is already registered.');
+        throw const FarmoraAuthException(
+            'A member with this phone number is already registered.');
       } else if (error.code == 'weak-password') {
-        throw const FarmoraAuthException('Password must be at least 6 characters.');
+        throw const FarmoraAuthException(
+            'Password must be at least 6 characters.');
       } else {
-        throw FarmoraAuthException(error.message ?? 'Failed to create member authentication.');
+        throw FarmoraAuthException(
+            error.message ?? 'Failed to create member authentication.');
       }
     } finally {
       await secondaryApp.delete();
@@ -1546,16 +1551,20 @@ class FarmoraState extends ChangeNotifier {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    if (role.toLowerCase().trim() == 'driver' || role.toLowerCase().trim() == 'transporter') {
+    if (role.toLowerCase().trim() == 'driver' ||
+        role.toLowerCase().trim() == 'transporter') {
       try {
-        final profileRef = FirebaseFirestore.instance.collection('transporter_profiles').doc(uid);
+        final profileRef = FirebaseFirestore.instance
+            .collection('transporter_profiles')
+            .doc(uid);
         await profileRef.set({
           'id': uid,
           'uid': uid,
           'displayName': name.trim(),
           'district': district ?? 'Colombo',
           'vehicleType': 'Mini Truck',
-          'vehicleRegistration': 'WP-NA-${DateTime.now().millisecondsSinceEpoch % 10000}',
+          'vehicleRegistration':
+              'WP-NA-${DateTime.now().millisecondsSinceEpoch % 10000}',
           'vehicleCapacity': 1000,
           'vehicleCapacityUnit': 'kg',
           'availabilityStatus': 'available',
@@ -1665,9 +1674,9 @@ class FarmoraState extends ChangeNotifier {
       );
 
       final currentUser = FirebaseAuth.instance.currentUser;
-      final isAdminAccount = 
-          currentUser?.phoneNumber == '+94725068682' ||
-          currentUser?.email == '0725068682@phone.farmora.app' || currentUser?.email == '0094725068682@phone.farmora.app';
+      final isAdminAccount = currentUser?.phoneNumber == '+94725068682' ||
+          currentUser?.email == '0725068682@phone.farmora.app' ||
+          currentUser?.email == '0094725068682@phone.farmora.app';
 
       if (profile == null && isAdminAccount) {
         // Self-heal missing admin document in Firestore

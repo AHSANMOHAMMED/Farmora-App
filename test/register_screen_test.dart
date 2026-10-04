@@ -72,7 +72,8 @@ void main() {
       });
     }
 
-    testWidgets('renders selected role banner, photo upload, and all form fields',
+    testWidgets(
+        'renders selected role banner, photo upload, and all form fields',
         (tester) async {
       setupViewport(tester);
       await tester.pumpWidget(
@@ -94,7 +95,8 @@ void main() {
       expect(find.text('Confirm Password'), findsOneWidget);
 
       // 4. Primary Button "Create Account"
-      expect(find.widgetWithText(FilledButton, 'Create Account'), findsOneWidget);
+      expect(
+          find.widgetWithText(FilledButton, 'Create Account'), findsOneWidget);
 
       // 5. Footer Log In link
       expect(find.text('Already have an account? '), findsOneWidget);
@@ -182,7 +184,8 @@ void main() {
       expect(find.text('Passwords do not match'), findsOneWidget);
     });
 
-    testWidgets('successful registration signs in and calls onRegistered', skip: true,
+    testWidgets(
+        'registration remains signed out when the backend is unavailable',
         (tester) async {
       setupViewport(tester);
       final state = FarmoraState();
@@ -228,9 +231,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Create Account'));
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(state.signedIn, isTrue);
+      expect(state.signedIn, isFalse);
       expect(state.role, Role.farmer);
-      expect(registered, isTrue);
+      expect(registered, isFalse);
     });
 
     testWidgets('tapping Log In navigates to LoginScreen', (tester) async {
