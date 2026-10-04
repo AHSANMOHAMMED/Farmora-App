@@ -12,13 +12,15 @@ const bool kUseCloudFunctions = bool.fromEnvironment(
 /// private evidence still requires Firebase Storage.
 const bool kUseCloudinary = bool.fromEnvironment(
   'USE_CLOUDINARY',
-  defaultValue: false,
+  defaultValue: true,
 );
 const String kCloudinaryCloudName = String.fromEnvironment(
   'CLOUDINARY_CLOUD_NAME',
+  defaultValue: 'lzc3piy6',
 );
 const String kCloudinaryUploadPreset = String.fromEnvironment(
   'CLOUDINARY_UPLOAD_PRESET',
+  defaultValue: 'farmora',
 );
 
 /// Sample Sri Lankan catalog (products, orders, jobs, offers, market prices)
