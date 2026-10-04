@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/user_role.dart';
 import '../utils/app_errors.dart';
 
@@ -252,12 +252,24 @@ class FirebaseAuthService {
   }
 
   Future<UserCredential> _signInWithGoogleProvider() async {
-    final provider = GoogleAuthProvider()
-      ..addScope('email')
-      ..setCustomParameters({'prompt': 'select_account'});
-    return kIsWeb
-        ? _auth.signInWithPopup(provider)
-        : _auth.signInWithProvider(provider);
+    if (kIsWeb) {
+      final provider = GoogleAuthProvider()
+        ..addScope('email')
+        ..setCustomParameters({'prompt': 'select_account'});
+      return _auth.signInWithPopup(provider);
+    } else {
+      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        throw FirebaseAuthException(code: 'ERROR_ABORTED_BY_USER', message: 'Sign in aborted by user');
+      }
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      return _auth.signInWithCredential(credential);
+    }
   }
 
   Future<FarmoraAuthResult> loginWithGoogle() async {
