@@ -31,6 +31,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+android/build/
+.gradle/
+android/.gradle/
 android/key.properties
 android/*.jks
 android/*.keystore

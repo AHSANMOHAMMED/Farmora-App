@@ -15,6 +15,22 @@
       "oauth_client": [
         {
           "client_id": "33678627494-18fa2rfmjh3p9ivghnm23igpnt1vpt0m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.farmora",
+            "certificate_hash": "df940907ea3c58c620e99dfe8bdb21a5583fcd7d"
+          }
+        },
+        {
+          "client_id": "33678627494-42rntmvpna4in0dm08opm1odlnmggsjj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.farmora",
+            "certificate_hash": "f4009b3441688dc3f8233f3a54bfbd1f5e8cc608"
+          }
+        },
+        {
+          "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,11 +43,11 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "33678627494-18fa2rfmjh3p9ivghnm23igpnt1vpt0m.apps.googleusercontent.com",
+              "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "33678627494-r510pm96kuutrve2uq1dc6e2mgfnhbej.apps.googleusercontent.com",
+              "client_id": "33678627494-eee8lgjhn13ltgmurp19gj4iuj80vbcf.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.example.farmora"

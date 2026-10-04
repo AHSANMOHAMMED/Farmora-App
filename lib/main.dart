@@ -99,7 +99,10 @@ void main() async {
       _configureFirebaseEmulators();
     }
     if (!kIsWeb && !_useFirebaseEmulators) {
-      await _activateAppCheck();
+      await _activateAppCheck().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
       // Crash handlers are installed by ErrorReporter.init() below.
 
       FirebasePerformance.instance.setPerformanceCollectionEnabled(!kDebugMode);
@@ -161,15 +164,23 @@ void _configureFirebaseEmulators() {
 Future<void> _activateAppCheck() async {
   if (kIsWeb) return;
   try {
-    await FirebaseAppCheck.instance.activate(
-      // Debug provider for local builds. Production: Play Integrity / DeviceCheck.
-      providerAndroid: kDebugMode
-          ? const AndroidDebugProvider()
-          : const AndroidPlayIntegrityProvider(),
-      providerApple: kDebugMode
-          ? const AppleDebugProvider()
-          : const AppleDeviceCheckProvider(),
-    );
+    await FirebaseAppCheck.instance
+        .activate(
+          // Debug provider for local builds. Production: Play Integrity / DeviceCheck.
+          providerAndroid: kDebugMode
+              ? const AndroidDebugProvider()
+              : const AndroidPlayIntegrityProvider(),
+          providerApple: kDebugMode
+              ? const AppleDebugProvider()
+              : const AppleDeviceCheckProvider(),
+        )
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {
+            debugPrint('App Check activation timed out');
+            return null;
+          },
+        );
   } catch (e) {
     debugPrint('App Check not activated: $e');
   }
