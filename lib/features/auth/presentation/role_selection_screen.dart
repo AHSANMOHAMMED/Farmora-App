@@ -297,12 +297,33 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 // 1. Role Icon (Farmer, Basket, Truck)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 54,
-                  height: 54,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color:
-                        isSelected ? AppColors.primary : AppColors.primaryLight,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            colors: [AppColors.primary, AppColors.forestGreen],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected ? null : AppColors.primaryLight,
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.15),
+                      width: 1.5,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Icon(
                     option.icon,

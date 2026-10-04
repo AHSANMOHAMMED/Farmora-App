@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../localization/l10n.dart';
+import 'farmora_logo.dart';
 import '../../features/farmer/presentation/account_verification_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../providers/farmora_state.dart';
@@ -58,15 +59,9 @@ class FarmerHeader extends StatelessWidget implements PreferredSizeWidget {
                   ),
                   const SizedBox(width: 8),
                 ] else ...[
-                  Image.asset(
-                    'assets/images/farmora_logo.png',
-                    height: 32,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.eco_rounded,
-                      color: AppColors.primary,
-                      size: 32,
-                    ),
+                  const FarmoraLogo(
+                    size: 34,
+                    showBadge: true,
                   ),
                   const SizedBox(width: 10),
                 ],

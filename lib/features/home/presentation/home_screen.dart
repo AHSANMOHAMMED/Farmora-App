@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/localization/l10n.dart';
+import '../../../core/widgets/farmora_logo.dart';
 import '../../../models/user_role.dart';
 import '../../../providers/farmora_state.dart';
 import 'dashboard_screen.dart';
@@ -584,16 +585,16 @@ class _HomeScreenState extends State<HomeScreen>
             activeIcon: Icons.home_rounded),
         _NavItem(
             label: l10n.homeNavProducts,
-            icon: Icons.local_florist_outlined,
-            activeIcon: Icons.local_florist_rounded),
+            icon: Icons.storefront_outlined,
+            activeIcon: Icons.storefront_rounded),
         _NavItem(
             label: l10n.homeNavOffers,
             icon: Icons.local_offer_outlined,
             activeIcon: Icons.local_offer_rounded),
         const _NavItem(
             label: 'Requests',
-            icon: Icons.campaign_outlined,
-            activeIcon: Icons.campaign_rounded),
+            icon: Icons.assignment_outlined,
+            activeIcon: Icons.assignment_rounded),
         _NavItem(
             label: l10n.homeNavOrders,
             icon: Icons.receipt_long_outlined,
@@ -1676,13 +1677,18 @@ class _AnimatedBrandBadge extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                isAdmin
-                    ? Icons.admin_panel_settings_rounded
-                    : Icons.agriculture_rounded,
-                color: Colors.white,
-                size: isAdmin ? 22 : 20,
-              ),
+              isAdmin
+                  ? const Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    )
+                  : const FarmoraLogo(
+                      size: 26,
+                      showBadge: false,
+                      leafColor: Colors.white,
+                      wheatColor: AppColors.accentWheat,
+                    ),
             ],
           ),
         );

@@ -1,12 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Green circle background -->
-  <circle cx="32" cy="32" r="30" fill="#1f7a4d"/>
-  <!-- Leaf / sprout shape -->
-  <path d="M32 48 C32 48 20 38 20 26 C20 16 32 12 32 12 C32 12 44 16 44 26 C44 38 32 48 32 48Z" fill="#e4f3e8" opacity="0.95"/>
-  <!-- Stem -->
-  <line x1="32" y1="48" x2="32" y2="56" stroke="#e4f3e8" stroke-width="2.5" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="wheatGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- Modern emerald squircle badge -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" filter="url(#softGlow)"/>
+  
+  <!-- Subtle specular highlight -->
+  <rect x="3" y="3" width="58" height="28" rx="14" fill="white" opacity="0.08"/>
+
+  <!-- Farmora Organic Leaf (Left) -->
+  <path d="M31 10 C18 16 12 30 25 44 C29 36 33 24 31 10 Z" fill="url(#leafGrad)"/>
+  <!-- Leaf subtle inner shadow -->
+  <path d="M31 10 C24 19 21 34 25 44 C29 36 33 24 31 10 Z" fill="#047857" opacity="0.35"/>
   <!-- Leaf vein -->
-  <path d="M32 18 L32 42" stroke="#1f7a4d" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-  <path d="M32 24 L26 30" stroke="#1f7a4d" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
-  <path d="M32 30 L38 24" stroke="#1f7a4d" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M30 14 Q24 28 25 41" stroke="white" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Farmora Wheat Stalk & Grains (Right) -->
+  <path d="M42 16 Q36 32 23 48" stroke="#FDE047" stroke-width="2" stroke-linecap="round" fill="none"/>
+  
+  <!-- Wheat Grain Teardrops -->
+  <ellipse cx="40" cy="16" rx="2.5" ry="3.8" transform="rotate(30 40 16)" fill="url(#wheatGrad)"/>
+  <ellipse cx="44" cy="22" rx="2.3" ry="3.6" transform="rotate(35 44 22)" fill="url(#wheatGrad)"/>
+  <ellipse cx="36" cy="24" rx="2.3" ry="3.6" transform="rotate(-30 36 24)" fill="url(#wheatGrad)"/>
+  <ellipse cx="42" cy="30" rx="2.1" ry="3.4" transform="rotate(35 42 30)" fill="url(#wheatGrad)"/>
+  <ellipse cx="33" cy="32" rx="2.1" ry="3.4" transform="rotate(-30 33 32)" fill="url(#wheatGrad)"/>
+  <ellipse cx="38" cy="38" rx="1.9" ry="3.2" transform="rotate(35 38 38)" fill="url(#wheatGrad)"/>
+  <ellipse cx="29" cy="40" rx="1.9" ry="3.2" transform="rotate(-30 29 40)" fill="url(#wheatGrad)"/>
+
+  <!-- Wheat Awns -->
+  <line x1="40" y1="13" x2="44" y2="8" stroke="#FDE047" stroke-width="1" stroke-linecap="round" opacity="0.85"/>
+  <line x1="45" y1="19" x2="50" y2="15" stroke="#FDE047" stroke-width="1" stroke-linecap="round" opacity="0.85"/>
 </svg>

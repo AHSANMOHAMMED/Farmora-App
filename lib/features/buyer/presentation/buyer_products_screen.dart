@@ -30,6 +30,24 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
     'Herbs',
   ];
 
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Vegetables':
+        return Icons.eco_rounded;
+      case 'Fruits':
+        return Icons.apple_rounded;
+      case 'Spices':
+        return Icons.flare_rounded;
+      case 'Grains':
+        return Icons.grain_rounded;
+      case 'Herbs':
+        return Icons.grass_rounded;
+      case 'All':
+      default:
+        return Icons.grid_view_rounded;
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -232,10 +250,18 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
+                        avatar: Icon(
+                          _getCategoryIcon(cat),
+                          size: 16,
+                          color: isSelected ? Colors.white : AppColors.primary,
+                        ),
                         label: Text(buyerCategoryLabel(l, cat)),
                         selected: isSelected,
                         selectedColor: AppColors.primary,
                         checkmarkColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : AppColors.onSurface,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
