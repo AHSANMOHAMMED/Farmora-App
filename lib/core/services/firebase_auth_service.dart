@@ -199,23 +199,20 @@ class FirebaseAuthService {
 
   Future<UserCredential> _signInWithPhonePassword(
       String phone, String password) async {
-    FirebaseAuthException? firstError;
-
-    // Resolve the canonical auth email from Firestore first (tries phone in
-    // multiple formats to maximise the chance of a single-attempt sign-in and
-    // eliminate unnecessary 400 responses from the Identity Toolkit).
+    // ── Step 1: resolve the exact auth email from Firestore ──────────────────
+    // Try the phone in every plausible format so we pick the right email on
+    // the very first Firebase Auth attempt, producing zero 400 console errors
+    // on a successful login.
     String? resolvedEmail;
     try {
-      final cleanPhone = _normalizePhone(phone);
-      // Try E.164 form first, then the raw cleaned value.
       final phonesToTry = <String>{};
       try { phonesToTry.add(_phoneInE164(phone)); } catch (_) {}
-      if (cleanPhone.isNotEmpty) phonesToTry.add(cleanPhone);
-      // Local 0-prefix form (e.g. 0771234567).
-      if (cleanPhone.startsWith('0') && cleanPhone.length == 10) {
-        phonesToTry.add('+94${cleanPhone.substring(1)}');
+      final clean = _normalizePhone(phone);
+      if (clean.isNotEmpty) phonesToTry.add(clean);
+      // Local 0-prefix Sri Lanka form.
+      if (clean.startsWith('0') && clean.length == 10) {
+        phonesToTry.add('+94${clean.substring(1)}');
       }
-
       for (final p in phonesToTry) {
         final snap = await _firestore
             .collection('users')
@@ -224,21 +221,32 @@ class FirebaseAuthService {
             .get();
         if (snap.docs.isNotEmpty) {
           final email = snap.docs.first.data()['email'] as String?;
-          if (email != null && email.contains('@')) {
-            resolvedEmail = email.trim();
-          }
+          if (email != null && email.contains('@')) resolvedEmail = email.trim();
           break;
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      // Firestore not accessible before auth (rules may require auth) — fall
+      // through to the candidate list below.
+    }
 
-    // Build the ordered candidate list: resolved email first so we ideally
-    // only make one auth request and avoid unnecessary 400 responses.
+    // ── Step 2: build ordered candidate list ─────────────────────────────────
+    // Put the Firestore-resolved email first (highest confidence), then the
+    // generated candidates as fallbacks.
     final candidates = <String>[];
     if (resolvedEmail != null) candidates.add(resolvedEmail);
     for (final e in loginEmailCandidates(phone)) {
       if (!candidates.contains(e)) candidates.add(e);
     }
+
+    // ── Step 3: try each candidate ────────────────────────────────────────────
+    // Only keep retrying when the error is definitively "account not found"
+    // (error code 'user-not-found'). Stop immediately on 'invalid-credential'
+    // after the first candidate — that code can mean wrong password, and
+    // retrying every format would generate one 400 per extra candidate for no
+    // benefit. We do keep 'wrong-password' in retryable for older SDK compat.
+    FirebaseAuthException? firstError;
+    bool seenInvalidCredential = false;
 
     for (final email in candidates) {
       try {
@@ -247,17 +255,30 @@ class FirebaseAuthService {
           password: password,
         );
       } on FirebaseAuthException catch (error) {
-        const retryable = {
-          'user-not-found',
-          'invalid-credential',
-          'invalid-email',
-          'wrong-password',
-        };
         firstError ??= error;
-        if (!retryable.contains(error.code)) rethrow;
+        switch (error.code) {
+          case 'user-not-found':
+          case 'invalid-email':
+            continue; // Definitively no account at this email — try next.
+          case 'invalid-credential':
+          case 'wrong-password':
+            // Could be "account not found" OR "wrong password". Only retry
+            // once (the first time we see this code) to cover the case where
+            // the account is registered under a different email format.
+            if (!seenInvalidCredential) {
+              seenInvalidCredential = true;
+              continue;
+            }
+            // Second occurrence: password is almost certainly wrong — stop.
+            throw FarmoraAuthException(_authMessage(error));
+          default:
+            rethrow;
+        }
       }
     }
-    throw firstError ?? FirebaseAuthException(code: 'invalid-credential');
+    throw firstError != null
+        ? FarmoraAuthException(_authMessage(firstError!))
+        : FirebaseAuthException(code: 'invalid-credential');
   }
 
   Future<UserCredential> _signInWithGoogleProvider() async {
