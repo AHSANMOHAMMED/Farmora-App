@@ -1414,6 +1414,23 @@ class FirestoreService {
       throw UserStateError(L10n.current.svcVideoTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    
+    if (kUseCloudinary) {
+      final uploaded = await uploadPublicMedia(bytes, fileName);
+      try {
+        await setProductMedia(
+          productId: productId,
+          videoPath: uploaded.publicId,
+          videoUrl: uploaded.url,
+          harvestStatus: 'harvested',
+          harvestDate: DateTime.now(),
+        );
+      } catch (_) {
+        debugPrint('Failed to set product media');
+      }
+      return {'url': uploaded.url, 'path': uploaded.publicId};
+    }
+
     final path =
         'product_videos/$uid/${productId}_${DateTime.now().millisecondsSinceEpoch}_$safeName';
     final ref = _storage.ref(path);
@@ -1744,6 +1761,10 @@ class FirestoreService {
       throw UserStateError(L10n.current.svcEvidenceTooLarge);
     }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    if (kUseCloudinary) {
+      final uploaded = await uploadPublicMedia(bytes, fileName);
+      return uploaded.url;
+    }
     final path =
         'disputes/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
     final ref = _storage.ref(path);
