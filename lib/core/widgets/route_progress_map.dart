@@ -33,8 +33,39 @@ class RouteProgressMap extends StatelessWidget {
 
   /// Compile-time Maps key via `--dart-define=GOOGLE_MAPS_API_KEY=...`.
   static const mapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  static const _defaultApiKey = 'AIzaSyBsvO-upUbT-4-kaDHqP2j2CUpYT4j2_qs';
+
+  static String get effectiveApiKey =>
+      mapsApiKey.isNotEmpty ? mapsApiKey : _defaultApiKey;
 
   static bool get mapsEnabled => mapsApiKey.isNotEmpty;
+
+  static const Map<String, LatLng> districtCentroids = {
+    'colombo': LatLng(6.9271, 79.8612),
+    'dambulla': LatLng(7.8742, 80.6511),
+    'kandy': LatLng(7.2906, 80.6337),
+    'jaffna': LatLng(9.6615, 80.0255),
+    'puttalam': LatLng(8.0333, 79.8333),
+    'galle': LatLng(6.0535, 80.2210),
+    'matara': LatLng(5.9549, 80.5550),
+    'anuradhapura': LatLng(8.3114, 80.4037),
+    'kurunegala': LatLng(7.4863, 80.3623),
+    'badulla': LatLng(6.9934, 81.0550),
+    'nuwara eliya': LatLng(6.9497, 80.7891),
+    'nuwaraeliya': LatLng(6.9497, 80.7891),
+    'batticaloa': LatLng(7.7310, 81.6747),
+    'trincomalee': LatLng(8.5874, 81.2152),
+    'matale': LatLng(7.4675, 80.6234),
+  };
+
+  static LatLng resolveLocation(String? text, LatLng fallback) {
+    if (text == null || text.trim().isEmpty) return fallback;
+    final lower = text.toLowerCase();
+    for (final entry in districtCentroids.entries) {
+      if (lower.contains(entry.key)) return entry.value;
+    }
+    return fallback;
+  }
 
   static double progressForOrderStatus(String status) {
     switch (status.toLowerCase().replaceAll(' ', '').replaceAll('_', '')) {
@@ -82,11 +113,17 @@ class RouteProgressMap extends StatelessWidget {
     final dropoffText = dropoffLabel ?? l.widgetDeliveryPoint;
     final statusText =
         statusLabel.isEmpty ? '' : loc.statusLabel(statusLabel, l);
-    if (mapsEnabled && pickup != null && dropoff != null) {
+
+    final actualPickup = pickup ??
+        resolveLocation(pickupLabel, const LatLng(7.8742, 80.6511));
+    final actualDropoff = dropoff ??
+        resolveLocation(dropoffLabel, const LatLng(6.9271, 79.8612));
+
+    if (mapsEnabled) {
       return _MapsRouteView(
         progress: progress.clamp(0.0, 1.0),
-        pickup: pickup!,
-        dropoff: dropoff!,
+        pickup: actualPickup,
+        dropoff: actualDropoff,
         courier: courier,
         pickupLabel: pickupText,
         dropoffLabel: dropoffText,
@@ -142,9 +179,24 @@ class _MapsRouteView extends StatelessWidget {
         child: GoogleMap(
           initialCameraPosition: CameraPosition(target: mid, zoom: 11),
           markers: {
-            Marker(markerId: const MarkerId('pickup'), position: pickup, infoWindow: InfoWindow(title: pickupLabel)),
-            Marker(markerId: const MarkerId('dropoff'), position: dropoff, infoWindow: InfoWindow(title: dropoffLabel)),
-            Marker(markerId: const MarkerId('courier'), position: courierPos, infoWindow: InfoWindow(title: statusLabel)),
+            Marker(
+              markerId: const MarkerId('pickup'),
+              position: pickup,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+              infoWindow: InfoWindow(title: '📍 $pickupLabel', snippet: 'Pickup Point'),
+            ),
+            Marker(
+              markerId: const MarkerId('dropoff'),
+              position: dropoff,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+              infoWindow: InfoWindow(title: '🏁 $dropoffLabel', snippet: 'Destination'),
+            ),
+            Marker(
+              markerId: const MarkerId('courier'),
+              position: courierPos,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+              infoWindow: InfoWindow(title: '🚚 $statusLabel', snippet: 'Active Delivery Courier'),
+            ),
           },
           polylines: {
             Polyline(
@@ -155,8 +207,10 @@ class _MapsRouteView extends StatelessWidget {
             ),
           },
           myLocationEnabled: false,
-          zoomControlsEnabled: false,
-          liteModeEnabled: true,
+          zoomControlsEnabled: true,
+          compassEnabled: true,
+          mapToolbarEnabled: true,
+          liteModeEnabled: false,
         ),
       ),
     );
