@@ -7,6 +7,11 @@ import 'package:flutter/foundation.dart';
 import '../domain/logistics_vehicle.dart';
 import '../domain/logistics_branch.dart';
 import '../domain/fleet_driver_info.dart';
+import '../domain/vehicle_maintenance_record.dart';
+import '../domain/fleet_fuel_log.dart';
+import '../domain/driver_shift_record.dart';
+import '../domain/hub_cold_storage_log.dart';
+import '../domain/fleet_breakdown_request.dart';
 
 class LogisticsFleetService {
   final FirebaseFirestore? _explicitFirestore;
@@ -467,6 +472,292 @@ class LogisticsFleetService {
       await saveDriver(driver.copyWith(status: 'on_trip', assignedVehicleId: vehicle.id, assignedVehicleReg: vehicle.registrationNumber));
     } catch (e) {
       debugPrint('assignDriverAndVehicleToJob fallback: $e');
+    }
+  }
+
+  // ─── FLEET MAINTENANCE OPERATIONS ────────────────────────────────────
+
+  static List<VehicleMaintenanceRecord> defaultMaintenanceRecords(String vehicleId) => [
+        VehicleMaintenanceRecord(
+          id: 'maint_01',
+          vehicleId: vehicleId,
+          vehicleReg: 'WP-NC-1234',
+          serviceType: 'oil_change',
+          garageName: 'Dimo Lanka Commercial Service Center',
+          costLkr: 28500.0,
+          serviceDate: DateTime.now().subtract(const Duration(days: 14)),
+          odometerKm: 42150.0,
+          nextServiceDueDate: DateTime.now().add(const Duration(days: 76)),
+          nextServiceOdometerKm: 47150.0,
+          notes: 'Mobil Delvac 15W-40 oil and OEM filters replaced',
+        ),
+        VehicleMaintenanceRecord(
+          id: 'maint_02',
+          vehicleId: vehicleId,
+          vehicleReg: 'WP-NC-1234',
+          serviceType: 'reefer_maintenance',
+          garageName: 'Thermo King Service Hub, Kelaniya',
+          costLkr: 45000.0,
+          serviceDate: DateTime.now().subtract(const Duration(days: 30)),
+          odometerKm: 39800.0,
+          notes: 'Refrigerant pressure tested, evaporator sanitized',
+        ),
+      ];
+
+  CollectionReference<Map<String, dynamic>>? _maintenanceCol(String vehicleId) =>
+      _firestore?.collection('vehicles').doc(vehicleId).collection('maintenance');
+
+  Stream<List<VehicleMaintenanceRecord>> streamMaintenanceRecords(String vehicleId) {
+    if (!_hasFirebase || vehicleId.isEmpty) {
+      return Stream.value(defaultMaintenanceRecords(vehicleId));
+    }
+    final col = _maintenanceCol(vehicleId);
+    if (col == null) {
+      return Stream.value(defaultMaintenanceRecords(vehicleId));
+    }
+    return col.snapshots().map((snap) {
+      if (snap.docs.isEmpty) {
+        return defaultMaintenanceRecords(vehicleId);
+      }
+      return snap.docs
+          .map((d) => VehicleMaintenanceRecord.fromMap(d.id, d.data()))
+          .toList();
+    }).handleError((_) => defaultMaintenanceRecords(vehicleId));
+  }
+
+  Future<void> saveMaintenanceRecord(VehicleMaintenanceRecord rec) async {
+    if (!_hasFirebase) return;
+    final col = _maintenanceCol(rec.vehicleId);
+    if (col == null) return;
+    try {
+      await col.doc(rec.id).set(rec.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('saveMaintenanceRecord fallback: $e');
+    }
+  }
+
+  // ─── FLEET FUEL OPERATIONS ───────────────────────────────────────────
+
+  static List<FleetFuelLog> defaultFuelLogs(String vehicleId) => [
+        FleetFuelLog(
+          id: 'fuel_01',
+          vehicleId: vehicleId,
+          vehicleReg: 'WP-NC-1234',
+          driverId: 'drv_01',
+          driverName: 'Kasun Rajapaksha',
+          fueledAt: DateTime.now().subtract(const Duration(days: 2)),
+          litersFilled: 85.0,
+          costPerLiterLkr: 341.0,
+          totalCostLkr: 28985.0,
+          fuelStationName: 'Ceypetco Dambulla Hub Station',
+          odometerKm: 42150.0,
+          previousOdometerKm: 41520.0,
+        ),
+      ];
+
+  CollectionReference<Map<String, dynamic>>? _fuelCol(String vehicleId) =>
+      _firestore?.collection('vehicles').doc(vehicleId).collection('fuel_logs');
+
+  Stream<List<FleetFuelLog>> streamFuelLogs(String vehicleId) {
+    if (!_hasFirebase || vehicleId.isEmpty) {
+      return Stream.value(defaultFuelLogs(vehicleId));
+    }
+    final col = _fuelCol(vehicleId);
+    if (col == null) {
+      return Stream.value(defaultFuelLogs(vehicleId));
+    }
+    return col.snapshots().map((snap) {
+      if (snap.docs.isEmpty) {
+        return defaultFuelLogs(vehicleId);
+      }
+      return snap.docs
+          .map((d) => FleetFuelLog.fromMap(d.id, d.data()))
+          .toList();
+    }).handleError((_) => defaultFuelLogs(vehicleId));
+  }
+
+  Future<void> saveFuelLog(FleetFuelLog log) async {
+    if (!_hasFirebase) return;
+    final col = _fuelCol(log.vehicleId);
+    if (col == null) return;
+    try {
+      await col.doc(log.id).set(log.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('saveFuelLog fallback: $e');
+    }
+  }
+
+  // ─── DRIVER SHIFTS OPERATIONS ────────────────────────────────────────
+
+  static List<DriverShiftRecord> defaultDriverShifts(String driverId) => [
+        DriverShiftRecord(
+          id: 'shift_01',
+          driverId: driverId,
+          driverName: 'Kasun Rajapaksha',
+          branchId: 'br_dambulla_hub',
+          branchName: 'Dambulla Agro Exchange Hub',
+          assignedVehicleId: 'veh_01',
+          assignedVehicleReg: 'WP-NA-4512',
+          checkInTime: DateTime.now().subtract(const Duration(hours: 6)),
+          drivingHours: 4.5,
+          restHours: 1.0,
+          completedTripsCount: 2,
+          status: 'active',
+          notes: 'Completed Dambulla to Colombo cold-chain route',
+        ),
+      ];
+
+  CollectionReference<Map<String, dynamic>>? _shiftCol(String driverId) =>
+      _firestore?.collection('drivers').doc(driverId).collection('shifts');
+
+  Stream<List<DriverShiftRecord>> streamDriverShifts(String driverId) {
+    if (!_hasFirebase || driverId.isEmpty) {
+      return Stream.value(defaultDriverShifts(driverId));
+    }
+    final col = _shiftCol(driverId);
+    if (col == null) {
+      return Stream.value(defaultDriverShifts(driverId));
+    }
+    return col.snapshots().map((snap) {
+      if (snap.docs.isEmpty) {
+        return defaultDriverShifts(driverId);
+      }
+      return snap.docs
+          .map((d) => DriverShiftRecord.fromMap(d.id, d.data()))
+          .toList();
+    }).handleError((_) => defaultDriverShifts(driverId));
+  }
+
+  Future<void> saveDriverShift(DriverShiftRecord shift) async {
+    if (!_hasFirebase) return;
+    final col = _shiftCol(shift.driverId);
+    if (col == null) return;
+    try {
+      await col.doc(shift.id).set(shift.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('saveDriverShift fallback: $e');
+    }
+  }
+
+  // ─── COLD STORAGE OPERATIONS ─────────────────────────────────────────
+
+  static List<HubColdStorageLog> defaultColdStorageLogs(String branchId) => [
+        HubColdStorageLog(
+          id: 'csl_01',
+          branchId: branchId,
+          branchName: 'Dambulla Agro Exchange Hub',
+          roomName: 'Chamber A - Upcountry Vegetables',
+          currentTempC: 3.8,
+          targetTempC: 4.0,
+          minSafeTempC: 2.0,
+          maxSafeTempC: 7.0,
+          relativeHumidityPercent: 88.0,
+          recordedAt: DateTime.now().subtract(const Duration(minutes: 15)),
+          isBreached: false,
+          notes: 'Cooling coils operating normally',
+        ),
+        HubColdStorageLog(
+          id: 'csl_02',
+          branchId: branchId,
+          branchName: 'Dambulla Agro Exchange Hub',
+          roomName: 'Chamber B - Tropical Fruits & Berries',
+          currentTempC: 8.5,
+          targetTempC: 8.0,
+          minSafeTempC: 6.0,
+          maxSafeTempC: 12.0,
+          relativeHumidityPercent: 82.0,
+          recordedAt: DateTime.now().subtract(const Duration(minutes: 12)),
+          isBreached: false,
+          notes: 'Pre-cooling cycle complete',
+        ),
+      ];
+
+  CollectionReference<Map<String, dynamic>>? _coldStorageCol(String branchId) =>
+      _firestore?.collection('branches').doc(branchId).collection('cold_storage_logs');
+
+  Stream<List<HubColdStorageLog>> streamColdStorageLogs(String branchId) {
+    if (!_hasFirebase || branchId.isEmpty) {
+      return Stream.value(defaultColdStorageLogs(branchId));
+    }
+    final col = _coldStorageCol(branchId);
+    if (col == null) {
+      return Stream.value(defaultColdStorageLogs(branchId));
+    }
+    return col.snapshots().map((snap) {
+      if (snap.docs.isEmpty) {
+        return defaultColdStorageLogs(branchId);
+      }
+      return snap.docs
+          .map((d) => HubColdStorageLog.fromMap(d.id, d.data()))
+          .toList();
+    }).handleError((_) => defaultColdStorageLogs(branchId));
+  }
+
+  Future<void> saveColdStorageLog(HubColdStorageLog log) async {
+    if (!_hasFirebase) return;
+    final col = _coldStorageCol(log.branchId);
+    if (col == null) return;
+    try {
+      await col.doc(log.id).set(log.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('saveColdStorageLog fallback: $e');
+    }
+  }
+
+  // ─── EMERGENCY BREAKDOWN OPERATIONS ──────────────────────────────────
+
+  static List<FleetBreakdownRequest> defaultBreakdownRequests(String transporterId) => [
+        FleetBreakdownRequest(
+          id: 'bkd_01',
+          vehicleId: 'veh_02',
+          vehicleReg: 'CP-LG-8890',
+          driverId: 'drv_02',
+          driverName: 'Ruwan Wijesinghe',
+          driverPhone: '0765544332',
+          latitude: 7.2906,
+          longitude: 80.6337,
+          locationDescription: 'A1 Highway near Kadugannawa Pass',
+          failureType: 'cooling_failure',
+          severity: 'critical_cargo_rescue',
+          status: 'assigned',
+          reliefVehicleId: 'veh_01',
+          reliefVehicleReg: 'WP-NA-4512',
+          reportedAt: DateTime.now().subtract(const Duration(hours: 1)),
+          notes: 'Reefer compressor belt snapped. Relief cold truck dispatched.',
+        ),
+      ];
+
+  CollectionReference<Map<String, dynamic>>? _breakdownCol(String tid) =>
+      _firestore?.collection('transporters').doc(tid).collection('breakdowns');
+
+  Stream<List<FleetBreakdownRequest>> streamBreakdownRequests(String transporterId) {
+    final tid = transporterId.isEmpty ? 'demo' : transporterId;
+    if (!_hasFirebase) {
+      return Stream.value(defaultBreakdownRequests(tid));
+    }
+    final col = _breakdownCol(tid);
+    if (col == null) {
+      return Stream.value(defaultBreakdownRequests(tid));
+    }
+    return col.snapshots().map((snap) {
+      if (snap.docs.isEmpty) {
+        return defaultBreakdownRequests(tid);
+      }
+      return snap.docs
+          .map((d) => FleetBreakdownRequest.fromMap(d.id, d.data()))
+          .toList();
+    }).handleError((_) => defaultBreakdownRequests(tid));
+  }
+
+  Future<void> reportBreakdown(FleetBreakdownRequest req) async {
+    if (!_hasFirebase) return;
+    final tid = currentTransporterId ?? 'demo';
+    final col = _breakdownCol(tid);
+    if (col == null) return;
+    try {
+      await col.doc(req.id).set(req.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('reportBreakdown fallback: $e');
     }
   }
 }
