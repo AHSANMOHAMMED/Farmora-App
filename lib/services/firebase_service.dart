@@ -974,6 +974,12 @@ class FirestoreService {
     if (bytes.length > 5 * 1024 * 1024) {
       throw UserStateError(L10n.current.svcFileTooLarge);
     }
+    if (kUseCloudinary) {
+      final uploaded = await uploadPublicImage(
+        validateImageBytes(bytes, name: fileName),
+      );
+      return uploaded.url;
+    }
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final path =
         'verification/$uid/${DateTime.now().millisecondsSinceEpoch}_$safeName';
@@ -1044,7 +1050,7 @@ class FirestoreService {
     if (image.bytes.length > kMaxImageBytes) {
       throw AppException(L10n.current.svcImageTooLarge);
     }
-    if (kUseCloudinary && path.startsWith('product_images/')) {
+    if (kUseCloudinary) {
       final uploaded = await uploadPublicImage(image);
       onProgress?.call(1);
       return StoredImage(url: uploaded.url, path: uploaded.publicId);

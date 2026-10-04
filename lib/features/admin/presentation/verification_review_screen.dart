@@ -420,7 +420,15 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
     super.dispose();
   }
 
-  static const _imageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'bmp'];
+  static const _imageExtensions = [
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'gif',
+    'heic',
+    'bmp'
+  ];
 
   /// Reads the verification doc for its `storagePath` and owner, then
   /// resolves a download URL for the uploaded file.
@@ -435,8 +443,8 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
           .get();
       final data = snap.data() ?? const <String, dynamic>{};
       storagePath = (data['storagePath'] ?? '').toString();
-      ownerId = (data['ownerId'] ?? data['farmerId'] ?? data['userId'])
-          ?.toString();
+      ownerId =
+          (data['ownerId'] ?? data['farmerId'] ?? data['userId'])?.toString();
       rejectionReason = data['rejectionReason']?.toString();
     } catch (_) {
       // Fall back to the path carried in the model below.
@@ -451,6 +459,18 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
         ownerId: ownerId,
         rejectionReason: rejectionReason,
         error: 'No uploaded file is linked to this document.',
+      );
+    }
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
+      final ext = storagePath.split('?').first.split('.').last.toLowerCase();
+      return _DocFile(
+        storagePath: storagePath,
+        url: storagePath,
+        isImage: _imageExtensions.contains(ext) ||
+            storagePath.contains('/image/upload/'),
+        ownerId: ownerId,
+        rejectionReason: rejectionReason,
       );
     }
     try {
@@ -486,15 +506,15 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
   Future<void> _openUrl(String url) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final ok = await launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication);
+      final ok =
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (!ok) {
         messenger.showSnackBar(
             const SnackBar(content: Text('Could not open the document.')));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(
-          content: Text(userMessage(e, action: 'open the document'))));
+      messenger.showSnackBar(
+          SnackBar(content: Text(userMessage(e, action: 'open the document'))));
     }
   }
 
@@ -553,8 +573,7 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                 const SizedBox(width: 8),
                 Expanded(child: Text(file.error ?? l.errorGeneric)),
                 TextButton(
-                  onPressed: () =>
-                      setState(() => _fileFuture = _loadFile()),
+                  onPressed: () => setState(() => _fileFuture = _loadFile()),
                   child: const Text('Retry'),
                 ),
               ],
@@ -583,10 +602,9 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                 child: Image.network(
                   file.url!,
                   fit: BoxFit.contain,
-                  loadingBuilder: (context, child, progress) =>
-                      progress == null
-                          ? child
-                          : const Center(child: CircularProgressIndicator()),
+                  loadingBuilder: (context, child, progress) => progress == null
+                      ? child
+                      : const Center(child: CircularProgressIndicator()),
                   errorBuilder: (_, __, ___) =>
                       _buildPlaceholder(l.adminVerificationDocument),
                 ),
@@ -620,8 +638,8 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
     final canReview = doc.status == VerificationStatus.pending;
 
     return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -798,8 +816,8 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                     child: OutlinedButton.icon(
                       onPressed: _busy
                           ? null
-                          : () =>
-                              setState(() => _showRejectForm = !_showRejectForm),
+                          : () => setState(
+                              () => _showRejectForm = !_showRejectForm),
                       icon: _showRejectForm
                           ? const Icon(Icons.close)
                           : const Icon(Icons.cancel),
@@ -823,10 +841,10 @@ class _VerificationDetailSheetState extends State<_VerificationDetailSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _busy ||
-                            _rejectionReasonController.text.trim().isEmpty
-                        ? null
-                        : () => _handleReject(),
+                    onPressed:
+                        _busy || _rejectionReasonController.text.trim().isEmpty
+                            ? null
+                            : () => _handleReject(),
                     icon: _isRejecting
                         ? const SizedBox(
                             width: 16,
