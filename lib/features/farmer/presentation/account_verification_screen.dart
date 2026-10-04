@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -327,38 +330,106 @@ class _AccountVerificationScreenState extends State<AccountVerificationScreen> {
     }
   }
 
-  /// Uploads to Storage `verification/{uid}/…` and registers the file with the
-  /// `submitVerification` callable, which creates a pending review doc.
+  /// Uploads verification document to Cloudinary/Storage and registers with Firestore review queue.
   Future<void> _pickDocument(String documentType) async {
     if (_uploadingType != null) return;
-    final result = await FilePicker.platform.pickFiles(
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+              title: const Text('Take Photo of Document', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.of(ctx).pop('camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_present_outlined, color: AppColors.primary),
+              title: const Text('Choose File / PDF / Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.of(ctx).pop('file'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == null || !mounted) return;
+
+    Uint8List? fileBytes;
+    String fileName = 'doc_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    String contentType = 'image/jpeg';
+
+    if (action == 'camera') {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (photo == null || !mounted) return;
+      fileBytes = await photo.readAsBytes();
+      fileName = photo.name.isNotEmpty ? photo.name : 'photo.jpg';
+      contentType = 'image/jpeg';
+    } else {
+      final result = await FilePicker.platform.pickFiles(
         withData: true,
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-        allowMultiple: false);
-    final file = result?.files.single;
-    if (file == null) return;
-    if (file.bytes == null) return;
-    if (!mounted) return;
-    setState(() => _uploadingType = documentType);
-    try {
+        allowMultiple: false,
+      );
+      final file = result?.files.single;
+      if (file == null || !mounted) return;
+      fileBytes = file.bytes;
+      if (fileBytes == null && !kIsWeb && file.path != null && file.path!.isNotEmpty) {
+        try {
+          fileBytes = await File(file.path!).readAsBytes();
+        } catch (_) {}
+      }
+      if (fileBytes == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not read the selected file.')),
+          );
+        }
+        return;
+      }
+      fileName = file.name;
       final ext = (file.extension ?? '').toLowerCase();
-      final contentType = ext == 'pdf'
+      contentType = ext == 'pdf'
           ? 'application/pdf'
           : 'image/${ext == 'jpg' ? 'jpeg' : ext}';
+    }
+
+    setState(() => _uploadingType = documentType);
+    try {
       final path = await _service.uploadVerificationDocument(
-          bytes: file.bytes!, fileName: file.name, contentType: contentType);
+        bytes: fileBytes,
+        fileName: fileName,
+        contentType: contentType,
+      );
       await _service.submitVerification(
-          documentType: documentType, storagePath: path);
+        documentType: documentType,
+        storagePath: path,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.farmerVerificationUploadedQueued)));
+          content: Text(context.l10n.farmerVerificationUploadedQueued),
+          backgroundColor: AppColors.primary,
+        ));
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(context.l10n.farmerVerificationUploadFailed(
-                userMessage(error, action: 'upload verification document')))));
+          content: Text(context.l10n.farmerVerificationUploadFailed(
+              userMessage(error, action: 'upload verification document'))),
+          backgroundColor: AppColors.error,
+        ));
       }
     } finally {
       if (mounted) setState(() => _uploadingType = null);

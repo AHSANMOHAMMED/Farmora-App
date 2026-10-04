@@ -224,21 +224,60 @@ class _AddProductScreenState extends State<AddProductScreen> {
     ));
   }
 
-  /// Picks new photos for preview. Nothing is uploaded until Save.
+  /// Picks new photos from Camera or Gallery and uploads them immediately.
   Future<void> _pickImages() async {
     if (_images.length >= _maxImages || _isPicking || _isSubmitting) return;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+              title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+              title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
     setState(() => _isPicking = true);
     final rejected = <String>[];
     try {
-      final picked = await _imagePicker.pickMany(
-        limit: _maxImages - _images.length,
-        rejected: rejected.add,
-      );
-      if (!mounted) return;
-      if (picked.isNotEmpty) {
-        setState(() => _images.addAll(picked.map(_ImageSlot.local)));
+      if (source == ImageSource.camera) {
+        final picked = await _imagePicker.pickOne(source: ImageSource.camera);
+        if (!mounted || picked == null) return;
+        final slot = _ImageSlot.local(picked);
+        setState(() => _images.add(slot));
+        _uploadSlot(slot);
+      } else {
+        final picked = await _imagePicker.pickMany(
+          limit: _maxImages - _images.length,
+          rejected: rejected.add,
+        );
+        if (!mounted) return;
+        if (picked.isNotEmpty) {
+          final newSlots = picked.map(_ImageSlot.local).toList();
+          setState(() => _images.addAll(newSlots));
+          for (final slot in newSlots) {
+            _uploadSlot(slot);
+          }
+        }
+        if (rejected.isNotEmpty) _showSnack(rejected.join('\n'), error: true);
       }
-      if (rejected.isNotEmpty) _showSnack(rejected.join('\n'), error: true);
     } catch (e, st) {
       _showSnack(userMessage(e, action: 'add photos', stack: st), error: true);
     } finally {
@@ -246,9 +285,48 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
+  /// Uploads a single image slot immediately in background.
+  Future<void> _uploadSlot(_ImageSlot slot) async {
+    if (slot.local == null || slot.uploadedUrl != null || slot.isUploading) return;
+    setState(() {
+      slot.isUploading = true;
+      slot.failed = false;
+      slot.progress = 0.05;
+    });
+    try {
+      final stored = await _firestore.uploadProductImage(
+        slot.local!,
+        onProgress: (p) {
+          if (mounted) setState(() => slot.progress = p);
+        },
+      );
+      if (mounted) {
+        setState(() {
+          slot.uploadedUrl = stored.url;
+          slot.progress = 1.0;
+          slot.isUploading = false;
+          slot.failed = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          slot.isUploading = false;
+          slot.failed = true;
+        });
+        _showSnack(userMessage(e, action: 'upload product photo'), error: true);
+      }
+    }
+  }
+
   /// Replaces the photo at [index] with a newly picked one.
   Future<void> _replaceImage(int index) async {
     if (_isPicking || _isSubmitting) return;
+    final slot = _images[index];
+    if (slot.failed && slot.local != null) {
+      _uploadSlot(slot);
+      return;
+    }
     setState(() => _isPicking = true);
     try {
       final picked = await _imagePicker.pickOne();
@@ -257,7 +335,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (old.local != null && old.uploadedUrl != null) {
         _firestore.deleteOwnProductImage(old.uploadedUrl!);
       }
-      setState(() => _images[index] = _ImageSlot.local(picked));
+      final newSlot = _ImageSlot.local(picked);
+      setState(() => _images[index] = newSlot);
+      _uploadSlot(newSlot);
     } catch (e, st) {
       _showSnack(userMessage(e, action: 'replace the photo', stack: st),
           error: true);
@@ -282,21 +362,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<List<String>> _uploadPendingImages() async {
     for (final slot in _images) {
       if (slot.url != null || slot.uploadedUrl != null) continue;
-      setState(() {
-        slot.failed = false;
-        slot.progress = 0;
-      });
-      try {
-        final stored = await _firestore.uploadProductImage(
-          slot.local!,
-          onProgress: (p) {
-            if (mounted) setState(() => slot.progress = p);
-          },
-        );
-        if (mounted) setState(() => slot.uploadedUrl = stored.url);
-      } catch (_) {
-        if (mounted) setState(() => slot.failed = true);
-        rethrow;
+      await _uploadSlot(slot);
+      if (slot.uploadedUrl == null) {
+        throw const AppException('One or more photos failed to upload. Tap on the failed photo to retry.');
       }
     }
     return [for (final slot in _images) slot.url ?? slot.uploadedUrl!];
@@ -1070,8 +1138,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   // Stitch: relative aspect-square rounded-xl overflow-hidden
   Widget _buildImageTile(int index) {
     final slot = _images[index];
-    final uploading =
-        _isSubmitting && slot.local != null && slot.uploadedUrl == null;
+    final uploading = slot.isUploading ||
+        (_isSubmitting && slot.local != null && slot.uploadedUrl == null);
     final Widget preview = slot.local != null
         ? Image.memory(slot.local!.bytes,
             fit: BoxFit.cover, gaplessPlayback: true)
@@ -1112,18 +1180,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               ),
             ),
+          if (slot.uploadedUrl != null && !uploading)
+            Positioned(
+              left: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 12),
+              ),
+            ),
           if (slot.failed && !uploading)
-            Container(
-              color: AppColors.error.withValues(alpha: 0.55),
-              alignment: Alignment.center,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white),
-                  Text(context.l10n.statusFailed,
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
-                ],
+            GestureDetector(
+              onTap: () => _replaceImage(index),
+              child: Container(
+                color: AppColors.error.withValues(alpha: 0.65),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.refresh_rounded, color: Colors.white, size: 24),
+                    const SizedBox(height: 2),
+                    Text(context.l10n.statusFailed,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    const Text('Tap to retry',
+                        style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
               ),
             ),
           if (index == 0)
@@ -1317,5 +1404,6 @@ class _ImageSlot {
   final PickedImage? local;
   String? uploadedUrl;
   double progress = 0;
+  bool isUploading = false;
   bool failed = false;
 }

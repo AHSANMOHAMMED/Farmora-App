@@ -975,8 +975,10 @@ class FirestoreService {
       throw UserStateError(L10n.current.svcFileTooLarge);
     }
     if (kUseCloudinary) {
-      final uploaded = await uploadPublicImage(
-        validateImageBytes(bytes, name: fileName),
+      final uploaded = await uploadPublicMedia(
+        bytes,
+        fileName,
+        contentType: contentType,
       );
       return uploaded.url;
     }
@@ -1084,6 +1086,13 @@ class FirestoreService {
     PickedImage image, {
     void Function(double progress)? onProgress,
   }) {
+    if (kUseCloudinary) {
+      return _uploadImage(
+        path: '',
+        image: image,
+        onProgress: onProgress,
+      );
+    }
     return _uploadImage(
       path: 'product_images/$_requireUid/${_uniqueName(image)}',
       image: image,

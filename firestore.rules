@@ -974,7 +974,8 @@ service cloud.firestore {
         && request.resource.data.get('farmerId', request.auth.uid) == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.storagePath is string
-        && request.resource.data.storagePath.matches('^verification/' + uid() + '/.+'));
+        && (request.resource.data.storagePath.matches('^verification/' + uid() + '/.+')
+            || request.resource.data.storagePath.matches('^https://.+')));
       allow update: if admin();
       allow delete: if admin();
     }
