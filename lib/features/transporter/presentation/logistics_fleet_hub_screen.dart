@@ -8,6 +8,10 @@ import '../domain/logistics_vehicle.dart';
 import '../domain/logistics_branch.dart';
 import '../domain/fleet_driver_info.dart';
 import 'widgets/logistics_fleet_map_view.dart';
+import 'widgets/vehicle_maintenance_sheet.dart';
+import 'widgets/hub_cold_storage_card.dart';
+import 'widgets/driver_shift_log_sheet.dart';
+import 'widgets/emergency_breakdown_dialog.dart';
 
 class LogisticsFleetHubScreen extends StatefulWidget {
   const LogisticsFleetHubScreen({super.key});
@@ -101,6 +105,20 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       'Fleet & Hub Management',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.amber,
+                        ),
+                        tooltip: 'Roadside Breakdown & Relief',
+                        onPressed: () => EmergencyBreakdownDialog.show(
+                          context,
+                          transporterId: transporterId,
+                          vehicles: _vehicles,
+                        ),
+                      ),
+                    ],
                     bottom: TabBar(
                       controller: _tabController,
                       isScrollable: true,
@@ -276,6 +294,20 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.build_circle_outlined, size: 16),
+                    label: const Text('Maintenance & Telemetry'),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                    ),
+                    onPressed: () => VehicleMaintenanceSheet.show(context, v),
+                  ),
+                ),
               ],
             ),
           ),
@@ -378,6 +410,10 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                     ),
                   ],
                 ),
+                if (b.hasColdStorage) ...[
+                  const SizedBox(height: 8),
+                  HubColdStorageCard(branch: b),
+                ],
               ],
             ),
           ),
@@ -480,6 +516,20 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.access_time_rounded, size: 16),
+                    label: const Text('Duty Shifts & Hours'),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: Colors.teal,
+                      side: BorderSide(color: Colors.teal.withValues(alpha: 0.4)),
+                    ),
+                    onPressed: () => DriverShiftLogSheet.show(context, d),
+                  ),
                 ),
               ],
             ),

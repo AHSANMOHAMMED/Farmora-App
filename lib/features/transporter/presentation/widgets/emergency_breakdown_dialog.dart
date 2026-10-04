@@ -131,6 +131,7 @@ class _EmergencyBreakdownDialogState extends State<EmergencyBreakdownDialog> {
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               value: _failureType,
+              isExpanded: true,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
@@ -139,23 +140,38 @@ class _EmergencyBreakdownDialogState extends State<EmergencyBreakdownDialog> {
               items: const [
                 DropdownMenuItem(
                   value: 'cooling_failure',
-                  child: Text('Reefer Cooling Unit Failure'),
+                  child: Text(
+                    'Reefer Cooling Unit Failure',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'engine',
-                  child: Text('Engine / Mechanical Breakdown'),
+                  child: Text(
+                    'Engine / Mechanical Breakdown',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'flat_tire',
-                  child: Text('Tire Puncture / Blowout'),
+                  child: Text(
+                    'Tire Puncture / Blowout',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'transmission',
-                  child: Text('Transmission / Gearbox Fault'),
+                  child: Text(
+                    'Transmission / Gearbox Fault',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'accident',
-                  child: Text('Accident / Road Obstruction'),
+                  child: Text(
+                    'Accident / Road Obstruction',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
               onChanged: (val) {
@@ -170,6 +186,7 @@ class _EmergencyBreakdownDialogState extends State<EmergencyBreakdownDialog> {
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               value: _severity,
+              isExpanded: true,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding:
@@ -178,15 +195,24 @@ class _EmergencyBreakdownDialogState extends State<EmergencyBreakdownDialog> {
               items: const [
                 DropdownMenuItem(
                   value: 'critical_cargo_rescue',
-                  child: Text('CRITICAL: Cargo Spoilage Risk (Immediate Relief)'),
+                  child: Text(
+                    'CRITICAL: Cargo Spoilage Risk (Immediate Relief)',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'towing_required',
-                  child: Text('MODERATE: Towing Required'),
+                  child: Text(
+                    'MODERATE: Towing Required',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'minor',
-                  child: Text('LOW: Roadside Repair Possible'),
+                  child: Text(
+                    'LOW: Roadside Repair Possible',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
               onChanged: (val) {
