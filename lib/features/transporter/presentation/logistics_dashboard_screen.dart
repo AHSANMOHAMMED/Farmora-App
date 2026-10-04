@@ -425,7 +425,6 @@ class _FleetHubBanner extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _stat(Icons.local_shipping_rounded, 'Fleet', '5 Trucks'),
                   _stat(Icons.store_mall_directory_rounded, 'Branches', '5 Hubs'),
@@ -441,13 +440,28 @@ class _FleetHubBanner extends StatelessWidget {
   }
 
   static Widget _stat(IconData icon, String title, String val) {
-    return Column(
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(height: 4),
-        Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-        Text(title, style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant)),
-      ],
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(height: 4),
+          Text(
+            val,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 }

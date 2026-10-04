@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -29,8 +30,31 @@ class SupplierDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final service = InputMarketService();
     final name = context.select<FarmoraState, String>((s) => s.displayName);
+
+    if (Firebase.apps.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(title: Text(l.supDashboardTitle)),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(name,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            _Stat(
+              icon: Icons.inventory_2_outlined,
+              label: l.supActiveListings,
+              value: '0',
+              onTap: onOpenListings,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final service = InputMarketService();
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(title: Text(l.supDashboardTitle)),

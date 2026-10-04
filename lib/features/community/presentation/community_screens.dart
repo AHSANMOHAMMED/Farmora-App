@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -524,6 +525,14 @@ class ExpertQueueScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+
+    if (Firebase.apps.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.roleExpert)),
+        body: Center(child: Text(l.conQueueEmpty)),
+      );
+    }
+
     final service = CommunityService();
     Widget list(Stream<List<Consultation>> s, String empty) =>
         StreamBuilder<List<Consultation>>(
