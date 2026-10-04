@@ -1331,6 +1331,9 @@ class FirestoreService {
     required String productId,
     String? farmerId,
   }) async {
+    if (!kUseCloudFunctions) {
+      return _spark.generateProductQr(productId);
+    }
     final result = await _functions
         .httpsCallable('generateProductQr')
         .call({'productId': productId});
