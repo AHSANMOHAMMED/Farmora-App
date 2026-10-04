@@ -10,6 +10,7 @@ import 'transporter_payouts_screen.dart';
 import 'widgets/collection_job_card.dart';
 import 'widgets/transporter_actions.dart';
 import 'widgets/transporter_states.dart';
+import 'logistics_fleet_hub_screen.dart';
 
 class LogisticsDashboardScreen extends StatelessWidget {
   final VoidCallback onBrowseJobs;
@@ -93,6 +94,8 @@ class LogisticsDashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              const _FleetHubBanner(),
               const SizedBox(height: 26),
               Row(
                 children: [
@@ -358,3 +361,94 @@ class _EarningsStrip extends StatelessWidget {
     );
   }
 }
+
+class _FleetHubBanner extends StatelessWidget {
+  const _FleetHubBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const LogisticsFleetHubScreen(),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primaryContainer.withValues(alpha: 0.6),
+                Colors.white,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.hub_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Fleet & Hub Logistics Network',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Multi-vehicle fleet, regional depots & drivers',
+                          style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _stat(Icons.local_shipping_rounded, 'Fleet', '5 Trucks'),
+                  _stat(Icons.store_mall_directory_rounded, 'Branches', '5 Hubs'),
+                  _stat(Icons.badge_rounded, 'Drivers', '5 Drivers'),
+                  _stat(Icons.map_rounded, 'Live Map', 'Google Maps'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _stat(IconData icon, String title, String val) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(height: 4),
+        Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        Text(title, style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+

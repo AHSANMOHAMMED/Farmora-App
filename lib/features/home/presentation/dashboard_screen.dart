@@ -27,6 +27,7 @@ import '../../buyer/presentation/buyer_market_screen.dart';
 import '../../transporter/presentation/available_jobs_screen.dart';
 import '../../transporter/presentation/delivery_history_screen.dart';
 import '../../transporter/presentation/nearby_transporters_screen.dart';
+import '../../transporter/presentation/logistics_fleet_hub_screen.dart';
 import '../../auth/presentation/auth_l10n.dart';
 import '../../auth/presentation/session_actions.dart';
 import '../../inputs/presentation/input_catalog_screen.dart';
@@ -1310,6 +1311,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () {
                             Navigator.of(ctx).pop();
                             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DeliveryHistoryScreen()));
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.hub_rounded, color: Color(0xFF00796B)),
+                          title: const Text('Fleet & Hub Management', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Vehicles, branches, drivers & live map'),
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LogisticsFleetHubScreen()));
                           },
                         ),
                       ],

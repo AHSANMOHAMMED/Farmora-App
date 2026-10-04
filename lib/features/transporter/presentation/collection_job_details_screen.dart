@@ -8,10 +8,14 @@ import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../messaging/presentation/chat_screen.dart';
 import '../application/transporter_controller.dart';
+import '../data/logistics_fleet_service.dart';
 import '../domain/collection_job.dart';
+import '../domain/fleet_driver_info.dart';
+import '../domain/logistics_vehicle.dart';
 import 'active_delivery_screen.dart';
 import 'delivery_proof_dialog.dart';
 import 'bid_sheets.dart';
+import 'logistics_fleet_hub_screen.dart';
 import 'widgets/job_status_chip.dart';
 import 'widgets/job_timeline.dart';
 import 'widgets/live_location.dart';
@@ -72,6 +76,14 @@ class _CollectionJobDetailsScreenState
             title: l10n.jobTimelineTitle,
             children: [JobTimeline(job: job)],
           ),
+          if (job.logisticsProviderId == state.providerId &&
+              job.status != CollectionJobStatus.open) ...[
+            const SizedBox(height: 14),
+            _FleetAssignmentCard(
+              jobId: job.id,
+              transporterId: state.providerId,
+            ),
+          ],
           if (job.logisticsProviderId == state.providerId &&
               state.vehicleCapacity != null) ...[
             const SizedBox(height: 14),
@@ -974,6 +986,264 @@ class _ContactRow extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _FleetAssignmentCard extends StatefulWidget {
+  final String jobId;
+  final String transporterId;
+
+  const _FleetAssignmentCard({
+    required this.jobId,
+    required this.transporterId,
+  });
+
+  @override
+  State<_FleetAssignmentCard> createState() => _FleetAssignmentCardState();
+}
+
+class _FleetAssignmentCardState extends State<_FleetAssignmentCard> {
+  final _fleetService = LogisticsFleetService();
+  late Stream<List<LogisticsVehicle>> _vehiclesStream;
+  late Stream<List<FleetDriverInfo>> _driversStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehiclesStream = _fleetService.streamVehicles(widget.transporterId);
+    _driversStream = _fleetService.streamDrivers(widget.transporterId);
+  }
+
+  @override
+  void didUpdateWidget(covariant _FleetAssignmentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.transporterId != widget.transporterId) {
+      _vehiclesStream = _fleetService.streamVehicles(widget.transporterId);
+      _driversStream = _fleetService.streamDrivers(widget.transporterId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<LogisticsVehicle>>(
+      stream: _vehiclesStream,
+      builder: (context, vSnap) {
+        return StreamBuilder<List<FleetDriverInfo>>(
+          stream: _driversStream,
+          builder: (context, dSnap) {
+            final vehicles = vSnap.data ?? [];
+            final drivers = dSnap.data ?? [];
+
+            return Card(
+              margin: EdgeInsets.zero,
+              elevation: 0,
+              color: AppColors.surfaceContainerLowest,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_shipping_rounded,
+                            color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Enterprise Fleet & Dispatch',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LogisticsFleetHubScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.hub_outlined, size: 16),
+                          label: const Text('Fleet Hub',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Assign a specific fleet vehicle and registered driver from your regional depots for this collection trip.',
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: vehicles.isEmpty && drivers.isEmpty
+                          ? null
+                          : () => _openAssignSheet(context, vehicles, drivers),
+                      icon: const Icon(Icons.assignment_ind_outlined),
+                      label: const Text('Assign Fleet Vehicle & Driver'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openAssignSheet(
+    BuildContext context,
+    List<LogisticsVehicle> vehicles,
+    List<FleetDriverInfo> drivers,
+  ) {
+    LogisticsVehicle? selectedVehicle =
+        vehicles.isNotEmpty ? vehicles.first : null;
+    FleetDriverInfo? selectedDriver =
+        drivers.isNotEmpty ? drivers.first : null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Dispatch Fleet Allocation',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(sheetCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Select Vehicle',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<LogisticsVehicle>(
+                      value: selectedVehicle,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        prefixIcon:
+                            Icon(Icons.directions_car_filled_outlined),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      items: vehicles.map((v) {
+                        return DropdownMenuItem(
+                          value: v,
+                          child: Text(
+                            '${v.registrationNumber} (${v.vehicleType}, ${v.capacityTons}T, ${v.branchName})',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setSheetState(() => selectedVehicle = val),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Select Driver',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<FleetDriverInfo>(
+                      value: selectedDriver,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.badge_outlined),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      items: drivers.map((d) {
+                        return DropdownMenuItem(
+                          value: d,
+                          child: Text(
+                            '${d.name} (${d.phone}, ${d.branchName})',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setSheetState(() => selectedDriver = val),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.send_rounded),
+                        label: const Text('Confirm Dispatch Allocation'),
+                        onPressed: (selectedVehicle == null ||
+                                selectedDriver == null)
+                            ? null
+                            : () async {
+                                Navigator.pop(sheetCtx);
+                                await _fleetService
+                                    .assignDriverAndVehicleToJob(
+                                  jobId: widget.jobId,
+                                  vehicle: selectedVehicle!,
+                                  driver: selectedDriver!,
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Dispatched ${selectedVehicle!.registrationNumber} with driver ${selectedDriver!.name}!',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                    ),
+                                  );
+                                }
+                              },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
