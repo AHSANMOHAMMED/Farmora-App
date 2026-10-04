@@ -49,9 +49,12 @@ class TransportJob {
   final String? podPhotoPath;
   final bool deliveredWithCode;
 
-  /// Fleet driver the owning transporter assigned, if any.
+  /// Fleet driver and vehicle the owning transporter assigned, if any.
   final String? driverId;
   final String? driverName;
+  final String? vehicleId;
+  final String? vehicleReg;
+  final String? vehicleType;
 
   /// Cold chain: required range, latest cargo reading, breaches so far.
   final bool coldChain;
@@ -102,6 +105,9 @@ class TransportJob {
     this.deliveredWithCode = false,
     this.driverId,
     this.driverName,
+    this.vehicleId,
+    this.vehicleReg,
+    this.vehicleType,
     this.coldChain = false,
     this.tempMinC,
     this.tempMaxC,
@@ -196,6 +202,9 @@ class TransportJob {
     bool? deliveredWithCode,
     String? driverId,
     String? driverName,
+    String? vehicleId,
+    String? vehicleReg,
+    String? vehicleType,
   }) {
     return TransportJob(
       id: id ?? this.id,
@@ -236,6 +245,9 @@ class TransportJob {
       deliveredWithCode: deliveredWithCode ?? this.deliveredWithCode,
       driverId: driverId ?? this.driverId,
       driverName: driverName ?? this.driverName,
+      vehicleId: vehicleId ?? this.vehicleId,
+      vehicleReg: vehicleReg ?? this.vehicleReg,
+      vehicleType: vehicleType ?? this.vehicleType,
       coldChain: coldChain,
       tempMinC: tempMinC,
       tempMaxC: tempMaxC,
@@ -272,6 +284,11 @@ class TransportJob {
       if (pickupLng != null) 'pickupLng': pickupLng,
       if (dropoffLat != null) 'dropoffLat': dropoffLat,
       if (dropoffLng != null) 'dropoffLng': dropoffLng,
+      if (driverId != null) 'driverId': driverId,
+      if (driverName != null) 'driverName': driverName,
+      if (vehicleId != null) 'vehicleId': vehicleId,
+      if (vehicleReg != null) 'vehicleReg': vehicleReg,
+      if (vehicleType != null) 'vehicleType': vehicleType,
     };
   }
 
@@ -347,6 +364,9 @@ class TransportJob {
       deliveredWithCode: (text(['deliveryCode']) ?? '').isNotEmpty,
       driverId: text(['driverId']),
       driverName: text(['driverName']),
+      vehicleId: text(['vehicleId']),
+      vehicleReg: text(['vehicleReg', 'vehicleRegistration']),
+      vehicleType: text(['vehicleType']),
       coldChain: data['coldChain'] == true,
       tempMinC: firebaseDouble(data['tempMinC']),
       tempMaxC: firebaseDouble(data['tempMaxC']),
