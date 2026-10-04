@@ -738,7 +738,7 @@ class _CollectionJobDetailsScreenState
 
   Future<void> _openLocation(String location) async {
     await _launch(Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(location)}'));
+        'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(location)}'));
   }
 
   Future<void> _launch(Uri uri) async {
