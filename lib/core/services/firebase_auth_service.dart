@@ -200,30 +200,44 @@ class FirebaseAuthService {
   Future<UserCredential> _signInWithPhonePassword(
       String phone, String password) async {
     FirebaseAuthException? firstError;
-    
-    // First, let's see if there is a real email registered in Firestore for this phone number
-    String? realEmailFromFirestore;
+
+    // Resolve the canonical auth email from Firestore first (tries phone in
+    // multiple formats to maximise the chance of a single-attempt sign-in and
+    // eliminate unnecessary 400 responses from the Identity Toolkit).
+    String? resolvedEmail;
     try {
-      final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-      if (cleanPhone.isNotEmpty) {
-        final querySnapshot = await _firestore
+      final cleanPhone = _normalizePhone(phone);
+      // Try E.164 form first, then the raw cleaned value.
+      final phonesToTry = <String>{};
+      try { phonesToTry.add(_phoneInE164(phone)); } catch (_) {}
+      if (cleanPhone.isNotEmpty) phonesToTry.add(cleanPhone);
+      // Local 0-prefix form (e.g. 0771234567).
+      if (cleanPhone.startsWith('0') && cleanPhone.length == 10) {
+        phonesToTry.add('+94${cleanPhone.substring(1)}');
+      }
+
+      for (final p in phonesToTry) {
+        final snap = await _firestore
             .collection('users')
-            .where('phone', isEqualTo: cleanPhone)
+            .where('phone', isEqualTo: p)
             .limit(1)
             .get();
-        if (querySnapshot.docs.isNotEmpty) {
-          final doc = querySnapshot.docs.first;
-          final email = doc.data()['email'] as String?;
-          if (email != null && email.contains('@') && !email.contains('phone.farmora.app')) {
-            realEmailFromFirestore = email.trim();
+        if (snap.docs.isNotEmpty) {
+          final email = snap.docs.first.data()['email'] as String?;
+          if (email != null && email.contains('@')) {
+            resolvedEmail = email.trim();
           }
+          break;
         }
       }
     } catch (_) {}
 
-    final candidates = loginEmailCandidates(phone);
-    if (realEmailFromFirestore != null && !candidates.contains(realEmailFromFirestore)) {
-      candidates.insert(0, realEmailFromFirestore);
+    // Build the ordered candidate list: resolved email first so we ideally
+    // only make one auth request and avoid unnecessary 400 responses.
+    final candidates = <String>[];
+    if (resolvedEmail != null) candidates.add(resolvedEmail);
+    for (final e in loginEmailCandidates(phone)) {
+      if (!candidates.contains(e)) candidates.add(e);
     }
 
     for (final email in candidates) {
@@ -243,8 +257,7 @@ class FirebaseAuthService {
         if (!retryable.contains(error.code)) rethrow;
       }
     }
-    throw firstError ??
-        FirebaseAuthException(code: 'invalid-credential');
+    throw firstError ?? FirebaseAuthException(code: 'invalid-credential');
   }
 
   Future<UserCredential> _signInWithGoogleProvider() async {
