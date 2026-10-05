@@ -82,7 +82,11 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
     );
     if (!mounted || result == null) return;
     final scannedOrderId = (result['orderId'] ?? '').toString();
-    if (result['valid'] == false || scannedOrderId != currentOrder.id) {
+    final scannedProductId = (result['productId'] ?? '').toString();
+    final isValidOrder = scannedOrderId.isNotEmpty && scannedOrderId == currentOrder.id;
+    final isValidProduct = scannedProductId.isNotEmpty && scannedProductId == currentOrder.productId;
+
+    if (result['valid'] == false || (!isValidOrder && !isValidProduct)) {
       _snack(
           scannedOrderId.isNotEmpty && scannedOrderId != currentOrder.id
               ? 'This barcode belongs to a different order.'

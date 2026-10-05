@@ -1428,19 +1428,21 @@ class FirestoreService {
     final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     
     if (kUseCloudinary) {
-      final uploaded = await uploadPublicMedia(bytes, fileName);
+      final uploaded = await uploadPublicMedia(bytes, safeName, contentType: contentType);
+      final videoPath = 'product_videos/$uid/${productId}_${uploaded.publicId}';
       try {
         await setProductMedia(
           productId: productId,
-          videoPath: uploaded.publicId,
+          videoPath: videoPath,
           videoUrl: uploaded.url,
           harvestStatus: 'harvested',
           harvestDate: DateTime.now(),
         );
-      } catch (_) {
-        debugPrint('Failed to set product media');
+      } catch (e) {
+        debugPrint('Failed to set product media: $e');
+        rethrow;
       }
-      return {'url': uploaded.url, 'path': uploaded.publicId};
+      return {'url': uploaded.url, 'path': videoPath};
     }
 
     final path =
@@ -1473,9 +1475,16 @@ class FirestoreService {
     String? downloadUrl,
   }) async {
     try {
-      if (storagePath != null && storagePath.isNotEmpty) {
-        await _storage.ref(storagePath).delete();
-      } else if (downloadUrl != null && downloadUrl.isNotEmpty) {
+      if (storagePath != null &&
+          storagePath.isNotEmpty &&
+          !storagePath.startsWith('http://') &&
+          !storagePath.startsWith('https://')) {
+        if (!storagePath.contains('cloudinary') && !kUseCloudinary) {
+          await _storage.ref(storagePath).delete();
+        }
+      } else if (downloadUrl != null &&
+          downloadUrl.isNotEmpty &&
+          !downloadUrl.contains('cloudinary.com')) {
         await _storage.refFromURL(downloadUrl).delete();
       }
     } catch (e) {

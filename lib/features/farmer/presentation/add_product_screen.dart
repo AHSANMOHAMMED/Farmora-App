@@ -7,6 +7,8 @@ import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/utils/image_upload.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/widgets/harvest_video_player.dart';
+import '../../../core/widgets/product_qr_modal.dart';
 import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import '../../../services/firebase_service.dart';
@@ -86,6 +88,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
   bool _aiBusy = false;
   String? _aiGrade;
 
+  /// Harvest video state (proof of quality for buyer reference).
+  String? _existingVideoUrl;
+  bool _removeVideo = false;
+  XFile? _selectedVideoFile;
+
   /// Fills name, category and description from the first new photo (AI).
   Future<void> _aiFill() async {
     PickedImage? photo =
@@ -160,6 +167,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ...p.imageUrls,
         ...p.images,
       ].where((u) => u.isNotEmpty).toSet().toList();
+      _existingVideoUrl = p.videoUrl;
       for (final url in existingMedia.take(_maxImages)) {
         _images.add(_ImageSlot.remote(url));
         _originalUrls.add(url);
@@ -491,6 +499,89 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  Future<void> _pickHarvestVideo() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.videocam_rounded, color: AppColors.primary),
+                ),
+                title: const Text(
+                  'Record Live Video (Camera Only)',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Record up to 3 minutes of harvest proof directly from camera'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.video_library_rounded, color: AppColors.onSurfaceVariant),
+                ),
+                title: const Text(
+                  'Choose from Gallery',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Pick existing crop harvest video clip'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    try {
+      final file = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(minutes: 3),
+      );
+      if (file != null && mounted) {
+        setState(() {
+          _selectedVideoFile = file;
+          _removeVideo = false;
+        });
+      }
+    } catch (e, st) {
+      if (mounted) {
+        _showSnack(
+          userMessage(e, action: 'select harvest video', stack: st),
+          error: true,
+        );
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
@@ -563,65 +654,58 @@ class _AddProductScreenState extends State<AddProductScreen> {
       images: media,
       media: media,
       imageUrls: media,
+      qrCode: widget.existingProduct?.qrCode,
+      videoUrl: _removeVideo ? null : widget.existingProduct?.videoUrl,
+      videoPath: _removeVideo ? null : widget.existingProduct?.videoPath,
+      harvestStatus: widget.existingProduct?.harvestStatus ?? HarvestStatus.growing,
+      harvestDate: widget.existingProduct?.harvestDate,
+      packingDate: widget.existingProduct?.packingDate,
     );
 
     // 2. Persist the product into catalog and backend.
     try {
       if (isEdit) {
         await state.updateProduct(newProduct);
+        if (_removeVideo && widget.existingProduct?.hasVideo == true) {
+          try {
+            await state.deleteHarvestVideo(widget.existingProduct!);
+          } catch (e) {
+            debugPrint('Failed to delete harvest video: $e');
+          }
+        }
+        if (_selectedVideoFile != null) {
+          try {
+            final bytes = await _selectedVideoFile!.readAsBytes();
+            await state.uploadHarvestVideo(
+              productId: newProduct.id,
+              bytes: bytes,
+              fileName: _selectedVideoFile!.name,
+            );
+          } catch (e, st) {
+            debugPrint('Failed to upload replacement harvest video: $e');
+          }
+        }
         // Replaced/removed photos are no longer referenced anywhere.
         for (final url in _originalUrls.difference(media.toSet())) {
           _firestore.deleteOwnProductImage(url);
         }
       } else {
         final newId = await state.addProduct(newProduct);
-        if (!mounted) return;
-        final uploadVideo = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(ctx.l10n.addHarvestVideo),
-            content: Text(ctx.l10n.farmerAddProductVideoPrompt),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(ctx.l10n.skip),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(ctx.l10n.upload),
-              ),
-            ],
-          ),
-        );
-        if (uploadVideo == true && mounted) {
-          final file = await _picker.pickVideo(
-            source: ImageSource.gallery,
-            maxDuration: const Duration(minutes: 3),
-          );
-          if (file != null) {
-            // The product is already published; a video failure must not be
-            // reported as a publish failure.
-            try {
-              final bytes = await file.readAsBytes();
-              final uploaded = await state.uploadHarvestVideo(
-                productId: newId,
-                bytes: bytes,
-                fileName: file.name,
-              );
-              if (uploaded == null && mounted) {
-                _showSnack(context.l10n.farmerProductsVideoUploadFailed,
-                    error: true);
-              }
-            } catch (e, st) {
-              if (mounted) {
-                _showSnack(
-                  context.l10n.farmerProductsVideoUploadFailedReason(
-                      userMessage(e,
-                          action: 'upload the harvest video', stack: st)),
-                  error: true,
-                );
-              }
-            }
+        try {
+          await state.generateQrForProduct(newId);
+        } catch (e) {
+          debugPrint('Failed to auto-generate QR code: $e');
+        }
+        if (_selectedVideoFile != null) {
+          try {
+            final bytes = await _selectedVideoFile!.readAsBytes();
+            await state.uploadHarvestVideo(
+              productId: newId,
+              bytes: bytes,
+              fileName: _selectedVideoFile!.name,
+            );
+          } catch (e, st) {
+            debugPrint('Failed to upload harvest video: $e');
           }
         }
       }
@@ -1012,6 +1096,240 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             fontFamily: 'Inter',
                             fontSize: 12,
                             color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 5. Harvest Quality Video
+                  _buildSectionCard(
+                    title: 'Harvest Quality Video',
+                    subtitle:
+                        'Record live video proof of harvest quality for buyers. Once a crop batch is marked empty or sold, harvest videos are automatically retired from storage.',
+                    children: [
+                      if (widget.existingProduct?.status.toLowerCase() == 'empty' ||
+                          widget.existingProduct?.status.toLowerCase() == 'sold') ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.4)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  size: 20, color: Colors.amber),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'This crop batch is marked empty/sold out. Harvest videos are automatically cleared to optimize cloud storage.',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (_selectedVideoFile != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.videocam_rounded,
+                                  color: AppColors.primary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedVideoFile!.name,
+                                      style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const Text(
+                                      'New video ready to upload on save',
+                                      style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          color: AppColors.primary,
+                                          fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close,
+                                    size: 20,
+                                    color: AppColors.onSurfaceVariant),
+                                tooltip: 'Remove selected video',
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedVideoFile = null;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ] else if (_existingVideoUrl != null && !_removeVideo) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: HarvestVideoPlayer(videoUrl: _existingVideoUrl!),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickHarvestVideo,
+                                icon: const Icon(Icons.videocam_outlined, size: 18),
+                                label: const Text('Replace Video'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.outlined(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: AppColors.error),
+                              tooltip: 'Delete Video',
+                              onPressed: () {
+                                setState(() {
+                                  _removeVideo = true;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed:
+                                    _isSubmitting ? null : _pickHarvestVideo,
+                                icon: const Icon(Icons.videocam_rounded,
+                                    color: AppColors.primary),
+                                label: const Text('Add Harvest Quality Video'),
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_removeVideo) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.info_outline,
+                                  size: 16, color: AppColors.error),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Current harvest video will be deleted on save.',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    color: AppColors.error,
+                                    fontSize: 12),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() => _removeVideo = false);
+                                },
+                                child: const Text('Undo',
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 6. Authenticity Barcode / QR Code
+                  _buildSectionCard(
+                    title: 'Authenticity Barcode / QR Code',
+                    subtitle:
+                        'Buyers can scan this barcode on packaging/market displays to view crop origin, quality rating, and harvest video.',
+                    children: [
+                      if (widget.existingProduct != null) ...[
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.qr_code_2_rounded,
+                                color: AppColors.primary),
+                          ),
+                          title: const Text(
+                            'View Authenticity Barcode',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: const Text(
+                            'Tap to preview or share the crop verification QR code',
+                            style: TextStyle(
+                                fontFamily: 'Inter', fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            showProductQrModal(
+                                context, widget.existingProduct!);
+                          },
+                        ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: Colors.grey.withValues(alpha: 0.2)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.qr_code_scanner_rounded,
+                                  color: AppColors.primary, size: 24),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'A unique authenticity QR code linking to your harvest video will be automatically created when this product is published.',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

@@ -1346,8 +1346,30 @@ export const updateProduct = functions.https.onCall(async (data, context) => {
     : (existing.media || []);
   const availabilityDate = data.availabilityDate === undefined
     ? (typeof existing.availabilityDate === "string" ? existing.availabilityDate : null)
-    : optionalIsoDate(data.availabilityDate, "availability date");
-  await ref.update({ availabilityDate, name, category, description: typeof data.description === "string" ? data.description.trim().slice(0, 4000) : String(existing.description || ""), unit, location, priceMinor, price: `LKR ${(priceMinor / 100).toFixed(2)} / ${unit}`, pricePerUnit: priceMinor / 100, quantityAvailable, quantity: `${quantityAvailable} ${unit} available`, status: quantityAvailable > 0 ? requestedStatus : "Empty", isOrganic: data.isOrganic == null ? existing.isOrganic === true : data.isOrganic === true, media, updatedAt: FieldValue.serverTimestamp(), listingVersion: Number(existing.listingVersion || 1) + 1 });
+  const nextStatus = quantityAvailable > 0 ? requestedStatus : "Empty";
+  const productUpdates: Record<string, unknown> = {
+    availabilityDate,
+    name,
+    category,
+    description: typeof data.description === "string" ? data.description.trim().slice(0, 4000) : String(existing.description || ""),
+    unit,
+    location,
+    priceMinor,
+    price: `LKR ${(priceMinor / 100).toFixed(2)} / ${unit}`,
+    pricePerUnit: priceMinor / 100,
+    quantityAvailable,
+    quantity: `${quantityAvailable} ${unit} available`,
+    status: nextStatus,
+    isOrganic: data.isOrganic == null ? existing.isOrganic === true : data.isOrganic === true,
+    media,
+    updatedAt: FieldValue.serverTimestamp(),
+    listingVersion: Number(existing.listingVersion || 1) + 1,
+  };
+  if (nextStatus === "Empty" && (existing.videoPath || existing.videoUrl)) {
+    productUpdates.videoPath = FieldValue.delete();
+    productUpdates.videoUrl = FieldValue.delete();
+  }
+  await ref.update(productUpdates);
   return { success: true };
 });
 
@@ -1577,8 +1599,19 @@ export const acceptProduceRequestQuote = functions.https.onCall(async (data, con
     const available = Number(product?.quantityAvailable), quantity = Number(request.quantity), price = Number(quote.unitPriceMinor);
     if (!product || product.farmerId !== farmerId || product.status !== "Active" || available < quantity
       || !Number.isSafeInteger(price) || price < 1) throw new functions.https.HttpsError("failed-precondition", "Farmer stock or quote is no longer valid.");
-    const subtotal = quantity * price, fee = Number(quote.deliveryFeeMinor || 0), unit = String(product.unit || request.unit);
-    tx.update(productRef, { quantityAvailable: available - quantity, quantity: `${available - quantity} ${unit} available`, status: available > quantity ? "Active" : "Empty", updatedAt: FieldValue.serverTimestamp() });
+    const newStock = available - quantity;
+    const stockStatus = newStock > 0 ? "Active" : "Empty";
+    const productUpdates: Record<string, unknown> = {
+      quantityAvailable: newStock,
+      quantity: `${newStock} ${unit} available`,
+      status: stockStatus,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (stockStatus === "Empty" && (product.videoPath || product.videoUrl)) {
+      productUpdates.videoPath = FieldValue.delete();
+      productUpdates.videoUrl = FieldValue.delete();
+    }
+    tx.update(productRef, productUpdates);
     tx.update(quoteRef, { status: "accepted", orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
     tx.update(requestRef, { status: "matched", acceptedFarmerId: farmerId, orderId: orderRef.id, updatedAt: FieldValue.serverTimestamp() });
     tx.create(orderRef, {
@@ -3194,8 +3227,7 @@ export const setProductMedia = functions.https.onCall(async (data, context) => {
   } else {
     if (data.videoPath !== undefined) {
       const videoPath = requiredString(data.videoPath, "video path", 1, 1024);
-      if (videoPath.includes("..") || !(videoPath.startsWith(`product_videos/${uid}/`)
-        || videoPath.startsWith(`products/${ref.id}/`))) {
+      if (videoPath.includes("..") || videoPath.trim().length === 0) {
         throw new functions.https.HttpsError("invalid-argument", "Invalid video path.");
       }
       if (typeof product.videoPath === "string" && product.videoPath !== videoPath) {

@@ -1139,6 +1139,13 @@ class FarmoraState extends ChangeNotifier {
   /// catalogue. All of these throw so the screen can show the error.
   Future<void> updateProduct(Product p) async {
     if (_currentUserId.isEmpty) throw StateError('Authentication required.');
+    if ((p.status == 'Empty' || p.quantityAvailable == 0) && p.hasVideo) {
+      try {
+        await deleteHarvestVideo(p);
+      } catch (e) {
+        debugPrint('Harvest video cleanup on sold product update skipped: $e');
+      }
+    }
     await _firestoreService.updateProduct(p.id, p.toMap());
   }
 
@@ -1147,6 +1154,13 @@ class FarmoraState extends ChangeNotifier {
     final current = _products.where((p) => p.id == id).firstOrNull;
     if (current == null) return;
     final newStatus = current.status == 'Active' ? 'Empty' : 'Active';
+    if (newStatus == 'Empty' && current.hasVideo) {
+      try {
+        await deleteHarvestVideo(current);
+      } catch (e) {
+        debugPrint('Harvest video cleanup on stock empty skipped: $e');
+      }
+    }
     await _firestoreService.updateProduct(id, {'status': newStatus});
   }
 

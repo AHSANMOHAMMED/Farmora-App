@@ -11,6 +11,7 @@ import '../../../models/product.dart';
 import '../../../providers/farmora_state.dart';
 import 'add_product_screen.dart';
 import 'farmer_l10n.dart';
+import '../../../core/widgets/product_qr_modal.dart';
 import '../../../core/widgets/load_more_button.dart';
 
 class FarmerProductsScreen extends StatefulWidget {
@@ -566,26 +567,19 @@ class _FarmerProductsScreenState extends State<FarmerProductsScreen> {
                       const Icon(Icons.qr_code_2, color: AppColors.primary),
                   title: Text(
                     product.hasQrCode
-                        ? l.farmerProductsRefreshQr
+                        ? 'View Authenticity Barcode'
                         : l.farmerProductsGenerateQr,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: Text(l.farmerProductsQrHint),
+                  subtitle: const Text('Inspect authenticity barcode & harvest video link'),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     try {
-                      final payload =
-                          await state.generateQrForProduct(product.id);
+                      if (!product.hasQrCode) {
+                        await state.generateQrForProduct(product.id);
+                      }
                       if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            payload == null
-                                ? l.farmerProductsQrFailed
-                                : l.farmerProductsQrReady,
-                          ),
-                        ),
-                      );
+                      showProductQrModal(context, product);
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

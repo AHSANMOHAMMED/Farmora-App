@@ -16,8 +16,36 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
   bool _busy = false;
 
   Future<void> _verify(String? value) async {
-    if (_busy || value == null) return;
-    final parts = value.split('|');
+    if (_busy || value == null || value.trim().isEmpty) return;
+    final trimmed = value.trim();
+
+    // 1. Detect product authenticity QR code / barcode
+    String? productId;
+    if (trimmed.startsWith('farmora://product/')) {
+      productId = trimmed.replaceFirst('farmora://product/', '').trim();
+    } else if (trimmed.startsWith('product|')) {
+      productId = trimmed.replaceFirst('product|', '').trim();
+    } else if (trimmed.contains('/product/')) {
+      productId = trimmed.split('/product/').last.split('?').first.split('/').first.trim();
+    }
+
+    if (productId != null && productId.isNotEmpty) {
+      setState(() => _busy = true);
+      try {
+        if (!mounted) return;
+        Navigator.of(context).pop({
+          'valid': true,
+          'type': 'product',
+          'productId': productId,
+        });
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
+
+    // 2. Order verification barcode (barcodeId|signature)
+    final parts = trimmed.split('|');
     if (parts.length != 2 || parts.any((part) => part.isEmpty)) {
       _showError(context.l10n.buyerNotFarmoraCode);
       return;

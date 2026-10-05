@@ -7,6 +7,8 @@ import '../../../providers/farmora_state.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import 'cart_screen.dart';
+import 'barcode_scan_screen.dart';
+import 'product_detail_screen.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
 import '../../../core/widgets/load_more_button.dart';
@@ -77,6 +79,29 @@ class _BuyerProductsScreenState extends State<BuyerProductsScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Scan Authenticity Barcode',
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.onSurface),
+            onPressed: () async {
+              final result = await Navigator.of(context).push<Map<String, dynamic>>(
+                MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+              );
+              if (!context.mounted || result == null) return;
+              if (result['productId'] != null) {
+                final targetId = result['productId'].toString();
+                final p = state.products.where((item) => item.id == targetId).firstOrNull;
+                if (p != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p)),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Scanned crop batch is not currently listed in market.')),
+                  );
+                }
+              }
+            },
+          ),
           Stack(
             children: [
               IconButton(

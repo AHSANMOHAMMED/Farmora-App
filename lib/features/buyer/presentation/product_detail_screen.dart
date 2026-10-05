@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/harvest_video_player.dart';
+import '../../../core/widgets/product_qr_modal.dart';
 import '../../../core/widgets/safe_image.dart';
 import '../../../core/widgets/trust_badge.dart';
 import '../../../models/product.dart';
@@ -109,6 +110,11 @@ class ProductDetailScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => FarmStoreScreen(farmerId: product.farmerId))),
             ),
+          IconButton(
+            tooltip: 'Authenticity Barcode',
+            icon: const Icon(Icons.qr_code_2_rounded, color: AppColors.onSurface),
+            onPressed: () => showProductQrModal(context, product),
+          ),
           if (isInCart)
             IconButton(
               tooltip: l.buyerRemoveFromCart,
@@ -158,6 +164,31 @@ class ProductDetailScreen extends StatelessWidget {
                       fontFamily: 'Inter',
                       fontSize: 13,
                       color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ] else if (product.status.toLowerCase() == 'empty' || product.status.toLowerCase() == 'sold') ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.onSurfaceVariant),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This crop batch is sold out. Harvest video is automatically retired from storage.',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

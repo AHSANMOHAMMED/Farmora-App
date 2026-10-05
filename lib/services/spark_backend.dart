@@ -466,7 +466,8 @@ class SparkBackend {
     final description = data['description'] is String
         ? (data['description'] as String).trim()
         : (existing['description'] ?? '').toString();
-    await ref.update({
+    final bool becomingEmpty = (quantityAvailable <= 0 || requestedStatus == 'Empty');
+    final updates = <String, dynamic>{
       'availabilityDate': availabilityDate,
       'name': name,
       'category': category,
@@ -489,7 +490,12 @@ class SparkBackend {
       'images': media,
       'updatedAt': _now,
       'listingVersion': _int(existing['listingVersion'], 1) + 1,
-    });
+    };
+    if (becomingEmpty && (existing['videoUrl'] != null || existing['videoPath'] != null)) {
+      updates['videoPath'] = FieldValue.delete();
+      updates['videoUrl'] = FieldValue.delete();
+    }
+    await ref.update(updates);
   }
 
   /// Port of `deleteProduct`: refuses while the product has active orders.
@@ -561,9 +567,7 @@ class SparkBackend {
       updates['videoUrl'] = FieldValue.delete();
     } else {
       if (videoPath != null) {
-        if (videoPath.contains('..') ||
-            !(videoPath.startsWith('product_videos/$uid/') ||
-                videoPath.startsWith('products/$productId/'))) {
+        if (videoPath.contains('..') || videoPath.trim().isEmpty) {
           throw UserArgumentError('Invalid video path.');
         }
         updates['videoPath'] = videoPath;
@@ -686,13 +690,19 @@ class SparkBackend {
   Map<String, dynamic> _stockUpdate(
       Map<String, dynamic> product, int newQuantity, String orderId) {
     final unit = (product['unit'] ?? 'unit').toString();
-    return {
+    final map = <String, dynamic>{
       'quantityAvailable': newQuantity,
       'quantity': '$newQuantity $unit available',
       'status': newQuantity > 0 ? 'Active' : 'Empty',
       'updatedAt': _now,
       'lastOrderId': orderId,
     };
+    if (newQuantity <= 0 &&
+        (product['videoUrl'] != null || product['videoPath'] != null)) {
+      map['videoPath'] = FieldValue.delete();
+      map['videoUrl'] = FieldValue.delete();
+    }
+    return map;
   }
 
   Future<Map<String, String>> _bankSnapshotIn(
