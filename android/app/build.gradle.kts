@@ -59,9 +59,6 @@ android {
 
     buildTypes {
         release {
-            firebaseCrashlytics {
-                mappingFileUploadEnabled = false
-            }
             if (signingPropertiesFile.exists()) {
                 signingConfig = signingConfigs.create("release") {
                     keyAlias = signingProperties["keyAlias"] as String?
@@ -97,4 +94,10 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+tasks.whenTaskAdded {
+    if (name.contains("uploadCrashlyticsMappingFile")) {
+        enabled = false
+    }
 }
