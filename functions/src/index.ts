@@ -1346,6 +1346,7 @@ export const updateProduct = functions.https.onCall(async (data, context) => {
     : (existing.media || []);
   const availabilityDate = data.availabilityDate === undefined
     ? (typeof existing.availabilityDate === "string" ? existing.availabilityDate : null)
+    : optionalIsoDate(data.availabilityDate, "availability date");
   const nextStatus = quantityAvailable > 0 ? requestedStatus : "Empty";
   const productUpdates: Record<string, unknown> = {
     availabilityDate,
@@ -1599,6 +1600,9 @@ export const acceptProduceRequestQuote = functions.https.onCall(async (data, con
     const available = Number(product?.quantityAvailable), quantity = Number(request.quantity), price = Number(quote.unitPriceMinor);
     if (!product || product.farmerId !== farmerId || product.status !== "Active" || available < quantity
       || !Number.isSafeInteger(price) || price < 1) throw new functions.https.HttpsError("failed-precondition", "Farmer stock or quote is no longer valid.");
+    const unit = String(product.unit || request.unit || "kg");
+    const subtotal = quantity * price;
+    const fee = Number.isSafeInteger(Number(quote.deliveryFeeMinor)) && Number(quote.deliveryFeeMinor) >= 0 ? Number(quote.deliveryFeeMinor) : 0;
     const newStock = available - quantity;
     const stockStatus = newStock > 0 ? "Active" : "Empty";
     const productUpdates: Record<string, unknown> = {
