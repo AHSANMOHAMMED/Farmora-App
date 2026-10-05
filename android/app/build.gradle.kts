@@ -59,6 +59,9 @@ android {
 
     buildTypes {
         release {
+            firebaseCrashlytics {
+                mappingFileUploadEnabled = false
+            }
             if (signingPropertiesFile.exists()) {
                 signingConfig = signingConfigs.create("release") {
                     keyAlias = signingProperties["keyAlias"] as String?
