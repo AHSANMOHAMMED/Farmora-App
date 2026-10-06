@@ -32,7 +32,7 @@ class LogisticsFleetService {
   FirebaseAuth? get _auth =>
       _explicitAuth ?? (_hasFirebase ? FirebaseAuth.instance : null);
 
-  String? get currentTransporterId => _auth?.currentUser?.uid ?? 'demo';
+  String? get currentTransporterId => _auth?.currentUser?.uid;
 
   // ─── SEED DATA FOR DEMO & INSTANT USABILITY ──────────────────────────
 
@@ -311,12 +311,12 @@ class LogisticsFleetService {
     }
     return col.snapshots().map((snap) {
       if (snap.docs.isEmpty) {
-        return defaultVehicles(tid);
+        return tid == 'demo' ? defaultVehicles(tid) : const <LogisticsVehicle>[];
       }
       return snap.docs
           .map((d) => LogisticsVehicle.fromMap(d.id, d.data()))
           .toList();
-    }).handleError((_) => defaultVehicles(tid));
+    });
   }
 
   Future<void> saveVehicle(LogisticsVehicle vehicle) async {
@@ -330,11 +330,7 @@ class LogisticsFleetService {
       transporterId: tid,
       updatedAt: DateTime.now(),
     );
-    try {
-      await col.doc(v.id).set(v.toMap(), SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('saveVehicle offline or Firestore fallback: $e');
-    }
+    await col.doc(v.id).set(v.toMap(), SetOptions(merge: true));
   }
 
   Future<void> deleteVehicle(String transporterId, String vehicleId) async {
@@ -362,12 +358,12 @@ class LogisticsFleetService {
     }
     return col.snapshots().map((snap) {
       if (snap.docs.isEmpty) {
-        return defaultBranches(tid);
+        return tid == 'demo' ? defaultBranches(tid) : const <LogisticsBranch>[];
       }
       return snap.docs
           .map((d) => LogisticsBranch.fromMap(d.id, d.data()))
           .toList();
-    }).handleError((_) => defaultBranches(tid));
+    });
   }
 
   Future<void> saveBranch(LogisticsBranch branch) async {
@@ -381,11 +377,7 @@ class LogisticsFleetService {
       transporterId: tid,
       updatedAt: DateTime.now(),
     );
-    try {
-      await col.doc(b.id).set(b.toMap(), SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('saveBranch offline or Firestore fallback: $e');
-    }
+    await col.doc(b.id).set(b.toMap(), SetOptions(merge: true));
   }
 
   Future<void> deleteBranch(String transporterId, String branchId) async {
@@ -413,12 +405,12 @@ class LogisticsFleetService {
     }
     return col.snapshots().map((snap) {
       if (snap.docs.isEmpty) {
-        return defaultDrivers(tid);
+        return tid == 'demo' ? defaultDrivers(tid) : const <FleetDriverInfo>[];
       }
       return snap.docs
           .map((d) => FleetDriverInfo.fromMap(d.id, d.data()))
           .toList();
-    }).handleError((_) => defaultDrivers(tid));
+    });
   }
 
   Future<void> saveDriver(FleetDriverInfo driver) async {
@@ -432,11 +424,7 @@ class LogisticsFleetService {
       transporterId: tid,
       updatedAt: DateTime.now(),
     );
-    try {
-      await col.doc(d.id).set(d.toMap(), SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('saveDriver offline or Firestore fallback: $e');
-    }
+    await col.doc(d.id).set(d.toMap(), SetOptions(merge: true));
   }
 
   Future<void> deleteDriver(String transporterId, String driverId) async {

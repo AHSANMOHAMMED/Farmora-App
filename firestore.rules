@@ -50,6 +50,9 @@ service cloud.firestore {
     function inspector() { return active() && roleIs('inspector'); }
     // Finance staff are assigned by admins; they must be verified.
     function finance() { return active() && roleIs('finance') && verified(); }
+    function fleetOwner(transporterId) {
+      return transporter() && verified() && uid() == transporterId;
+    }
 
     function isStr(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
     function optStr(d, k, max) { return !(k in d) || d[k] == null || isStr(d[k], 0, max); }
@@ -1701,6 +1704,81 @@ service cloud.firestore {
               || (resource.data.status == 'removed'
                 && request.resource.data.status == 'invited'))));
       allow delete: if admin();
+    }
+
+    // ── Transporter fleet records ───────────────────────────
+    // Fleet records are private to their transporter. The client uses these
+    // collections for the Spark-plan logistics dashboard.
+    match /transporters/{transporterId}/vehicles/{vehicleId} {
+      allow read: if admin() || fleetOwner(transporterId);
+      allow create, update: if fleetOwner(transporterId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'transporterId', 'registrationNumber', 'vehicleType', 'modelName',
+          'capacityKg', 'isRefrigerated', 'status', 'stationedBranchId',
+          'stationedBranchName', 'assignedDriverId', 'assignedDriverName',
+          'currentLat', 'currentLng', 'updatedAt'
+        ])
+        && request.resource.data.id == vehicleId
+        && request.resource.data.transporterId == transporterId
+        && isStr(request.resource.data.registrationNumber, 1, 30)
+        && isStr(request.resource.data.vehicleType, 1, 40)
+        && isStr(request.resource.data.modelName, 0, 120)
+        && request.resource.data.capacityKg is number
+        && request.resource.data.capacityKg > 0
+        && request.resource.data.capacityKg <= 1000000
+        && request.resource.data.isRefrigerated is bool
+        && request.resource.data.status in ['available', 'on_trip', 'maintenance', 'idle'];
+      allow delete: if fleetOwner(transporterId);
+    }
+    match /transporters/{transporterId}/branches/{branchId} {
+      allow read: if admin() || fleetOwner(transporterId);
+      allow create, update: if fleetOwner(transporterId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'transporterId', 'name', 'district', 'address', 'latitude',
+          'longitude', 'managerName', 'managerPhone', 'hasColdStorage',
+          'storageCapacityTons', 'vehicleCount', 'driverCount', 'updatedAt'
+        ])
+        && request.resource.data.id == branchId
+        && request.resource.data.transporterId == transporterId
+        && isStr(request.resource.data.name, 1, 150)
+        && isStr(request.resource.data.district, 1, 60)
+        && isStr(request.resource.data.address, 1, 300)
+        && request.resource.data.latitude is number
+        && request.resource.data.latitude >= -90
+        && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180
+        && request.resource.data.longitude <= 180
+        && isStr(request.resource.data.managerName, 1, 120)
+        && isStr(request.resource.data.managerPhone, 0, 20)
+        && request.resource.data.hasColdStorage is bool
+        && request.resource.data.storageCapacityTons is number
+        && request.resource.data.storageCapacityTons >= 0
+        && request.resource.data.vehicleCount is int
+        && request.resource.data.vehicleCount >= 0
+        && request.resource.data.driverCount is int
+        && request.resource.data.driverCount >= 0;
+      allow delete: if fleetOwner(transporterId);
+    }
+    match /transporters/{transporterId}/drivers/{driverId} {
+      allow read: if admin() || fleetOwner(transporterId);
+      allow create, update: if fleetOwner(transporterId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'transporterId', 'name', 'phone', 'licenseNumber', 'licenseClass',
+          'status', 'assignedVehicleId', 'assignedVehicleReg', 'stationedBranchId',
+          'stationedBranchName', 'currentLat', 'currentLng', 'rating', 'updatedAt'
+        ])
+        && request.resource.data.id == driverId
+        && request.resource.data.transporterId == transporterId
+        && isStr(request.resource.data.name, 1, 120)
+        && isStr(request.resource.data.phone, 0, 20)
+        && isStr(request.resource.data.licenseNumber, 1, 40)
+        && isStr(request.resource.data.licenseClass, 1, 80)
+        && request.resource.data.status in ['available', 'on_trip', 'off_duty']
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 0
+        && request.resource.data.rating <= 5;
+      allow delete: if fleetOwner(transporterId);
     }
 
     // ── AI crop doctor history (Firebase AI Logic results) ───
