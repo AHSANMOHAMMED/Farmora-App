@@ -17,7 +17,8 @@ class LogisticsFleetHubScreen extends StatefulWidget {
   const LogisticsFleetHubScreen({super.key});
 
   @override
-  State<LogisticsFleetHubScreen> createState() => _LogisticsFleetHubScreenState();
+  State<LogisticsFleetHubScreen> createState() =>
+      _LogisticsFleetHubScreenState();
 }
 
 class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
@@ -30,11 +31,31 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
   List<FleetDriverInfo> _drivers = [];
 
   static const List<String> _districts = [
-    'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle',
-    'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara', 'Kandy', 'Kegalle',
-    'Kilinochchi', 'Kurunegala', 'Mannar', 'Matale', 'Matara', 'Monaragala',
-    'Mullaitivu', 'Nuwara Eliya', 'Polonnaruwa', 'Puttalam', 'Ratnapura',
-    'Trincomalee', 'Vavuniya',
+    'Ampara',
+    'Anuradhapura',
+    'Badulla',
+    'Batticaloa',
+    'Colombo',
+    'Galle',
+    'Gampaha',
+    'Hambantota',
+    'Jaffna',
+    'Kalutara',
+    'Kandy',
+    'Kegalle',
+    'Kilinochchi',
+    'Kurunegala',
+    'Mannar',
+    'Matale',
+    'Matara',
+    'Monaragala',
+    'Mullaitivu',
+    'Nuwara Eliya',
+    'Polonnaruwa',
+    'Puttalam',
+    'Ratnapura',
+    'Trincomalee',
+    'Vavuniya',
   ];
 
   static const Map<String, List<double>> _districtCoords = {
@@ -80,24 +101,26 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FarmoraState>();
-    final transporterId = state.currentUserId.isNotEmpty
-        ? state.currentUserId
-        : 'demo';
+    final transporterId =
+        state.currentUserId.isNotEmpty ? state.currentUserId : 'demo';
 
     return StreamBuilder<List<LogisticsBranch>>(
       stream: _service.streamBranches(transporterId),
       builder: (context, branchSnap) {
-        _branches = branchSnap.data ?? LogisticsFleetService.defaultBranches(transporterId);
+        _branches = branchSnap.data ??
+            LogisticsFleetService.defaultBranches(transporterId);
 
         return StreamBuilder<List<LogisticsVehicle>>(
           stream: _service.streamVehicles(transporterId),
           builder: (context, vehSnap) {
-            _vehicles = vehSnap.data ?? LogisticsFleetService.defaultVehicles(transporterId);
+            _vehicles = vehSnap.data ??
+                LogisticsFleetService.defaultVehicles(transporterId);
 
             return StreamBuilder<List<FleetDriverInfo>>(
               stream: _service.streamDrivers(transporterId),
               builder: (context, drvSnap) {
-                _drivers = drvSnap.data ?? LogisticsFleetService.defaultDrivers(transporterId);
+                _drivers = drvSnap.data ??
+                    LogisticsFleetService.defaultDrivers(transporterId);
 
                 return Scaffold(
                   appBar: AppBar(
@@ -177,7 +200,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
         _tabController.index == 0
             ? 'Add Vehicle'
             : (_tabController.index == 1 ? 'Add Branch' : 'Add Driver'),
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style:
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       onPressed: () {
         if (_tabController.index == 0) {
@@ -206,7 +230,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
         final v = _vehicles[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 1.5,
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -228,7 +253,9 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         v.isRefrigerated
                             ? Icons.ac_unit_rounded
                             : Icons.local_shipping_rounded,
-                        color: v.isRefrigerated ? Colors.cyan[800] : AppColors.primary,
+                        color: v.isRefrigerated
+                            ? Colors.cyan[800]
+                            : AppColors.primary,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -263,14 +290,17 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       child: _infoItem(
                         icon: Icons.scale_rounded,
                         label: 'Capacity',
-                        value: '${(v.capacityKg / 1000).toStringAsFixed(1)} Tons (${v.capacityKg.toInt()} kg)',
+                        value:
+                            '${(v.capacityKg / 1000).toStringAsFixed(1)} Tons (${v.capacityKg.toInt()} kg)',
                       ),
                     ),
                     Expanded(
                       child: _infoItem(
                         icon: Icons.ac_unit_rounded,
                         label: 'Cold Chain',
-                        value: v.isRefrigerated ? 'Reefer Box (Yes)' : 'Standard (No)',
+                        value: v.isRefrigerated
+                            ? 'Reefer Box (Yes)'
+                            : 'Standard (No)',
                       ),
                     ),
                   ],
@@ -303,7 +333,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       foregroundColor: AppColors.primary,
-                      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                      side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.4)),
                     ),
                     onPressed: () => VehicleMaintenanceSheet.show(context, v),
                   ),
@@ -331,7 +362,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
         final b = _branches[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 1.5,
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -386,7 +418,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       child: _infoItem(
                         icon: Icons.warehouse_rounded,
                         label: 'Storage Capacity',
-                        value: '${b.storageCapacityTons.toInt()} Tons ${b.hasColdStorage ? "(Cold)" : ""}',
+                        value:
+                            '${b.storageCapacityTons.toInt()} Tons ${b.hasColdStorage ? "(Cold)" : ""}',
                       ),
                     ),
                   ],
@@ -405,7 +438,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       child: _infoItem(
                         icon: Icons.location_on_outlined,
                         label: 'GPS Coordinates',
-                        value: '${b.latitude.toStringAsFixed(4)}, ${b.longitude.toStringAsFixed(4)}',
+                        value:
+                            '${b.latitude.toStringAsFixed(4)}, ${b.longitude.toStringAsFixed(4)}',
                       ),
                     ),
                   ],
@@ -437,7 +471,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
         final d = _drivers[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 1.5,
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -452,7 +487,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         color: Colors.teal.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.person_rounded, color: Colors.teal),
+                      child:
+                          const Icon(Icons.person_rounded, color: Colors.teal),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -526,7 +562,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       foregroundColor: Colors.teal,
-                      side: BorderSide(color: Colors.teal.withValues(alpha: 0.4)),
+                      side:
+                          BorderSide(color: Colors.teal.withValues(alpha: 0.4)),
                     ),
                     onPressed: () => DriverShiftLogSheet.show(context, d),
                   ),
@@ -575,7 +612,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                   children: [
                     const Text(
                       'Add New Fleet Vehicle',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -601,12 +639,24 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'mini_truck', child: Text('Mini Truck (1.5T)')),
-                        DropdownMenuItem(value: 'heavy_lorry', child: Text('Heavy Commercial Lorry (6T+)')),
-                        DropdownMenuItem(value: 'refrigerated_truck', child: Text('Refrigerated Reefer Truck')),
-                        DropdownMenuItem(value: 'pickup_van', child: Text('Pickup Van / Utility')),
-                        DropdownMenuItem(value: 'three_wheeler', child: Text('Three Wheeler Delivery')),
-                        DropdownMenuItem(value: 'tractor', child: Text('Agri Tractor & Trailer')),
+                        DropdownMenuItem(
+                            value: 'mini_truck',
+                            child: Text('Mini Truck (1.5T)')),
+                        DropdownMenuItem(
+                            value: 'heavy_lorry',
+                            child: Text('Heavy Commercial Lorry (6T+)')),
+                        DropdownMenuItem(
+                            value: 'refrigerated_truck',
+                            child: Text('Refrigerated Reefer Truck')),
+                        DropdownMenuItem(
+                            value: 'pickup_van',
+                            child: Text('Pickup Van / Utility')),
+                        DropdownMenuItem(
+                            value: 'three_wheeler',
+                            child: Text('Three Wheeler Delivery')),
+                        DropdownMenuItem(
+                            value: 'tractor',
+                            child: Text('Agri Tractor & Trailer')),
                       ],
                       onChanged: (v) => setSheetState(() => type = v!),
                     ),
@@ -621,7 +671,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(
-                      title: const Text('Equipped with Cold Storage (Reefer Box)'),
+                      title:
+                          const Text('Equipped with Cold Storage (Reefer Box)'),
                       value: reefer,
                       onChanged: (v) => setSheetState(() => reefer = v),
                     ),
@@ -633,9 +684,11 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: _branches.map((b) {
-                        return DropdownMenuItem(value: b.id, child: Text(b.name));
+                        return DropdownMenuItem(
+                            value: b.id, child: Text(b.name));
                       }).toList(),
-                      onChanged: (v) => setSheetState(() => selectedBranchId = v),
+                      onChanged: (v) =>
+                          setSheetState(() => selectedBranchId = v),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
@@ -645,19 +698,23 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('None (Assign Later)')),
+                        const DropdownMenuItem(
+                            value: null, child: Text('None (Assign Later)')),
                         ..._drivers.map((d) {
-                          return DropdownMenuItem(value: d.id, child: Text(d.name));
+                          return DropdownMenuItem(
+                              value: d.id, child: Text(d.name));
                         }),
                       ],
-                      onChanged: (v) => setSheetState(() => selectedDriverId = v),
+                      onChanged: (v) =>
+                          setSheetState(() => selectedDriverId = v),
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary),
                         onPressed: () async {
                           if (regCtrl.text.trim().isEmpty) return;
                           final b = _branches.firstWhere(
@@ -665,17 +722,20 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             orElse: () => _branches.first,
                           );
                           final d = selectedDriverId != null
-                              ? _drivers.firstWhere((d) => d.id == selectedDriverId)
+                              ? _drivers
+                                  .firstWhere((d) => d.id == selectedDriverId)
                               : null;
                           final newVehicle = LogisticsVehicle(
                             id: 'veh_${DateTime.now().millisecondsSinceEpoch}',
                             transporterId: transporterId,
-                            registrationNumber: regCtrl.text.trim().toUpperCase(),
+                            registrationNumber:
+                                regCtrl.text.trim().toUpperCase(),
                             vehicleType: type,
                             modelName: modelCtrl.text.trim().isNotEmpty
                                 ? modelCtrl.text.trim()
                                 : 'Commercial Vehicle',
-                            capacityKg: double.tryParse(capCtrl.text.trim()) ?? 2500,
+                            capacityKg:
+                                double.tryParse(capCtrl.text.trim()) ?? 2500,
                             isRefrigerated: reefer,
                             stationedBranchId: b.id,
                             stationedBranchName: b.name,
@@ -685,10 +745,23 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             currentLng: b.longitude,
                             updatedAt: DateTime.now(),
                           );
-                          await _service.saveVehicle(newVehicle);
-                          if (ctx.mounted) Navigator.of(ctx).pop();
+                          try {
+                            await _service.saveVehicle(newVehicle);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          } catch (error) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Could not save vehicle: $error'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
-                        child: const Text('Save Vehicle', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Save Vehicle',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -733,7 +806,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                   children: [
                     const Text(
                       'Add New Logistics Branch / Depot',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -753,7 +827,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       items: _districts.map((d) {
                         return DropdownMenuItem(value: d, child: Text(d));
                       }).toList(),
-                      onChanged: (v) => setSheetState(() => selectedDistrict = v!),
+                      onChanged: (v) =>
+                          setSheetState(() => selectedDistrict = v!),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -800,10 +875,12 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                       width: double.infinity,
                       height: 48,
                       child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary),
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty) return;
-                          final coords = _districtCoords[selectedDistrict] ?? [7.8731, 80.7718];
+                          final coords = _districtCoords[selectedDistrict] ??
+                              [7.8731, 80.7718];
                           final newBranch = LogisticsBranch(
                             id: 'br_${DateTime.now().millisecondsSinceEpoch}',
                             transporterId: transporterId,
@@ -821,13 +898,27 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                                 ? mgrPhoneCtrl.text.trim()
                                 : '0770000000',
                             hasColdStorage: coldStorage,
-                            storageCapacityTons: double.tryParse(capCtrl.text.trim()) ?? 50.0,
+                            storageCapacityTons:
+                                double.tryParse(capCtrl.text.trim()) ?? 50.0,
                             updatedAt: DateTime.now(),
                           );
-                          await _service.saveBranch(newBranch);
-                          if (ctx.mounted) Navigator.of(ctx).pop();
+                          try {
+                            await _service.saveBranch(newBranch);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          } catch (error) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Could not save branch: $error'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
-                        child: const Text('Save Branch', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Save Branch',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -871,7 +962,8 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                   children: [
                     const Text(
                       'Register Fleet Driver',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -906,10 +998,18 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'Heavy Commercial Vehicle (Class C)', child: Text('Heavy Commercial (Class C)')),
-                        DropdownMenuItem(value: 'Heavy Commercial Vehicle (Class C1)', child: Text('Heavy Commercial (Class C1)')),
-                        DropdownMenuItem(value: 'Light Commercial Vehicle (Class B)', child: Text('Light Commercial (Class B)')),
-                        DropdownMenuItem(value: 'Dual Purpose Commercial (Class B)', child: Text('Dual Purpose Commercial')),
+                        DropdownMenuItem(
+                            value: 'Heavy Commercial Vehicle (Class C)',
+                            child: Text('Heavy Commercial (Class C)')),
+                        DropdownMenuItem(
+                            value: 'Heavy Commercial Vehicle (Class C1)',
+                            child: Text('Heavy Commercial (Class C1)')),
+                        DropdownMenuItem(
+                            value: 'Light Commercial Vehicle (Class B)',
+                            child: Text('Light Commercial (Class B)')),
+                        DropdownMenuItem(
+                            value: 'Dual Purpose Commercial (Class B)',
+                            child: Text('Dual Purpose Commercial')),
                       ],
                       onChanged: (v) => setSheetState(() => licClass = v!),
                     ),
@@ -921,9 +1021,11 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: _branches.map((b) {
-                        return DropdownMenuItem(value: b.id, child: Text(b.name));
+                        return DropdownMenuItem(
+                            value: b.id, child: Text(b.name));
                       }).toList(),
-                      onChanged: (v) => setSheetState(() => selectedBranchId = v),
+                      onChanged: (v) =>
+                          setSheetState(() => selectedBranchId = v),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
@@ -933,22 +1035,26 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                         border: OutlineInputBorder(),
                       ),
                       items: [
-                        const DropdownMenuItem(value: null, child: Text('None (Assign Later)')),
+                        const DropdownMenuItem(
+                            value: null, child: Text('None (Assign Later)')),
                         ..._vehicles.map((v) {
                           return DropdownMenuItem(
                             value: v.id,
-                            child: Text('${v.registrationNumber} (${v.modelName})'),
+                            child: Text(
+                                '${v.registrationNumber} (${v.modelName})'),
                           );
                         }),
                       ],
-                      onChanged: (v) => setSheetState(() => selectedVehicleId = v),
+                      onChanged: (v) =>
+                          setSheetState(() => selectedVehicleId = v),
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary),
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty) return;
                           final b = _branches.firstWhere(
@@ -956,14 +1062,19 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             orElse: () => _branches.first,
                           );
                           final v = selectedVehicleId != null
-                              ? _vehicles.firstWhere((veh) => veh.id == selectedVehicleId)
+                              ? _vehicles.firstWhere(
+                                  (veh) => veh.id == selectedVehicleId)
                               : null;
                           final newDriver = FleetDriverInfo(
                             id: 'drv_${DateTime.now().millisecondsSinceEpoch}',
                             transporterId: transporterId,
                             name: nameCtrl.text.trim(),
-                            phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : '0770000000',
-                            licenseNumber: licCtrl.text.trim().isNotEmpty ? licCtrl.text.trim() : 'B-0000000',
+                            phone: phoneCtrl.text.trim().isNotEmpty
+                                ? phoneCtrl.text.trim()
+                                : '0770000000',
+                            licenseNumber: licCtrl.text.trim().isNotEmpty
+                                ? licCtrl.text.trim()
+                                : 'B-0000000',
                             licenseClass: licClass,
                             status: 'available',
                             stationedBranchId: b.id,
@@ -975,10 +1086,23 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             rating: 5.0,
                             updatedAt: DateTime.now(),
                           );
-                          await _service.saveDriver(newDriver);
-                          if (ctx.mounted) Navigator.of(ctx).pop();
+                          try {
+                            await _service.saveDriver(newDriver);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          } catch (error) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Could not save driver: $error'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
-                        child: const Text('Save Driver', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Save Driver',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -1011,13 +1135,15 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.onSurfaceVariant),
               ),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
           ),

@@ -1841,6 +1841,7 @@ class SparkBackend {
     final uid = _uid;
     final me = await _me();
     if (me['role'] != 'transporter' ||
+        me['isVerified'] != true ||
         me['isSuspended'] == true ||
         me['isDeleted'] == true) {
       return;
