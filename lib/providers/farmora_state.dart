@@ -1057,6 +1057,11 @@ class FarmoraState extends ChangeNotifier {
         }
       } catch (e) {
         debugPrint('Firestore createSecureProduct sync skipped: $e');
+        if (e is UserStateError || (e is FirebaseException && e.code == 'permission-denied')) {
+          _products.removeWhere((item) => item.id == effectiveId);
+          notifyListeners();
+          rethrow;
+        }
       }
     }
     return effectiveId;
