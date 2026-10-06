@@ -664,7 +664,9 @@ service cloud.firestore {
     function podPhotoOk(orderId) {
       let d = request.resource.data;
       return !('podPhotoPath' in d) || (d.podPhotoPath is string
-        && d.podPhotoPath.matches('pod_photos/' + orderId + '/' + uid() + '_[^/]+'));
+        && (d.podPhotoPath.matches('pod_photos/' + orderId + '/' + uid() + '_[^/]+')
+            || d.podPhotoPath.matches('^https://.+')
+            || d.podPhotoPath.matches('^[A-Za-z0-9._-]+$')));
     }
     function fleetActive(transporterId, driverId) {
       let p = docPath('fleet_links/' + transporterId + '_' + driverId);
