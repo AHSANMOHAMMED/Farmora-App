@@ -717,6 +717,12 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             backgroundColor: AppColors.primary),
                         onPressed: () async {
                           if (regCtrl.text.trim().isEmpty) return;
+                          if (_branches.isEmpty) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Please add a Branch Depot first.'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
                           final b = _branches.firstWhere(
                             (b) => b.id == selectedBranchId,
                             orElse: () => _branches.first,
@@ -1057,6 +1063,12 @@ class _LogisticsFleetHubScreenState extends State<LogisticsFleetHubScreen>
                             backgroundColor: AppColors.primary),
                         onPressed: () async {
                           if (nameCtrl.text.trim().isEmpty) return;
+                          if (_branches.isEmpty) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Please add a Branch Depot first.'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
                           final b = _branches.firstWhere(
                             (b) => b.id == selectedBranchId,
                             orElse: () => _branches.first,
