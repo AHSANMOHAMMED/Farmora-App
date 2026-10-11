@@ -1,0 +1,158 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 4698 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 2: Prototyping & Design System) Tj ET
+0.18 0.49 0.20 rg 54 762 487.28 24 re f
+BT /F2 14 Tf 1 1 1 rg 62 768 Td (SLIIT Department of Software Engineering - Faculty of Computing) Tj ET
+0.18 0.49 0.20 RG 1.5 w 54 729 m 234 729 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 732 Td (Mobile Application Project: Farmora) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 708 Td (Milestone 2: Interactive High-Fidelity Prototyping & Design System \(LO3\)) Tj ET
+0.85 0.85 0.85 RG 1 w 54 677 m 541.28 677 l S
+0.18 0.49 0.20 RG 1.5 w 54 646 m 234 646 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 649 Td (1. Prototype Scope & Objectives) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 631 Td (The primary objective of Milestone 2 \(Lab 07\) is to transform low-fidelity) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 618 Td (wireframes into an interactive, high-fidelity digital prototype adhering strictly) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 605 Td (to Material Design 3 \(M3\) and agricultural usability principles.) Tj ET
+0.85 0.85 0.85 RG 1 w 54 576 m 541.28 576 l S
+0.18 0.49 0.20 RG 1.5 w 54 545 m 234 545 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 548 Td (2. Design System & Style Guide) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 516 Td (2.1 Color Palette) Tj ET
+0.18 0.49 0.20 rg 58 504 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 501 Td (Primary Brand \(Agri Green\):** `#2E7D32` \(Represents vitality, nature, harvest) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 488 Td (prosperity\)) Tj ET
+0.18 0.49 0.20 rg 58 478 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 475 Td (Primary Container / Accent:** `#E8F5E9` \(Soft contrast for card backgrounds\)) Tj ET
+0.18 0.49 0.20 rg 58 465 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 462 Td (Secondary \(Harvest Gold/Orange\):** `#F57C00` \(Highlights alerts, urgency,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 449 Td (pending escrow\)) Tj ET
+0.18 0.49 0.20 rg 58 439 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 436 Td (Neutral Dark \(Text/Headers\):** `#1E293B` \(High legibility on sunlight) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 423 Td (screens\)) Tj ET
+0.18 0.49 0.20 rg 58 413 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 410 Td (Neutral Light \(Surface\):** `#F8FAFC` \(Clean, non-distracting backgrounds\)) Tj ET
+0.18 0.49 0.20 rg 58 400 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 397 Td (Danger / Temperature Alert:** `#D32F2F` \(Cold storage breaches, expired) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 384 Td (verification\)) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 357 Td (2.2 Typography) Tj ET
+0.18 0.49 0.20 rg 58 345 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 342 Td (Primary English/Latin:** Google Inter & Poppins \(Weights: 400 Regular, 500) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 329 Td (Medium, 600 SemiBold, 700 Bold\)) Tj ET
+0.18 0.49 0.20 rg 58 319 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 316 Td (Sinhala Localization:** Noto Sans Sinhala \(Full Unicode rendering support\)) Tj ET
+0.18 0.49 0.20 rg 58 306 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 303 Td (Tamil Localization:** Noto Sans Tamil \(Full Unicode rendering support\)) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 276 Td (2.3 Micro-interactions & Haptic Feedback) Tj ET
+0.18 0.49 0.20 rg 58 264 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 261 Td (Pull-to-refresh:** Custom leaf-sprout animation indicating live market price) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 248 Td (updates.) Tj ET
+0.18 0.49 0.20 rg 58 238 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 235 Td (Haptic Click:** Confirms barcode scanning and camera shutter actions in) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 222 Td (outdoor farm conditions.) Tj ET
+0.18 0.49 0.20 rg 58 212 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 209 Td (Dynamic Chips:** Status indicators for `Order Status` \(`Pending`,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 196 Td (`In-Transit`, `Delivered`, `Disputed`\).) Tj ET
+0.85 0.85 0.85 RG 1 w 54 167 m 541.28 167 l S
+0.18 0.49 0.20 RG 1.5 w 54 136 m 234 136 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 139 Td (3. High-Fidelity Screen Architecture & Key Interactions) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 107 Td (3.1 Onboarding & Multi-Role Authentication) Tj ET
+0.18 0.49 0.20 rg 58 95 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 92 Td (Seamless phone OTP login alongside biometric \(Fingerprint/Face ID\).) Tj ET
+0.18 0.49 0.20 rg 58 82 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 79 Td (Dedicated role switcher: **Farmer**, **Wholesale Buyer**, **Transporter /) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 1) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4032 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 2: Prototyping & Design System) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 780 Td (Fleet Owner**, and **Agri Expert**.) Tj ET
+0.18 0.49 0.20 rg 58 770 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 767 Td (Role-specific color accents to avoid cognitive confusion when switching) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 754 Td (roles.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 727 Td (3.2 Farmer Hub & Smart Harvest Publishing) Tj ET
+0.18 0.49 0.20 rg 58 715 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 712 Td (Clean, stepped wizard for listing crops.) Tj ET
+0.18 0.49 0.20 rg 58 702 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 699 Td (Real-time video recording & Cloudinary video hosting integration.) Tj ET
+0.18 0.49 0.20 rg 58 689 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 686 Td (Barcode/QR generator rendering unique traceability hash `FARM-BATCH-<ID>`.) Tj ET
+0.18 0.49 0.20 rg 58 676 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 673 Td (Live farm weather widget with micro-climate rain alerts.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 646 Td (3.3 Buyer Direct Marketplace) Tj ET
+0.18 0.49 0.20 rg 58 634 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 631 Td (Category carousel: *Leafy Greens*, *Root Crops*, *Fruits*, *Spices*, *Export) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 618 Td (Quality*.) Tj ET
+0.18 0.49 0.20 rg 58 608 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 605 Td (Product detail sheet featuring interactive video inspection: buyers preview) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 592 Td (harvest freshness recorded directly in the field before purchase.) Tj ET
+0.18 0.49 0.20 rg 58 582 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 579 Td (Escrow purchase breakdown: Commodity Price + Logistics Cost + Quality) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 566 Td (Guarantee Insurance.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 539 Td (3.4 Logistics Fleet Hub & Telematics) Tj ET
+0.18 0.49 0.20 rg 58 527 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 524 Td (Interactive Google Maps view rendering vehicle markers, depot pins, and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 511 Td (transit polylines.) Tj ET
+0.18 0.49 0.20 rg 58 501 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 498 Td (Real-time Cold Storage Temperature Gauge \(Target 2°C - 7°C\) with automated) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 485 Td (breach alert.) Tj ET
+0.18 0.49 0.20 rg 58 475 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 472 Td (Fleet manager bottom sheets to dynamically configure Branch Depots, Vehicles,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 459 Td (and Drivers.) Tj ET
+0.85 0.85 0.85 RG 1 w 54 430 m 541.28 430 l S
+0.18 0.49 0.20 RG 1.5 w 54 399 m 234 399 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 402 Td (4. Accessibility & Inclusive Design \(WCAG 2.1 AA Compliance\)) Tj ET
+0.18 0.49 0.20 rg 58 387 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 384 Td (Contrast Ratios:** Text-to-background contrast exceeds 4.8:1 across all) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 371 Td (primary screens for outdoor visibility in Sri Lankan sunlight.) Tj ET
+0.18 0.49 0.20 rg 58 361 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 358 Td (Minimum Tap Targets:** All buttons, FABs, and dropdown triggers comply with) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 345 Td (the 48x48dp minimum physical touch area.) Tj ET
+0.18 0.49 0.20 rg 58 335 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 332 Td (Screen Reader Support:** Semantic labels applied to all icon buttons and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 319 Td (graphic status indicators.) Tj ET
+0.18 0.49 0.20 rg 58 309 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 306 Td (Multi-lingual Switcher:** Instant runtime switching between Sinhala, Tamil,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 293 Td (and English with zero app reloads.) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 2) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000005016 00000 n 
+0000005158 00000 n 
+0000009242 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+9384
+%%EOF

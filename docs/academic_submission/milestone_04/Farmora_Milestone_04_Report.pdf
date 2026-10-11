@@ -1,0 +1,213 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 6126 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 4: Tech Stack Justification & App Implementation) Tj ET
+0.18 0.49 0.20 rg 54 762 487.28 24 re f
+BT /F2 14 Tf 1 1 1 rg 62 768 Td (SLIIT Department of Software Engineering - Faculty of Computing) Tj ET
+0.18 0.49 0.20 RG 1.5 w 54 729 m 234 729 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 732 Td (Mobile Application Project: Farmora) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 708 Td (Milestone 4: Tech Stack Justification & Mobile App Implementation \(LO1, LO4\)) Tj ET
+0.85 0.85 0.85 RG 1 w 54 677 m 541.28 677 l S
+0.18 0.49 0.20 RG 1.5 w 54 646 m 234 646 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 649 Td (Part 1: Tech Stack Justification) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 617 Td (1. Architectural Options Comparison) Tj ET
+0.94 0.96 0.94 rg 54 591 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 591 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 596 Td (Evaluation Criteria) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 596 Td (Option A: Flutter \(Selected\)) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 596 Td (Option B: React Native) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 596 Td (Option C: Native \(Kotlin + Swi) Tj ET
+0.94 0.96 0.94 rg 54 571 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 571 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 576 Td (**Rendering Performance**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 576 Td (**High** \(Skia/Impeller direct) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 576 Td (**Medium** \(JavaScript bridge ) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 576 Td (**Highest** \(Native platform t) Tj ET
+0.94 0.96 0.94 rg 54 551 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 551 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 556 Td (**Multi-Platform Support**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 556 Td (**Unified Codebase** \(Android,) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 556 Td (**High** \(Mobile only; Web req) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 556 Td (**None** \(Requires 2 entirely ) Tj ET
+0.94 0.96 0.94 rg 54 531 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 531 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 536 Td (**Team Skillset & Velocity**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 536 Td (**Rapid** \(Hot reload, typed D) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 536 Td (**Moderate** \(Requires reconci) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 536 Td (**Slow** \(Split team between S) Tj ET
+0.94 0.96 0.94 rg 54 511 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 511 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 516 Td (**Accessibility \(a11y\)**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 516 Td (**Built-in** \(Rich `Semantics`) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 516 Td (**Good** \(Requires third-party) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 516 Td (**High** \(Native a11y APIs\)) Tj ET
+0.94 0.96 0.94 rg 54 491 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 491 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 496 Td (**Hardware & Camera APIs**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 496 Td (**Robust** \(Direct Camera, QR ) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 496 Td (**Moderate** \(Bridge lag can c) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 496 Td (**High** \(Full native access\)) Tj ET
+0.94 0.96 0.94 rg 54 471 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 471 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 476 Td (**Development Cost**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 179.82 476 Td (**Lowest** \(1 codebase, 1 buil) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 476 Td (**Moderate** \(Bridge debugging) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 423.46 476 Td (**Highest** \(Requires distinct) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 440 Td (2. Tech Stack Justification Rationale:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 425 Td (Flutter was selected because AgriTech users in Sri Lanka use diverse Android) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 412 Td (devices \(from budget entry-level smartphones to modern flagships\), alongside) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 399 Td (wholesale enterprise buyers accessing via desktop/tablet web browsers. Flutter) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 386 Td (provides:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 373 Td (1. **Identical Pixel-Perfect UI:** Zero layout discrepancies across different) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 360 Td (screen densities and aspect ratios.) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 347 Td (2. **Offline-Ready Client Architecture:** Integrates seamlessly with Cloud) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 334 Td (Firestore offline caches and local SQLite/secure storage.) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 321 Td (3. **High Productivity:** Hot Reload enabled the team to iterate rapidly during) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 308 Td (user testing in Milestone 3.) Tj ET
+0.85 0.85 0.85 RG 1 w 54 279 m 541.28 279 l S
+0.18 0.49 0.20 RG 1.5 w 54 248 m 234 248 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 251 Td (Part 2: Implementation & Folder Architecture) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 219 Td (1. Folder Structure \(Clean Architecture Pattern\)) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 204 Td (```) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 191 Td (lib/) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 178 Td (??? core/) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 165 Td (? ??? constants/ # AppColors, ApiEndpoints, Strings) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 152 Td (? ??? network/ # Http & Cloudinary API clients) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 139 Td (? ??? services/ # FirebaseAuthService, GeolocationService) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 126 Td (? ??? theme/ # Material 3 light & dark themes) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 113 Td (? ??? utils/ # Formatters, barcode helpers, image compression) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 100 Td (??? features/) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 87 Td (? ??? admin/ # Escrow dispute management, user approvals) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 74 Td (? ??? auth/ # OTP verification, role switcher, onboarding) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 1) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 6456 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 4: Tech Stack Justification & App Implementation) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 780 Td (? ??? buyer/ # Catalog, video inspection, checkout, escrow) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 767 Td (? ??? farmer/ # Harvest listing, disease detection, QR generator) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 754 Td (? ??? transporter/ # Fleet Hub, depot manager, GPS tracking, POD) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 741 Td (??? main.dart # Multi-provider initialization, route registry) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 728 Td (```) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 701 Td (2. Version Control & Git Strategy) Tj ET
+0.18 0.49 0.20 rg 58 689 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 686 Td (Repository:** Hosted on GitHub \(`AHSANMOHAMMED/Farmora-App`\).) Tj ET
+0.18 0.49 0.20 rg 58 676 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 673 Td (Branching Model:** Feature-branch workflow with automated PR verification and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 660 Td (strict branch protection on `main` and `dev/swami`.) Tj ET
+0.18 0.49 0.20 rg 58 650 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 647 Td (Release Automation:** Continuous integration building automated Android APKs) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 634 Td (\(`app-release.apk`\) and continuous deployment to Firebase Web Hosting) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 621 Td (\(`farmingapp-24b34.web.app`\).) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 594 Td (3. Requirements Traceability Matrix \(RTM\)) Tj ET
+0.94 0.96 0.94 rg 54 568 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 568 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 573 Td (Req ID) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 573 Td (Requirement / User Story) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 573 Td (Implementation Screen / Widget) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 573 Td (Data Model / Backend Endpoint) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 573 Td (Status) Tj ET
+0.94 0.96 0.94 rg 54 548 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 548 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 553 Td (**REQ-01**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 553 Td (Multi-role user registration a) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 553 Td (`welcome_screen.dart`, `role_s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 553 Td (`users/{uid}` \(role, isVerifie) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 553 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 528 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 528 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 533 Td (**REQ-02**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 533 Td (Farmers can record video & upl) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 533 Td (`add_product_screen.dart`) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 533 Td (`crops/{cropId}` + Cloudinary ) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 533 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 508 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 508 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 513 Td (**REQ-03**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 513 Td (Generate unique batch QR for h) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 513 Td (`batch_qr_dialog.dart`, `qr_fl) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 513 Td (`qrCodeHash`, `storagePath`) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 513 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 488 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 488 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 493 Td (**REQ-04**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 493 Td (Buyers inspect video and depos) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 493 Td (`product_detail_screen.dart`, ) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 493 Td (`orders/{orderId}` \(escrowStat) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 493 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 468 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 468 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 473 Td (**REQ-05**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 473 Td (Transporters manage branch dep) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 473 Td (`logistics_fleet_hub_screen.da) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 473 Td (`transporters/{tid}/vehicles`,) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 473 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 448 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 448 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 453 Td (**REQ-06**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 453 Td (Real-time Cold Storage telemet) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 453 Td (`logistics_fleet_map_view.dart) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 453 Td (`cold_storage_logs`, `currentL) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 453 Td (**Verified**) Tj ET
+0.94 0.96 0.94 rg 54 428 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 428 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 433 Td (**REQ-07**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 155.456 433 Td (Proof-of-delivery \(photo + sig) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 252.91199999999998 433 Td (`order_dispatch_screen.dart`) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 350.36799999999994 433 Td (`orders/{orderId}/podPhotoPath) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 447.82399999999996 433 Td (**Verified**) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 397 Td (4. Build Deliverables) Tj ET
+0.18 0.49 0.20 rg 58 385 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 382 Td (Mobile Build:** Android Release APK located at) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 369 Td (`build/app/outputs/flutter-apk/app-release.apk` \(Size: 99.3MB, compileSdk: 36,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 356 Td (Java 21 LTS\).) Tj ET
+0.18 0.49 0.20 rg 58 346 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 343 Td (Web App URL:**) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 330 Td ([https://farmingapp-24b34.web.app]\(https://farmingapp-24b34.web.app\)) Tj ET
+0.18 0.49 0.20 rg 58 320 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 317 Td (Git Repository:**) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 304 Td ([https://github.com/AHSANMOHAMMED/Farmora-App.git]\(https://github.com/AHSANMOHAMMED/Farmora-App.git\)) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 2) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000006444 00000 n 
+0000006586 00000 n 
+0000013094 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+13236
+%%EOF

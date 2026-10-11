@@ -1,0 +1,216 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 6328 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 3: User Testing & Security Iterations) Tj ET
+0.18 0.49 0.20 rg 54 762 487.28 24 re f
+BT /F2 14 Tf 1 1 1 rg 62 768 Td (SLIIT Department of Software Engineering - Faculty of Computing) Tj ET
+0.18 0.49 0.20 RG 1.5 w 54 729 m 234 729 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 732 Td (Mobile Application Project: Farmora) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 708 Td (Milestone 3: User Testing, Security Checks & Iteration \(LO5\)) Tj ET
+0.85 0.85 0.85 RG 1 w 54 677 m 541.28 677 l S
+0.18 0.49 0.20 RG 1.5 w 54 646 m 234 646 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 649 Td (1. Test Plan & Objectives \(Lab 08\)) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 631 Td (The usability test evaluated whether farmers, buyers, and transporters could) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 618 Td (accomplish core workflows without assistance, measured error frequency, validated) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 605 Td (task completion times, and ensured zero security vulnerabilities exist in data) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 592 Td (exchange.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 565 Td (Test Parameters:) Tj ET
+0.18 0.49 0.20 rg 58 553 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 550 Td (Participant Count:** 8 participants \(3 Farmers, 3 Wholesale Buyers, 2) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 537 Td (Transporters\).) Tj ET
+0.18 0.49 0.20 rg 58 527 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 524 Td (Format:** Moderated Usability Testing via Think-Aloud Protocol followed by) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 511 Td (the standardized System Usability Scale \(SUS\) questionnaire.) Tj ET
+0.18 0.49 0.20 rg 58 501 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 498 Td (Environment:** Physical field testing in Dambulla wholesale hub & simulated) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 485 Td (office environments in Colombo.) Tj ET
+0.85 0.85 0.85 RG 1 w 54 456 m 541.28 456 l S
+0.18 0.49 0.20 RG 1.5 w 54 425 m 234 425 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 428 Td (2. Test Tasks & Completion Rates) Tj ET
+0.94 0.96 0.94 rg 54 399 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 399 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 404 Td (Task ID) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 404 Td (Task Description) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 404 Td (Target User) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 404 Td (Completion Rate) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 404 Td (Avg Time \(Sec\)) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 404 Td (Error Rate) Tj ET
+0.94 0.96 0.94 rg 54 379 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 379 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 384 Td (**T01**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 384 Td (Register account & verify role) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 384 Td (All) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 384 Td (100%) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 384 Td (34s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 384 Td (0%) Tj ET
+0.94 0.96 0.94 rg 54 359 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 359 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 364 Td (**T02**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 364 Td (Add a new crop product with vi) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 364 Td (Farmer) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 364 Td (87.5%) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 364 Td (78s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 364 Td (12.5%) Tj ET
+0.94 0.96 0.94 rg 54 339 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 339 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 344 Td (**T03**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 344 Td (Browse marketplace, inspect ha) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 344 Td (Buyer) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 344 Td (100%) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 344 Td (52s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 344 Td (0%) Tj ET
+0.94 0.96 0.94 rg 54 319 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 319 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 324 Td (**T04**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 324 Td (Set up Branch Depot and regist) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 324 Td (Transporter) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 324 Td (87.5%) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 324 Td (68s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 324 Td (12.5%) Tj ET
+0.94 0.96 0.94 rg 54 299 487.28 16 re f
+0.8 0.8 0.8 RG 0.5 w 54 299 487.28 16 re S
+BT /F2 8 Tf 0.1 0.1 0.1 rg 58.0 304 Td (**T05**) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 139.2133333333333 304 Td (Confirm order pickup and uploa) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 220.42666666666665 304 Td (Transporter) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 301.64 304 Td (100%) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 382.8533333333333 304 Td (41s) Tj ET
+BT /F2 8 Tf 0.1 0.1 0.1 rg 464.0666666666666 304 Td (0%) Tj ET
+0.85 0.85 0.85 RG 1 w 54 266 m 541.28 266 l S
+0.18 0.49 0.20 RG 1.5 w 54 235 m 234 235 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 238 Td (3. System Usability Scale \(SUS\) Results) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 220 Td (The standardized 10-item SUS questionnaire was administered to all 8) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 207 Td (participants.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 180 Td (SUS Score Calculation:) Tj ET
+0.18 0.49 0.20 rg 58 168 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 165 Td (Average SUS Score:** **84.5 / 100**) Tj ET
+0.18 0.49 0.20 rg 58 155 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 152 Td (Grade Equivalent:** **Grade A \(Excellent Usability\)**) Tj ET
+0.18 0.49 0.20 rg 58 142 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 139 Td (Adjective Rating:** Highly acceptable; exceeds the industry benchmark average) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 126 Td (of 68.0.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 99 Td (Key Qualitative Feedback:) Tj ET
+0.18 0.49 0.20 rg 58 87 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 84 Td ("I like that I can take a 10-second video of my tomatoes right from the tree.) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 1) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 5264 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 3: User Testing & Security Iterations) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 780 Td (Buyers immediately trust the quality."* ? Farmer, Dambulla.) Tj ET
+0.18 0.49 0.20 rg 58 770 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 767 Td ("The temperature tracking during delivery gives us complete confidence that) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 754 Td (leafy greens won't arrive spoiled."* ? Supermarket Buyer, Colombo.) Tj ET
+0.85 0.85 0.85 RG 1 w 54 725 m 541.28 725 l S
+0.18 0.49 0.20 RG 1.5 w 54 694 m 234 694 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 697 Td (4. Secure Design & Data Privacy Checks) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 665 Td (4.1 Authentication Flow Security:) Tj ET
+0.18 0.49 0.20 rg 58 653 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 650 Td (Enforced Firebase Phone Auth with reCAPTCHA verification to eliminate) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 637 Td (automated bot abuse.) Tj ET
+0.18 0.49 0.20 rg 58 627 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 624 Td (Biometric lock encryption enabled for financial wallet & escrow release) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 611 Td (screens.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 584 Td (4.2 Cloud Firestore Security Rules Verification:) Tj ET
+0.18 0.49 0.20 rg 58 572 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 569 Td (Role-Based Access Control \(RBAC\): Farmers can only mutate their own crop) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 556 Td (batches \(`request.auth.uid == resource.data.farmerId`\).) Tj ET
+0.18 0.49 0.20 rg 58 546 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 543 Td (Transporters can only modify assigned shipment states; financial escrow) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 530 Td (triggers require multi-signature approval.) Tj ET
+0.18 0.49 0.20 rg 58 520 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 517 Td (Verified that arbitrary document injections are rejected at the Firestore) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 504 Td (engine level.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 477 Td (4.3 Data Privacy & Media Storage:) Tj ET
+0.18 0.49 0.20 rg 58 465 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 462 Td (Sensitive proof-of-delivery photos and harvest videos are stored in) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 449 Td (authenticated storage buckets with expirable tokenized URLs.) Tj ET
+0.18 0.49 0.20 rg 58 439 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 436 Td (Sensitive payment tokens handled strictly via PCI-DSS compliant payment) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 423 Td (gateways \(PayHere\).) Tj ET
+0.85 0.85 0.85 RG 1 w 54 394 m 541.28 394 l S
+0.18 0.49 0.20 RG 1.5 w 54 363 m 234 363 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 366 Td (5. Iterations & Improvements \(Before vs. After\)) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 334 Td (Iteration 1: Empty Branch Depot Validation in Fleet Hub) Tj ET
+0.18 0.49 0.20 rg 58 322 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 319 Td (Observed Pain Point:** When transporters attempted to add a vehicle before) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 306 Td (creating a depot branch, the app threw a silent `StateError \(No element\)`.) Tj ET
+0.18 0.49 0.20 rg 58 296 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 293 Td (Iteration Applied:** Added an early check `if \(_branches.isEmpty\)` that) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 280 Td (provides an immediate, informative snackbar message: *"Please add a Branch) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 267 Td (Depot first"* and guides them directly to branch registration.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 240 Td (Iteration 2: Harvest Video Auto-Deletion Upon Status Completion) Tj ET
+0.18 0.49 0.20 rg 58 228 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 225 Td (Observed Pain Point:** Farmers and system storage accumulated large video) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 212 Td (files for crops that were already sold and consumed.) Tj ET
+0.18 0.49 0.20 rg 58 202 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 199 Td (Iteration Applied:** Implemented an automated cleanup cycle where harvest) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 186 Td (videos uploaded for traceability are archived or removed from costly hot) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 173 Td (storage once the order reaches `Delivered & Escrow Released`, preserving only) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 160 Td (the immutable batch QR audit hash.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 133 Td (Iteration 3: Low-Connectivity Field Caching) Tj ET
+0.18 0.49 0.20 rg 58 121 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 118 Td (Observed Pain Point:** Intermittent 4G cellular drops in remote rural) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 105 Td (farmlands caused form submission loss.) Tj ET
+0.18 0.49 0.20 rg 58 95 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 92 Td (Iteration Applied:** Enabled Firestore offline persistence) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 79 Td (\(`enablePersistence\(\)`\) and client-side photo queueing, allowing farmers to) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 2) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 497 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 3: User Testing & Security Iterations) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 780 Td (capture harvests offline with automatic background sync upon re-establishing) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 767 Td (connection.) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 3) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000128 00000 n 
+0000000198 00000 n 
+0000000273 00000 n 
+0000006653 00000 n 
+0000006795 00000 n 
+0000012111 00000 n 
+0000012253 00000 n 
+0000012801 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+12944
+%%EOF

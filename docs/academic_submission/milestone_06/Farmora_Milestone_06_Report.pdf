@@ -1,0 +1,278 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 5035 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 6: Individual Contribution & VIVA Prep) Tj ET
+0.18 0.49 0.20 rg 54 762 487.28 24 re f
+BT /F2 14 Tf 1 1 1 rg 62 768 Td (SLIIT Department of Software Engineering - Faculty of Computing) Tj ET
+0.18 0.49 0.20 RG 1.5 w 54 729 m 234 729 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 732 Td (Mobile Application Project: Farmora) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 708 Td (Milestone 6: Individual Contribution Logs & VIVA Preparation \(All LOs\)) Tj ET
+0.85 0.85 0.85 RG 1 w 54 677 m 541.28 677 l S
+0.18 0.49 0.20 RG 1.5 w 54 646 m 234 646 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 649 Td (1. Team Overview & Git Verification) Tj ET
+0.18 0.49 0.20 rg 58 634 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 631 Td (Project Repository:** `https://github.com/AHSANMOHAMMED/Farmora-App.git`) Tj ET
+0.18 0.49 0.20 rg 58 621 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 618 Td (Primary Branches:** `main`, `dev/swami`, `Kajana`, `suka`,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 605 Td (`feature/ahsan-dev`) Tj ET
+0.85 0.85 0.85 RG 1 w 54 576 m 541.28 576 l S
+0.18 0.49 0.20 RG 1.5 w 54 545 m 234 545 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 548 Td (2. Individual Contribution Logs) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 516 Td (2.1 Member 1: Ahsan Mohammed \(Team Lead & Full-Stack Architect\)) Tj ET
+0.18 0.49 0.20 rg 58 504 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 501 Td (Designated Responsibilities:**) Tj ET
+0.18 0.49 0.20 rg 58 491 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 488 Td (System architecture, Flutter Clean Architecture setup, Firebase Security) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 475 Td (Rules design.) Tj ET
+0.18 0.49 0.20 rg 58 465 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 462 Td (Escrow payment lifecycle, PayHere integration, and multi-role administrative) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 449 Td (dispute moderation.) Tj ET
+0.18 0.49 0.20 rg 58 439 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 436 Td (Harvest Barcode / QR cryptographic generation, Cloudinary video integration,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 423 Td (and automated storage lifecycle.) Tj ET
+0.18 0.49 0.20 rg 58 413 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 410 Td (Android release pipeline \(Java 21 LTS, Gradle build scripts, ProGuard) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 397 Td (optimization\) and Firebase Web PWA deployment.) Tj ET
+0.18 0.49 0.20 rg 58 387 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 384 Td (Milestone-by-Milestone Contributions:**) Tj ET
+0.18 0.49 0.20 rg 58 374 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 371 Td (M1:* Formulated architecture specifications \(`FARMORA_FULL_BUILD_SPEC.md`\),) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 358 Td (defined persona requirements for Wholesale Buyers and Admins.) Tj ET
+0.18 0.49 0.20 rg 58 348 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 345 Td (M2:* Built core theming engine \(Material 3\), multi-role navigation) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 332 Td (controllers, and responsive layout foundations.) Tj ET
+0.18 0.49 0.20 rg 58 322 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 319 Td (M3:* Conducted secure design audit on Cloud Firestore rules; remediated RBAC) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 306 Td (vulnerabilities for financial settlements.) Tj ET
+0.18 0.49 0.20 rg 58 296 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 293 Td (M4:* Implemented buyer catalog, escrow locking/unlocking engine, video) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 280 Td (compression/streaming client, and release APK compilation.) Tj ET
+0.18 0.49 0.20 rg 58 270 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 267 Td (M5:* Designed business pitching deck, financial revenue models, and video) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 254 Td (pitch storyboards.) Tj ET
+0.18 0.49 0.20 rg 58 244 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 241 Td (M6:* Prepared comprehensive architecture documentation and VIVA defense) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 228 Td (guides.) Tj ET
+0.18 0.49 0.20 rg 58 218 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 215 Td (Evidence / Git Commits:**) Tj ET
+0.18 0.49 0.20 rg 58 205 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 202 Td (Commit `4b1395b`: `fix\(fleet\): add check for empty branches before adding) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 189 Td (vehicle or driver`) Tj ET
+0.18 0.49 0.20 rg 58 179 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 176 Td (Commit `55bafbc`: `fix: address Copilot review ? security, rules, timestamps,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 163 Td (tracking`) Tj ET
+0.18 0.49 0.20 rg 58 153 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 150 Td (Commit `edfa795`: `feat\(admin\): add Security Audit Trail, Treasury Escrow) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 137 Td (Settlements`) Tj ET
+0.85 0.85 0.85 RG 1 w 54 108 m 541.28 108 l S
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 1) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 6036 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 6: Individual Contribution & VIVA Prep) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 774 Td (2.2 Member 2: Kajana S. \(Farmer Operations & Crop Management UX\)) Tj ET
+0.18 0.49 0.20 rg 58 762 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 759 Td (Designated Responsibilities:**) Tj ET
+0.18 0.49 0.20 rg 58 749 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 746 Td (Farmer dashboard, harvest creation forms, and crop health modules.) Tj ET
+0.18 0.49 0.20 rg 58 736 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 733 Td (AI plant disease scanner client and agronomic tips integration.) Tj ET
+0.18 0.49 0.20 rg 58 723 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 720 Td (Profile customization, localized language strings \(Tamil/English\), and farm) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 707 Td (plot management.) Tj ET
+0.18 0.49 0.20 rg 58 697 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 694 Td (Milestone-by-Milestone Contributions:**) Tj ET
+0.18 0.49 0.20 rg 58 684 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 681 Td (M1:* Executed contextual inquiries with vegetable farmers; mapped the) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 668 Td (step-by-step harvest listing flow.) Tj ET
+0.18 0.49 0.20 rg 58 658 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 655 Td (M2:* Designed high-fidelity prototypes for the Farmer Home dashboard and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 642 Td (field crop ledger.) Tj ET
+0.18 0.49 0.20 rg 58 632 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 629 Td (M3:* Moderated usability testing sessions with rural participants; gathered) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 616 Td (feedback on camera/video usability.) Tj ET
+0.18 0.49 0.20 rg 58 606 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 603 Td (M4:* Implemented `add_product_screen.dart`, plot ledger UI, and agricultural) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 590 Td (advice feed.) Tj ET
+0.18 0.49 0.20 rg 58 580 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 577 Td (M5:* Co-authored the Go-to-Market strategy focusing on agrarian community) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 564 Td (hubs in Jaffna and Central Province.) Tj ET
+0.18 0.49 0.20 rg 58 554 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 551 Td (M6:* Prepared contribution log and VIVA slides on agricultural UX patterns.) Tj ET
+0.18 0.49 0.20 rg 58 541 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 538 Td (Evidence / Git Commits:**) Tj ET
+0.18 0.49 0.20 rg 58 528 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 525 Td (Commit `715f288`: `Update profile screen`) Tj ET
+0.18 0.49 0.20 rg 58 515 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 512 Td (Branch: `Kajana` / `kajana_task`) Tj ET
+0.85 0.85 0.85 RG 1 w 54 483 m 541.28 483 l S
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 459 Td (2.3 Member 3: Sureka \(Suka\) \(Logistics & Transporter Fleet UX\)) Tj ET
+0.18 0.49 0.20 rg 58 447 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 444 Td (Designated Responsibilities:**) Tj ET
+0.18 0.49 0.20 rg 58 434 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 431 Td (Transporter portal, dispatch tracking, and cold-chain monitoring.) Tj ET
+0.18 0.49 0.20 rg 58 421 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 418 Td (Fleet management bottom sheets \(Branch Depots, Vehicles, and Driver) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 405 Td (registration\).) Tj ET
+0.18 0.49 0.20 rg 58 395 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 392 Td (Telematics mapping views \(Google Maps Flutter integration\) and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 379 Td (Proof-of-Delivery \(POD\) captures.) Tj ET
+0.18 0.49 0.20 rg 58 369 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 366 Td (Milestone-by-Milestone Contributions:**) Tj ET
+0.18 0.49 0.20 rg 58 356 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 353 Td (M1:* Conducted research on third-party agricultural freight operators;) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 340 Td (identified deadhead mileage issues.) Tj ET
+0.18 0.49 0.20 rg 58 330 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 327 Td (M2:* Prototyped interactive fleet telematics dashboards and cold-storage) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 314 Td (alert cards.) Tj ET
+0.18 0.49 0.20 rg 58 304 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 301 Td (M3:* Tested fleet registration flows; identified edge cases where empty) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 288 Td (branch lists caused unhandled UI exceptions.) Tj ET
+0.18 0.49 0.20 rg 58 278 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 275 Td (M4:* Built `logistics_fleet_hub_screen.dart`,) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 262 Td (`vehicle_maintenance_sheet.dart`, and GPS location listeners.) Tj ET
+0.18 0.49 0.20 rg 58 252 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 249 Td (M5:* Designed marketing materials targeting freight fleet owners and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 236 Td (transport logistics syndicates.) Tj ET
+0.18 0.49 0.20 rg 58 226 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 223 Td (M6:* Prepared VIVA defense documentation regarding Google Maps telematics and) Tj ET
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 210 Td (cold-chain compliance.) Tj ET
+0.18 0.49 0.20 rg 58 200 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 197 Td (Evidence / Git Commits:**) Tj ET
+0.18 0.49 0.20 rg 58 187 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 184 Td (Commit `9dc6103`: `transportor ui`) Tj ET
+0.18 0.49 0.20 rg 58 174 3 3 re f
+BT /F1 9.5 Tf 0.15 0.15 0.15 rg 68 171 Td (Branch: `suka`) Tj ET
+0.85 0.85 0.85 RG 1 w 54 142 m 541.28 142 l S
+0.18 0.49 0.20 RG 1.5 w 54 111 m 234 111 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 114 Td (3. Individual Self-Reflection Templates \(One-Page Signed Form\)) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 88 Td (*\(Each student will print, review, sign, and hand over to the evaluation panel) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 75 Td (during VIVA\).*) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 2) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4555 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 6: Individual Contribution & VIVA Prep) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 774 Td (Template Structure:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 759 Td (```) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 746 Td (================================================================================) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 733 Td (INDIVIDUAL SELF-REFLECTION REPORT) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 720 Td (Department of Software Engineering, SLIIT) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 707 Td (================================================================================) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 694 Td (Student Name: ____________________________________ Student ID: _______________) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 681 Td (Assigned Role: ___________________________________ Group Name: Farmora) Tj ET
+0.85 0.85 0.85 RG 1 w 54 660 m 541.28 660 l S
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 642 Td (1. Specific Contributions Across Milestones:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 629 Td ([Detailed breakdown of personal architectural, coding, UI, or testing tasks]) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 608 Td (2. Technical & Practical Challenges Faced:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 595 Td ([How issues such as empty state errors, multi-platform builds, or Firebase rules) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 582 Td (were solved]) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 561 Td (3. New Skills Learned & Applied:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 548 Td ([Flutter/Dart state management, asynchronous streams, IoT cold-chain concepts,) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 535 Td (Material 3]) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 514 Td (4. What I Would Do Differently in Retrospect:) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 501 Td ([e.g., Implementing end-to-end integration tests earlier, conducting wider field) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 488 Td (trials]) Tj ET
+0.85 0.85 0.85 RG 1 w 54 459 m 541.28 459 l S
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 449 Td (Student Signature: ____________________________ Date: ___________________) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 436 Td (================================================================================) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 423 Td (```) Tj ET
+0.85 0.85 0.85 RG 1 w 54 394 m 541.28 394 l S
+0.18 0.49 0.20 RG 1.5 w 54 363 m 234 363 l S
+BT /F2 12 Tf 0.1 0.1 0.1 rg 54 366 Td (4. Comprehensive VIVA Defense & Q&A Preparation) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 340 Td (Be prepared to answer these critical questions during the individual and group) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 327 Td (evaluation:) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 300 Td (Q1: Why did you choose Flutter over React Native or Native development?) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 285 Td (> **Answer:** Flutter compiles directly to native ARM machine code using the) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 272 Td (Impeller/Skia engine, eliminating the JavaScript bridge bottleneck. This ensures) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 259 Td (consistent 60+ FPS animations during heavy Google Maps telematics and camera) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 246 Td (barcode scanning. Crucially, Flutter allowed our team to maintain a single unified) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 233 Td (codebase that runs seamlessly as an Android APK and a Progressive Web App \(PWA\)) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 220 Td (with zero code duplication.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 193 Td (Q2: How does the system protect farmer funds and prevent buyer fraud?) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 178 Td (> **Answer:** We implemented a two-sided Escrow payment engine. When a buyer) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 165 Td (orders, funds are deposited into a secure escrow account managed via Cloud) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 152 Td (Firestore security rules. Payment is never released immediately. Only after the) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 139 Td (transporter delivers the goods, the buyer scans the tamper-evident batch QR code,) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 126 Td (and photographic Proof-of-Delivery is submitted, the escrow unlocks and credits) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 113 Td (the farmer within seconds.) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 3) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 1826 >>
+stream
+0.8 0.8 0.8 RG 0.5 w 54 795 m 541.28 795 l S
+BT /F2 8 Tf 0.4 0.4 0.4 rg 54 800 Td (Farmora - Milestone 6: Individual Contribution & VIVA Prep) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 774 Td (Q3: How do you handle cold-chain perishable failures during transit?) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 759 Td (> **Answer:** The Transporter Fleet Hub streams IoT temperature sensor data) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 746 Td (directly into Firestore. If refrigerated truck temperature breaches safe) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 733 Td (agricultural thresholds \(e.g. rising above 7°C for leafy greens\), the system) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 720 Td (triggers an immediate push notification alert and logs a permanent breach flag on) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 707 Td (the batch ledger, allowing the buyer to inspect or dispute before escrow) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 694 Td (settlement.) Tj ET
+BT /F2 10.5 Tf 0.18 0.49 0.20 rg 54 667 Td (Q4: How is data synchronized in rural areas with poor cellular coverage?) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 652 Td (> **Answer:** We configured Cloud Firestore with offline persistence enabled.) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 639 Td (When farmers or drivers enter rural valleys without internet, they can continue) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 626 Td (recording harvests, logging fleet records, and taking POD photos locally. The) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 613 Td (Flutter client queues mutations in local cache and automatically syncs to the) Tj ET
+BT /F1 9.5 Tf 0.2 0.2 0.2 rg 54 600 Td (cloud the moment network connectivity resumes.) Tj ET
+BT /F1 9 Tf 0.5 0.5 0.5 rg 54 39 Td (SLIIT Department of Software Engineering  |  Farmora Ecosystem  |  Page 4) Tj ET
+0.8 0.8 0.8 RG 0.5 w 54 49 m 541.28 49 l S
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000135 00000 n 
+0000000205 00000 n 
+0000000280 00000 n 
+0000005367 00000 n 
+0000005509 00000 n 
+0000011597 00000 n 
+0000011739 00000 n 
+0000016346 00000 n 
+0000016489 00000 n 
+0000018368 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+18512
+%%EOF
