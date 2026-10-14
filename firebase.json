@@ -1,1 +1,96 @@
-{"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}],"headers":[{"source":"**/*.@(js|css)","headers":[{"key":"Cache-Control","value":"max-age=31536000"}]},{"source":"**/*.@(jpg|jpeg|gif|png|svg|webp|ico)","headers":[{"key":"Cache-Control","value":"max-age=31536000"}]},{"source":"/sitemap.xml","headers":[{"key":"Content-Type","value":"application/xml"},{"key":"Cache-Control","value":"public,max-age=3600"}]},{"source":"/robots.txt","headers":[{"key":"Content-Type","value":"text/plain"},{"key":"Cache-Control","value":"public,max-age=3600"}]}]},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],"predeploy":["npm --prefix \"$RESOURCE_DIR\" run build"]}],"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"farmingapp-24b34","appId":"1:33678627494:android:6d2db665cdbd33ff549a67","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"farmingapp-24b34","configurations":{"android":"1:33678627494:android:6d2db665cdbd33ff549a67","macos":"1:33678627494:ios:c2fe808fa2a4bfe4549a67","web":"1:33678627494:web:11924c52ff26413d549a67"}}}}}}
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp|ico)",
+        "headers": [
+          { "key": "Cache-Control", "value": "max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "/sitemap.xml",
+        "headers": [
+          { "key": "Content-Type", "value": "application/xml" },
+          { "key": "Cache-Control", "value": "public,max-age=3600" }
+        ]
+      },
+      {
+        "source": "/robots.txt",
+        "headers": [
+          { "key": "Content-Type", "value": "text/plain" },
+          { "key": "Cache-Control", "value": "public,max-age=3600" }
+        ]
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "farmingapp-24b34",
+          "appId": "1:33678627494:android:6d2db665cdbd33ff549a67",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "farmingapp-24b34",
+          "configurations": {
+            "android": "1:33678627494:android:6d2db665cdbd33ff549a67",
+            "macos": "1:33678627494:ios:c2fe808fa2a4bfe4549a67",
+            "web": "1:33678627494:web:11924c52ff26413d549a67"
+          }
+        }
+      }
+    }
+  }
+}

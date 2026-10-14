@@ -1,26 +1,58 @@
 {
-    "name": "Farmora Marketplace",
-    "short_name": "Farmora",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#f7faf7",
-    "theme_color": "#1f7a4d",
-    "description": "A trusted agricultural marketplace connecting farmers, buyers, and transport providers.",
-    "lang": "en",
-    "categories": ["business", "shopping", "social"],
-    "orientation": "portrait-primary",
-    "prefer_related_applications": false,
-    "icons": [
-        {
-            "src": "favicon.svg",
-            "sizes": "any",
-            "type": "image/svg+xml",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "favicon.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        }
-    ]
+  "name": "Farmora - Sri Lanka Agricultural Marketplace",
+  "short_name": "Farmora",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7faf7",
+  "theme_color": "#1f7a4d",
+  "description": "Sri Lanka's premier agricultural marketplace connecting farmers, wholesale buyers, and verified cold-chain transporters for fresh farm produce.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "shopping", "food", "lifestyle"],
+  "orientation": "any",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "farmora-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Fresh Produce Marketplace",
+      "short_name": "Marketplace",
+      "description": "Browse fresh vegetables, fruits, and grains direct from farmers",
+      "url": "./?view=marketplace",
+      "icons": [{ "src": "favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Transport & Deliveries",
+      "short_name": "Logistics",
+      "description": "Book or claim agricultural transport and cold-chain deliveries",
+      "url": "./?view=transport",
+      "icons": [{ "src": "favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Farmer Portal",
+      "short_name": "Sell Harvest",
+      "description": "List your fresh crop harvests and manage wholesale orders",
+      "url": "./?view=farmer",
+      "icons": [{ "src": "favicon.png", "sizes": "192x192" }]
+    }
+  ]
 }

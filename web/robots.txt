@@ -1,4 +1,30 @@
+# Robots.txt for Farmora Agricultural Marketplace
+# https://farmingapp-24b34.web.app
+
 User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /favicon.svg
+Allow: /favicon.png
+Allow: /farmora-logo-512.png
+Allow: /sitemap.xml
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /assets/
+Allow: /*.png$
+Allow: /*.svg$
+Allow: /*.webp$
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: DuckDuckBot
 Allow: /
 
 Sitemap: https://farmingapp-24b34.web.app/sitemap.xml
