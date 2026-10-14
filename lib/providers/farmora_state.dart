@@ -516,11 +516,10 @@ class FarmoraState extends ChangeNotifier {
     if (_cartItems.isEmpty || _placingOrder) {
       return false;
     }
-    if (transporterId == null || transporterId.isEmpty) {
-      _lastOrderError = 'Choose a transporter for this delivery.';
-      notifyListeners();
-      return false;
-    }
+    final effectiveTransporterId =
+        (transporterId != null && transporterId.trim().isNotEmpty)
+            ? transporterId.trim()
+            : null;
     final method = paymentMethod ?? paymentMethodDraft;
     final address = (deliveryAddress ?? deliveryAddressDraft).trim();
     if (address.length < 5) {
@@ -560,14 +559,14 @@ class FarmoraState extends ChangeNotifier {
             productId: item.product.id,
             quantity: item.quantity,
             deliveryFeeMinor: firstForFarmer ? feeMinor : 0,
-            transporterId: transporterId,
+            transporterId: effectiveTransporterId,
             deliveryAddress: address,
             idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
             paymentMethod: method,
           );
         }
       } else if (kDemoData) {
-        _applyLocalOrderPlacement(address, transporterId, method);
+        _applyLocalOrderPlacement(address, effectiveTransporterId ?? '', method);
       } else {
         throw StateError('Authentication required.');
       }

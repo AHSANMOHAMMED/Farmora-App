@@ -123,6 +123,30 @@ class _CollectionJobDetailsScreenState
               ),
             ],
           ),
+          if ((job.orderId ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _Section(
+              title: l10n.transporterLinkedOrderId,
+              children: [
+                _DetailRow(
+                  icon: Icons.receipt_long_rounded,
+                  label: l10n.transporterLinkedOrderId,
+                  value: job.orderId!,
+                ),
+                _DetailRow(
+                  icon: Icons.inventory_2_outlined,
+                  label: l10n.jobIssueProduceQuantity,
+                  value: '${job.produceName} (${job.quantityLabel})',
+                ),
+                if ((job.producePostId ?? '').trim().isNotEmpty)
+                  _DetailRow(
+                    icon: Icons.tag_rounded,
+                    label: 'Produce Post',
+                    value: job.producePostId!,
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           _Section(
             title: l10n.jobCollectionNotes,
@@ -824,15 +848,33 @@ class _JobHero extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          Text(
-            context.l10n.jobOrderAndPostRefs(
-              job.orderId ?? context.l10n.jobNotLinked,
-              job.producePostId ?? context.l10n.jobNotLinked,
-            ),
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.onSurfaceVariant),
-          ),
+          _buildRefLabel(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRefLabel(BuildContext context) {
+    final hasOrder = (job.orderId ?? '').trim().isNotEmpty;
+    final hasPost = (job.producePostId ?? '').trim().isNotEmpty;
+
+    String text;
+    if (hasOrder && hasPost) {
+      text = context.l10n.jobOrderAndPostRefs(job.orderId!, job.producePostId!);
+    } else if (hasOrder) {
+      text = 'Order #${job.orderId}';
+    } else if (hasPost) {
+      text = 'Produce Post #${job.producePostId}';
+    } else {
+      text = 'Job #${job.id}';
+    }
+
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        color: AppColors.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

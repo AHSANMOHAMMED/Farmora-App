@@ -470,6 +470,7 @@ const createTransportJobForOrder = async (
     pickup,
     dropoff,
     productName,
+    ...(order.productId ? { productId: order.productId, producePostId: order.productId } : {}),
     quantity: qtyLabel,
     quantityValue: Number.isFinite(quantityValue) ? quantityValue : 0,
     unit,

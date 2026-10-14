@@ -80,20 +80,57 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
             }
             final transporters = snap.data ?? const [];
             if (transporters.isEmpty) {
-              return _StateMessage(
-                icon: Icons.local_shipping_outlined,
-                color: AppColors.onSurfaceVariant,
-                message: l10n.transporterNoVerifiedAvailable,
-                onRetry: _retry,
-                retryLabel: l10n.transporterPickerRetry,
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _StateMessage(
+                    icon: Icons.local_shipping_outlined,
+                    color: AppColors.onSurfaceVariant,
+                    message: l10n.transporterNoVerifiedAvailable,
+                    onRetry: _retry,
+                    retryLabel: l10n.transporterPickerRetry,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).pop(<String, dynamic>{
+                      'uid': '',
+                      'displayName': 'Any Available Transporter',
+                      'isOpenJob': true,
+                    }),
+                    icon: const Icon(Icons.public_rounded),
+                    label: const Text('Post to Open Transport Board'),
+                  ),
+                ],
               );
             }
             return ListView.separated(
               shrinkWrap: true,
-              itemCount: transporters.length,
+              itemCount: transporters.length + 1,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final t = transporters[index];
+                if (index == 0) {
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: AppColors.primaryLight,
+                      child: Icon(Icons.public_rounded, color: AppColors.primary),
+                    ),
+                    title: const Text(
+                      'Any Available Transporter',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Post to open delivery board for any verified transporter',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).pop(<String, dynamic>{
+                      'uid': '',
+                      'displayName': 'Any Available Transporter',
+                      'isOpenJob': true,
+                    }),
+                  );
+                }
+                final t = transporters[index - 1];
                 final name = (t['displayName'] ?? 'Transporter').toString();
                 final photo = (t['photoUrl'] ?? '').toString();
                 final district = (t['district'] ?? '').toString();
@@ -129,6 +166,14 @@ class _TransporterPickerDialogState extends State<_TransporterPickerDialog> {
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(<String, dynamic>{
+            'uid': '',
+            'displayName': 'Any Available Transporter',
+            'isOpenJob': true,
+          }),
+          child: const Text('Open to All'),
+        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l10n.transporterPickerCancel),

@@ -853,6 +853,7 @@ class SparkBackend {
       'dropoff': dropoff,
       'productName': productName,
       if (order['productId'] != null) 'productId': order['productId'],
+      if (order['productId'] != null) 'producePostId': order['productId'],
       'quantity': qtyLabel,
       'quantityValue': quantityValue,
       'unit': unit,
@@ -1161,7 +1162,9 @@ class SparkBackend {
         throw UserStateError(
             'Account verification is required for this action.');
       }
-      if (orderRef == null) throw UserStateError(L10n.current.svcOrderNotFound);
+      if (orderRef == null && orderId.isNotEmpty) {
+        throw UserStateError(L10n.current.svcOrderNotFound);
+      }
       final batch = _db.batch()
         ..update(ref, {
           'status': 'accepted',
@@ -1169,14 +1172,16 @@ class SparkBackend {
           'accepted': true,
           'acceptedAt': _now,
           'updatedAt': _now,
-        })
-        ..update(orderRef, {
+        });
+      if (orderRef != null) {
+        batch.update(orderRef, {
           'status': 'assigned',
           'transporterId': uid,
           'transportJobId': jobId,
           'assignedAt': _now,
           'updatedAt': _now,
         });
+      }
       try {
         await batch.commit();
       } on FirebaseException catch (e) {

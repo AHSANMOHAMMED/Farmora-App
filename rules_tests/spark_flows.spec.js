@@ -244,6 +244,13 @@ describe('Spark: transporter job flow', () => {
     await assertFails(accept('trans2'));
   });
 
+  it('a prospective transporter reads an open order and accepts an open job with requestedTransporterId null', async () => {
+    await seedOrder('o1', 'confirmed', { requestedTransporterId: null },
+      { id: 'j1', data: { transporterId: null, requestedTransporterId: null } });
+    await assertSucceeds(getDoc(doc(db('trans1'), 'orders', 'o1')));
+    await assertSucceeds(accept('trans1'));
+  });
+
   it('cannot self-assign an order without its job', async () => {
     await seedOrder('o1', 'confirmed', {}, { id: 'j1' });
     await assertFails(updateDoc(doc(db('trans1'), 'orders', 'o1'), {

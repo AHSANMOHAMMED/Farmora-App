@@ -12,6 +12,7 @@ import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import '../../../core/utils/app_errors.dart';
 import 'buyer_l10n.dart';
+import 'cart_screen.dart';
 import '../../farmer/presentation/add_product_screen.dart';
 import '../../shop/presentation/shop_screens.dart';
 import '../../quality/presentation/quality_inspector_dashboard_screen.dart';
@@ -464,34 +465,75 @@ class ProductDetailScreen extends StatelessWidget {
                 child: SizedBox(
                   height: 52,
                   child: isInCart
-                      ? OutlinedButton.icon(
-                          onPressed: () {
-                            state.removeFromCart(product.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(l.buyerRemovedFromCart(product.name)),
-                                backgroundColor: AppColors.error,
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  state.removeFromCart(product.id);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(l.buyerRemovedFromCart(product.name)),
+                                      backgroundColor: AppColors.error,
+                                      duration: const Duration(seconds: 1),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.error,
+                                  side: const BorderSide(color: AppColors.errorContainer, width: 2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.remove_shopping_cart, size: 20),
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    l.buyerRemoveFromCart,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.errorContainer, width: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ),
-                          icon: const Icon(Icons.remove_shopping_cart, size: 20),
-                          label: Text(
-                            l.buyerRemoveFromCart,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const CartScreen(),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 2,
+                                ),
+                                icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+                                label: const FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'View Cart',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         )
                       : Row(
                             children: [
@@ -533,8 +575,19 @@ class ProductDetailScreen extends StatelessWidget {
                                       SnackBar(
                                         content: Text(l.buyerAddedToCart(product.name)),
                                         backgroundColor: AppColors.primary,
-                                        duration: const Duration(seconds: 1),
+                                        duration: const Duration(seconds: 3),
                                         behavior: SnackBarBehavior.floating,
+                                        action: SnackBarAction(
+                                          label: 'View Cart',
+                                          textColor: Colors.white,
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => const CartScreen(),
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
                                     );
                                   },

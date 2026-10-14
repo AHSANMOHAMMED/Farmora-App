@@ -526,7 +526,7 @@ service cloud.firestore {
           // Accept: assigned to the caller together with the job.
           r.status == 'confirmed' && d.status == 'assigned'
           && r.get('transporterId', null) == null
-          && r.get('requestedTransporterId', uid()) == uid()
+          && r.get('requestedTransporterId', null) in [null, '', uid()]
           && d.transporterId == uid() && verified()
           && affected().hasOnly(['status', 'transporterId', 'transportJobId',
             'assignedAt', 'updatedAt'])
@@ -574,6 +574,7 @@ service cloud.firestore {
       allow get: if (resource == null && active())
         || participant(resource.data)
         || (signedIn() && resource.data.get('requestedTransporterId', '') == uid())
+        || (transporter() && resource.data.status in ['confirmed', 'assigned', 'pickedUp', 'inTransit', 'delivered'])
         || admin() || finance();
       allow list: if participant(resource.data) || admin() || finance();
       allow create: if admin()
@@ -730,7 +731,7 @@ service cloud.firestore {
           // Accept an open job (or one targeted to the caller).
           r.status == 'requested' && d.status == 'accepted'
           && r.get('transporterId', null) in [null, uid()]
-          && r.get('requestedTransporterId', uid()) == uid()
+          && r.get('requestedTransporterId', null) in [null, '', uid()]
           && d.transporterId == uid() && verified()
           && affected().hasOnly(['status', 'transporterId', 'accepted', 'acceptedAt',
             'updatedAt'])

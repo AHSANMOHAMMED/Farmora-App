@@ -76,11 +76,11 @@ class _AcceptCounterOfferDialogState extends State<_AcceptCounterOfferDialog> {
       setState(() => _error = context.l10n.buyerEnterAddressToOrder);
       return;
     }
-    final transporterId = _transporter?['uid']?.toString() ?? '';
-    if (transporterId.isEmpty) {
-      setState(() => _error = 'Choose a transporter for this delivery.');
-      return;
-    }
+    final rawTransporterId = _transporter?['uid']?.toString().trim();
+    final transporterId =
+        (rawTransporterId != null && rawTransporterId.isNotEmpty)
+            ? rawTransporterId
+            : null;
     setState(() {
       _submitting = true;
       _error = null;
