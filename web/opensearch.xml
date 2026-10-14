@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Farmora</ShortName>
+  <Description>Search fresh farm produce, farming crops, vegetables, and agricultural transport on Farmora</Description>
+  <Tags>FARMORA farmora farming farming-app farming-market agricultural-marketplace</Tags>
+  <Contact>support@farmora.lk</Contact>
+  <Url type="text/html" template="https://farmingapp-24b34.web.app/?search={searchTerms}"/>
+  <Image height="16" width="16" type="image/x-icon">https://farmingapp-24b34.web.app/favicon.png</Image>
+</OpenSearchDescription>
+

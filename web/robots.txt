@@ -8,6 +8,7 @@ Allow: /favicon.svg
 Allow: /favicon.png
 Allow: /farmora-logo-512.png
 Allow: /sitemap.xml
+Allow: /opensearch.xml
 
 User-agent: Googlebot
 Allow: /
