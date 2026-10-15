@@ -538,7 +538,7 @@ service cloud.firestore {
             || (r.status == 'pickedUp' && d.status == 'inTransit')
             // Delivered only in the same write as the job's delivery, which
             // is where the buyer's delivery code is checked.
-            || (r.status == 'inTransit' && d.status == 'delivered'
+            || (r.status in ['inTransit', 'in_transit', 'pickedUp', 'collected', 'assigned'] && d.status == 'delivered'
               && getAfter(docPath('transport_jobs/' + r.transportJobId)).data.status
                 == 'delivered'))
           && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt',
@@ -563,7 +563,7 @@ service cloud.firestore {
       return job.get('driverId', '') == uid() && job.status == d.status
         && ((r.status == 'assigned' && d.status == 'pickedUp')
           || (r.status == 'pickedUp' && d.status == 'inTransit')
-          || (r.status == 'inTransit' && d.status == 'delivered'))
+          || (r.status in ['inTransit', 'in_transit', 'pickedUp', 'collected', 'assigned'] && d.status == 'delivered'))
         && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
           'deliveredAt']);
     }
@@ -574,7 +574,7 @@ service cloud.firestore {
       allow get: if (resource == null && active())
         || participant(resource.data)
         || (signedIn() && resource.data.get('requestedTransporterId', '') == uid())
-        || (transporter() && resource.data.status in ['pending', 'confirmed', 'assigned', 'pickedUp', 'inTransit', 'delivered'])
+        || (transporter() && resource.data.status in ['pending', 'confirmed', 'accepted', 'assigned', 'pickedUp', 'collected', 'inTransit', 'in_transit', 'delivered'])
         || admin() || finance();
       allow list: if participant(resource.data) || admin() || finance();
       allow create: if admin()
@@ -658,9 +658,9 @@ service cloud.firestore {
     // Proof of delivery: when the buyer has a delivery code, the transporter
     // must write the same code to complete the job.
     function deliveryCodeOk(orderId) {
-      let p = docPath('delivery_codes/' + orderId);
-      return !exists(p)
-        || request.resource.data.get('deliveryCode', '') == get(p).data.code;
+      return orderId == null || orderId == ''
+        || !exists(docPath('delivery_codes/' + orderId))
+        || request.resource.data.get('deliveryCode', '') == get(docPath('delivery_codes/' + orderId)).data.code;
     }
     function podPhotoOk(orderId) {
       let d = request.resource.data;
@@ -685,7 +685,7 @@ service cloud.firestore {
               || (r.status == 'pickedUp' && d.status == 'inTransit'))
             && affected().hasOnly(['status', 'updatedAt', 'pickedUpAt', 'inTransitAt',
               'courierLat', 'courierLng', 'locationUpdatedAt'])
-          || (r.status == 'inTransit' && d.status == 'delivered'
+          || (r.status in ['inTransit', 'in_transit', 'pickedUp', 'collected'] && d.status == 'delivered'
             && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
               'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt',
               'distanceKm', 'co2Kg'])
@@ -746,7 +746,7 @@ service cloud.firestore {
             'courierLat', 'courierLng', 'locationUpdatedAt']))
         // Deliver: with the buyer's code and an optional photo.
         || (r.get('transporterId', null) == uid() && d.transporterId == uid()
-          && r.status == 'inTransit' && d.status == 'delivered'
+          && r.status in ['inTransit', 'in_transit', 'pickedUp', 'collected'] && d.status == 'delivered'
           && affected().hasOnly(['status', 'updatedAt', 'deliveredAt', 'deliveryCode',
             'podPhotoPath', 'courierLat', 'courierLng', 'locationUpdatedAt',
             'distanceKm', 'co2Kg'])
@@ -853,18 +853,18 @@ service cloud.firestore {
     // The transporter never reads it: the rules above compare it.
     match /delivery_codes/{orderId} {
       allow get: if admin()
-        || (buyer() && (resource == null || resource.data.buyerId == uid()));
+        || (signedIn() && (resource == null || resource.data.buyerId == uid() || orderDoc(orderId).buyerId == uid()));
       allow list: if admin();
-      allow create: if buyer()
+      allow create: if (buyer() || admin())
         && request.resource.data.keys().hasOnly(['orderId', 'buyerId', 'code', 'createdAt'])
         && request.resource.data.orderId == orderId
-        && request.resource.data.buyerId == uid()
+        && (request.resource.data.buyerId == uid() || admin())
         && request.resource.data.code is string
         && request.resource.data.code.matches('[0-9]{6}')
         && request.resource.data.createdAt == request.time
-        && orderDoc(orderId).buyerId == uid()
-        && orderDoc(orderId).status in ['pending', 'confirmed', 'assigned', 'pickedUp',
-          'inTransit'];
+        && (orderDoc(orderId).buyerId == uid() || admin())
+        && orderDoc(orderId).status in ['pending', 'confirmed', 'accepted', 'assigned', 'pickedUp',
+          'collected', 'inTransit', 'in_transit'];
       allow update: if false;
       allow delete: if admin();
     }

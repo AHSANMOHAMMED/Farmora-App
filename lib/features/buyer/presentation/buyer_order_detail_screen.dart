@@ -135,7 +135,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
   /// Proof of delivery: the buyer hands this code to the driver on receipt.
   Widget _buildDeliveryCode(AppLocalizations l, FarmoraOrder o) {
-    if (o.isCancelled || o.statusStep < 1 || o.statusStep > 2) {
+    if (o.isCancelled || o.statusStep >= 3) {
       return const SizedBox.shrink();
     }
     final code = _deliveryCode ??= _service.ensureDeliveryCode(o.id);
@@ -175,10 +175,18 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                   color: AppColors.primary,
                 ),
               )
-            else if (snap.hasError)
+            else if (snap.hasError) ...[
               Text(l.deliveryCodeUnavailable,
-                  style: const TextStyle(color: AppColors.error))
-            else
+                  style: const TextStyle(color: AppColors.error)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _deliveryCode = _service.ensureDeliveryCode(o.id);
+                }),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l.retry),
+              ),
+            ] else
               const LinearProgressIndicator(),
             const SizedBox(height: 6),
             Text(l.deliveryCodeBuyerHint,

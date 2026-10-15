@@ -30,6 +30,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   final FirestoreService _service = FirestoreService();
   StreamSubscription<List<TransportJob>>? _jobSub;
   TransportJob? _job;
+  Future<String>? _deliveryCode;
 
   @override
   void initState() {
@@ -40,6 +41,71 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         if (mounted) setState(() => _job = jobs.isEmpty ? null : jobs.first);
       }, onError: (e) => debugPrint('Job tracking stream error: $e'));
     }
+  }
+
+  /// Proof of delivery: the buyer hands this code to the driver on receipt.
+  Widget _buildDeliveryCode(AppLocalizations l, FarmoraOrder o) {
+    if (o.isCancelled || o.statusStep >= 3) {
+      return const SizedBox.shrink();
+    }
+    final code = _deliveryCode ??= _service.ensureDeliveryCode(o.id);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: FutureBuilder<String>(
+        future: code,
+        builder: (context, snap) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_user_outlined,
+                    color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(l.deliveryCodeTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (snap.hasData)
+              SelectableText(
+                snap.data!,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 8,
+                  color: AppColors.primary,
+                ),
+              )
+            else if (snap.hasError) ...[
+              Text(l.deliveryCodeUnavailable,
+                  style: const TextStyle(color: AppColors.error)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _deliveryCode = _service.ensureDeliveryCode(o.id);
+                }),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l.retry),
+              ),
+            ] else
+              const LinearProgressIndicator(),
+            const SizedBox(height: 6),
+            Text(l.deliveryCodeBuyerHint,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -163,6 +229,8 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            _buildDeliveryCode(l, order),
 
             // ── Live courier tracking ──
             if (courier != null) ...[
