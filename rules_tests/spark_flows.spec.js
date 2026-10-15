@@ -251,6 +251,27 @@ describe('Spark: transporter job flow', () => {
     await assertSucceeds(accept('trans1'));
   });
 
+  it('a prospective transporter reads a pending order and accepts an open job linked to pending order', async () => {
+    await seedOrder('o1', 'pending', { requestedTransporterId: null },
+      { id: 'j1', data: { transporterId: null, requestedTransporterId: null } });
+    await assertSucceeds(getDoc(doc(db('trans1'), 'orders', 'o1')));
+    await assertSucceeds(accept('trans1'));
+  });
+
+  it('a verified transporter accepts and cancels a standalone job without an order', async () => {
+    await seedOrder('o1', 'confirmed', {},
+      { id: 'j1', data: { orderId: null, transporterId: null, requestedTransporterId: null } });
+    await assertSucceeds(accept('trans1', 'j1', 'o1', false));
+    const d = db('trans1');
+    const batch = writeBatch(d);
+    batch.update(doc(d, 'transport_jobs', 'j1'), {
+      status: 'requested', transporterId: null, requestedTransporterId: deleteField(),
+      accepted: false, acceptedAt: deleteField(), declinedBy: arrayUnion('trans1'),
+      cancellationReason: 'Breakdown', droppedAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
+  });
+
   it('cannot self-assign an order without its job', async () => {
     await seedOrder('o1', 'confirmed', {}, { id: 'j1' });
     await assertFails(updateDoc(doc(db('trans1'), 'orders', 'o1'), {
