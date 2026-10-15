@@ -494,12 +494,21 @@ class FarmoraState extends ChangeNotifier {
   String paymentMethodDraft = PaymentMethod.cod;
   String? _lastOrderError;
   String? get lastOrderError => _lastOrderError;
+  String? _lastPlacedOrderId;
+  String? get lastPlacedOrderId => _lastPlacedOrderId;
+  FarmoraOrder? _lastPlacedOrder;
+  FarmoraOrder? get lastPlacedOrder => _lastPlacedOrder;
 
   /// Clears a stale checkout error (e.g. when the cart screen is reopened).
   void clearLastOrderError() {
     if (_lastOrderError == null) return;
     _lastOrderError = null;
     notifyListeners();
+  }
+
+  void clearLastPlacedOrder() {
+    _lastPlacedOrderId = null;
+    _lastPlacedOrder = null;
   }
 
   void setPaymentMethodDraft(String method) {
@@ -546,6 +555,8 @@ class FarmoraState extends ChangeNotifier {
     }
     _placingOrder = true;
     _lastOrderError = null;
+    _lastPlacedOrderId = null;
+    _lastPlacedOrder = null;
     notifyListeners();
     try {
       if (_currentUserId.isNotEmpty) {
@@ -553,9 +564,11 @@ class FarmoraState extends ChangeNotifier {
         // Firestore would be invisible to the farmer and transporter.
         final feeMinor = (defaultDeliveryFeeLkr * 100).round();
         final farmersCharged = <String>{};
+        String? firstCreatedOrderId;
+        FarmoraOrder? firstSyntheticOrder;
         for (final item in _cartItems) {
           final firstForFarmer = farmersCharged.add(item.product.farmerId);
-          await _firestoreService.createSecureOrder(
+          final createdOrderId = await _firestoreService.createSecureOrder(
             productId: item.product.id,
             quantity: item.quantity,
             deliveryFeeMinor: firstForFarmer ? feeMinor : 0,
@@ -564,7 +577,39 @@ class FarmoraState extends ChangeNotifier {
             idempotencyKey: '${_checkoutAttemptKey!}_${item.product.id}',
             paymentMethod: method,
           );
+          if (firstCreatedOrderId == null) {
+            firstCreatedOrderId = createdOrderId;
+            final total = item.product.effectivePricePerUnit * item.quantity;
+            firstSyntheticOrder = FarmoraOrder(
+              id: createdOrderId,
+              orderNumber: 'ORD-${createdOrderId.length >= 8 ? createdOrderId.substring(0, 8).toUpperCase() : createdOrderId.toUpperCase()}',
+              title: '${item.product.name} Order',
+              productName: item.product.name,
+              quantity: '${item.quantity} ${item.product.unit}',
+              grade: 'Grade A',
+              unitPrice:
+                  'LKR ${item.product.effectivePricePerUnit.toStringAsFixed(2)} / ${item.product.unit}',
+              totalAmount: 'LKR ${total.toStringAsFixed(2)}',
+              totalAmountNumber: total,
+              buyerName: displayName.isNotEmpty ? displayName : 'Buyer',
+              deliveryAddress: address,
+              detail:
+                  'Fresh harvest delivery from ${item.product.location} to $address',
+              status: 'pending',
+              progress: 0.1,
+              color: const Color(0xFFE8F5E9),
+              buyerId: _currentUserId,
+              farmerId: item.product.farmerId,
+              transporterId: '',
+              requestedTransporterId: effectiveTransporterId ?? '',
+              productId: item.product.id,
+              createdAt: DateTime.now(),
+              paymentMethod: method,
+            );
+          }
         }
+        _lastPlacedOrderId = firstCreatedOrderId;
+        _lastPlacedOrder = firstSyntheticOrder;
       } else if (kDemoData) {
         _applyLocalOrderPlacement(address, effectiveTransporterId ?? '', method);
       } else {
@@ -623,11 +668,16 @@ class FarmoraState extends ChangeNotifier {
         buyerId: _currentUserId.isNotEmpty ? _currentUserId : 'buyer_demo',
         farmerId: item.product.farmerId,
         transporterId: transporterId,
+        requestedTransporterId: transporterId,
         productId: item.product.id,
         createdAt: now,
         paymentMethod: method,
       );
       _orders.insert(0, newOrder);
+      if (_lastPlacedOrderId == null) {
+        _lastPlacedOrderId = orderId;
+        _lastPlacedOrder = newOrder;
+      }
 
       final newJob = TransportJob(
         id: 'job_local_${now.millisecondsSinceEpoch}_$idx',

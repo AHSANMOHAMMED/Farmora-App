@@ -63,12 +63,14 @@ service cloud.firestore {
     function orderAfter(orderId) { return getAfter(docPath('orders/' + orderId)).data; }
     function isOrderParty(order, u) {
       return u == order.buyerId || u == order.farmerId
-        || u == order.get('transporterId', '');
+        || u == order.get('transporterId', '')
+        || u == order.get('requestedTransporterId', '');
     }
     function participant(order) {
       return signedIn() && (order.buyerId == request.auth.uid
         || order.farmerId == request.auth.uid
-        || order.get('transporterId', '') == request.auth.uid);
+        || order.get('transporterId', '') == request.auth.uid
+        || order.get('requestedTransporterId', '') == request.auth.uid);
     }
     function participantByOrderId(orderId) {
       return orderId is string

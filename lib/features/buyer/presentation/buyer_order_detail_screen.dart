@@ -602,102 +602,110 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                 ],
               ),
             ),
-            if (_jobStream != null)
-              StreamBuilder<List<TransportJob>>(
-                stream: _jobStream,
-                builder: (context, snap) {
-                  final jobs = snap.data ?? const <TransportJob>[];
-                  if (jobs.isEmpty) return const SizedBox.shrink();
+            StreamBuilder<List<TransportJob>>(
+              stream: _jobStream,
+              builder: (context, snap) {
+                final jobs = snap.data ?? const <TransportJob>[];
+                if (jobs.isNotEmpty) {
                   return Column(children: [
-                    _buildJobCard(l, jobs.first),
+                    _buildJobCard(l, jobs.first, currentOrder),
                     ColdChainCard(job: jobs.first),
                     DeliveryProofView(job: jobs.first),
                   ]);
-                },
-              ),
+                }
+                final requestedId =
+                    currentOrder.requestedTransporterId.isNotEmpty
+                        ? currentOrder.requestedTransporterId
+                        : currentOrder.transporterId;
+                if (requestedId.isNotEmpty) {
+                  return _buildAssignedTransporterPreview(
+                      l, currentOrder, requestedId);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ],
         ),
       ),
       bottomNavigationBar: (() {
-        final trackable = !currentOrder.isCancelled &&
-            (currentOrder.statusStep == 1 || currentOrder.statusStep == 2);
-        return trackable
-            ? Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
-                ),
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TrackOrderScreen(order: currentOrder),
+        if (currentOrder.isCancelled) return null;
+        final canTrack = currentOrder.statusStep < 3;
+        final canCancel = currentOrder.isPending;
+        if (!canTrack && !canCancel) return null;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              if (canCancel)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _cancelling
+                        ? null
+                        : () => _cancelOrder(state, currentOrder),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    );
-                  },
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    backgroundColor: AppColors.primary,
-                  ),
-                  child: Text(
-                    l.trackOrder,
-                    style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
+                    child: _cancelling
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(
+                            l.buyerCancelOrderButton,
+                            style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
-              )
-            : currentOrder.isPending
-                ? Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, -5),
+              if (canCancel && canTrack) const SizedBox(width: 12),
+              if (canTrack)
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TrackOrderScreen(order: currentOrder),
                         ),
-                      ],
+                      );
+                    },
+                    icon: const Icon(Icons.navigation_outlined, size: 20),
+                    label: Text(
+                      l.trackOrder,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
-                    child: OutlinedButton(
-                      onPressed: _cancelling
-                          ? null
-                          : () => _cancelOrder(state, currentOrder),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: _cancelling
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(
-                              l.buyerCancelOrderButton,
-                              style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold),
-                            ),
+                      backgroundColor: AppColors.primary,
                     ),
-                  )
-                : null;
+                  ),
+                ),
+            ],
+          ),
+        );
       })(),
     );
   }
@@ -1035,7 +1043,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
     if (saved == true) _snack(l.addressUpdatedSuccessfully);
   }
 
-  Widget _buildJobCard(AppLocalizations l, TransportJob job) {
+  Widget _buildJobCard(
+      AppLocalizations l, TransportJob job, FarmoraOrder currentOrder) {
     final transporterId = (job.transporterId ?? '').isNotEmpty
         ? job.transporterId!
         : (job.requestedTransporterId ?? '');
@@ -1122,6 +1131,240 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
             _buildSummaryRow(l.buyerRoute, job.route),
             _buildDivider(),
             _buildSummaryRow(l.buyerFee, fee),
+            if (transporterId.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ConversationsScreen(
+                            orderId: currentOrder.id,
+                            peerId: transporterId,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text(
+                        'Message Transporter',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TrackOrderScreen(order: currentOrder),
+                        ),
+                      ),
+                      icon: const Icon(Icons.local_shipping_outlined, size: 16),
+                      label: Text(
+                        l.trackOrder,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssignedTransporterPreview(
+      AppLocalizations l, FarmoraOrder currentOrder, String transporterId) {
+    final fee = currentOrder.deliveryFeeMinor > 0
+        ? AppFormat.lkr(currentOrder.deliveryFeeMinor / 100, decimals: 2)
+        : AppFormat.lkr(
+            context.read<FarmoraState>().defaultDeliveryFeeLkr, decimals: 2);
+    final route = currentOrder.deliveryAddress.isNotEmpty
+        ? currentOrder.deliveryAddress
+        : l.buyerAwaitingFarmerConfirmation;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    l.buyerLogisticsTransport,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                  child: Text(
+                    currentOrder.transporterId.isNotEmpty
+                        ? statusLabel('assigned', l)
+                        : '${statusLabel('requested', l)} • Awaiting Acceptance',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            StreamBuilder<Map<String, dynamic>?>(
+              stream: _transporterProfile(transporterId),
+              builder: (context, snap) {
+                final name = (snap.data?['displayName'] ?? '').toString();
+                final vehicle = (snap.data?['vehicleType'] ?? '').toString();
+                final phone = (snap.data?['phone'] ?? '').toString();
+                final label = name.isEmpty ? l.roleTransporter : name;
+                final assigned = currentOrder.transporterId.isNotEmpty;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSummaryRow(
+                      l.buyerTransportProvider,
+                      [
+                        assigned
+                            ? label
+                            : '$label (${statusLabel('requested', l)})',
+                        if (vehicle.isNotEmpty) vehicle,
+                      ].join(' • '),
+                    ),
+                    if (phone.isNotEmpty) ...[
+                      _buildDivider(),
+                      _buildSummaryRow('Contact', phone),
+                    ],
+                  ],
+                );
+              },
+            ),
+            _buildDivider(),
+            _buildSummaryRow(l.buyerRoute, route),
+            _buildDivider(),
+            _buildSummaryRow(l.buyerFee, fee),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ConversationsScreen(
+                          orderId: currentOrder.id,
+                          peerId: transporterId,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text(
+                      'Message Transporter',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TrackOrderScreen(order: currentOrder),
+                      ),
+                    ),
+                    icon: const Icon(Icons.local_shipping_outlined, size: 16),
+                    label: Text(
+                      l.trackOrder,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

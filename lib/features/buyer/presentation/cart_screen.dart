@@ -7,6 +7,7 @@ import '../../payments/presentation/payment_method_selector.dart';
 import '../../../core/localization/app_format.dart';
 import '../../../core/localization/l10n.dart';
 import 'buyer_l10n.dart';
+import 'buyer_order_detail_screen.dart';
 import 'transporter_picker_dialog.dart';
 import '../../../models/product.dart';
 
@@ -476,7 +477,27 @@ class _CartScreenState extends State<CartScreen> {
                                       behavior: SnackBarBehavior.floating,
                                     ),
                                   );
-                                  if (ok) Navigator.of(context).pop();
+                                  if (ok) {
+                                    final targetOrder = state.lastPlacedOrder ??
+                                        (state.lastPlacedOrderId != null
+                                            ? state.orders
+                                                .where((o) =>
+                                                    o.id ==
+                                                    state.lastPlacedOrderId)
+                                                .firstOrNull
+                                            : null);
+                                    if (targetOrder != null) {
+                                      Navigator.of(context).pushReplacement(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              BuyerOrderDetailScreen(
+                                                  order: targetOrder),
+                                        ),
+                                      );
+                                    } else {
+                                      Navigator.of(context).pop();
+                                    }
+                                  }
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,

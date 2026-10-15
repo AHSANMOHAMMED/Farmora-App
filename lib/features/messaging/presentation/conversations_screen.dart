@@ -40,16 +40,21 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   /// The parties of [order] this user may chat with, labelled by role.
   List<_Peer> _peersFor(FarmoraOrder order, AppLocalizations l) {
     final explicit = widget.peerId;
+    final transporterId = order.transporterId.isNotEmpty
+        ? order.transporterId
+        : order.requestedTransporterId;
     final peers = <_Peer>[
       if (order.farmerId.isNotEmpty && order.farmerId != _uid)
         _Peer(order.farmerId, l.chatStartWithFarmer, l.chatMessageTheFarmer),
       if (order.buyerId.isNotEmpty && order.buyerId != _uid)
         _Peer(order.buyerId, l.chatStartWithBuyer, l.chatMessageTheBuyer),
-      if (order.transporterId.isNotEmpty && order.transporterId != _uid)
-        _Peer.transporterFor(order.transporterId),
+      if (transporterId.isNotEmpty && transporterId != _uid)
+        _Peer.transporterFor(transporterId),
     ];
     if (explicit != null && explicit.isNotEmpty) {
-      return peers.where((p) => p.id == explicit).toList();
+      final matches = peers.where((p) => p.id == explicit).toList();
+      if (matches.isNotEmpty) return matches;
+      return [_Peer.transporterFor(explicit)];
     }
     return peers;
   }
